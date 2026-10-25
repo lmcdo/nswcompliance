@@ -307,7 +307,9 @@ export function StateLevelControls({
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data.hasStructuredRequirements) {
+          if (data?.success !== true || !data.data) {
+            setSeppNotChecked(true);
+          } else if (data.data.hasStructuredRequirements) {
             // Separate transport infrastructure for dedicated section
             if (seppId === 'transport_infrastructure_2021') {
               transportResults.push(...data.data.requirements);

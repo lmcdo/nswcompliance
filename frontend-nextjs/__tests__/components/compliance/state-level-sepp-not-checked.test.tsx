@@ -48,6 +48,12 @@ describe('StateLevelControls Housing SEPP requirements', () => {
     expect(await screen.findByText(/Housing SEPP requirements not checked/i)).toBeInTheDocument();
   });
 
+  it('says Not checked when the request answers 200 with success false', async () => {
+    mockFetch(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false, error: 'db down' }) }));
+    render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
+    expect(await screen.findByText(/Housing SEPP requirements not checked/i)).toBeInTheDocument();
+  });
+
   it('still says none when the request answered with no requirements', async () => {
     mockFetch(() => Promise.resolve({
       ok: true, json: () => Promise.resolve({ success: true, data: { hasStructuredRequirements: false, requirements: [] } }),
