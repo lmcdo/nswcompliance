@@ -11,7 +11,9 @@
     "docs/qa/codex-briefs/",
     "docs/qa/defence/served-rules.md",
     "docs/qa/diagrams/",
-    "docs/qa/html/"
+    "docs/qa/html/",
+    "docs/qa/quality-baseline-2026-10-25/how/py_cycles.py",
+    "docs/qa/quality-baseline-2026-10-25/how/summarise.py"
   ],
   "break_it": [
     {

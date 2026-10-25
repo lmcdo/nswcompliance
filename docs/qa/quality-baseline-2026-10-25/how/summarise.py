@@ -25,7 +25,7 @@ cc = j("radon_cc"); bad = []
 for f, blocks in cc.items():
     if not isinstance(blocks, list): continue
     for b in blocks:
-        if isinstance(b, dict) and b.get("complexity", 0) > 20: bad.append((rel(f), b["name"], b["complexity"]))
+        if isinstance(b, dict) and (b.get("complexity") or 0) > 20: bad.append((rel(f), b["name"], b["complexity"]))
 lb = sorted([b for b in bad if b[0] in L], key=lambda x: -x[2])
 row("functions cc>20 (D-F)", len(bad), len(lb), [(f"{b[0]}:{b[1]}", b[2]) for b in lb[:5]])
 mi = j("radon_mi"); lowmi = [(rel(f), v["mi"]) for f, v in mi.items() if isinstance(v, dict) and v.get("rank") in ("C",)]
@@ -43,7 +43,7 @@ row("bandit MEDIUM", len(med), sum(1 for r in med if rel(r["filename"]) in L), C
 # pip-audit
 for name in ("pip_audit_api", "pip_audit_monitors"):
     d = j(name)["dependencies"]; v = [x for x in d if x.get("vulns")]
-    row(name + " pkgs w/ CVE", len(v), len(v), [(x["name"], x["version"], len(x["vulns"]), sorted({f for y in x["vulns"] for f in y.get("fix_versions", [])})[-1:]) for x in v])
+    row(name + " pkgs w/ CVE", len(v), len(v), [(x["name"], x["version"], len(x["vulns"]), sorted({f for y in x["vulns"] for f in (y.get("fix_versions") or [])})[-1:]) for x in v])
 # eslint
 es = j("eslint_try3"); le = [f for f in es if fe(f["filePath"]) in L]
 row("eslint errors", sum(f["errorCount"] for f in es), sum(f["errorCount"] for f in le), [])
@@ -51,13 +51,13 @@ row("eslint warnings", sum(f["warningCount"] for f in es), sum(f["warningCount"]
 # npm audit
 na = j("npm_audit")["metadata"]["vulnerabilities"]; row("npm audit (high, critical)", (na.get("high"), na.get("critical")), "n/a (package level)", [])
 # knip
-kn = j("knip_try3"); unused_files = [fe(f["name"]) for i in kn["issues"] for f in i.get("files", [])]
-unused_exports = [(fe(i["file"]), len(i.get("exports", []))) for i in kn["issues"] if i.get("exports")]
+kn = j("knip_try3"); unused_files = [fe(f["name"]) for i in kn["issues"] for f in (i.get("files") or [])]
+unused_exports = [(fe(i["file"]), len(i.get("exports") or [])) for i in kn["issues"] if i.get("exports")]
 row("knip unused files", len(unused_files), sum(1 for f in unused_files if f in L), [f for f in unused_files if f in L][:5])
 row("knip unused exports", sum(n for _, n in unused_exports), sum(n for f, n in unused_exports if f in L), sorted([e for e in unused_exports if e[0] in L], key=lambda x: -x[1])[:5])
 # cycles
 md = j("madge_circular"); row("TS import cycles (madge)", len(md), sum(1 for c in md if all(fe(x) in L for x in c)), md)
-pc = [l.split(" ", 1)[1].split(" | ") for l in (R/"py_cycles.out").read_text(encoding="utf-8").splitlines() if not l.startswith("#")]
+pc = [l.strip().split(" ", 1)[1].split(" | ") for l in (R/"py_cycles.out").read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#") and " " in l.strip()]
 row("Python import cycles", len(pc), sum(1 for c in pc if any(x in L for x in c)), pc)
 # jscpd
 jr = json.loads((R/"jscpd"/"jscpd-report.json").read_text(encoding="utf-8"))
@@ -67,7 +67,7 @@ for d in jr["duplicates"]:
     for side in ("firstFile", "secondFile"):
         f = rel(d[side]["name"]); dup[f] += d["lines"]
 live_dup = {f: n for f, n in dup.items() if f in L}
-lc = {l.split("\t")[1]: int(l.split("\t")[0]) for l in (R/"line_counts.out").read_text(encoding="utf-8").splitlines() if "\t" in l}
+lc = {l.strip().split("\t")[1]: int(l.strip().split("\t")[0]) for l in (R/"line_counts.out").read_text(encoding="utf-8").splitlines() if l.strip() and "\t" in l.strip()}
 live_lines = sum(n for f, n in lc.items() if f in L)
 row("jscpd dup lines in live files", sum(dup.values()), f"{sum(live_dup.values())} of {live_lines} ({100*sum(live_dup.values())/max(live_lines,1):.1f}%, upper bound)", sorted(live_dup.items(), key=lambda x: -x[1])[:5])
 big = sorted([(f, n) for f, n in lc.items() if n > 500], key=lambda x: -x[1])
