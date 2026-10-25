@@ -18,6 +18,7 @@ Usage (gates.yml, after a checkout with fetch-depth >= 2):
 from __future__ import annotations
 
 import fnmatch
+import os
 import subprocess
 import sys
 
@@ -29,8 +30,11 @@ CHECKS: dict[str, tuple[str, ...]] = {
     "COVERAGE_RATCHETS": ("scripts/check_dcp_as_at_coverage.py", "scripts/check_satellite_manifests.py",
                           "scripts/brief_field_coverage_ratchet.py", "*coverage*baseline*", "*manifest*baseline*",
                           "*brief_field_coverage*"),
-    "SERVED_ANSWER": ("scripts/check_served_answer_quality.py", ".claude/served_answer_quality_baseline.json"),
-    "CONTROL_VALUES": ("scripts/validate_control_source_values.py", "scripts/control_source_values_baseline.json"),
+    # The served-answer check calls the serving code itself, so a change there must run it too (Sol).
+    "SERVED_ANSWER": ("scripts/check_served_answer_quality.py", ".claude/served_answer_quality_baseline.json",
+                      "scripts/conveyancing_db.py", "scripts/check_dcp_as_at_coverage.py"),
+    "CONTROL_VALUES": ("scripts/validate_control_source_values.py", "scripts/control_source_values_baseline.json",
+                       "services/extracted_data_integrity.py"),
     "CONTROLS_PROVENANCE": ("scripts/validate_controls_provenance.py",),
     "PAGE_MAPS": ("scripts/dcp_page_map_gate.py", "*dcp_page_map_baseline.json", "*dcp_page_map_check.json"),
     "RAILWAY_CRON": ("scripts/check_railway_cron_drift.py", "railway*.toml"),
@@ -47,18 +51,22 @@ def decide(changed: list[str] | None) -> dict[str, bool]:
     return {k: any(fnmatch.fnmatch(f, p) for f in changed for p in pats) for k, pats in CHECKS.items()}
 
 
-def changed_files() -> list[str] | None:
-    """Files in HEAD~1..HEAD: the PR's changes on a pull_request merge commit, the merged change on main."""
+def changed_files(base: str | None = None) -> list[str] | None:
+    """Files changed since `base` (a push: the commit before it, so every pushed commit counts - Sol), else
+    HEAD~1..HEAD (a pull_request merge commit: exactly the PR's changes). None when git cannot answer."""
+    base = (base or "").strip()
+    if base and set(base) == {"0"}:  # a new branch: no "before" commit
+        return None
     try:
-        out = subprocess.run(["git", "diff", "--name-only", "HEAD~1", "HEAD"], capture_output=True, text=True,
-                             check=True, timeout=60).stdout
+        out = subprocess.run(["git", "diff", "--name-only", base or "HEAD~1", "HEAD"], capture_output=True,
+                             text=True, check=True, timeout=60).stdout
     except (subprocess.SubprocessError, OSError):
         return None
     return [line.strip().replace("\\", "/") for line in out.splitlines() if line.strip()]
 
 
 def main() -> int:
-    changed = changed_files()
+    changed = changed_files(os.environ.get("GATE_DIFF_BASE"))
     for key, run in decide(changed).items():
         print(f"RUN_{key}={'1' if run else '0'}")
     note = "could not read the diff: running every live check" if changed is None else f"{len(changed)} files changed"

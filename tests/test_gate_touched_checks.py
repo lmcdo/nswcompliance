@@ -58,13 +58,11 @@ def test_the_nightly_job_is_still_watched_from_outside():
     assert '--rc "datawatch=${{ steps.datawatch.outputs.rc }}"' in fa
 
 
-def test_a_database_timeout_is_unknown_not_red():
-    import dq_probe_applicability_config as a
-    import dq_probe_unchecked_rows as u
+def test_serving_code_changes_run_the_checks_that_call_it():
+    assert g.decide(["scripts/conveyancing_db.py"])["SERVED_ANSWER"]
+    assert g.decide(["services/extracted_data_integrity.py"])["CONTROL_VALUES"]
 
-    class OperationalError(Exception): ...
-    class QueryCanceledError(OperationalError): ...
-    for mod in (u, a):
-        assert mod._db_gave_up(QueryCanceledError("canceling statement due to statement timeout"))
-        assert mod._db_gave_up(OperationalError("SSL connection has been closed unexpectedly"))
-        assert not mod._db_gave_up(ValueError("a real bug"))
+
+def test_a_new_branch_push_with_no_before_commit_runs_everything():
+    assert g.changed_files("0000000000000000000000000000000000000000") is None
+

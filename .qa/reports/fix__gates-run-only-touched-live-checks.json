@@ -1,11 +1,9 @@
 {
  "tier": "standard",
- "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged.",
- "commit_hash": "db0b9479",
+ "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged. Probe timeout handling is left to PR #1495, which changes the same files.",
+ "commit_hash": "c5bdd9af",
  "files": [
   "scripts/gate_touched_checks.py",
-  "scripts/dq_probe_unchecked_rows.py",
-  "scripts/dq_probe_applicability_config.py",
   "scripts/verifyops_outside_ping.py",
   "tests/test_gate_touched_checks.py",
   ".github/workflows/gates.yml",
@@ -24,17 +22,17 @@
  "functions": [
   {
    "name": "decide",
-   "file_line": "scripts/gate_touched_checks.py:43",
+   "file_line": "scripts/gate_touched_checks.py:47",
    "input": "the list of changed file paths, or None when unreadable",
    "output": "for each live-data gate step whether it must run",
    "if_none": "an unreadable diff runs every live check"
   },
   {
-   "name": "_db_gave_up",
-   "file_line": "scripts/dq_probe_unchecked_rows.py:865",
-   "input": "an exception raised while a probe queried the database",
-   "output": "True for a timeout or dropped connection, so the probe exits 2 UNKNOWN",
-   "if_none": "any other exception is re-raised as a real error"
+   "name": "changed_files",
+   "file_line": "scripts/gate_touched_checks.py:54",
+   "input": "the push's previous commit, or nothing for a pull request",
+   "output": "files changed since that commit, or in HEAD~1..HEAD",
+   "if_none": "git failing or a new-branch all-zero commit returns None so everything runs"
   }
  ],
  "break_it": [
