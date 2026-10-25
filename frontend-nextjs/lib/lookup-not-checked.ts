@@ -39,6 +39,7 @@ export const LOOKUP_BUDGET_MS = 25_000;
  */
 export function forcedLookupFailure(check: LookupCheck): Error | null {
   // Only on a Vercel preview or a local dev server: an unset VERCEL_ENV in a production build is not a preview.
+  if (process.env.VERCEL_ENV === 'production') return null;
   if (process.env.VERCEL_ENV !== 'preview' && process.env.NODE_ENV !== 'development') return null;
   const named = (process.env.LOOKUP_FAIL_CHECKS ?? '').split(',').map((s) => s.trim());
   return named.includes(check) ? new Error(`forced by LOOKUP_FAIL_CHECKS (${check})`) : null;
