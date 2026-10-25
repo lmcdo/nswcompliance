@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which outcomes make dcp-monitor exit 1; what is checked and recorded per chapter is unchanged.",
- "commit_hash": "c130fa49",
+ "commit_hash": "21b51639",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_exit_only_on_real_failure.py"
