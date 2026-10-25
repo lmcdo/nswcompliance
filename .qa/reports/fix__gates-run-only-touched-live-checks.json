@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which live-data checks run in PR and main gates; the checks themselves and the nightly job are unchanged.",
- "commit_hash": "5af30e79",
+ "commit_hash": "db0b9479",
  "files": [
   "scripts/gate_touched_checks.py",
   "scripts/dq_probe_unchecked_rows.py",
