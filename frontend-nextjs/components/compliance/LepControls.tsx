@@ -10,6 +10,7 @@ import { NotApplicableCard } from './NotApplicableCard';
 import { ServicingTile } from './ServicingTile';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { HAZARD_NOT_CHECKED, HAZARD_NOT_CHECKED_SHORT, hazardUnchecked, type HazardKey } from '@/lib/hazard-unchecked';
+import { wasNotChecked } from '@/lib/fact-answer';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
@@ -252,7 +253,7 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Flood Mapping</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-amber-800' : 'text-gray-400'}`}>
-                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : 'No'}
+                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : (wasNotChecked(constraints, 'spatial_overlays') ? notCheckedLabel : 'No')}
               </span>
             </div>
 
