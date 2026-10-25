@@ -110,7 +110,9 @@ def held_match(text: str | None, held: dict[str, str]) -> str | None:
     return renumbered_match(text, held)
 
 
-_CODE = re.compile(r"\b(?:(?:part|chapter|section|schedule|appendix)\s*)?[a-z]?\d+(?:\.\d+)*[a-z]?\b", re.I)
+# A bare year is never a chapter code: it stays in the title, so "... 2024" is not "... 2020".
+_CODE = re.compile(r"\b(?!(?:19|20)\d{2}\b)(?:(?:part|chapter|section|schedule|appendix)\s*)?"
+                   r"[a-z]?\d+(?:\.\d+)*[a-z]?\b", re.I)
 _PLAN_PREFIX = re.compile(r"^.*?\bdcp\s*\d{4}\b", re.I)
 
 
@@ -120,7 +122,7 @@ def chapter_title(text: str | None) -> str:
     t = (text or "").lower().replace("development control plan", "dcp")
     t = _PLAN_PREFIX.sub(" ", t)
     t = _CODE.sub(" ", t)
-    return " ".join(re.sub(r"[^a-z]+", " ", t).split())
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", t).split())
 
 
 def renumbered_match(text: str | None, held: dict[str, str]) -> str | None:

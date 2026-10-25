@@ -199,6 +199,10 @@ def test_a_renumbered_chapter_matches_on_its_exact_title():
     assert held_match("E1 Appendices", {"a": "Part F1 Appendices"}) is None  # one word: too weak
     two = {"a": "Part 3 Residential Development", "b": "Part 9 Residential Development"}
     assert held_match("C2 Residential Development", two) is None  # ambiguous, not a guess
+    # A year is not a code (Sol cross-review 2026-10-26).
+    dated = {"d2": "Part D2 – Residential Development 2020"}
+    assert held_match("Residential Development 2024", dated) is None
+    assert held_match("C2 Residential Development 2024", dated) is None
 
 
 # ── daily cadence (resolutions 4 and 9) ─────────────────────────────────────────────────────
