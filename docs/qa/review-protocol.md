@@ -48,3 +48,9 @@ Pre-fix code = the PR's merge commit parent (`<sha>^`).
 | #1490 | served | error handling | A failed lookup (timeout/busy/error) returns empty and is shown as "no rules apply / no precinct / council not covered" instead of "not checked" |
 | #1489 | served | consistency | Planning-rule numbers typed into live screens (not read from DB/source), against the house rule |
 | #1481 | served | consistency + bug | Battle-axe CDC limits (3 m access, 12x12 m) are typed constants, not read from `cdc_eligibility_standards`; a missing/stale row could still pass |
+
+## Codex settings (pinned before any Codex output, used for Steps 2 and 4)
+`codex-cli 0.156.0`, model `gpt-5.6-terra` (the user's configured model), `model_reasoning_effort=high`,
+`--sandbox read-only --ephemeral --ignore-user-config --skip-git-repo-check`. Brief = `codex-bench/stance.txt` +
+one area file. A first launch was stopped before any output: `--ignore-user-config` had dropped reasoning to "none",
+which would have under-scored Codex.
