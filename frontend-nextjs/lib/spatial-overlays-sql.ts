@@ -8,8 +8,13 @@
  * cadastre lot holding the point: a lot whose back half is flood mapped must not read "No" because
  * the address point is outside the flood polygon. A lot hit needs more than 1 m2 of real overlap, so a
  * polygon that only shares the lot's edge does not count. Point hits sort first (by_lot = 0), so
- * `rows[0].value` is still the address point's value when it has one. No lot found = point only.
+ * `rows[0].value` is still the address point's value when it has one. No lot found = the
+ * `__lot_found` marker row reads 'false' and the route marks the overlays not checked (a point alone
+ * cannot say "No" for a lot).
  */
+/** layer_type of the marker row; its value is 'true' or 'false'. */
+export const LOT_FOUND_MARKER = '__lot_found';
+
 export const SPATIAL_OVERLAYS_SQL = `WITH pt AS (SELECT ST_SetSRID(ST_Point($1, $2), 4326) AS g),
 lot AS (SELECT ST_Union(l.geom) AS g FROM nsw_cadastre_lots l, pt WHERE ST_Covers(l.geom, pt.g))
 SELECT layer_type, value FROM (
@@ -32,5 +37,8 @@ SELECT layer_type, value FROM (
       'foreshore_building_line', 'land_reservation'
     )
     AND ST_Area(ST_Intersection(o.geom, lot.g)::geography) > 1
+  UNION ALL
+  -- Always exactly one row: did a cadastre lot hold the point? (aggregate over 0 rows still returns one)
+  SELECT '__lot_found', (lot.g IS NOT NULL)::text, 2 FROM lot
 ) hits
 ORDER BY by_lot`;

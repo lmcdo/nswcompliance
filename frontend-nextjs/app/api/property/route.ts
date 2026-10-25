@@ -6,7 +6,7 @@ import { greenwebConstraints } from '@/lib/greenweb-overlay';
 import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 import { classifiedRoadConstraints } from '@/lib/classified-road';
 import { withLookupBudget, withinLookupBudget, LOOKUP_OUT_OF_TIME } from '@/lib/fetch-timeout';
-import { SPATIAL_OVERLAYS_SQL } from '@/lib/spatial-overlays-sql';
+import { SPATIAL_OVERLAYS_SQL, LOT_FOUND_MARKER } from '@/lib/spatial-overlays-sql';
 import { LOOKUP_BUDGET_MS, type LookupCheck } from '@/lib/lookup-not-checked';
 import { ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND } from '@/lib/nsw-planning-portal';
 
@@ -81,7 +81,10 @@ export async function GET(req: NextRequest) {
      SPATIAL_OVERLAYS_SQL,
      [spatialLon, spatialLat]
    );
-   const rows = spatialResult.rows;
+   const lotFound = spatialResult.rows.find(r => r.layer_type === LOT_FOUND_MARKER)?.value === 'true';
+   const rows = spatialResult.rows.filter(r => r.layer_type !== LOT_FOUND_MARKER);
+   // Hazard layers need the whole lot; with no lot only the point was checked, which cannot say "No".
+   if (!lotFound) notChecked('spatial_overlays');
    const apuRows = rows.filter(r => r.layer_type === 'additional_permitted_uses');
    const foreshorRows = rows.filter(r => r.layer_type === 'foreshore_building_line');
    const reservRows = rows.filter(r => r.layer_type === 'land_reservation');

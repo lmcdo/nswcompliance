@@ -87,3 +87,16 @@ def test_value_layers_stay_at_the_point(cur, lot):
     cur.execute(_route_sql(), {"lon": lon, "lat": lat})
     from_route = sorted(r for r in cur.fetchall() if r[0] in ("fsr", "lot_size", "acid_sulfate"))
     assert from_route == at_point
+
+
+@pytest.mark.parametrize("lot", LOTS)
+def test_lot_found_marker_reads_true_on_a_real_lot(cur, lot):
+    lon, lat = _point(cur, lot)
+    cur.execute(_route_sql(), {"lon": lon, "lat": lat})
+    assert ("__lot_found", "true") in cur.fetchall()
+
+
+def test_lot_found_marker_reads_false_off_the_cadastre(cur):
+    """(0, 0) is in the Gulf of Guinea: no NSW lot can hold it, so the route must say not checked."""
+    cur.execute(_route_sql(), {"lon": 0.0, "lat": 0.0})
+    assert cur.fetchall() == [("__lot_found", "false")]
