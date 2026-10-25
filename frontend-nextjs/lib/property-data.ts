@@ -4,6 +4,7 @@
  */
 
 import { whyFromError } from './conditions-not-checked';
+import { forcedLookupFailure } from './lookup-not-checked';
 import {
  NSWPlanningPortalService,
  NSWPropertyData,
@@ -256,6 +257,8 @@ export class PropertyDataService {
  // Match precinct for DCP filtering - precinct data includes formerCouncil from spatial match
  if (precinctModule) {
    try {
+     const forced = forcedLookupFailure('precinct');
+     if (forced) throw forced;
      const precinctData = await withinLookupBudget(precinctModule.getPrecinctForAddress(
        propertyData.address,
        constraints.lga || '',

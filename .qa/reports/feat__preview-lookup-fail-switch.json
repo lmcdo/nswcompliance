@@ -1,0 +1,62 @@
+{
+  "tier": "standard",
+  "justification": "Adds a preview-only switch, LOOKUP_FAIL_CHECKS, that makes named lookup checks (planning_layers, lot_shape, tod, roads, precinct) fail through their own failure path, so a person can read the Not checked notice on a real preview page. It is ignored when VERCEL_ENV is production.",
+  "commit_hash": "f8a9437a",
+  "files": [
+    "frontend-nextjs/lib/lookup-not-checked.ts",
+    "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "frontend-nextjs/lib/property-data.ts",
+    "frontend-nextjs/__tests__/lib/lookup-fail-switch.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "none; reads two environment variables",
+    "assumption_mismatch": "unset or empty switch fails nothing",
+    "new_vs_existing": "only lookups on a deploy where the variable is set",
+    "frontend_type": "server lookup library"
+  },
+  "functions": [
+    {
+      "name": "forcedLookupFailure",
+      "file_line": "frontend-nextjs/lib/lookup-not-checked.ts:36",
+      "input": "the name of one lookup check, read against two environment variables",
+      "output": "an Error when the switch names the check on a non-production deploy, else null",
+      "if_none": "unset switch or production returns null"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "someone sets LOOKUP_FAIL_CHECKS on the production Vercel environment",
+      "what_happens": "real users would see Not checked for working checks",
+      "repro": "VERCEL_ENV=production LOOKUP_FAIL_CHECKS=precinct",
+      "mitigated": true,
+      "how": "returns null when VERCEL_ENV is production; unit test covers it"
+    },
+    {
+      "scenario": "the switch lists names with spaces after commas",
+      "what_happens": "a named check might not fail",
+      "repro": "LOOKUP_FAIL_CHECKS='roads, precinct'",
+      "mitigated": true,
+      "how": "names are trimmed; unit test covers it"
+    },
+    {
+      "scenario": "a check is forced to fail that already answered with real data",
+      "what_happens": "its real facts could still be shown beside a Not checked notice",
+      "repro": "LOOKUP_FAIL_CHECKS=planning_layers on preview",
+      "mitigated": true,
+      "how": "settle throws after the fetch, so the answer is dropped and the fact stays null exactly as on a real failure"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none",
+    "secrets": "none",
+    "other_repo": "none",
+    "manual_verify": "set LOOKUP_FAIL_CHECKS=precinct on a preview deploy, open /assessment for an address, read the notice"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/lookup-fail-switch.test.ts",
+    "fails_when": "the switch fires on production, ignores a named check, or fires when unset",
+    "observed_red": "origin/main: forcedLookupFailure does not exist, so the test cannot import it"
+  }
+}
