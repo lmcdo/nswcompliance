@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds Chrome and curl_cffi to the monitor image and a switch that runs a read-only measurement instead of the monitor; the monitor itself is unchanged.",
- "commit_hash": "11478640",
+ "commit_hash": "bedef192",
  "files": [
   "scripts/run_monitors.py",
   "scripts/probe_blocked_councils.py",
