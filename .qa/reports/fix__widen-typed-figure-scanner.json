@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "ab4d5875",
+  "commit_hash": "5de3fb41",
   "justification": "The gate said 0 unlisted while missing typed figures that decide what users see. Standard: lint script and ledger; no shipped code.",
   "files": [
     "scripts/lint_hardcoded_regulatory_numbers.py",
