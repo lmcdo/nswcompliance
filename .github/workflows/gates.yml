@@ -81,6 +81,13 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # gate_touched_checks diffs against the push's previous commit
+      # Live-data checks run in a PR only when the PR changes them (scripts/gate_touched_checks.py).
+      - name: Which live-data checks this change touches
+        env:
+          GATE_DIFF_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: python3 scripts/gate_touched_checks.py >> "$GITHUB_ENV"
       # No `cache:` input on setup-python/setup-node.
       #
       # On a SELF-HOSTED runner GitHub's cache action is redundant and actively
@@ -169,37 +176,10 @@ jobs:
       - name: No invisible control characters in source
         if: always()
         run: python scripts/lint_control_chars.py
-      # Has anybody looked at the DATA lately?
-      #
-      # Every database check in this file runs on `pull_request` and
-      # `push: main`, so the live data is inspected only when somebody happens
-      # to touch the code. `data-watch` fixes that with a schedule — but a
-      # scheduled workflow is precisely the kind of thing that stops quietly.
-      # main-red-alarm spent 12 runs out of 12 dying at `gh: command not found`
-      # while `gates` was green, and these runners do not survive a reboot.
-      #
-      # So the question is asked HERE, on the one trigger guaranteed to fire.
-      # Nothing on a schedule can report that the scheduler is dead.
-      #
-      # Only a MEASURED staleness fails. No token, no runs yet, workflow absent
-      # from the default branch, API unreachable — each prints its own reason
-      # and passes, because failing a stranger's PR for a dead cron is how a
-      # check gets deleted, and a deleted check protects nothing.
       - name: Extraction stays intelligent and proven (defaults lint)
         run: python scripts/lint_extraction_defaults.py --ci
-      - name: Live data was checked recently (data-watch freshness)
-        if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/check_data_watch_freshness.py
-      # A ratchet that cannot run is not a ratchet that passed.
-      #
-      # This was ::warning:: + exit 0 until 2026-08-16, which is the #398 shape:
-      # the control keeps its green tick while enforcing nothing, and the one
-      # signal that it stopped is a warning nobody is assigned to read. Both
-      # files are TRACKED, so "absent" here cannot mean "not set up yet" — it
-      # means deleted, renamed, or a checkout that did not complete, and every
-      # one of those is a thing to stop for.
+      # data-watch freshness left the PR gate 2026-10-25: freshness-alarm.yml asks it daily from outside
+      # (Telegram + healthchecks.io), so a dead nightly job is still caught without blocking merges.
       - name: Mutation-count baselines (counts never drop)
         run: |
           MISSING=""
@@ -240,7 +220,7 @@ jobs:
       # named councils, .claude/manifest_coverage_baseline.json is 892 reports
       # across 5 products. Lower them with --baseline --update when work lands.
       - name: Coverage ratchets (counts may fall, never rise)
-        if: always()
+        if: always() && env.RUN_COVERAGE_RATCHETS == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -285,6 +265,11 @@ jobs:
           # than guessing -- which meant the leniency it exists to provide
           # never activated in THIS job, only in qa-and-liability/duplication
           # (which already set this for the identical reason).
+      # Live-data checks run in a PR only when the PR changes them (scripts/gate_touched_checks.py).
+      - name: Which live-data checks this change touches
+        env:
+          GATE_DIFF_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: python3 scripts/gate_touched_checks.py >> "$GITHUB_ENV"
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -341,7 +326,7 @@ jobs:
       # `requires` in dq_checks.json is the belt to this braces: anywhere the
       # dependencies are absent, the row reports UNVERIFIED, never failing.
       - name: Data-quality ledger (status ratchet)
-        if: always()
+        if: always() && env.RUN_LEDGER == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dq_check.py
@@ -353,7 +338,7 @@ jobs:
       # FAILS on exit 1 (a declared state contradicts its check) and on exit 2 (a part could not run):
       # a gate that is green when it could not look is not a gate.
       - name: Outreach claims (declared state must match the checks)
-        if: always()
+        if: always() && env.RUN_OUTREACH == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -372,7 +357,7 @@ jobs:
       # A missing RAILWAY_TOKEN FAILS here rather than skipping: this repo has
       # already had a gate stop enforcing because an absent input exited 0.
       - name: Railway cron matches config-as-code
-        if: always()
+        if: always() && env.RUN_RAILWAY_CRON == '1'
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: python scripts/check_railway_cron_drift.py
@@ -569,6 +554,13 @@ jobs:
     runs-on: ${{ vars.RUNNER_LABEL || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # gate_touched_checks diffs against the push's previous commit
+      # Live-data checks run in a PR only when the PR changes them (scripts/gate_touched_checks.py).
+      - name: Which live-data checks this change touches
+        env:
+          GATE_DIFF_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+        run: python3 scripts/gate_touched_checks.py >> "$GITHUB_ENV"
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -580,6 +572,7 @@ jobs:
       # Mirrors pre-push step [1e/5]. Lives in this job because it is the one with
       # live DB access; exits 1 if any numeric control is unattributable.
       - name: Validate controls provenance
+        if: always() && env.RUN_CONTROLS_PROVENANCE == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_controls_provenance.py --quiet
@@ -591,6 +584,7 @@ jobs:
       # condition/review_reason admits it was assumed must not be SERVED. All 28
       # such rows are already is_current=FALSE, so this passes today.
       - name: Validate control values against their own source text
+        if: always() && env.RUN_CONTROL_VALUES == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/validate_control_source_values.py
@@ -612,6 +606,7 @@ jobs:
       # Exits 2 if a map has no ledger row at all. An unmeasured map is not a
       # passing map.
       - name: DCP page maps still fit their PDFs (from the measurement ledger)
+        if: always() && env.RUN_PAGE_MAPS == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/dcp_page_map_gate.py --check --from-ledger
@@ -625,6 +620,7 @@ jobs:
       # It measures through fetch_dcp_setbacks, so a change that breaks serving
       # fails here rather than being scored as clean.
       - name: Served-answer quality (provenance, currency, applicability)
+        if: always() && env.RUN_SERVED_ANSWER == '1'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/check_served_answer_quality.py --baseline

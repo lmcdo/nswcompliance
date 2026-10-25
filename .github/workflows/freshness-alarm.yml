@@ -115,6 +115,18 @@ jobs:
           python scripts/check_railway_jobs_ran.py 2>&1 | tee railway.txt
           echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
+      # Did the nightly live-data job (data-watch) succeed in the last 48 h? Moved here from the PR gate
+      # 2026-10-25: a scheduled job that stops cannot report itself, so the outside alarm asks instead of every PR.
+      - name: Did the nightly live-data checks run?
+        id: datawatch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          python scripts/check_data_watch_freshness.py --strict 2>&1 | tee datawatch.txt
+          echo "rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
       # v7 step 4: the outside watchdog hears whether we LOOKED, and red goes to Telegram.
       # looked (every rc 0/1) AND any red delivered (Telegram ok + message_id) -> ping;
       # could not look (2), a crashed step (no rc) or Telegram failing -> ping /fail;
@@ -131,4 +143,5 @@ jobs:
           --rc "ledger=${{ steps.ledger.outputs.rc }}"
           --rc "coverage=${{ steps.coverage.outputs.rc }}"
           --rc "railway=${{ steps.railway.outputs.rc }}"
-          --report ledger.txt --report coverage.txt --report railway.txt
+          --rc "datawatch=${{ steps.datawatch.outputs.rc }}"
+          --report ledger.txt --report coverage.txt --report railway.txt --report datawatch.txt
