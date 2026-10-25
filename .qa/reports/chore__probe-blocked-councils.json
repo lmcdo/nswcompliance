@@ -1,0 +1,35 @@
+{
+ "tier": "minor",
+ "justification": "Throwaway measurement on a branch that is never merged; no production code changes.",
+ "commit_hash": "72edfac1",
+ "files": [
+  "probe/probe_blocked.py",
+  "probe/targets.json",
+  ".github/workflows/probe-blocked-councils.yml"
+ ],
+ "pre_impl": {
+  "existing_data": "17 councils answered 403 to Railway in the latest finished run (list page or chapter PDF).",
+  "assumption_mismatch": "None: this measures which fetch method gets through; it changes nothing.",
+  "new_vs_existing": "New one-off script; the monitor is untouched."
+ },
+ "falsifiable_check": {
+  "command": "python probe/probe_blocked.py",
+  "fails_when": "never gates anything; it prints a table",
+  "observed_red": "Measurement only."
+ },
+ "break_it": [
+  {
+   "scenario": "The probe hammers council sites with requests",
+   "what_happens": "councils could block GitHub's addresses too",
+   "mitigated": true,
+   "how": "one GET per method per URL, 3 s apart, about 100 requests in total",
+   "repro": "read probe/probe_blocked.py"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Never merged; branch deleted after the run."
+ }
+}
