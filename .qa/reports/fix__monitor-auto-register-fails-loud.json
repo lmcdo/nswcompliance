@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "9d371571",
+  "commit_hash": "6b1da768",
   "justification": "Monitor silently lost new council documents. Standard: one except block and the exit decision; no new query.",
   "files": [
     "scripts/r2_monitor.py",
