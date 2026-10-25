@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes which pages the production AI reader extracts provisions from. For a chapter sharing a PDF, rules were read from the whole file and credited to the chapter; after this, only its own page range is read. Wrong pages here means wrong rules served.",
- "commit_hash": "1363d3bb",
+ "commit_hash": "17c30b74",
  "files": [
   "scripts/ai_extractor.py",
   "scripts/dcp_extract_changed.py",
@@ -103,6 +103,13 @@
    "mitigated": true,
    "how": "owned_span raises when a given range clamps to lo > hi",
    "repro": "test_a_range_that_misses_the_file_fails_loudly"
+  },
+  {
+   "scenario": "Sol advisory: a zero-page PDF with no page_range",
+   "what_happens": "unchanged from before this PR: no chunks are read; the downstream completeness guard compares against live rows",
+   "mitigated": false,
+   "how": "verdict: pre-existing, out of scope for a page-range fix; not widened here",
+   "repro": "ai_extract_chapter on a 0-page reader with page_range None"
   }
  ],
  "post_merge": {
