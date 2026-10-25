@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation of a code-quality review plus one read-only script (scripts/qa_live_files.py) that reads files and prints a list. No served code, no database, no workflow changes. Nothing the app serves changes.",
-  "commit_hash": "744448a0",
+  "commit_hash": "8b359a0a",
   "files": [
     "scripts/qa_live_files.py",
     "docs/qa/review-protocol.md",
