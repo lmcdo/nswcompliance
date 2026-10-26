@@ -1,10 +1,11 @@
 {
  "tier": "standard",
  "justification": "Fixes a production outage of several API routes; one config default, no data written.",
- "commit_hash": "2b4ef642",
+ "commit_hash": "e8c800fd",
  "files": [
   "frontend-nextjs/lib/database/postgres-compliance-client.ts",
-  "frontend-nextjs/__tests__/lib/database/postgres-compliance-client.test.ts"
+  "frontend-nextjs/__tests__/lib/database/postgres-compliance-client.test.ts",
+  "frontend-nextjs/lib/database/client.ts"
  ],
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/lib/database/postgres-compliance-client.test.ts",
@@ -14,7 +15,7 @@
  },
  "pre_impl": {
   "existing_data": "lib/database/pool-manager.ts reads PGHOST || DATABASE_HOST; routes using it serve data in production, so Vercel sets PGHOST (DATABASE_HOST would already have fixed this client).",
-  "assumption_mismatch": "Assumed the preview had no database; production gave the same error on the same route, so the fault was this client.",
+  "assumption_mismatch": "Assumed the preview had no database; production gave the same error on the same route, so the fault was this client. First fix changed postgres-compliance-client.ts; the preview still failed because /api/clause uses lib/database/client.ts, a second client with the same fault.",
   "new_vs_existing": "No new module; the default config now matches pool-manager. Reusing the shared pool was rejected because callers call close(), which would end the shared pool."
  },
  "functions": [
@@ -27,6 +28,16 @@
    "if_none": "Falls back to 127.0.0.1 only when no host variable at all is set (local development).",
    "edge_cases": "Supabase pooler host gets SSL even when NODE_ENV is not production (preview).",
    "failure_mode": "A wrong host fails loudly with ECONNREFUSED; it cannot serve wrong data."
+  },
+  {
+   "name": "DatabaseClient.constructor",
+   "file_line": "frontend-nextjs/lib/database/client.ts",
+   "what": "Builds the pg pool used by /api/clause, setbacks/calculate and the geometry calculator.",
+   "input": "optional partial PostgreSQLConfig, otherwise environment variables PG* then DATABASE_*",
+   "output": "a client holding a pg Pool connected to the configured database host",
+   "if_none": "Falls back to localhost only when no host variable is set.",
+   "edge_cases": "Supabase pooler host gets SSL outside production.",
+   "failure_mode": "Wrong host fails loudly with ECONNREFUSED; no wrong data."
   }
  ],
  "break_it": [

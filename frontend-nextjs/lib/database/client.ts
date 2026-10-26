@@ -25,18 +25,26 @@ export class DatabaseClient {
 
  constructor(config?: Partial<PostgreSQLConfig>) {
  this.config = {
- host: process.env.DATABASE_HOST || 'localhost',
- port: parseInt(process.env.DATABASE_PORT || '5432'),
- database: process.env.DATABASE_NAME || 'nsw_planning',
- user: process.env.DATABASE_USER || 'postgres',
- password: process.env.DATABASE_PASSWORD || 'postgres',
+ // PG* first: the variables Vercel sets, as lib/database/pool-manager.ts reads them. Without them
+ // /api/clause fell back to localhost in production: ECONNREFUSED 127.0.0.1:5432 (2026-10-26).
+ host: process.env.PGHOST || process.env.DATABASE_HOST || 'localhost',
+ port: parseInt(process.env.PGPORT || process.env.DATABASE_PORT || '5432'),
+ database: process.env.PGDATABASE || process.env.DATABASE_NAME || 'nsw_planning',
+ user: process.env.PGUSER || process.env.DATABASE_USER || 'postgres',
+ password: process.env.PGPASSWORD || process.env.DATABASE_PASSWORD || 'postgres',
  max: 20,
  idleTimeoutMillis: 30000,
  connectionTimeoutMillis: 10000,
  ...config
  };
 
- this.pool = new Pool(this.config);
+ // same SSL rule as lib/database/pool-manager.ts (Supabase refuses plain connections)
+ const supabase = /supabase|pooler/.test(String(this.config.host));
+ this.pool = new Pool({
+   ...this.config,
+   ssl: process.env.DATABASE_SSL === 'false' ? false
+     : (supabase || process.env.NODE_ENV === 'production') ? { rejectUnauthorized: false } : undefined,
+ });
  
  // Handle pool errors
  this.pool.on('error', (err) => {

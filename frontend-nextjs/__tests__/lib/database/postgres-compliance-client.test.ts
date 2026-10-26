@@ -30,3 +30,14 @@ describe('PostgreSQLComplianceClient connects with the PG* variables Vercel sets
     expect(poolArgs[poolArgs.length - 1].host).toBe('db.local');
   });
 });
+
+describe('DatabaseClient (lib/database/client.ts, used by /api/clause) connects with PG* too', () => {
+  it('uses PGHOST with SSL for a Supabase pooler host', () => {
+    Object.assign(process.env, { PGHOST: 'aws-0.pooler.supabase.com', PGUSER: 'u', PGPASSWORD: 'p', PGPORT: '6543', PGDATABASE: 'postgres' });
+    const { DatabaseClient } = require('@/lib/database/client');
+    new DatabaseClient();
+    const cfg = poolArgs[poolArgs.length - 1];
+    expect(cfg).toMatchObject({ host: 'aws-0.pooler.supabase.com', user: 'u', password: 'p', port: 6543, database: 'postgres' });
+    expect(cfg.ssl).toEqual({ rejectUnauthorized: false });
+  });
+});
