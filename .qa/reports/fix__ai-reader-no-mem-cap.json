@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "One condition in the production extract child: the address-space cap is no longer applied when the AI reader runs. Without this the nightly extract reads no pages and never finishes, so no changed chapter gets new rules.",
- "commit_hash": "06dd8229",
+ "commit_hash": "8df619f5",
  "files": [
   "scripts/dcp_extract_changed.py",
   "tests/test_dcp_extract_changed.py"
