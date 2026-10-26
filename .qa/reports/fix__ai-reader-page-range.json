@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Changes which pages the production AI reader extracts provisions from. For a chapter sharing a PDF, rules were read from the whole file and credited to the chapter; after this, only its own page range is read. Wrong pages here means wrong rules served.",
- "commit_hash": "0788fbba",
+ "commit_hash": "bff1e6fc",
  "files": [
   "scripts/ai_extractor.py",
   "scripts/dcp_extract_changed.py",
@@ -119,7 +119,7 @@
   "manual_verify": "Restart dcp-extract: Bayside s3-5 must log 3 '[reader] sol call' lines (pages 52-79), not 20, then reach a SUMMARY."
  },
  "verification_after_merge": [
-  "1. Railway dcp-extract redeploys from main; then start one run (rw.py start dcp-extract).",
+  "1. Railway dcp-extract redeploys from main; then start one run through the Railway API (deploymentInstanceExecutionCreate).",
   "2. Its log shows 3 '[reader] sol call' lines for bayside s3-5 (pages 52-79) and a SUMMARY block for all 6 chapters."
  ]
 }
