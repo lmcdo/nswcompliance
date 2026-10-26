@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Fixes a production outage of several API routes; one config default, no data written.",
- "commit_hash": "e8c800fd",
+ "commit_hash": "0c0c99d0",
  "files": [
   "frontend-nextjs/lib/database/postgres-compliance-client.ts",
   "frontend-nextjs/__tests__/lib/database/postgres-compliance-client.test.ts",
