@@ -1,0 +1,73 @@
+{
+ "tier": "standard",
+ "justification": "One condition in the production extract child: the address-space cap is no longer applied when the AI reader runs. Without this the nightly extract reads no pages and never finishes, so no changed chapter gets new rules.",
+ "commit_hash": "06dd8229",
+ "files": [
+  "scripts/dcp_extract_changed.py",
+  "tests/test_dcp_extract_changed.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Measured 2026-10-26: Railway dcp-extract logged '[extractor] LLM document reader (sol)' and then no '[reader]' line for over two hours, at DCP_PDF_MEM_LIMIT 2 GB and again at 4 GB. Locally in Linux the same Sol call on chunk 1 returned in 75 s uncapped and hung forever under a 2 GB RLIMIT_AS.",
+  "assumption_mismatch": "The cap was sized for the regex reader's PDF parsing peaks of 127 to 726 MB; it was never measured against the AI reader's network client, which stalls under it.",
+  "new_vs_existing": "The regex reader keeps the cap exactly as before. The AI reader runs uncapped and stays bounded by the existing wall-clock budget and the child process isolation.",
+  "external_source_error": "No new external call; the same Sol request now gets an answer.",
+  "frontend_type": "No frontend change.",
+  "user_failure_mode": "Before: every changed chapter waiting for the AI reader never got new rules and the batch hung until its time budget ran out. After: the chapters are read; a runaway AI child is still killed by the time budget."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest -q -o addopts= tests/test_dcp_extract_changed.py",
+  "fails_when": "the cap is set for the AI reader, or no longer set for the regex reader",
+  "observed_red": "YES: reverting the condition to 'if mem_limit_bytes:' fails test_the_memory_ceiling_is_set_for_the_regex_reader_but_never_the_ai_reader under Linux; restored, 7 pass."
+ },
+ "functions": [
+  {
+   "name": "_pdf_work_child",
+   "file_line": "scripts/dcp_extract_changed.py:4358",
+   "input": "queue, pdf path, chapter config, ai_on flag and the memory cap in bytes",
+   "output": "one result dict on the queue; the cap is applied only when ai_on is false",
+   "if_none": "a zero or missing cap applies no limit, the same as before this change"
+  }
+ ],
+ "values": [
+  {
+   "value": "ai_on",
+   "read_at": "scripts/dcp_extract_changed.py:4371",
+   "nullable": "no",
+   "guard_at": "_pdf_work_child",
+   "if_missing": "always passed positionally by extract_pdf_isolated"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "AI reader chapter on Railway with the 4 GB cap",
+   "what_happens": "no cap is set, so the Sol call returns and pages are read",
+   "mitigated": true,
+   "how": "condition skips setrlimit when ai_on",
+   "repro": "test_the_memory_ceiling_is_set_for_the_regex_reader_but_never_the_ai_reader"
+  },
+  {
+   "scenario": "Regex reader chapter with a pathological PDF",
+   "what_happens": "the cap is still set and a runaway child is killed before the host",
+   "mitigated": true,
+   "how": "ai_on false keeps the old path",
+   "repro": "same test, ai_on False case"
+  },
+  {
+   "scenario": "AI child that genuinely runs away on memory",
+   "what_happens": "the parent's wall-clock budget kills it and the batch moves to the next chapter; a host OOM kill is contained by the child process",
+   "mitigated": true,
+   "how": "existing extract_pdf_isolated timeout and process isolation",
+   "repro": "test_a_killed_child_is_a_contained_chapter_failure"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "None: no schema or data change.",
+  "secrets": "None.",
+  "other_repo": "None. Railway dcp-extract redeploys from main, which ends the hung run.",
+  "manual_verify": "Start one dcp-extract run through the Railway API; it must log '[reader] sol call' lines within ten minutes and reach a SUMMARY."
+ },
+ "verification_after_merge": [
+  "1. Railway dcp-extract redeploys from main; start one run through the Railway API (deploymentInstanceExecutionCreate).",
+  "2. Its log shows '[reader] sol call' lines and a SUMMARY block for all 6 chapters."
+ ]
+}
