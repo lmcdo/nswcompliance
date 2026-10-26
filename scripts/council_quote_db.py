@@ -23,7 +23,8 @@ def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None
         rows = dpr.fetch(conn, council)
         if unchecked:   # only rules with no verdict yet (quote_status IS NULL), e.g. after migration 112 nulled them
             cur = conn.cursor()
-            cur.execute("SELECT id FROM regulatory_provisions WHERE id = ANY(%s) AND quote_status IS NULL",
+            cur.execute("SELECT id FROM regulatory_provisions WHERE id = ANY(%s) AND is_current = TRUE "
+                        "AND quote_status IS NULL",
                         ([r["id"] for r in rows],))
             null_ids = {x[0] for x in cur.fetchall()}
             rows = [r for r in rows if r["id"] in null_ids]
