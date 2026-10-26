@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what public pages show for council DCP rules: unproven wording becomes a page pointer. Not Critical: one shared helper, no DB write, reversible by revert. Not Minor: changes served regulatory content on 1,137 rows.",
- "commit_hash": "ef428dd6",
+ "commit_hash": "dcdd0d54",
  "files": [
   "frontend-nextjs/lib/council-quote.ts",
   "frontend-nextjs/__tests__/lib/council-quote.test.ts",
