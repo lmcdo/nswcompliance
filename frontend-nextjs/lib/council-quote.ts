@@ -25,6 +25,7 @@ export interface QuoteFields extends PageFields {
   quote_page?: number | null;
   source_council?: string | null;
   source_chapter_key?: string | null;
+  citation_status?: string | null;
 }
 
 const CONFIRMED = new Set(['exact', 'recovered']);
@@ -36,6 +37,16 @@ export const QUOTE_NOTE_NOT_A_RULE = 'Map or figure text from the plan, not a ru
 export const QUOTE_NOTE_UNCHECKED = QUOTE_NOTE_UNMATCHED;
 /** A council rule outside the wording check (no DCP chapter): shown, marked as our reading. */
 export const QUOTE_NOTE_OUTSIDE = "Our reading — check the exact wording in the council's plan";
+
+/** A council-named LEP clause (no DCP chapter) not proven against the NSW legislation: its text is withheld. */
+export const QUOTE_NOTE_STATE_LAW_UNPROVEN = 'Wording not shown here — read it on the NSW legislation website';
+/** A council-named LEP clause proven word for word against the NSW legislation (scripts/apply_state_law_proof.py). */
+export const QUOTE_NOTE_STATE_LAW = 'Wording from the NSW legislation';
+
+/** Council-named rule with no DCP chapter and no quote verdict: an LEP clause, checked against the legislation. */
+function isStateLawRow(p: QuoteFields): boolean {
+  return Boolean(p.source_council) && !p.source_chapter_key && !p.quote_status;
+}
 
 /** The note for a rule whose words are not proven, naming the page shown beside it when there is one. */
 export function unprovenNote(p: QuoteFields): string {
@@ -87,18 +98,19 @@ function joinBareLabels(quote: string): string {
 /** The text a rule shows: only the council's words when they are stored -- no heading of ours above
  *  them, because the note says the wording is the council's. */
 export function shownText(p: QuoteFields): string | null {
-  if (isWithheld(p)) return unprovenNote(p);
+  if (isWithheld(p)) return isStateLawRow(p) ? QUOTE_NOTE_STATE_LAW_UNPROVEN : unprovenNote(p);
   if (!hasCouncilWords(p)) return p.provision_text ?? null;   // unchanged, null included
   return joinBareLabels(p.council_quote as string);
 }
 
 /** A council DCP rule whose words are not proven in the council's current plan: its text is withheld.
  *  Proven failing (unconfirmed), or a DCP chapter rule with no verdict -- a changed council file clears
- *  it. Rows with no chapter (LEP clauses carrying a council name, e.g. 495 inner_west) are outside the
- *  check and keep the note instead. */
+ *  it. Rows with no chapter (LEP clauses carrying a council name, e.g. 495 inner_west) are checked
+ *  against the NSW legislation instead: shown only when citation_status is 'proven'. */
 export function isWithheld(p: QuoteFields): boolean {
   if (!p.source_council || hasCouncilWords(p) || p.quote_status === 'not_a_control') return false;
-  return Boolean(p.quote_status) || Boolean(p.source_chapter_key);   // any other verdict fails closed
+  if (isStateLawRow(p)) return p.citation_status !== 'proven';   // missing field fails closed
+  return true;   // any other verdict, or a DCP chapter rule with none, fails closed
 }
 
 /** The note printed under a council DCP rule, by the copier's verdict; null outside the check (LEP/SEPP)
@@ -107,17 +119,18 @@ export function quoteNote(p: QuoteFields): string | null {
   if (!p.source_council) return null;
   if (showsCouncilWords(p)) return QUOTE_NOTE_CONFIRMED;
   if (p.quote_status === 'not_a_control') return QUOTE_NOTE_NOT_A_RULE;
-  return isWithheld(p) ? null : QUOTE_NOTE_OUTSIDE;
+  if (isWithheld(p)) return null;
+  return isStateLawRow(p) ? QUOTE_NOTE_STATE_LAW : QUOTE_NOTE_OUTSIDE;
 }
 
 /** Whether numbers may be read from this rule's text: never from an unconfirmed council rule. */
 export function numbersUsable(p: QuoteFields): boolean {
-  return !p.source_council || showsCouncilWords(p);
+  return !p.source_council || showsCouncilWords(p) || (isStateLawRow(p) && !isWithheld(p));
 }
 
 /** The quote columns every route serving council DCP rules selects, for a table alias. */
 export function quoteColumns(alias = 'rp'): string {
-  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status, ${alias}.source_chapter_key`;
+  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status, ${alias}.source_chapter_key, ${alias}.citation_status`;
 }
 
 /**

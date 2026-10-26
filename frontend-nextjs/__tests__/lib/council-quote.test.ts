@@ -1,6 +1,6 @@
 import {
   QUOTE_NOTE_CONFIRMED, QUOTE_NOTE_NOT_A_RULE, QUOTE_NOTE_UNCHECKED, QUOTE_NOTE_UNMATCHED,
-  hasCouncilWords, isWithheld, QUOTE_NOTE_OUTSIDE, numbersUsable, quoteColumns, quoteNote, servedQuoteStatus, shownText, withCouncilWords,
+  hasCouncilWords, isWithheld, QUOTE_NOTE_STATE_LAW, QUOTE_NOTE_STATE_LAW_UNPROVEN, numbersUsable, quoteColumns, quoteNote, servedQuoteStatus, shownText, withCouncilWords,
 } from '@/lib/council-quote';
 
 const NB = { source_council: 'northern_beaches', source_chapter_key: 'g4-dee-why' };
@@ -45,16 +45,25 @@ describe("a council DCP rule shows the council's own words when a program copied
     expect(numbersUsable(map)).toBe(false);
   });
 
-  it('keeps showing, marked as our reading, a council-named rule outside the check (no DCP chapter: inner_west LEP clauses)', () => {
+  it('shows a council-named LEP clause (no DCP chapter) only when proven against the NSW legislation', () => {
     const lep = { source_council: 'inner_west', source_chapter_key: null, provision_text: 'Height 80m', council_quote: null, quote_status: null };
-    expect(isWithheld(lep)).toBe(false);
-    expect(shownText(lep)).toBe('Height 80m');
-    expect(quoteNote(lep)).toBe(QUOTE_NOTE_OUTSIDE);
-    expect(numbersUsable(lep)).toBe(false);
-    // a proven failure is withheld whatever its chapter field says
-    expect(isWithheld({ ...lep, quote_status: 'unconfirmed' })).toBe(true);
-    // a verdict this code does not know fails closed
-    expect(isWithheld({ ...lep, quote_status: 'something_new' })).toBe(true);
+    const proven = { ...lep, citation_status: 'proven' };
+    expect(isWithheld(proven)).toBe(false);
+    expect(shownText(proven)).toBe('Height 80m');
+    expect(quoteNote(proven)).toBe(QUOTE_NOTE_STATE_LAW);
+    expect(numbersUsable(proven)).toBe(true);
+    // NULL citation, another status, or a route that never selected the field: withheld, numbers out
+    for (const w of [{ ...lep, citation_status: null }, { ...lep, citation_status: 'imprecise' }, lep]) {
+      expect(isWithheld(w)).toBe(true);
+      expect(shownText(w)).toBe(QUOTE_NOTE_STATE_LAW_UNPROVEN);
+      expect(quoteNote(w)).toBeNull();
+      expect(numbersUsable(w)).toBe(false);
+    }
+    // a proven failure is withheld whatever its chapter field or citation says
+    expect(isWithheld({ ...proven, quote_status: 'unconfirmed' })).toBe(true);
+    expect(isWithheld({ ...proven, quote_status: 'something_new' })).toBe(true);
+    // DCP rule with a chapter is unchanged by citation_status
+    expect(isWithheld({ ...NB, citation_status: 'proven', quote_status: null })).toBe(true);
   });
 
   it('never serves a confirmed status without stored words (hollow), including a blank quote', () => {
@@ -89,7 +98,7 @@ describe("a council DCP rule shows the council's own words when a program copied
     const unconfirmed = withCouncilWords({ ...row, council_quote: null, quote_status: 'unconfirmed', quote_page: null },
       (t) => (t ?? '').replace('junk header\n', '').trim());
     expect(unconfirmed.provision_text).toBe(QUOTE_NOTE_UNMATCHED);
-    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status, p.source_chapter_key');
+    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status, p.source_chapter_key, p.citation_status');
   });
 
   it('leaves LEP and SEPP rules (no council) as they were', () => {
