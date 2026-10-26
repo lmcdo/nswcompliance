@@ -200,3 +200,29 @@ def test_the_memory_ceiling_and_timeout_are_overridable_but_have_real_defaults()
     assert dx.PDF_WORK_TIMEOUT_SECONDS >= 395 * 2
     assert dx.PDF_WORK_MEM_LIMIT_BYTES > 726 * 1024 * 1024
     assert dx.JOIN_GRACE_SECONDS > 0 and dx.TERMINATE_GRACE_SECONDS > 0
+
+
+def test_the_memory_ceiling_is_set_for_the_regex_reader_but_never_the_ai_reader(monkeypatch):
+    """Under the address-space cap the AI reader's network call never returns.
+
+    REAL INCIDENT 2026-10-26: the Railway run read 0 pages in 150 minutes. The
+    same Sol call returned in 75 s uncapped and hung forever at 2 GB, and was
+    still hung on Railway at 4 GB. The regex reader keeps the cap.
+    """
+    resource = pytest.importorskip("resource")
+    calls = []
+    monkeypatch.setattr(resource, "setrlimit", lambda *a: calls.append(a))
+
+    def stop(*_a, **_k):
+        raise RuntimeError("stop after the cap decision")
+    monkeypatch.setattr(dx, "preflight_layout", stop)
+
+    class Q(list):
+        put = list.append
+
+    for ai_on, expected in ((True, 0), (False, 1)):
+        calls.clear()
+        q = Q()
+        dx._pdf_work_child(q, "x.pdf", 1, "bayside", None, None, ai_on, 2 * 1024 ** 3)
+        assert q and q[0]["ok"] is False
+        assert len(calls) == expected, f"ai_on={ai_on}: setrlimit called {len(calls)} times"

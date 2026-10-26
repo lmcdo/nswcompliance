@@ -4365,7 +4365,10 @@ def _pdf_work_child(queue, pdf_path, document_id, council, page_ranges,
     is what makes it safe to run somewhere that can be killed.
     """
     try:
-        if mem_limit_bytes:
+        # Not for the AI reader: under this cap its network call never returns
+        # (measured: 75 s uncapped, hung forever at 2 GB, and still hung on
+        # Railway at 4 GB). Its time budget is the guard there instead.
+        if mem_limit_bytes and not ai_on:
             try:
                 import resource  # POSIX only; absent on Windows
                 resource.setrlimit(resource.RLIMIT_AS,
