@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({
@@ -37,13 +38,17 @@ export async function POST(request: NextRequest) {
     // Build query based on what's provided
     let query = `
       SELECT
-        id,
-        document_id,
-        ref_number,
-        section_header,
-        provision_text
-      FROM regulatory_provisions_canonical
-      WHERE document_id = $1
+        rp.id,
+        rp.document_id,
+        rp.ref_number,
+        rp.section_header,
+        rp.provision_text,
+        live.source_council,
+        ${quoteColumns('live')}
+      FROM regulatory_provisions_canonical rp
+      -- only the CURRENT live row carries the council quote (same join as app/api/clause/[id])
+      JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE   -- current rows only
+      WHERE rp.document_id = $1
     `;
 
     const params: any[] = [documentId];
@@ -51,21 +56,21 @@ export async function POST(request: NextRequest) {
 
     // Add control number filter if provided
     if (controlNumber) {
-      query += ` AND (ref_number = $${paramIndex}
-                      OR ref_number LIKE $${paramIndex + 1})`;
+      query += ` AND (rp.ref_number = $${paramIndex}
+                      OR rp.ref_number LIKE $${paramIndex + 1})`;
       params.push(controlNumber, `${controlNumber}%`);
       paramIndex += 2;
     }
 
     // Add category filter if provided (for semantic search)
     if (category) {
-      query += ` AND (provision_text ILIKE $${paramIndex}
-                      OR section_header ILIKE $${paramIndex})`;
+      query += ` AND (rp.provision_text ILIKE $${paramIndex}
+                      OR rp.section_header ILIKE $${paramIndex})`;
       params.push(`%${category}%`);
       paramIndex++;
     }
 
-    query += ` ORDER BY ref_number LIMIT 20`;
+    query += ` ORDER BY rp.ref_number LIMIT 20`;
 
     console.log('[DCP Full Text] Query:', query);
     console.log('[DCP Full Text] Params:', params);
@@ -80,15 +85,18 @@ export async function POST(request: NextRequest) {
 
       const fullTextQuery = `
         SELECT
-          id,
-          document_id,
-          ref_number,
-          section_header,
-          provision_text
-        FROM regulatory_provisions_canonical
-        WHERE document_id = $1
-        AND provision_text ILIKE $2
-        ORDER BY ref_number
+          rp.id,
+          rp.document_id,
+          rp.ref_number,
+          rp.section_header,
+          rp.provision_text,
+          live.source_council,
+          ${quoteColumns('live')}
+        FROM regulatory_provisions_canonical rp
+        JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE   -- current rows only
+        WHERE rp.document_id = $1
+        AND rp.provision_text ILIKE $2
+        ORDER BY rp.ref_number
         LIMIT 10
       `;
 
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          provisions: fullTextResult.rows
+          provisions: fullTextResult.rows.map((row: any) => withCouncilWords(row))
         },
         metadata: {
           documentId,
@@ -118,7 +126,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        provisions: result.rows
+        provisions: result.rows.map((row: any) => withCouncilWords(row))
       },
       metadata: {
         documentId,

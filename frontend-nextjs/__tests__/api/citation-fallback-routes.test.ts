@@ -30,7 +30,7 @@ const proven = {
 };
 const unproven = {
   ref_number: 'Doc__C4_9', provision_text: `# C4.9 Fences${NL}Text`,
-  citation_status: 'not_proven', source_council: 'woollahra',
+  citation_status: 'not_proven', source_council: 'woollahra', quote_status: 'not_a_control', // shown, so the test sees the text number-strip
 };
 
 beforeEach(() => mockQuery.mockReset());
@@ -76,7 +76,7 @@ describe('clause/[id]', () => {
     const { GET } = await import('@/app/api/clause/[id]/route');
     mockQuery.mockResolvedValueOnce({ rows: [{
       id: 5, clause_reference: row.ref_number, full_text: row.provision_text, page_number: 12,
-      document_id: 'Woollahra_DCP', citation_status: row.citation_status, source_council: row.source_council,
+      document_id: 'Woollahra_DCP', citation_status: row.citation_status, source_council: row.source_council, quote_status: row.quote_status,
     }] });
     const res = await GET(new NextRequest('http://x/api/clause/5'), { params: { id: '5' } });
     return (await res.json()).clause;

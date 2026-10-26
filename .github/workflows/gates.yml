@@ -386,7 +386,9 @@ jobs:
         # Kept as a separate step rather than folded into the jest step: the
         # failure it catches is a route-collection error that `next build`
         # tolerates and `next dev` refuses, so no build-based check can see it.
-        run: python scripts/check_dev_server_boots.py --timeout 150
+        # python3: this job has no setup-python, and on the WSL runners `python` resolves to the
+        # Windows pyenv shim (/mnt/c/.../pyenv-win/shims/python), which exits 127.
+        run: python3 scripts/check_dev_server_boots.py --timeout 150
 
   # pre-push [3/4] + [4/4]
   #

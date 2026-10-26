@@ -13,13 +13,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None) -> list[dict]:
+def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None,
+          unchecked: bool = False) -> list[dict]:
     import psycopg2
     import dcp_page_repair as dpr
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         conn.cursor().execute("SET statement_timeout = 30000")
         rows = dpr.fetch(conn, council)
+        if unchecked:   # only rules with no verdict yet (quote_status IS NULL), e.g. after migration 112 nulled them
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM regulatory_provisions WHERE id = ANY(%s) AND is_current = TRUE "
+                        "AND quote_status IS NULL",
+                        ([r["id"] for r in rows],))
+            null_ids = {x[0] for x in cur.fetchall()}
+            rows = [r for r in rows if r["id"] in null_ids]
     finally:
         conn.close()
     return [r for r in rows if (not ids or r["id"] in ids)

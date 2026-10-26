@@ -1,0 +1,96 @@
+{
+ "tier": "standard",
+ "justification": "Changes what public pages show for council DCP rules: unproven wording becomes a page pointer. Not Critical: one shared helper, no DB write, reversible by revert. Not Minor: changes served regulatory content on 1,137 rows.",
+ "commit_hash": "33c0c0aa",
+ "files": [
+  "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+  "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/api/clause/[id]/route.ts",
+  "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+  "frontend-nextjs/app/api/dcp/full-text/route.ts",
+  "frontend-nextjs/app/api/dcp/provisions/route.ts",
+  "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+  "frontend-nextjs/lib/council-quote.ts",
+  "frontend-nextjs/lib/precinct-service.ts",
+  "scripts/council_quote.py",
+  "scripts/council_quote_db.py",
+  "scripts/dcp_commit_approved.py",
+  "tests/test_council_quote.py",
+  "tests/test_dcp_commit_approved_council_quote.py"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts",
+  "fails_when": "An unconfirmed or never-checked DCP chapter rule's extracted text (e.g. 'Maximum height 9m') reaches shownText output, or an LEP row with a council name and no chapter is withheld.",
+  "external_authority": "quote_status is written by scripts/council_quote.py from the council PDF; migration 112 triggers null it when the council file changes.",
+  "observed_red": "Before the change the old test expected shownText of an unconfirmed rule to be 'Maximum height 9m'; the new test fails against the old helper because that text is returned instead of the pointer."
+ },
+ "pre_impl": {
+  "existing_data": "57,541 live actionable council rows: 1,137 unconfirmed or never-checked with a chapter (penrith 368, ashfield 160, parramatta 129). 495 inner_west rows carry a council name but no chapter (LEP clauses).",
+  "assumption_mismatch": "First version withheld by source_council alone and would have hidden all 495 inner_west LEP clauses (council_quote never checks rows without a chapter).",
+  "new_vs_existing": "No new file. One helper (lib/council-quote.ts) used by five routes."
+ },
+ "functions": [
+  {
+   "name": "isWithheld",
+   "file_line": "frontend-nextjs/lib/council-quote.ts",
+   "what": "True for a council DCP rule whose words are not proven in the council's current plan.",
+   "input": "one served rule row with source_council, source_chapter_key, quote_status, council_quote, quote_page, provision_text",
+   "output": "true when the rule's extracted words must not be shown to the user",
+   "if_none": "No source_council -> false (LEP/SEPP untouched). No chapter and no verdict -> false (outside the check).",
+   "edge_cases": "Hollow exact (status but no stored words) -> withheld. not_a_control -> shown.",
+   "failure_mode": "A route not selecting source_chapter_key leaves never-checked rows shown with the note (fails open on that one case); unconfirmed is withheld regardless."
+  },
+  {
+   "name": "shownText",
+   "file_line": "frontend-nextjs/lib/council-quote.ts",
+   "what": "The text a rule shows: council words, a page pointer when withheld, else extracted text.",
+   "input": "one served rule row with source_council, source_chapter_key, quote_status, council_quote, quote_page, provision_text",
+   "output": "the council's words, or a pointer to the page in the council's plan, or our extracted text for rows outside the check",
+   "if_none": "provision_text null stays null unless withheld.",
+   "edge_cases": "Idempotent when the client re-applies it to a served row.",
+   "failure_mode": "None silent: a withheld rule always shows the pointer text."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "An LEP clause carries a council name but no DCP chapter (495 inner_west rows).",
+   "what_happens": "Would be hidden though the wording check never covers it.",
+   "mitigated": true,
+   "how": "Withhold needs unconfirmed, or no verdict AND a chapter key.",
+   "repro": "council-quote.test.ts 'keeps showing ... outside the check'"
+  },
+  {
+   "scenario": "Council replaces its PDF; trigger nulls the quotes.",
+   "what_happens": "Superseded wording would keep showing as 'our reading'.",
+   "mitigated": true,
+   "how": "No verdict + chapter key -> pointer, until council_quote re-proves.",
+   "repro": "council-quote.test.ts withheld case with quote_status null"
+  },
+  {
+   "scenario": "A rule is marked exact but its stored quote is blank.",
+   "what_happens": "Our extracted text would be shown as if proven.",
+   "mitigated": true,
+   "how": "hasCouncilWords requires the words and their page; otherwise withheld.",
+   "repro": "council-quote.test.ts 'never serves a confirmed status without stored words'"
+  }
+ ],
+ "verified": [
+  "council-quote tests 14/14",
+  "tsc: no errors in changed files",
+  "prod read-only: 1,137 of 57,541 live council rows withheld",
+  "jest 26 suites / 318 tests on changed areas",
+  "pytest council_quote + dcp_commit + run_monitors: 54 passed",
+  "dry run --unchecked: 74 city_of_sydney rules, 56 exact / 2 recovered / 16 unconfirmed (no write)"
+ ],
+ "gaps": [
+  "canibuildit/check serves council setback wording from dcp_setback_controls (another table, own check) -- separate decision.",
+  "dcp/full-text: a canonical row with no current live row is served as before (no council name to judge)."
+ ],
+ "post_merge": {
+  "db_reset": "No schema change, no data written. Undo = revert the PR.",
+  "secrets": "None.",
+  "check": "Open a Penrith address: D2 rules not found in C2 show 'Wording not shown ... read it on page N'.",
+  "manual_verify": "Open a Penrith address on the preview; D2 rules not found in C2 show 'Wording not shown ... read it on page N' and no numbers; a Woollahra address still shows council wording.",
+  "other_repo": "None. No other repository reads lib/council-quote.ts."
+ }
+}

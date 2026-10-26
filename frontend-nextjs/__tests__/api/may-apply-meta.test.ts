@@ -23,7 +23,9 @@ jest.mock('@/lib/rate-limit', () => ({
 jest.mock('@/lib/posthog-server', () => ({ captureServerException: jest.fn() }));
 
 const DATA = mayApplyData as Record<string, Record<string, Array<{ area_id: string; chapter_key: string }>>>;
-const ROW = { id: 1, document_id: 1, provision_text: 'A withheld rule', v2_dcp_layer: 'generic', pdf_page: 5, source_council: 'x' };
+// a DCP rule (the select is per chapter) whose words are proven in the council's plan (lib/council-quote.ts)
+const ROW = { id: 1, document_id: 1, provision_text: 'A withheld rule', v2_dcp_layer: 'generic', pdf_page: 5, source_council: 'x',
+  source_chapter_key: 'c1', quote_status: 'exact', council_quote: 'A withheld rule', quote_page: 5 };
 const isMayApplySql = (sql: string) => sql.includes('rp.source_chapter_key = $2');
 
 const req = (params: Record<string, string>) =>

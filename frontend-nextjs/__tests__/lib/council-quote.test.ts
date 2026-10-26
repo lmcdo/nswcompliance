@@ -1,9 +1,9 @@
 import {
   QUOTE_NOTE_CONFIRMED, QUOTE_NOTE_NOT_A_RULE, QUOTE_NOTE_UNCHECKED, QUOTE_NOTE_UNMATCHED,
-  hasCouncilWords, numbersUsable, quoteColumns, quoteNote, servedQuoteStatus, shownText, withCouncilWords,
+  hasCouncilWords, isWithheld, QUOTE_NOTE_STATE_LAW, QUOTE_NOTE_STATE_LAW_UNPROVEN, numbersUsable, quoteColumns, quoteNote, servedQuoteStatus, shownText, withCouncilWords,
 } from '@/lib/council-quote';
 
-const NB = { source_council: 'northern_beaches' };
+const NB = { source_council: 'northern_beaches', source_chapter_key: 'g4-dee-why' };
 
 describe("a council DCP rule shows the council's own words when a program copied them (migration 111)", () => {
   it("shows only the council's words, not the reader's rewording or our heading (Northern Beaches 130236)", () => {
@@ -29,25 +29,51 @@ describe("a council DCP rule shows the council's own words when a program copied
     expect(shownText(p)).toBe('(a) New buildings are to provide a minimum 6m\nrear setback.\n(b) Side setbacks are to be consistent with Table 3.');
   });
 
-  it('says what the check found for a council rule whose words are not confirmed, and keeps its numbers out', () => {
-    const cases: [string | null, string][] = [
-      ['unconfirmed', QUOTE_NOTE_UNMATCHED], ['not_a_control', QUOTE_NOTE_NOT_A_RULE], [null, QUOTE_NOTE_UNCHECKED]];
-    for (const [quote_status, note] of cases) {
+  it('withholds our words for a council rule not proven in its current plan, and keeps its numbers out (user, 2026-10-26)', () => {
+    for (const quote_status of ['unconfirmed', null]) {
       const p = { ...NB, provision_text: 'Maximum height 9m', council_quote: null, quote_status };
-      expect(shownText(p)).toBe('Maximum height 9m');
-      expect(quoteNote(p)).toBe(note);
+      expect(isWithheld(p)).toBe(true);
+      expect(shownText(p)).toBe(QUOTE_NOTE_UNMATCHED);
+      expect(shownText(p)).not.toMatch(/9m/);
+      expect(quoteNote(p)).toBeNull();
       expect(numbersUsable(p)).toBe(false);
     }
+    const map = { ...NB, provision_text: 'Height 9m', council_quote: null, quote_status: 'not_a_control' };
+    expect(isWithheld(map)).toBe(false);
+    expect(shownText(map)).toBe('Height 9m');
+    expect(quoteNote(map)).toBe(QUOTE_NOTE_NOT_A_RULE);
+    expect(numbersUsable(map)).toBe(false);
+  });
+
+  it('shows a council-named LEP clause (no DCP chapter) only when proven against the NSW legislation', () => {
+    const lep = { source_council: 'inner_west', source_chapter_key: null, provision_text: 'Height 80m', council_quote: null, quote_status: null };
+    const proven = { ...lep, citation_status: 'proven' };
+    expect(isWithheld(proven)).toBe(false);
+    expect(shownText(proven)).toBe('Height 80m');
+    expect(quoteNote(proven)).toBe(QUOTE_NOTE_STATE_LAW);
+    expect(numbersUsable(proven)).toBe(true);
+    // NULL citation, another status, or a route that never selected the field: withheld, numbers out
+    for (const w of [{ ...lep, citation_status: null }, { ...lep, citation_status: 'imprecise' }, lep]) {
+      expect(isWithheld(w)).toBe(true);
+      expect(shownText(w)).toBe(QUOTE_NOTE_STATE_LAW_UNPROVEN);
+      expect(quoteNote(w)).toBeNull();
+      expect(numbersUsable(w)).toBe(false);
+    }
+    // a proven failure is withheld whatever its chapter field or citation says
+    expect(isWithheld({ ...proven, quote_status: 'unconfirmed' })).toBe(true);
+    expect(isWithheld({ ...proven, quote_status: 'something_new' })).toBe(true);
+    // DCP rule with a chapter is unchanged by citation_status
+    expect(isWithheld({ ...NB, citation_status: 'proven', quote_status: null })).toBe(true);
   });
 
   it('never serves a confirmed status without stored words (hollow), including a blank quote', () => {
     for (const council_quote of [null, '', ' \n ']) {
       const p = { ...NB, provision_text: 'Maximum height 9m', council_quote, quote_status: 'exact' };
       expect(hasCouncilWords(p)).toBe(false);
-      expect(shownText(p)).toBe('Maximum height 9m');
+      expect(shownText(p)).toBe(QUOTE_NOTE_UNMATCHED);
       const served = { ...NB, provision_text: shownText(p), quote_status: servedQuoteStatus(p) };
       expect(served.quote_status).toBeNull();
-      expect(quoteNote(served)).toBe(QUOTE_NOTE_UNCHECKED);
+      expect(shownText(served)).toBe(QUOTE_NOTE_UNMATCHED);   // idempotent on the client
       expect(numbersUsable(served)).toBe(false);
     }
   });
@@ -71,8 +97,8 @@ describe("a council DCP rule shows the council's own words when a program copied
     expect('council_quote' in served).toBe(false);
     const unconfirmed = withCouncilWords({ ...row, council_quote: null, quote_status: 'unconfirmed', quote_page: null },
       (t) => (t ?? '').replace('junk header\n', '').trim());
-    expect(unconfirmed.provision_text).toBe('Reworded');
-    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status');
+    expect(unconfirmed.provision_text).toBe(QUOTE_NOTE_UNMATCHED);
+    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status, p.source_chapter_key, p.citation_status');
   });
 
   it('leaves LEP and SEPP rules (no council) as they were', () => {
@@ -83,21 +109,21 @@ describe("a council DCP rule shows the council's own words when a program copied
   });
 });
 
-describe('the note under an unproven council rule names the page shown beside it (user wording, 2026-10-13)', () => {
+describe('the pointer shown for a withheld council rule names the page shown beside it', () => {
   it('uses the printed page label when the page is located', () => {
     const p = { ...NB, provision_text: 'Maximum height 9m', quote_status: 'unconfirmed', pdf_page: 40,
       page_check: 'on_page', printed_page_label: '12' };
-    expect(quoteNote(p)).toBe("Our reading — check the exact wording on page 12 of the council's plan");
+    expect(shownText(p)).toBe("Wording not shown here — read it on page 12 of the council's plan");
   });
 
   it('says PDF page when no printed label is known', () => {
     const p = { ...NB, provision_text: 'x', quote_status: null, pdf_page: 40, page_check: 'on_page' };
-    expect(quoteNote(p)).toBe("Our reading — check the exact wording on PDF page 40 of the council's plan");
+    expect(shownText(p)).toBe("Wording not shown here — read it on PDF page 40 of the council's plan");
   });
 
   it('names no page when the page was not located', () => {
     const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found' };
-    expect(quoteNote(p)).toBe(QUOTE_NOTE_UNMATCHED);
+    expect(shownText(p)).toBe(QUOTE_NOTE_UNMATCHED);
   });
 
   it('no longer says the old "Not yet checked" wording anywhere', () => {

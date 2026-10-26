@@ -262,6 +262,40 @@ def test_a_blank_chapter_never_widens_to_the_whole_council(monkeypatch):
         cq.main()
 
 
+def test_unchecked_selects_only_null_status_rows(monkeypatch):
+    import council_quote_db as store
+    import dcp_page_repair as dpr
+    rows = [{"id": 1, "source_chapter_key": "a"}, {"id": 2, "source_chapter_key": "a"},
+            {"id": 3, "source_chapter_key": "b"}]
+    seen = []
+
+    class K:
+        def execute(self, sql, params=None):
+            seen.append((sql, params))
+
+        def fetchall(self):
+            return [(2,), (3,)]   # the DB says only 2 and 3 have quote_status IS NULL
+
+    monkeypatch.setattr(dpr, "fetch", lambda conn, council: rows)
+    monkeypatch.setattr("psycopg2.connect", lambda *a, **k: type("C", (), {
+        "cursor": lambda self: K(), "close": lambda self: None})())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    assert [r["id"] for r in store.fetch(None, None, None, unchecked=True)] == [2, 3]
+    assert any("quote_status IS NULL" in q for q, _ in seen if q)
+    assert [r["id"] for r in store.fetch(None, None, "a", unchecked=True)] == [2]
+    assert len(store.fetch(None, None, None)) == 3   # without the flag nothing is filtered
+
+
+def test_unchecked_with_no_rows_exits_zero_quietly(monkeypatch, tmp_path, capsys):
+    import council_quote_db as store
+    monkeypatch.setattr(store, "fetch", lambda *a, **k: [])
+    out = tmp_path / "o.json"
+    monkeypatch.setattr(sys, "argv", ["council_quote.py", "--apply", "--unchecked", "--out", str(out)])
+    assert cq.main() == 0
+    assert not out.exists()
+    assert "unchecked rules selected: 0" in capsys.readouterr().out
+
+
 # -- a lead-in and one of its items, printed apart (prove_pieces) -------------------------------------
 LEAD = "C.09 A carwash bay must be provided in accordance with the following:"
 ITEM = "g) Approval must be obtained from Sydney Water prior to construction of the development."

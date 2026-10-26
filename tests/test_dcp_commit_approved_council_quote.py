@@ -54,3 +54,40 @@ def test_the_publish_loop_calls_it_per_committed_chapter():
     src = inspect.getsource(dca.main)
     assert "committed_chapters.add((council, chapter_key))" in src
     assert "run_council_quote(council, chapter_key)" in src
+
+
+def test_the_sweep_runs_the_unchecked_flag_fleet_wide(capsys):
+    calls = []
+
+    def fake(cmd, **kw):
+        calls.append(cmd)
+        return SimpleNamespace(returncode=0, stdout="unchecked rules selected: 4\nstored: 4 of 4 rules\n", stderr="")
+
+    assert dca.run_unchecked_council_quote_sweep(run=fake) == 0
+    (cmd,) = calls
+    assert cmd[1].endswith("council_quote.py")
+    assert "--apply" in cmd and "--unchecked" in cmd and "--council" not in cmd
+    assert "stored: 4 of 4" in capsys.readouterr().out
+
+
+def test_a_sweep_failure_is_reported_not_swallowed(capsys):
+    def fake(cmd, **kw):
+        return SimpleNamespace(returncode=1, stdout="", stderr="boom")
+
+    assert dca.run_unchecked_council_quote_sweep(run=fake) == 1
+    assert "[warn]" in capsys.readouterr().out
+
+    def crash(cmd, **kw):
+        raise TimeoutError("3300s")
+
+    assert dca.run_unchecked_council_quote_sweep(run=crash) == 1
+    assert "could not run" in capsys.readouterr().out
+
+
+def test_main_calls_the_sweep_once_after_commits_and_alerts_on_failure():
+    import inspect
+    src = inspect.getsource(dca.main)
+    assert src.count("run_unchecked_council_quote_sweep(") == 2   # idle-night early return + after commits
+    assert src.index("run_council_quote(council, chapter_key)") < src.rindex("run_unchecked_council_quote_sweep(")
+    assert "if sweep_rc:" in src and "send(" in src
+    assert "if sweep_rc and not committed:" in src

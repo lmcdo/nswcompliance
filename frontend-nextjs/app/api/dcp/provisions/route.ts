@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { getZoneAliases } from '@/lib/zone-translation';
+import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 
 interface ProvisionsRequest {
   address?: string;
@@ -268,6 +269,8 @@ export async function POST(request: NextRequest) {
           pdf_page_image_url,
           zone,
           development_type,
+          source_council,
+          ${quoteColumns('document_filtered')},
           -- Provision type ranking (1=highest priority)
           CASE
             WHEN provision_text LIKE '%<table%' THEN 1
@@ -323,7 +326,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        provisions: provisionsResult.rows,
+        provisions: provisionsResult.rows.map((row: any) => withCouncilWords(row)),
         totalCount,
         hasMore: (offset + limit) < totalCount,
         pagination: {
