@@ -59,11 +59,13 @@ export class PostgreSQLComplianceClient {
 
   constructor(config?: DatabaseConfig) {
     const defaultConfig = {
-      host: process.env.DB_HOST || process.env.DATABASE_HOST || '127.0.0.1',
-      database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
-      user: process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
-      password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
-      port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
+      // PG* first: the variables Vercel sets and lib/database/pool-manager.ts reads. Without them this
+      // client fell back to 127.0.0.1 in production and /api/clause, /api/health failed (2026-10-26).
+      host: process.env.PGHOST || process.env.DB_HOST || process.env.DATABASE_HOST || '127.0.0.1',
+      database: process.env.PGDATABASE || process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
+      user: process.env.PGUSER || process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
+      password: process.env.PGPASSWORD || process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
+      port: parseInt(process.env.PGPORT || process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
@@ -73,7 +75,12 @@ export class PostgreSQLComplianceClient {
 
     this.pool = new Pool({
       ...finalConfig,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+      // same rule as lib/database/pool-manager.ts: Supabase needs SSL outside production too (preview)
+      ssl: process.env.DATABASE_SSL === 'false'
+        ? false
+        : (/supabase|pooler/.test(String(finalConfig.host)) || process.env.NODE_ENV === 'production')
+          ? { rejectUnauthorized: false }
+          : undefined,
       statement_timeout: this.TIMEOUT_MS,
       query_timeout: this.TIMEOUT_MS,
     });

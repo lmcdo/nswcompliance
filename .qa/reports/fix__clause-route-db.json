@@ -1,0 +1,79 @@
+{
+ "tier": "standard",
+ "justification": "Fixes a production outage of several API routes; one config default, no data written.",
+ "commit_hash": "0c0c99d0",
+ "files": [
+  "frontend-nextjs/lib/database/postgres-compliance-client.ts",
+  "frontend-nextjs/__tests__/lib/database/postgres-compliance-client.test.ts",
+  "frontend-nextjs/lib/database/client.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/database/postgres-compliance-client.test.ts",
+  "fails_when": "The client's pool host is not PGHOST when PGHOST is set, or a Supabase host gets no SSL.",
+  "external_authority": "Production /api/clause/175335 returned 'connect ECONNREFUSED 127.0.0.1:5432' on 2026-10-26; routes using pool-manager (PGHOST) work.",
+  "observed_red": "Against the old constructor the first test receives host 127.0.0.1 and fails."
+ },
+ "pre_impl": {
+  "existing_data": "lib/database/pool-manager.ts reads PGHOST || DATABASE_HOST; routes using it serve data in production, so Vercel sets PGHOST (DATABASE_HOST would already have fixed this client).",
+  "assumption_mismatch": "Assumed the preview had no database; production gave the same error on the same route, so the fault was this client. First fix changed postgres-compliance-client.ts; the preview still failed because /api/clause uses lib/database/client.ts, a second client with the same fault.",
+  "new_vs_existing": "No new module; the default config now matches pool-manager. Reusing the shared pool was rejected because callers call close(), which would end the shared pool."
+ },
+ "functions": [
+  {
+   "name": "PostgreSQLComplianceClient.constructor",
+   "file_line": "frontend-nextjs/lib/database/postgres-compliance-client.ts",
+   "what": "Builds the pg pool from environment variables when no config is passed.",
+   "input": "optional DatabaseConfig object, otherwise environment variables PG*, DB_*, DATABASE_*",
+   "output": "a client holding a pg Pool connected to the configured database host",
+   "if_none": "Falls back to 127.0.0.1 only when no host variable at all is set (local development).",
+   "edge_cases": "Supabase pooler host gets SSL even when NODE_ENV is not production (preview).",
+   "failure_mode": "A wrong host fails loudly with ECONNREFUSED; it cannot serve wrong data."
+  },
+  {
+   "name": "DatabaseClient.constructor",
+   "file_line": "frontend-nextjs/lib/database/client.ts",
+   "what": "Builds the pg pool used by /api/clause, setbacks/calculate and the geometry calculator.",
+   "input": "optional partial PostgreSQLConfig, otherwise environment variables PG* then DATABASE_*",
+   "output": "a client holding a pg Pool connected to the configured database host",
+   "if_none": "Falls back to localhost only when no host variable is set.",
+   "edge_cases": "Supabase pooler host gets SSL outside production.",
+   "failure_mode": "Wrong host fails loudly with ECONNREFUSED; no wrong data."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Only PGHOST is set (Vercel).",
+   "what_happens": "Old code connected to 127.0.0.1 and every route failed.",
+   "mitigated": true,
+   "how": "PGHOST is read first.",
+   "repro": "test 'uses PGHOST and friends'"
+  },
+  {
+   "scenario": "Local dev sets DB_HOST only.",
+   "what_happens": "Local development that only sets DB_HOST must still connect to its database.",
+   "mitigated": true,
+   "how": "DB_HOST remains in the chain after PGHOST.",
+   "repro": "test 'still honours the older DB_HOST'"
+  },
+  {
+   "scenario": "Preview (NODE_ENV not production) on Supabase.",
+   "what_happens": "A preview deployment would be refused by Supabase because no SSL was requested.",
+   "mitigated": true,
+   "how": "SSL on for supabase/pooler hosts, same as pool-manager.",
+   "repro": "test asserts ssl for a pooler host"
+  }
+ ],
+ "verified": [
+  "new jest tests 2/2",
+  "production error reproduced before the fix"
+ ],
+ "gaps": [
+  "Not verified on Vercel until deploy: confirm /api/clause/175335 returns the rule."
+ ],
+ "post_merge": {
+  "db_reset": "No data or schema change.",
+  "secrets": "None.",
+  "manual_verify": "curl https://verify.plotdetect.com.au/api/clause/175335 returns success true.",
+  "other_repo": "None."
+ }
+}
