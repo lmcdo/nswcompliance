@@ -31,7 +31,7 @@ const CONFIRMED = new Set(['exact', 'recovered']);
 
 export const QUOTE_NOTE_CONFIRMED = "Wording copied from the council's plan";
 /** An unproven rule's note without a page; with one it reads "... on page 12 of the council's plan". */
-export const QUOTE_NOTE_UNMATCHED = "Wording not shown: we could not match it to the council's current plan — read it in the council's plan";
+export const QUOTE_NOTE_UNMATCHED = "Wording not shown here — read it in the council's plan";
 export const QUOTE_NOTE_NOT_A_RULE = 'Map or figure text from the plan, not a rule';
 export const QUOTE_NOTE_UNCHECKED = QUOTE_NOTE_UNMATCHED;
 /** A council rule outside the wording check (no DCP chapter): shown, marked as our reading. */
@@ -41,7 +41,7 @@ export const QUOTE_NOTE_OUTSIDE = "Our reading — check the exact wording in th
 export function unprovenNote(p: QuoteFields): string {
   const label = pageLabel(p);
   return label && label !== PAGE_NOT_LOCATED
-    ? `Wording not shown: we could not match it to the council's current plan — read it on ${label} of the council's plan`
+    ? `Wording not shown here — read it on ${label} of the council's plan`
     : QUOTE_NOTE_UNMATCHED;
 }
 
@@ -97,9 +97,8 @@ export function shownText(p: QuoteFields): string | null {
  *  it. Rows with no chapter (LEP clauses carrying a council name, e.g. 495 inner_west) are outside the
  *  check and keep the note instead. */
 export function isWithheld(p: QuoteFields): boolean {
-  if (!p.source_council || hasCouncilWords(p)) return false;
-  if (p.quote_status === 'unconfirmed') return true;
-  return !p.quote_status && Boolean(p.source_chapter_key) || (Boolean(p.quote_status) && CONFIRMED.has(p.quote_status as string));
+  if (!p.source_council || hasCouncilWords(p) || p.quote_status === 'not_a_control') return false;
+  return Boolean(p.quote_status) || Boolean(p.source_chapter_key);   // any other verdict fails closed
 }
 
 /** The note printed under a council DCP rule, by the copier's verdict; null outside the check (LEP/SEPP)

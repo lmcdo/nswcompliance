@@ -53,6 +53,8 @@ describe("a council DCP rule shows the council's own words when a program copied
     expect(numbersUsable(lep)).toBe(false);
     // a proven failure is withheld whatever its chapter field says
     expect(isWithheld({ ...lep, quote_status: 'unconfirmed' })).toBe(true);
+    // a verdict this code does not know fails closed
+    expect(isWithheld({ ...lep, quote_status: 'something_new' })).toBe(true);
   });
 
   it('never serves a confirmed status without stored words (hollow), including a blank quote', () => {
@@ -102,12 +104,12 @@ describe('the pointer shown for a withheld council rule names the page shown bes
   it('uses the printed page label when the page is located', () => {
     const p = { ...NB, provision_text: 'Maximum height 9m', quote_status: 'unconfirmed', pdf_page: 40,
       page_check: 'on_page', printed_page_label: '12' };
-    expect(shownText(p)).toBe("Wording not shown: we could not match it to the council's current plan — read it on page 12 of the council's plan");
+    expect(shownText(p)).toBe("Wording not shown here — read it on page 12 of the council's plan");
   });
 
   it('says PDF page when no printed label is known', () => {
     const p = { ...NB, provision_text: 'x', quote_status: null, pdf_page: 40, page_check: 'on_page' };
-    expect(shownText(p)).toBe("Wording not shown: we could not match it to the council's current plan — read it on PDF page 40 of the council's plan");
+    expect(shownText(p)).toBe("Wording not shown here — read it on PDF page 40 of the council's plan");
   });
 
   it('names no page when the page was not located', () => {
