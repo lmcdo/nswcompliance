@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
         rp_target.source_council as target_source_council,
         rp_target.council_quote as target_council_quote,
         rp_target.quote_page as target_quote_page,
-        rp_target.quote_status as target_quote_status
+        rp_target.quote_status as target_quote_status,
+        rp_target.source_chapter_key as target_source_chapter_key
       FROM cross_reference_index xr
       LEFT JOIN regulatory_provisions rp_target
         ON xr.target_provision_id = rp_target.id
@@ -106,6 +107,7 @@ export async function GET(request: NextRequest) {
         council_quote: row.target_council_quote,
         quote_page: row.target_quote_page,
         quote_status: row.target_quote_status,
+        source_chapter_key: row.target_source_chapter_key,
       }), row.target_reference);
       return {
       id: row.id,

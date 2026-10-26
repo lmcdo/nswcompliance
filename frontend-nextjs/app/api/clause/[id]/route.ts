@@ -38,7 +38,8 @@ export async function GET(
  live.source_council,
  live.council_quote,
  live.quote_page,
- live.quote_status
+ live.quote_status,
+ live.source_chapter_key
  FROM regulatory_provisions_canonical rp
  -- only the CURRENT live row: a retired row's quote must not stand in for the clause
  LEFT JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE

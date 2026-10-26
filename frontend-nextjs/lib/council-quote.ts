@@ -8,9 +8,10 @@
  *
  *   exact / recovered   council_quote is the council's printed text, shown alone with the council's
  *                       own line breaks; only its numbers may feed a reference chip
- *   unconfirmed         extracted text, "Our reading — check the exact wording on page N of the council's plan"
- *   no verdict yet      the same note (user, 2026-10-13: the old "Not yet checked against the council's PDF"
- *                       read badly); page N is pageLabel(), the label already printed beside the rule; no chip
+ *   unconfirmed         our words are NOT shown (user, 2026-10-26: only words proven in the council's
+ *   no verdict yet      current plan are served); the text is a pointer to page N of the council's plan,
+ *                       page N is pageLabel(); no note, no chip. A changed council file clears the verdict
+ *                       (migration 112 trigger), so superseded wording stops showing until re-proven.
  *   not_a_control       extracted text, "Map or figure text from the plan, not a rule"; no chip
  *   rows outside the check (no source_council: LEP/SEPP) -> unchanged
  */
@@ -23,21 +24,24 @@ export interface QuoteFields extends PageFields {
   quote_status?: string | null;
   quote_page?: number | null;
   source_council?: string | null;
+  source_chapter_key?: string | null;
 }
 
 const CONFIRMED = new Set(['exact', 'recovered']);
 
 export const QUOTE_NOTE_CONFIRMED = "Wording copied from the council's plan";
 /** An unproven rule's note without a page; with one it reads "... on page 12 of the council's plan". */
-export const QUOTE_NOTE_UNMATCHED = "Our reading — check the exact wording in the council's plan";
+export const QUOTE_NOTE_UNMATCHED = "Wording not shown: we could not match it to the council's current plan — read it in the council's plan";
 export const QUOTE_NOTE_NOT_A_RULE = 'Map or figure text from the plan, not a rule';
 export const QUOTE_NOTE_UNCHECKED = QUOTE_NOTE_UNMATCHED;
+/** A council rule outside the wording check (no DCP chapter): shown, marked as our reading. */
+export const QUOTE_NOTE_OUTSIDE = "Our reading — check the exact wording in the council's plan";
 
 /** The note for a rule whose words are not proven, naming the page shown beside it when there is one. */
 export function unprovenNote(p: QuoteFields): string {
   const label = pageLabel(p);
   return label && label !== PAGE_NOT_LOCATED
-    ? `Our reading — check the exact wording on ${label} of the council's plan`
+    ? `Wording not shown: we could not match it to the council's current plan — read it on ${label} of the council's plan`
     : QUOTE_NOTE_UNMATCHED;
 }
 
@@ -83,16 +87,28 @@ function joinBareLabels(quote: string): string {
 /** The text a rule shows: only the council's words when they are stored -- no heading of ours above
  *  them, because the note says the wording is the council's. */
 export function shownText(p: QuoteFields): string | null {
+  if (isWithheld(p)) return unprovenNote(p);
   if (!hasCouncilWords(p)) return p.provision_text ?? null;   // unchanged, null included
   return joinBareLabels(p.council_quote as string);
 }
 
-/** The note printed under a council DCP rule, by the copier's verdict; null outside the check (LEP/SEPP). */
+/** A council DCP rule whose words are not proven in the council's current plan: its text is withheld.
+ *  Proven failing (unconfirmed), or a DCP chapter rule with no verdict -- a changed council file clears
+ *  it. Rows with no chapter (LEP clauses carrying a council name, e.g. 495 inner_west) are outside the
+ *  check and keep the note instead. */
+export function isWithheld(p: QuoteFields): boolean {
+  if (!p.source_council || hasCouncilWords(p)) return false;
+  if (p.quote_status === 'unconfirmed') return true;
+  return !p.quote_status && Boolean(p.source_chapter_key) || (Boolean(p.quote_status) && CONFIRMED.has(p.quote_status as string));
+}
+
+/** The note printed under a council DCP rule, by the copier's verdict; null outside the check (LEP/SEPP)
+ *  and for a withheld rule, whose text already is the pointer. */
 export function quoteNote(p: QuoteFields): string | null {
   if (!p.source_council) return null;
   if (showsCouncilWords(p)) return QUOTE_NOTE_CONFIRMED;
   if (p.quote_status === 'not_a_control') return QUOTE_NOTE_NOT_A_RULE;
-  return unprovenNote(p);
+  return isWithheld(p) ? null : QUOTE_NOTE_OUTSIDE;
 }
 
 /** Whether numbers may be read from this rule's text: never from an unconfirmed council rule. */
@@ -102,7 +118,7 @@ export function numbersUsable(p: QuoteFields): boolean {
 
 /** The quote columns every route serving council DCP rules selects, for a table alias. */
 export function quoteColumns(alias = 'rp'): string {
-  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status`;
+  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status, ${alias}.source_chapter_key`;
 }
 
 /**
