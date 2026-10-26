@@ -819,7 +819,9 @@ def main() -> int:
     # so on a day that committed, this stays 2 and the Telegram sent above is the
     # signal. On a day with nothing to commit, 0 would be indistinguishable from a
     # verified-clean run, which is the silence this whole branch exists to remove.
-    if (completeness_rc == 1 or sweep_rc) and not committed:
+    if completeness_rc == 1 and not committed:
+        return 1
+    if sweep_rc and not committed:   # the nightly council_quote --unchecked sweep, same rule
         return 1
     # 2 is "ran fine, found something" throughout this pipeline. A completeness
     # finding on a day with nothing to commit is still a finding, so it must not

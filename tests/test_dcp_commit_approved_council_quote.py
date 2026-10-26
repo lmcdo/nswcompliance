@@ -90,4 +90,4 @@ def test_main_calls_the_sweep_once_after_commits_and_alerts_on_failure():
     assert src.count("run_unchecked_council_quote_sweep(") == 2   # idle-night early return + after commits
     assert src.index("run_council_quote(council, chapter_key)") < src.rindex("run_unchecked_council_quote_sweep(")
     assert "if sweep_rc:" in src and "send(" in src
-    assert "(completeness_rc == 1 or sweep_rc) and not committed" in src
+    assert "if sweep_rc and not committed:" in src
