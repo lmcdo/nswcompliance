@@ -296,3 +296,45 @@ def test_figure_pages_named_for_one_run_are_not_re_read_or_refused(monkeypatch):
     monkeypatch.setenv("AI_FIGURE_PAGES", "2")
     out = TestGuardFires()._run(monkeypatch, ["x"] * 2, 12, [first], page_lines=lines)
     assert len(out) == 1
+
+
+def test_a_shared_pdf_is_read_only_on_the_chapters_own_pages(monkeypatch):
+    """Bayside s3-5 owns pages 52-79 of a 236-page shared PDF. Without page_range the reader read
+    all 236 pages from page 1 and credited other chapters' rules to this one (2026-10-25)."""
+    import types
+    import ai_extractor as ai
+    read, owned_seen = [], []
+
+    class FakePdfReader:
+        def __init__(self, _path):
+            self.pages = [object()] * 236
+
+    fake_pypdf = types.ModuleType("pypdf")
+    fake_pypdf.PdfReader = FakePdfReader
+    monkeypatch.setitem(sys.modules, "pypdf", fake_pypdf)
+    monkeypatch.setattr(ai, "_subset_bytes", lambda reader, a, b: read.append((a, b)) or b"pdf")
+    monkeypatch.setattr(ai, "_call_and_parse_with_empty_retry", lambda m, b, p: [])
+    monkeypatch.setattr(ai, "_rule_bearing_pages", lambda reader, a, b: [])
+    monkeypatch.setattr(ai, "_place_on_pages", lambda *a: None)
+    for name in ("_reread_skipped_pages", "_reread_missing_sentences"):
+        monkeypatch.setattr(ai, name, lambda *a, owned=None: owned_seen.append(owned))
+    ai.ai_extract_chapter("ignored.pdf", model="mistral", page_range=(52, 79))
+    assert read == [(51, 63), (63, 75), (75, 79)]          # 0-indexed [a, b): pages 52-79 only
+    assert owned_seen == [(52, 79), (52, 79)]               # both re-reads stay inside the chapter
+    ai.ai_extract_chapter("ignored.pdf", model="mistral")   # no range: the whole file, as before
+    assert read[3] == (0, 12) and read[-1] == (228, 236)
+
+
+def test_a_stale_range_end_is_clamped_like_the_regex_reader():
+    import ai_extractor as ai
+    assert ai.owned_span((8, 25), 20) == (8, 20)
+    assert ai.owned_span(None, 20) == (1, 20)
+    assert ai.owned_span((0, 5), 20) == (1, 5)
+
+
+def test_a_range_that_misses_the_file_fails_loudly():
+    import pytest
+    import ai_extractor as ai
+    for bad in ((250, 260), (79, 52)):
+        with pytest.raises(ValueError, match="holds no page"):
+            ai.owned_span(bad, 236)

@@ -885,7 +885,8 @@ REREAD_NOTE = (" These pages were left out of a first reading but they hold rule
                "list item and table row printed on them, word for word.")
 
 
-def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -> None:
+def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict],
+                          owned: tuple[int, int] | None = None) -> None:
     """Count, by code, the pages the reading left out; read them again on their
     own; refuse the chapter if a page that holds rules is still missing. A page
     still missing without rule words (history, definitions, an amendment table)
@@ -898,6 +899,8 @@ def _reread_skipped_pages(pdf_path, reader, model: str, collected: list[dict]) -
     import page_coverage as pc
     lines = pc.pdf_page_lines(pdf_path)
     running = pc.running_lines(lines)   # from every page, so a one-page re-check still knows the page header
+    if owned:                           # only this chapter's pages can be "left out" by its reading
+        lines = {p: v for p, v in lines.items() if owned[0] <= p <= owned[1]}
     texts = lambda: [str(p.get("text", "")) + " " + str(p.get("title", "")) for p in collected]
     figures = figure_pages_override()     # pages a person named as maps/figures for this run (AI_FIGURE_PAGES)
     skipped = [p for p in pc.skipped_pages(lines, texts(), running) if p not in figures]
@@ -1036,13 +1039,16 @@ def _page_texts_for_sentences(pdf_path, running: set[str]) -> dict[int, str]:
             for p, lines in by_page.items()}
 
 
-def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict]) -> None:
+def _reread_missing_sentences(pdf_path, reader, model: str, collected: list[dict],
+                              owned: tuple[int, int] | None = None) -> None:
     """Read again, on its own, each page whose printed sentences or table numbers the reading left out, naming what
     is missing; keep only the provisions that bring it back. Anything still missing is reported, not refused: the
     review loss check decides whether a chapter may go live. Adds to `collected`."""
     import page_coverage as pc
     running = pc.running_lines(pc.pdf_page_lines(pdf_path))
     pages = _page_texts_for_sentences(pdf_path, running)
+    if owned:                           # another chapter's sentences are not this chapter's to copy
+        pages = {p: t for p, t in pages.items() if owned[0] <= p <= owned[1]}
     texts = lambda: [str(p.get("text") or "") for p in collected]
     missing = missing_sentences(pages, texts())
     numbers = missing_table_numbers(pages, texts())
@@ -1181,18 +1187,38 @@ def figure_pages_override() -> set[int]:
 
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
-def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None) -> list[dict]:
+def owned_span(page_range: tuple[int, int] | None, total: int) -> tuple[int, int]:
+    """(first, last) 1-based inclusive pages this chapter owns, clamped to the file the same
+    way DCPExtractor._owned_pages clamps (a stale end is clamped, not refused)."""
+    lo, hi = page_range or (1, total)
+    lo, hi = max(1, lo), min(hi, total)
+    if page_range and lo > hi:
+        # FAIL CLOSED: a range that misses the file would read nothing and return no
+        # rules as if the chapter were empty (Sol cross-review 2026-10-26).
+        raise ValueError(f"page range {page_range} holds no page of this {total}-page PDF")
+    return lo, hi
+
+
+def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None = None,
+                       page_range: tuple[int, int] | None = None) -> list[dict]:
     """Extract a chapter's provisions via an LLM. Returns section dicts matching
     DCPExtractor.extract(). `council` is accepted for signature parity (the model
-    needs no per-council config)."""
+    needs no per-council config).
+
+    `page_range` (first, last, 1-based inclusive) limits every read to the pages a chapter
+    owns in a PDF it shares; page numbers keep meaning the page in the file. Without it the
+    reader read the WHOLE shared file and credited other chapters' rules to this one
+    (Bayside s3-5 = pp 52-79 of 236; Railway dcp-extract sat silent 69+ min, 2026-10-25)."""
     from pypdf import PdfReader
     model = (model or os.getenv("AI_MODEL") or _default_model()).strip().lower()
     reader = PdfReader(str(pdf_path))
     total = len(reader.pages)
+    lo, hi = owned_span(page_range, total)
+    ranges = [(lo - 1 + a, lo - 1 + b) for a, b in chunk_ranges(hi - lo + 1)]
     collected: list[dict] = []
     current_section: str | None = None
     lost: list[dict] = []
-    for (a, b) in chunk_ranges(total):
+    for (a, b) in ranges:
         pdf_bytes = _subset_bytes(reader, a, b)
         prompt = _build_prompt(current_section)
         chunk_provs = _call_and_parse_with_empty_retry(model, pdf_bytes, prompt)
@@ -1215,13 +1241,13 @@ def ai_extract_chapter(pdf_path, council: str | None = None, model: str | None =
                 current_section = token
                 break
     if not lost:
-        _reread_skipped_pages(pdf_path, reader, model, collected)
-        _reread_missing_sentences(pdf_path, reader, model, collected)
+        _reread_skipped_pages(pdf_path, reader, model, collected, owned=(lo, hi))
+        _reread_missing_sentences(pdf_path, reader, model, collected, owned=(lo, hi))
     if lost:
         pages = ", ".join(str(x["pages"][0]) + "-" + str(x["pages"][1]) for x in lost)
         chars = sum(x["text_chars"] for x in lost)
         raise ChunkLoss(
-            str(len(lost)) + " of " + str(len(chunk_ranges(total))) + " chunks "
+            str(len(lost)) + " of " + str(len(ranges)) + " chunks "
             "returned NO provisions while holding " + str(chars) + " characters "
             "of rule-bearing text (pages " + pages + "). Refusing to return a partial chapter: "
             "committing it would silently drop those pages, which is how "

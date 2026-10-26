@@ -1904,7 +1904,9 @@ class DCPExtractor:
             if _model:
                 print(f"    [extractor] LLM document reader ({_model})")
                 self.reader_used = f"llm:{_model}"
-                return ai_extract_chapter(self.pdf_path, self.council)
+                # The range a shared PDF assigns this chapter: without it the reader read the
+                # whole file and credited other chapters' rules to this one (2026-10-25).
+                return ai_extract_chapter(self.pdf_path, self.council, page_range=self.page_range)
             # Enabled, but this deployment has no provider key. Fall back rather than
             # fail: making the LLM the default (2026-09-21) must not break a nightly
             # job that has always run the reader below. Measured the same day, the
