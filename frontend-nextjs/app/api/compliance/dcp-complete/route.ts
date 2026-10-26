@@ -398,6 +398,7 @@ export async function POST(request: NextRequest) {
               ${quoteColumns('regulatory_provisions')}
             FROM regulatory_provisions
             WHERE document_id ILIKE $1
+              AND is_current = TRUE
             AND page_number != '0'  -- Exclude TOC pages
             AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
             AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
@@ -554,6 +555,7 @@ export async function POST(request: NextRequest) {
                 ${quoteColumns('regulatory_provisions')}
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
+                AND is_current = TRUE
               AND page_number != '0'  -- Exclude TOC pages
               AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
               AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
@@ -589,6 +591,7 @@ export async function POST(request: NextRequest) {
                 ${quoteColumns('regulatory_provisions')}
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
+                AND is_current = TRUE
               AND page_number != '0'  -- Exclude TOC pages
               AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
               AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
@@ -739,6 +742,7 @@ export async function POST(request: NextRequest) {
             ${quoteColumns('regulatory_provisions')}
           FROM regulatory_provisions
           WHERE document_id ILIKE $1
+            AND is_current = TRUE
           AND page_number != '0'  -- Exclude TOC pages
           AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
           AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals

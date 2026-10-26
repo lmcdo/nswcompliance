@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         ${quoteColumns('live')}
       FROM regulatory_provisions_canonical rp
       -- only the CURRENT live row carries the council quote (same join as app/api/clause/[id])
-      LEFT JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE
+      JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE   -- current rows only
       WHERE rp.document_id = $1
     `;
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           live.source_council,
           ${quoteColumns('live')}
         FROM regulatory_provisions_canonical rp
-        LEFT JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE
+        JOIN regulatory_provisions live ON live.id = rp.id AND live.is_current = TRUE   -- current rows only
         WHERE rp.document_id = $1
         AND rp.provision_text ILIKE $2
         ORDER BY rp.ref_number
