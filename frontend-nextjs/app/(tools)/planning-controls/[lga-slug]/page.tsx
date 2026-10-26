@@ -168,7 +168,7 @@ async function fetchTopicSummary(slug: string, name: string): Promise<{ topics: 
                          AND COALESCE(BTRIM(council_quote), '') <> '' AND COALESCE(quote_page, 0) > 0)
                      OR (quote_status IS NULL AND source_chapter_key IS NULL AND citation_status = 'proven')))[1] as sample_text
       FROM regulatory_provisions
-      WHERE v2_is_actionable = true
+      WHERE v2_is_actionable = true AND is_current = TRUE
         AND document_id ~* $1
         AND v2_topic IS NOT NULL
         AND document_id !~* 'SEPP|LEP'
