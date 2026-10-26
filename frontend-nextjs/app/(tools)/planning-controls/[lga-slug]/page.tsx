@@ -155,7 +155,18 @@ async function fetchTopicSummary(slug: string, name: string): Promise<{ topics: 
       `SELECT
         LOWER(v2_topic) as topic,
         COUNT(*) as cnt,
-        (array_agg(provision_text ORDER BY LENGTH(provision_text) ASC))[1] as sample_text
+        -- the sample is only ever words that may be shown (lib/council-quote.ts isWithheld): the
+        -- council's own quote where proven, extracted text outside the wording check, never a
+        -- council DCP rule whose wording is unproven (FILTER leaves it out; no rows -> NULL)
+        (array_agg(
+          CASE WHEN source_council IS NOT NULL AND quote_status IN ('exact', 'recovered')
+               THEN council_quote ELSE provision_text END
+          ORDER BY LENGTH(CASE WHEN source_council IS NOT NULL AND quote_status IN ('exact', 'recovered')
+                               THEN council_quote ELSE provision_text END) ASC
+        ) FILTER (WHERE source_council IS NULL
+                     OR (quote_status IN ('exact', 'recovered')
+                         AND COALESCE(BTRIM(council_quote), '') <> '' AND COALESCE(quote_page, 0) > 0)
+                     OR (quote_status IS NULL AND source_chapter_key IS NULL)))[1] as sample_text
       FROM regulatory_provisions
       WHERE v2_is_actionable = true
         AND document_id ~* $1
@@ -178,7 +189,7 @@ async function fetchTopicSummary(slug: string, name: string): Promise<{ topics: 
       if (existing) {
         existing.count += count
         // Keep the shorter sample
-        if (row.sample_text && row.sample_text.length < existing.sample.length) {
+        if (row.sample_text && (!existing.sample || row.sample_text.length < existing.sample.length)) {
           existing.sample = row.sample_text
         }
       } else {

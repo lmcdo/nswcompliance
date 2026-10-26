@@ -410,6 +410,28 @@ def run_council_quote(council: str, chapter_key: str, run=None) -> int:
     return r.returncode
 
 
+def run_unchecked_council_quote_sweep(run=None) -> int:
+    """Nightly fleet-wide re-proof of rules whose quote verdict is NULL (migration 112 nulls it when
+    a council's PDF path or a rule's text changes). Returns the exit code; a failure is printed and
+    returned, never raised. `run` is subprocess.run, injectable for tests."""
+    import subprocess
+    run = run or subprocess.run
+    cmd = [sys.executable, str(ROOT / "scripts" / "council_quote.py"), "--apply", "--unchecked",
+           "--workers", "2"]
+    try:
+        r = run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=3300)
+    except Exception as exc:  # noqa: BLE001 -- never fail a committed provision
+        print(f"  [warn] unchecked council-words sweep could not run: {exc}")
+        return 1
+    lines = [ln for ln in r.stdout.splitlines() if ln.startswith(("stored:", "unchecked rules selected:"))]
+    print(f"  unchecked council-words sweep: {' | '.join(lines) or 'no output'}")
+    if r.returncode:
+        print(f"  [warn] unchecked council-words sweep failed (exit {r.returncode}): "
+              f"{r.stderr.strip()[-300:]}. Run `python scripts/council_quote.py --apply --unchecked`; "
+              f"until then those rules stay withheld on the site.")
+    return r.returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Commit human-approved DCP chapters.")
     parser.add_argument(
@@ -462,6 +484,10 @@ def main() -> int:
         print("Nothing to commit -- no fully-approved chapters in dcp_review_queue.")
         cur.close()
         conn.close()
+        # the nightly sweep still runs: a PDF change nulls verdicts without any commit
+        import os
+        if not dry_run and not os.environ.get("PYTEST_CURRENT_TEST"):
+            return 1 if run_unchecked_council_quote_sweep() else 0
         return 0
 
     print("=" * 60)
@@ -767,6 +793,20 @@ def main() -> int:
                     "`python scripts/check_council_completeness.py` and read its output."
                 )
 
+    # Nightly: re-prove rules whose quote verdict is NULL, fleet-wide, after all commits. Runs even
+    # on a day with nothing to commit (a PDF change nulls verdicts without a commit). Skipped under
+    # pytest: it writes to the real database. A failure is reported, never hides commit results.
+    sweep_rc = 0
+    if not dry_run and not under_test:
+        sweep_rc = run_unchecked_council_quote_sweep()
+        if sweep_rc:
+            send = _precinct_alert_sender()
+            if send:
+                send("DCP commit: the unchecked council-words sweep FAILED\n\n"
+                     f"exit {sweep_rc}. Provisions are committed and unaffected, but rules with no "
+                     "verdict stay withheld on the site. Run "
+                     "`python scripts/council_quote.py --apply --unchecked`.")
+
     print("-" * 60)
     verb = "would commit" if dry_run else "committed"
     print(f"  {verb}: {committed}   failed: {failed}   skipped: {skipped}")
@@ -779,7 +819,7 @@ def main() -> int:
     # so on a day that committed, this stays 2 and the Telegram sent above is the
     # signal. On a day with nothing to commit, 0 would be indistinguishable from a
     # verified-clean run, which is the silence this whole branch exists to remove.
-    if completeness_rc == 1 and not committed:
+    if (completeness_rc == 1 or sweep_rc) and not committed:
         return 1
     # 2 is "ran fine, found something" throughout this pipeline. A completeness
     # finding on a day with nothing to commit is still a finding, so it must not

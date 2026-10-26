@@ -1,12 +1,22 @@
 {
  "tier": "standard",
  "justification": "Changes what public pages show for council DCP rules: unproven wording becomes a page pointer. Not Critical: one shared helper, no DB write, reversible by revert. Not Minor: changes served regulatory content on 1,137 rows.",
- "commit_hash": "dcdd0d54",
+ "commit_hash": "4f1ddf83",
  "files": [
-  "frontend-nextjs/lib/council-quote.ts",
   "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+  "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx",
   "frontend-nextjs/app/api/clause/[id]/route.ts",
-  "frontend-nextjs/app/api/provisions/cross-references/route.ts"
+  "frontend-nextjs/app/api/compliance/dcp-complete/route.ts",
+  "frontend-nextjs/app/api/dcp/full-text/route.ts",
+  "frontend-nextjs/app/api/dcp/provisions/route.ts",
+  "frontend-nextjs/app/api/provisions/cross-references/route.ts",
+  "frontend-nextjs/lib/council-quote.ts",
+  "frontend-nextjs/lib/precinct-service.ts",
+  "scripts/council_quote.py",
+  "scripts/council_quote_db.py",
+  "scripts/dcp_commit_approved.py",
+  "tests/test_council_quote.py",
+  "tests/test_dcp_commit_approved_council_quote.py"
  ],
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts",
@@ -67,11 +77,14 @@
  "verified": [
   "council-quote tests 14/14",
   "tsc: no errors in changed files",
-  "prod read-only: 1,137 of 57,541 live council rows withheld"
+  "prod read-only: 1,137 of 57,541 live council rows withheld",
+  "jest 26 suites / 318 tests on changed areas",
+  "pytest council_quote + dcp_commit + run_monitors: 54 passed",
+  "dry run --unchecked: 74 city_of_sydney rules, 56 exact / 2 recovered / 16 unconfirmed (no write)"
  ],
  "gaps": [
-  "Seven routes serve provision_text without this helper (dcp/provisions, compliance/dcp-complete, dcp/full-text, precinct/provisions, sepp/parking-provisions, canibuildit/check, planning-controls page) -- next PR.",
-  "No nightly council_quote run: after a council file changes, its rules stay withheld until council_quote --apply runs."
+  "canibuildit/check serves council setback wording from dcp_setback_controls (another table, own check) -- separate decision.",
+  "dcp/full-text: a canonical row with no current live row is served as before (no council name to judge)."
  ],
  "post_merge": {
   "db_reset": "No schema change, no data written. Undo = revert the PR.",

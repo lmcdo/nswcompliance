@@ -532,6 +532,8 @@ def main() -> int:
     ap.add_argument("--council")
     ap.add_argument("--chapter", help="one chapter_key (needs --council): the publish step runs this per chapter")
     ap.add_argument("--ids", help="comma-separated rule ids")
+    ap.add_argument("--unchecked", action="store_true",
+                    help="only rules whose quote_status is NULL (re-prove after a PDF or text change)")
     ap.add_argument("--out", default=str(Path(os.environ.get("CLAUDE_JOB_DIR", ROOT)) / "tmp" / "council_quote_dryrun.json"))
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
@@ -542,7 +544,11 @@ def main() -> int:
     if a.chapter is not None and (not a.chapter.strip() or not a.council):
         ap.error("--chapter needs a chapter_key and --council")   # a blank one would widen to the council
     import council_quote_db as store
-    rows = store.fetch(a.council, ids, a.chapter)
+    rows = store.fetch(a.council, ids, a.chapter, unchecked=a.unchecked)
+    if a.unchecked:
+        print(f"unchecked rules selected: {len(rows)}")
+        if not rows:
+            return 0
     by = collections.defaultdict(list)
     for r in rows:
         by[r["r2_current_path"]].append(r)

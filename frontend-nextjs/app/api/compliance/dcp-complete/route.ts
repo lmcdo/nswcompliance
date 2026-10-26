@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { filterRequirementsByDevType } from '@/lib/dev-type-filter';
 import { getZoneAliases } from '@/lib/zone-translation';
+import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 // Force recompile
 
@@ -392,7 +393,9 @@ export async function POST(request: NextRequest) {
               pdf_page_image_url,
               pdf_source_file as pdf_path,
               document_id,
-              NULL as category_name
+              NULL as category_name,
+              source_council,
+              ${quoteColumns('regulatory_provisions')}
             FROM regulatory_provisions
             WHERE document_id ILIKE $1
             AND page_number != '0'  -- Exclude TOC pages
@@ -410,6 +413,8 @@ export async function POST(request: NextRequest) {
           `;
 
           const generalProvResult = await query(generalProvQuery, [`%Marrickville%`]);
+          // Council DCP wording only when proven in the council's plan (lib/council-quote.ts)
+          generalProvResult.rows = generalProvResult.rows.map((row: any) => withCouncilWords(row));
 
           console.log(`  → Found ${precinctReqResult.rows.length} precinct requirements`);
           console.log(`  → Found ${generalProvResult.rows.length} general provisions`);
@@ -544,7 +549,9 @@ export async function POST(request: NextRequest) {
                 pdf_page_image_url,
                 pdf_source_file as pdf_path,
                 document_id,
-                NULL as category_name
+                NULL as category_name,
+                source_council,
+                ${quoteColumns('regulatory_provisions')}
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
               AND page_number != '0'  -- Exclude TOC pages
@@ -577,7 +584,9 @@ export async function POST(request: NextRequest) {
                 pdf_source_file as pdf_path,
                 document_id,
                 v2_topic,
-                NULL as category_name
+                NULL as category_name,
+                source_council,
+                ${quoteColumns('regulatory_provisions')}
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
               AND page_number != '0'  -- Exclude TOC pages
@@ -604,6 +613,7 @@ export async function POST(request: NextRequest) {
           }
 
           const generalProvResult = await query(generalProvQuery, [`%${formerCouncil}%`]);
+          generalProvResult.rows = generalProvResult.rows.map((row: any) => withCouncilWords(row));
 
           console.log(`  → Found ${precinctReqResult.rows.length} precinct requirements`);
           console.log(`  → Found ${generalProvResult.rows.length} general provisions`);
@@ -724,7 +734,9 @@ export async function POST(request: NextRequest) {
             pdf_page,
             pdf_page_image_url,
             pdf_source_file as pdf_path,
-            document_id
+            document_id,
+            source_council,
+            ${quoteColumns('regulatory_provisions')}
           FROM regulatory_provisions
           WHERE document_id ILIKE $1
           AND page_number != '0'  -- Exclude TOC pages
@@ -752,6 +764,7 @@ export async function POST(request: NextRequest) {
           fallbackParams
         );
 
+        fallbackResult.rows = fallbackResult.rows.map((row: any) => withCouncilWords(row));
         console.log(`✓ Fallback provisions: ${fallbackResult.rows.length}`);
         generalProvisions.rows = fallbackResult.rows;
       } else {

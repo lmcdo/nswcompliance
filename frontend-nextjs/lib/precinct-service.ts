@@ -5,6 +5,7 @@
 
 import { getPropertyCoordinates } from './nsw-planning-portal';
 import { getPool } from './db';
+import { quoteColumns, withCouncilWords } from './council-quote';
 
 // Use shared database pool from db.ts for consistent connection handling
 const getDbPool = () => getPool();
@@ -693,7 +694,8 @@ export async function getPrecinctProvisions(
         rp.pdf_page,
         rp.document_id,
         rp.pdf_page_image_url,
-        rp.source_council
+        rp.source_council,
+        ${quoteColumns('rp')}
       FROM regulatory_provisions rp
       WHERE rp.v2_precinct_id IN (SELECT k FROM precinct_keys WHERE k IS NOT NULL)
         AND rp.source_council = $2
@@ -722,7 +724,8 @@ export async function getPrecinctProvisions(
             `the list is truncated and may be missing controls.`,
           );
         }
-        return result.rows;
+        // the council's own words when proven in its plan, else a page pointer (lib/council-quote.ts)
+        return result.rows.map((row: any) => withCouncilWords(row));
       }
     }
     return [];
