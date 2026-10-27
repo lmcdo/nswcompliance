@@ -237,6 +237,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
   // Yield calculator — ineligible "if this lot qualified" teaser only
   const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
@@ -335,6 +336,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         setEmailError(json.error || 'That did not save. Please try again.');
         return;
       }
+      const json = await res.json().catch(() => ({}));
+      setEmailSent(json.email_sent === true);
       posthog.capture('lead_submitted', { interest_type: 'granny-flat', variant: 'what-to-change' });
     } catch {
       setEmailError('That did not save. Please check your connection and try again.');
@@ -735,7 +738,9 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                   </>
                 ) : (
                   <p className="text-sm text-teal-700 font-medium">
-                    Done. A link to this check is on its way to {email}.
+                    {emailSent
+                      ? `Done. A link to this check is on its way to ${email}.`
+                      : 'Saved. We could not send the email just now — bookmark this page to come back to it.'}
                   </p>
                 )}
               </div>

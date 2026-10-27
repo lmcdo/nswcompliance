@@ -84,7 +84,7 @@ export function WaitlistButton({
         throw new Error(json.error || 'Something went wrong');
       }
       const json = await res.json().catch(() => ({}));
-      setEmailSent(json.email_sent !== false);
+      setEmailSent(json.email_sent === true);
       // No email or address in the event — conversion is measured without PII.
       posthog.capture('lead_submitted', { interest_type: interestType, variant });
       setState('done');
