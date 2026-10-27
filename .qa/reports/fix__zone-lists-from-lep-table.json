@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "40c649f4",
+  "commit_hash": "65bb7b21",
   "justification": "Typed zone lists decided a warning and whether Housing SEPP rules load. Standard: two components, one new reader of an existing endpoint.",
   "files": [
     "frontend-nextjs/lib/lep-permissibility.ts",
