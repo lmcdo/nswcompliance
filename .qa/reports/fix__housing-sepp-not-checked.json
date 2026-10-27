@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "aee9ee3a",
+  "commit_hash": "06b15a5e",
   "justification": "One user-facing message: a failed request read as 'no requirements'. Standard: one component, a boolean state.",
   "files": [
     "frontend-nextjs/components/compliance/StateLevelControls.tsx",
@@ -55,7 +55,7 @@
   ],
   "falsifiable_check": {
     "command": "npx jest __tests__/components/compliance/state-level-sepp-not-checked.test.tsx",
-    "fails_when": "Fix reverted: 2 failed / 1 passed (docs/qa/session-b/2-sepp-red.md)",
+    "fails_when": "Fix reverted: 2 failed / 1 passed (docs/qa/session-b/2-sepp-red.txt)",
     "observed_red": "Ran the new test on unfixed StateLevelControls.tsx: 2 failed, 1 passed; the answered-empty case passed, proving the render reaches the text."
   },
   "post_merge": {
