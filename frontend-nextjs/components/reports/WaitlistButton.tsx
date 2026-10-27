@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import posthog from 'posthog-js';
 
 type InterestType =
   | 'flood-truth'
@@ -21,7 +22,23 @@ interface WaitlistButtonProps {
   label?: string;
   /** Additional CSS classes on the outer container. */
   className?: string;
+  /**
+   * 'waitlist' (default): notify when a paid report exists.
+   * 'email-result': email the person a link back to this result now — an
+   * offer with value today, rather than a promise about a future product.
+   */
+  variant?: 'waitlist' | 'email-result';
+  /** Called once the lead is stored (2xx), e.g. to unlock on-screen content. */
+  onSuccess?: () => void;
 }
+
+// Stored with each lead (consent_version/consent_wording) so we can show exactly
+// what a person asked for. Bump the version when the wording changes.
+const CONSENT_VERSION = '2026-10-28';
+const WORDING = {
+  waitlist: 'Email me when a paid report for this address is available.',
+  'email-result': 'Email me a link to this result. No marketing emails.',
+} as const;
 
 /**
  * Replaces Stripe checkout buttons while payments are disabled (pre-incorporation).
@@ -33,6 +50,8 @@ export function WaitlistButton({
   address,
   label,
   className = '',
+  variant = 'waitlist',
+  onSuccess,
 }: WaitlistButtonProps) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
@@ -55,13 +74,18 @@ export function WaitlistButton({
           email: trimmed,
           ...(address ? { address } : {}),
           interest_type: interestType,
+          consent_version: CONSENT_VERSION,
+          consent_wording: WORDING[variant],
         }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || 'Something went wrong');
       }
+      // No email or address in the event — conversion is measured without PII.
+      posthog.capture('lead_submitted', { interest_type: interestType, variant });
       setState('done');
+      onSuccess?.();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setState('error');
@@ -72,7 +96,9 @@ export function WaitlistButton({
     return (
       <div className={`rounded-lg bg-teal-50 border border-teal-200 px-4 py-3 ${className}`}>
         <p className="text-sm font-medium text-teal-800">
-          You're on the list. We'll email you when this report is available for purchase.
+          {variant === 'email-result'
+            ? `Done. A link to this result is on its way to ${email.trim()}.`
+            : "You're on the list. We'll email you when this report is available for purchase."}
         </p>
       </div>
     );
@@ -95,12 +121,16 @@ export function WaitlistButton({
           disabled={state === 'submitting' || !email.trim()}
           className="px-5 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
-          {state === 'submitting' ? 'Joining...' : (label ?? 'Join waitlist')}
+          {state === 'submitting'
+            ? (variant === 'email-result' ? 'Sending...' : 'Joining...')
+            : (label ?? (variant === 'email-result' ? 'Email me' : 'Join waitlist'))}
         </button>
       </div>
       {errorMsg && <p className="text-xs text-red-600">{errorMsg}</p>}
       <p className="text-xs text-gray-400">
-        Paid reports launching soon. Join the waitlist to be notified.
+        {variant === 'email-result'
+          ? WORDING['email-result']
+          : 'Paid reports launching soon. Join the waitlist to be notified.'}
       </p>
     </form>
   );

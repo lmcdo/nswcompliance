@@ -23,7 +23,14 @@ interface Props {
   lgaName: string | null;
   /** Which result this card sits under — changes the copy, never the offer. */
   verdict?: Verdict;
+  /** What would be built. Sets the builder named in the consent and the lead type. */
+  product?: 'duplex' | 'granny-flat';
 }
+
+const PRODUCT = {
+  duplex: { noun: 'duplex', tool: 'upzoning-check', interestType: 'dual-occ-referral' },
+  'granny-flat': { noun: 'granny flat', tool: 'granny-flat', interestType: 'granny-flat-referral' },
+} as const;
 
 interface Opt {
   v: string;
@@ -50,7 +57,8 @@ const CONSENT_VERSION = '2026-07-19';
 const STEPS = ['timeline', 'ownership', 'contact'] as const;
 const TOTAL = STEPS.length;
 
-export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: Props) {
+export function BuilderReferralCard({ address, lgaName, verdict = 'eligible', product = 'duplex' }: Props) {
+  const { noun, tool, interestType } = PRODUCT[product];
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [firstName, setFirstName] = useState('');
@@ -61,17 +69,17 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    posthog.capture('referral_cta_view', { tool: 'upzoning-check', verdict });
-  }, [verdict]);
+    posthog.capture('referral_cta_view', { tool, verdict });
+  }, [tool, verdict]);
 
-  const recipient = verdict === 'eligible' ? 'duplex builder' : 'duplex specialist';
+  const recipient = verdict === 'eligible' ? `${noun} builder` : `${noun} specialist`;
   const shareWording =
     `Share my name, contact details, this address and result with a ${recipient} ` +
     `in my area so they can contact me about this property. PlotDetect may receive a referral fee.`;
 
   const heading =
     verdict === 'eligible'
-      ? 'Talk to a builder about what a duplex here would cost'
+      ? `Talk to a builder about what a ${noun} here would cost`
       : 'Get a specialist to check this block properly';
   const sub =
     verdict === 'eligible'
@@ -115,7 +123,7 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
           address,
           eligible: verdict === 'eligible',
           lga_name: lgaName,
-          interest_type: 'dual-occ-referral',
+          interest_type: interestType,
           qualification: {
             timeline: answers.timeline ?? null,
             ownership: answers.ownership ?? null,
@@ -134,7 +142,7 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible' }: 
       return;
     }
     posthog.capture('referral_lead_submitted', {
-      tool: 'upzoning-check',
+      tool,
       lga: lgaName,
       verdict,
       timeline: answers.timeline ?? null,

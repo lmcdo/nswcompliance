@@ -176,7 +176,14 @@ export async function recomputeDualOccEligible(address: string): Promise<boolean
 // commit this branch forked from: 'intelligence-brief' (Site Report product)
 // and 'duplex-result' (this branch's email-my-result feature). Neither
 // supersedes the other.
-const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result'] as const;
+const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result', 'granny-flat-referral'] as const;
+
+// Who a consented lead's details are passed to, per referral interest_type.
+// Anything not listed is not shared with a third party.
+const REFERRAL_RECIPIENT: Record<string, string> = {
+  'dual-occ-referral': 'duplex-referral-partner',
+  'granny-flat-referral': 'granny-flat-referral-partner',
+};
 
 const LeadSchema = z.object({
   email: z.string().email('Invalid email address').max(254, 'Email too long'),
@@ -312,6 +319,7 @@ export async function POST(req: NextRequest) {
   }
 
   // --- 7. Store lead ---
+  let leadId: number | null = null;
   try {
     const supabase = getSupabase();
     // Build the consent audit only when a consent statement was actually shown,
@@ -321,12 +329,12 @@ export async function POST(req: NextRequest) {
         ? {
             version: consent_version ?? null,
             wording: consent_wording ?? null,
-            shared_with: 'duplex-referral-partner',
+            shared_with: (interest_type && REFERRAL_RECIPIENT[interest_type]) ?? null,
             ip,
             captured_at: new Date().toISOString(),
           }
         : null;
-    await supabase.from('canibuildit_leads').insert({
+    const { data: inserted, error: insertErr } = await supabase.from('canibuildit_leads').insert({
       email: cleanEmail,
       address: cleanAddress,
       eligible: storedEligible,
@@ -336,9 +344,12 @@ export async function POST(req: NextRequest) {
       ...(interest_type ? { interest_type: interest_type.trim() } : {}),
       ...(qualification ? { qualification } : {}),
       ...(consentRecord ? { consent: consentRecord } : {}),
-    });
-  } catch {
-    // Non-blocking — don't error the user if DB insert fails
+    }).select('id').single();
+    if (insertErr) console.error('[canibuildit/lead] insert failed:', insertErr.message);
+    leadId = inserted?.id ?? null;
+  } catch (err) {
+    // Non-blocking — don't error the user if DB insert fails, but say so in the logs
+    console.error('[canibuildit/lead] insert threw:', err);
   }
 
   // --- 8. Send confirmation email ---
@@ -362,8 +373,13 @@ export async function POST(req: NextRequest) {
           footerLabel: 'Can I Build It?',
           footerUrl: 'https://canibuildit.com.au',
         };
+  // Resend reports failure (unverified domain, bad key) as { error }, NOT a throw —
+  // the old `await ...send()` dropped it, so no lead ever knew whether its email
+  // went. email_sent records the outcome: true sent, false failed or no client.
+  let emailSent = false;
   try {
-    await getResend()?.emails.send({
+    const resend = getResend();
+    const sendResult = await resend?.emails.send({
       from: fromLine,
       ...(replyTo ? { replyTo } : {}),
       to: [cleanEmail],
@@ -378,8 +394,20 @@ export async function POST(req: NextRequest) {
         </div>
       `,
     });
+    if (sendResult?.error) {
+      console.error('[canibuildit/lead] Resend rejected the email:', sendResult.error);
+    } else if (sendResult?.data) {
+      emailSent = true;
+    }
   } catch (emailErr) {
     console.error('[canibuildit/lead] Resend error:', emailErr);
+  }
+  if (leadId !== null) {
+    try {
+      await getSupabase().from('canibuildit_leads').update({ email_sent: emailSent }).eq('id', leadId);
+    } catch (err) {
+      console.error('[canibuildit/lead] email_sent update failed:', err);
+    }
   }
 
   return NextResponse.json({ ok: true });
@@ -439,13 +467,22 @@ export function buildEmailContent(product: string, address: string, eligible: bo
     case 'flood':
     case 'flood-truth':
       return {
-        subject: `Your flood risk result — ${address}`,
+        subject: `Your flood check — ${address}`,
+        // Deliberately carries no flood finding: the client could send any
+        // verdict, and an email from our domain saying "your house floods"
+        // would be a phishing tool. The link re-runs the check on our server.
         body: `
-          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your flood risk result is ready.</p>
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your flood check, saved.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your flood risk check for <strong>${safeAddress}</strong> is complete.
-            Visit <a href="https://canibuildit.com.au/reports/flood" style="color: #0d9488;">canibuildit.com.au/reports/flood</a>
-            to run it again or check another address.
+            Here is the link to the flood check for <strong>${safeAddress}</strong>.
+            It re-runs against the current government and satellite data each time you open it.
+          </p>
+          <p style="margin: 16px 0;">
+            <a href="https://canibuildit.com.au/reports/flood?address=${encodeURIComponent(address)}" style="background: #0d9488; color: #fff; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px;">Open my flood check</a>
+          </p>
+          <p style="color: #999; font-size: 12px; line-height: 1.6;">
+            This is a screening check, not a flood certificate. Your council's section 10.7
+            planning certificate is the official record.
           </p>`,
       };
     case 'solar-yield':
@@ -489,6 +526,20 @@ export function buildEmailContent(product: string, address: string, eligible: bo
             shared only for this introduction.
           </p>`,
       };
+    case 'granny-flat-referral':
+      return {
+        subject: `Granny flat builder introduction requested — ${address}`,
+        body: `
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your request is in.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            You asked for an introduction to a builder who does granny flats,
+            for <strong>${safeAddress}</strong>. We'll email you to arrange it.
+          </p>
+          <p style="color: #999; font-size: 12px; line-height: 1.6;">
+            PlotDetect may receive a referral fee from the builder. Your details are
+            shared only for this introduction.
+          </p>`,
+      };
     case 'lga-request':
       return {
         subject: 'Request noted — your council is on the list',
@@ -515,16 +566,16 @@ export function buildEmailContent(product: string, address: string, eligible: bo
     case 'granny-flat':
     default:
       return {
-        subject: `Your granny flat check is running — ${address}`,
+        subject: `Your granny flat check — ${address}`,
         body: `
-          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">We're on it.</p>
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your granny flat check, saved.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your granny flat check for <strong>${safeAddress}</strong> is running.
-            We're pulling live aerial imagery, running satellite structure detection,
-            and cross-referencing NSW Planning Portal rules — this takes 1–3 minutes.
+            Here is the link to the granny flat check for <strong>${safeAddress}</strong>,
+            including what would need to change on this lot. It re-runs against current
+            NSW Planning Portal data each time you open it.
           </p>
-          <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            You can close the tab. We'll send your result here as soon as it's ready.
+          <p style="margin: 16px 0;">
+            <a href="https://canibuildit.com.au/reports/granny-flat?address=${encodeURIComponent(address)}" style="background: #0d9488; color: #fff; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px;">Open my granny flat check</a>
           </p>`,
       };
   }
