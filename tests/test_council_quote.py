@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import citation_proof as cp  # noqa: E402
@@ -404,9 +406,10 @@ def test_a_rule_proven_as_printed_is_not_judged_again():
     assert out["status"] == "exact" and "label_skipped" not in out["reason"]
 
 
-def test_a_bare_number_alone_is_a_table_cell_not_a_label():
-    # "3" alone is a value: skipping it would let "Maximum storeys 2" pass over a printed 3.
-    tbl = {1: ["Maximum storeys in the precinct", "3", "2 for sites fronting a heritage item listed in Schedule 5"]}
+@pytest.mark.parametrize("cell", ["3", "3.", "3)", "(3)"])
+def test_a_number_alone_is_a_table_value_not_a_label(cell):
+    # "3" or "3." alone can be a value: skipping it would let "Maximum storeys 2" pass over a printed 3.
+    tbl = {1: ["Maximum storeys in the precinct", cell, "2 for sites fronting a heritage item listed in Schedule 5"]}
     stored = "Maximum storeys in the precinct 2 for sites fronting a heritage item listed in Schedule 5"
     out = cq.judge_twice(row(stored), [stream(tbl)], [stream(tbl, skip_labels=True)])
     assert out["status"] == "unconfirmed"

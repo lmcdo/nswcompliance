@@ -79,10 +79,10 @@ _SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no
 _BARE_LABEL = re.compile(r"^\(?(?:[a-z]|\d{1,2}|[ivx]{1,4}|[A-Z]\.?\d{1,3})[.)]?$", re.I)
 #: How a sentence, a lead-in or a list item ends: "... the development.", "... the following:", "...; and".
 _PIECE_END = re.compile(r"(?:[.:;?!)][\"'”’]?|;\s*(?:and|or))\s*$", re.I)
-# A list label printed alone on its line ("a.", "(b)", "iv)", "2."). The reader often drops it when it
+# A letter list label printed alone on its line ("a.", "(b)", "iv)"). The reader often drops it when it
 # joins the label to the words beside it ("Height Sites with ..." for "Height / a. / Sites with ...").
-# Punctuation is required: a bare "3" alone is a table cell, not a label.
-_LIST_LABEL = re.compile(r"^(?:\((?:[a-z]|[ivx]{1,4}|\d{1,2})\)|(?:[a-z]|[ivx]{1,4}|\d{1,2})[.)])$", re.I)
+# Never a number, punctuated or not: "3" or "3." alone can be a table value (cross-review, #1519).
+_LIST_LABEL = re.compile(r"^(?:\((?:[a-z]|[ivx]{1,4})\)|(?:[a-z]|[ivx]{1,4})[.)])$", re.I)
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
