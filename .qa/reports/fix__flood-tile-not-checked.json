@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "commit_hash": "23acdc59",
+  "justification": "One user-facing cell: a failed check printed 'No'. Standard, not critical: one tile, existing helper reused.",
+  "files": [
+    "frontend-nextjs/components/compliance/LepControls.tsx",
+    "frontend-nextjs/__tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "constraints.notChecked set by app/api/property/route.ts when spatial_overlays fails",
+    "assumption_mismatch": "No list (old saved report) = not checked, per wasNotChecked",
+    "new_vs_existing": "Render-time only, applies to every page view and old saved reports alike"
+  },
+  "functions": [
+    {
+      "name": "wasNotChecked",
+      "file_line": "frontend-nextjs/lib/fact-answer.ts:38",
+      "input": "the constraints object from the property lookup payload",
+      "output": "boolean true when the named check did not answer",
+      "if_none": "returns true, so the tile reads Not checked"
+    }
+  ],
+  "values": [
+    {
+      "value": "constraints.notChecked",
+      "read_at": "LepControls.tsx flood tile",
+      "nullable": "yes",
+      "guard_at": "wasNotChecked",
+      "if_missing": "Not checked"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The spatial_overlays PostGIS query fails or times out",
+      "what_happens": "Before: flood 'No'. Now: 'Not checked'",
+      "mitigated": true,
+      "how": "LepControls.tsx flood tile uses wasNotChecked",
+      "repro": "npx jest __tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx"
+    },
+    {
+      "scenario": "Old saved report has no notChecked list",
+      "what_happens": "Flood tile reads Not checked instead of No",
+      "mitigated": true,
+      "how": "Intended house rule in lib/fact-answer.ts:33 - no list cannot show the check answered",
+      "repro": "render LepControls without notChecked"
+    },
+    {
+      "scenario": "Lot is in a flood area and the query also flagged another failure",
+      "what_happens": "Shows the flood classification, Yes wins",
+      "mitigated": true,
+      "how": "inFloodArea is checked before the not-checked guard",
+      "repro": "constraints.dcpFloodMap.inFloodArea=true"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/components/compliance/lep-controls-hazard-not-checked.test.tsx",
+    "fails_when": "Fix reverted: 1 failed / 2 passed (docs/qa/session-b/1-flood-red.md)",
+    "observed_red": "Ran the new test on the unfixed LepControls.tsx: 1 failed, 2 passed. Expected Not checked, received No."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

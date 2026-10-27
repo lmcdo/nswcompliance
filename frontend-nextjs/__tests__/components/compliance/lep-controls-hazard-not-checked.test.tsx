@@ -35,8 +35,16 @@ describe('LepControls hazard tiles', () => {
     expect(tileValue('Contaminated Land')).toBe('Not checked');
   });
 
+  it('prints "Not checked" for flood when the spatial overlay query failed', () => {
+    render(<LepControls planningLayers={[]} constraints={{
+      ...base, bushfireProne: false, uncheckedHazards: [], notChecked: ['spatial_overlays'],
+    }} />);
+    expect(tileValue('Flood Mapping')).toBe('Not checked');
+  });
+
   it('prints "No" only when the maps answered', () => {
-    render(<LepControls planningLayers={[]} constraints={{ ...base, bushfireProne: false, uncheckedHazards: [] }} />);
+    render(<LepControls planningLayers={[]} constraints={{ ...base, bushfireProne: false, uncheckedHazards: [], notChecked: [] }} />);
+    expect(tileValue('Flood Mapping')).toBe('No');
     expect(tileValue('Bushfire Prone')).toBe('No');
     expect(tileValue('Mine Subsidence')).toBe('No');
     expect(tileValue('Contaminated Land')).toBe('No');
