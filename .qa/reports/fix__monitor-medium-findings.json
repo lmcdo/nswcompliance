@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "72239f07",
+  "commit_hash": "37a7f135",
   "justification": "Monitor messages overstated coverage and one import failed silently. Standard: summary text, one import, one count; no query change.",
   "files": [
     "scripts/r2_monitor.py",
@@ -14,7 +14,7 @@
   "functions": [
     {
       "name": "not_checked_note",
-      "file_line": "scripts/r2_monitor.py:1560",
+      "file_line": "scripts/r2_monitor.py:1571",
       "input": "results dict from run_monitor with bucket lists",
       "output": "plain text naming every not-checked chapter group",
       "if_none": "empty string when every chapter was checked"
@@ -23,7 +23,7 @@
   "values": [
     {
       "value": "results['skipped_no_url']",
-      "read_at": "scripts/r2_monitor.py:1568",
+      "read_at": "scripts/r2_monitor.py:1577",
       "nullable": "no",
       "guard_at": "int(results[key]) raises",
       "if_missing": "run fails loudly"
@@ -55,7 +55,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_r2_monitor_medium_findings.py",
-    "fails_when": "Fixes reverted: 5 failed (docs/qa/session-b/6-monitor-medium-red.md)",
+    "fails_when": "Fixes reverted: 5 failed (docs/qa/session-b/6-monitor-medium-red.txt)",
     "observed_red": "Ran the new tests against unfixed r2_monitor.py: 5 failed, 0 passed (two by missing helper names, so their red is weaker)."
   },
   "post_merge": {
