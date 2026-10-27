@@ -1,0 +1,101 @@
+{
+  "tier": "standard",
+  "justification": "Standard: two merge-time gates on the development process, not on served output. A PreToolUse hook makes check_pr_gates.py the only way a PR merges from a Claude session, and the merge gate now also refuses a branch whose code commits were never read by a finished Sol review. No database, no customer-facing text. Not Minor: it changes what is allowed to merge.",
+  "commit_hash": "34037bd9",
+  "files": [
+    ".claude/hooks/pr-merge-guard.py",
+    ".claude/settings.json",
+    ".githooks/pre-push",
+    "scripts/check_pr_gates.py",
+    "scripts/cross_review.py",
+    "scripts/review_coverage.py",
+    "tests/test_pr_merge_guard.py",
+    "tests/test_review_coverage.py"
+  ],
+  "pre_impl": {
+    "existing_data": "No database. Inputs are git objects, the gh CLI, and per-branch JSONL files under the git common dir (sol-review/), next to the existing adjudicated-findings record.",
+    "assumption_mismatch": "The incremental review base in sol_review_base.sh moves on PUSH (@{u}), not on REVIEW, so a push whose review was skipped has its commits treated as already read by every later push. The merge gate therefore has to check coverage of every commit, not the last run.",
+    "new_vs_existing": "Extends check_pr_gates.py (already the documented merge gate) and cross_review.py (already writes per-branch state); new module scripts/review_coverage.py holds the testable logic.",
+    "external_source_error": "gh unreachable or git objects missing: both raise and the gate refuses (exit 2). A ledger row whose commits are not in this clone proves nothing and is skipped.",
+    "frontend_type": "N/A -- no frontend change.",
+    "user_failure_mode": "The operator is the user. Rollout cost measured: 10 of 19 open PRs touch reviewable code and have no ledger yet, so each needs one re-review run (command printed by the gate) or a recorded --review-override."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pr_merge_guard.py tests/test_review_coverage.py -q -o addopts=",
+    "fails_when": "Eleven mutations, applied one at a time: find_merges returns nothing; the gate's exit code ignored; an unresolvable PR allowed; any override accepted; a DeepSeek row counted as Sol; an unfinished row counted as reviewed; uncovered() returns []; an override not bound to the head commit; the requested model recorded instead of the one that answered; an optimistic default row; check_pr_gates ignoring the gap.",
+    "observed_red": "11 of 11 mutants killed. The first run killed 9 of 11: an unfinished row only failed because its model was None, so test_unfinished_row_never_counts_even_when_it_names_sol was added, and one mutation anchor was fixed. Live: the real hook, fed a gh pr merge 902 payload, ran check_pr_gates.py through real gh and blocked with exit 2."
+  },
+  "functions": [
+    {
+      "name": "find_merges",
+      "file_line": ".claude/hooks/pr-merge-guard.py",
+      "input": "A Bash or PowerShell command string",
+      "output": "Every PR selector the command would merge; None means the current branch's PR",
+      "if_none": "Empty command gives an empty list and the hook allows"
+    },
+    {
+      "name": "uncovered",
+      "file_line": "scripts/review_coverage.py",
+      "input": "repo, base, head, ledger rows",
+      "output": "Reviewable commits in base..head whose patch-id no finished Sol row covers",
+      "if_none": "No rows means every reviewable commit is returned (fail closed)"
+    },
+    {
+      "name": "review_gap",
+      "file_line": "scripts/check_pr_gates.py",
+      "input": "PR number, optional override reason",
+      "output": "READY, or NOT-REVIEWED with the unreviewed commits and the command to review them",
+      "if_none": "gh or git failure raises; main() reports UNKNOWN and exits 2"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A 429 kills the review after the push started; the hook's || true lets the push through.",
+      "what_happens": "Row written by the exit handler says did-not-finish; merge refused.",
+      "mitigated": "Yes -- covered by test_cross_review_writes_did_not_finish_when_the_model_call_dies, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_cross_review_writes_did_not_finish_when_the_model_call_dies",
+      "how": "cross_review.py registers an exit handler whose row starts as did-not-finish and only becomes reviewed after the model answers."
+    },
+    {
+      "scenario": "OpenAI out of credits; the review silently answers from DeepSeek.",
+      "what_happens": "Row records the answering model; not Sol, so the commit stays uncovered.",
+      "mitigated": "Yes -- covered by test_cross_review_records_the_model_that_actually_answered, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_cross_review_records_the_model_that_actually_answered",
+      "how": "The row stores sol_common.LAST_MODEL, the model that answered; review_coverage.is_sol rejects any OpenRouter vendor/model id."
+    },
+    {
+      "scenario": "Push 2's review is skipped; push 3 reviews only from @{u}, so push 2 is never read.",
+      "what_happens": "Push 2's commit listed as uncovered.",
+      "mitigated": "Yes -- covered by test_skipped_push_between_reviewed_pushes_is_caught, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_skipped_push_between_reviewed_pushes_is_caught",
+      "how": "review_coverage.uncovered checks every reviewable commit by patch-id against finished Sol rows, not just the last run's range."
+    },
+    {
+      "scenario": "A commit message that mentions gh pr merge 902.",
+      "what_happens": "Not treated as a merge.",
+      "mitigated": "Yes -- covered by test_non_merges_are_not_gated, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_non_merges_are_not_gated",
+      "how": "pr-merge-guard strips commit messages, PR bodies and heredoc bodies before matching."
+    },
+    {
+      "scenario": "Merge through the REST API or curl instead of gh pr merge.",
+      "what_happens": "Detected as a merge of that PR and sent through the gate.",
+      "mitigated": "Yes -- covered by test_every_merge_shape_is_found, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_every_merge_shape_is_found",
+      "how": "pr-merge-guard matches pulls/N/merge in any command, so gh api and curl are gated like gh pr merge."
+    },
+    {
+      "scenario": "An override recorded for one head is reused after a new commit.",
+      "what_happens": "New head needs a new decision.",
+      "mitigated": "Yes -- covered by test_gate_override_needs_a_reason_and_is_recorded, which goes red under the matching mutation.",
+      "repro": "python -m pytest tests/ -q -o addopts= -k test_gate_override_needs_a_reason_and_is_recorded",
+      "how": "review_coverage.has_override only accepts an override row whose head equals the PR's current head sha."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None -- no database change.",
+    "secrets": "None -- no new keys; the review still uses the existing OPENAI_API_KEY.",
+    "other_repo": "None -- the hook is registered in this repo's .claude/settings.json only.",
+    "manual_verify": "Restart Claude Code so settings.json reloads, then ask it to run gh pr merge on a merged PR (e.g. 902): it must be blocked with the check_pr_gates.py message."
+  }
+}
