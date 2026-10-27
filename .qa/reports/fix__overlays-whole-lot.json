@@ -1,0 +1,76 @@
+{
+  "tier": "standard",
+  "commit_hash": "b95461c4",
+  "justification": "A lot partly in a flood area read No. Standard not critical: one SQL text, measured on prod read-only, value layers untouched.",
+  "files": [
+    "frontend-nextjs/lib/spatial-overlays-sql.ts",
+    "frontend-nextjs/app/api/property/route.ts",
+    "tests/test_spatial_overlays_whole_lot_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "spatial_overlays (all MULTIPOLYGON, GIST on geom) and nsw_cadastre_lots (GIST on geom)",
+    "assumption_mismatch": "No lot covers the point: marker row reads false and the route marks spatial_overlays not checked",
+    "new_vs_existing": "Every lookup from deploy onward; no stored rows change"
+  },
+  "functions": [
+    {
+      "name": "GET property route overlay block",
+      "file_line": "frontend-nextjs/app/api/property/route.ts:80",
+      "input": "address longitude and latitude in WGS84",
+      "output": "rows of layer_type and value feeding constraints",
+      "if_none": "no rows means no overlay flags, same as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "dcpFloodRows[0].value",
+      "read_at": "frontend-nextjs/app/api/property/route.ts:145",
+      "nullable": "yes",
+      "guard_at": "length > 0 check",
+      "if_missing": "no flood flag"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "overlay layers at the point plus hazard layers over the whole lot",
+      "file_line": "frontend-nextjs/lib/spatial-overlays-sql.ts:14",
+      "where_clause": "ST_Contains(o.geom, point) OR (lot found AND ST_Intersects(o.geom, lot) AND overlap > 1 m2) for the listed layer types",
+      "if_zero": "No overlays apply",
+      "if_wrong": "A neighbour's polygon sharing only an edge would count; blocked by the 1 m2 overlap rule"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Address point outside a flood polygon that covers the back of the lot",
+      "what_happens": "Before: no flood flag. Now: flood flag",
+      "mitigated": true,
+      "how": "lot branch of SPATIAL_OVERLAYS_SQL",
+      "repro": "PYTEST_REAL_DB=1 pytest -m database tests/test_spatial_overlays_whole_lot_real_db.py"
+    },
+    {
+      "scenario": "A neighbouring FSR polygon touches the lot edge",
+      "what_happens": "Would add a second FSR value and pick the wrong one",
+      "mitigated": true,
+      "how": "Value layers are not in the lot branch; test_value_layers_stay_at_the_point",
+      "repro": "same test file"
+    },
+    {
+      "scenario": "The lot union query is slow on a large lot",
+      "what_happens": "The lookup budget runs out and overlays read not checked",
+      "mitigated": true,
+      "how": "Measured 40 to 120 ms on prod with both GIST indexes used",
+      "repro": "EXPLAIN ANALYZE on lot 8//DP575940"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 pytest -m database tests/test_spatial_overlays_whole_lot_real_db.py -o addopts=",
+    "fails_when": "Old point-only SQL: 3 failed / 3 passed (docs/qa/session-b/4-overlays-whole-lot-red.md)",
+    "observed_red": "Ran against prod read-only with the SQL moved but unchanged: flood missed on all 3 real lots; 3 failed, 3 passed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
