@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "commit_hash": "b0222258",
+  "justification": "One number in the lint ledger; no shipped code.",
+  "files": [
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "Someone types one new planning figure and lists it as open",
+      "what_happens": "Before: passes under 125. Now: OPEN COUNT ROSE fails CI",
+      "mitigated": true,
+      "how": "max_open equals the measured 124",
+      "repro": "docs/qa/session-b/8-max-open.txt"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/lint_hardcoded_regulatory_numbers.py --check",
+    "fails_when": "An extra open entry is added: OPEN COUNT ROSE 125 > 124",
+    "observed_red": "With one extra open entry: passes at 125, fails at 124 (docs/qa/session-b/8-max-open.txt)."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
