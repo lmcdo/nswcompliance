@@ -36,7 +36,7 @@ interface WaitlistButtonProps {
 // what a person asked for. Bump the version when the wording changes.
 const CONSENT_VERSION = '2026-10-28';
 const WORDING = {
-  waitlist: 'Email me when a paid report for this address is available.',
+  waitlist: 'Paid reports launching soon. Join the waitlist to be notified.',
   'email-result': 'Email me a link to this result. No marketing emails.',
 } as const;
 
@@ -134,9 +134,7 @@ export function WaitlistButton({
       </div>
       {errorMsg && <p className="text-xs text-red-600">{errorMsg}</p>}
       <p className="text-xs text-gray-400">
-        {variant === 'email-result'
-          ? WORDING['email-result']
-          : 'Paid reports launching soon. Join the waitlist to be notified.'}
+        {WORDING[variant]}
       </p>
     </form>
   );
