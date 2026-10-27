@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "commit_hash": "2ee0dbe4",
+  "justification": "One explanatory sentence with typed lot sizes; decides nothing. Minor: text only.",
+  "files": [
+    "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
+    "frontend-nextjs/__tests__/components/compliance/pattern-book-no-typed-lot-sizes.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/components/compliance/pattern-book-no-typed-lot-sizes.test.ts",
+    "fails_when": "Typed sentence restored: 1 failed (docs/qa/session-b/5c-pattern-book-red.txt)",
+    "observed_red": "Ran the new test on the unfixed card: 1 failed."
+  },
+  "break_it": [
+    {
+      "scenario": "The SEPP Pattern Book minimum lot sizes are amended",
+      "what_happens": "Before: the card kept printing the old 300 and 1500 figures. Now: no typed figure, only the per-design rows from the database",
+      "mitigated": true,
+      "how": "sentence rewritten without figures",
+      "repro": "npx jest __tests__/components/compliance/pattern-book-no-typed-lot-sizes.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

@@ -493,7 +493,7 @@ export function PatternBookEligibilityCard({
                     <div className="text-sm text-amber-900">
                       <p className="font-medium mb-2">What This Means:</p>
                       <ul className="space-y-1 ml-4 list-disc">
-                        <li>Pattern Book designs range from studio apartments (300m² min) to manor houses (1500m² min)</li>
+                        <li>Each Pattern Book design type has its own minimum lot size, listed by design type below</li>
                         <li>If your lot is below the smallest minimum, Pattern Book CDC pathway is not available</li>
                         <li>You'll need to pursue a standard Development Application (DA) instead</li>
                         <li>DA pathway uses Housing SEPP standards but requires council/certifier assessment (50+ days)</li>

@@ -1622,12 +1622,6 @@
    "count": 2
   },
   {
-   "file": "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
-   "text": "Pattern Book designs range from studio apartments (300m² min) to manor houses (1500m² min)",
-   "fate": "open",
-   "reason": "found by the widened scan 2026-10-26 (min / bare comparison / zone list); serve from the database"
-  },
-  {
    "file": "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
    "text": "['R1', 'R2', 'R3', 'R4'",
    "fate": "open",
