@@ -1,0 +1,70 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rules are proven (and so shown) by the nightly check; not critical because a rule is proven only if every word is the council's printed text in order, and rules already proven are never re-judged.",
+  "commit_hash": "dafbdd16",
+  "files": [
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions quote_status/council_quote/quote_page, written by council_quote.py --apply (nightly, after dcp-commit)",
+    "assumption_mismatch": "A lone line that looks like a label but is a value: only punctuated labels (a. (b) iv) 2.) are skipped, never a bare number",
+    "new_vs_existing": "Existing unconfirmed rows: the nightly --unchecked run and any per-chapter run re-judge them",
+    "external_source_error": "N/A",
+    "frontend_type": "No",
+    "user_failure_mode": "If wrong, a rule shows the council's printed text including the label line; text is always copied from the PDF"
+  },
+  "functions": [
+    {
+      "name": "judge_twice",
+      "file_line": "scripts/council_quote.py:470",
+      "input": "row + two stream lists",
+      "output": "verdict dict with status, reason, quote and quote_page for the rule",
+      "if_none": "no stream text gives the same unconfirmed verdict as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "_LIST_LABEL",
+      "read_at": "scripts/council_quote.py:85",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A bare table value '3' skipped lets 'Maximum storeys 2' be proven over a printed 3",
+      "what_happens": "a rule shown as proven with the wrong storey number",
+      "mitigated": true,
+      "how": "_LIST_LABEL requires . or ) or brackets",
+      "repro": "pytest tests/test_council_quote.py -k bare_number"
+    },
+    {
+      "scenario": "Skipped-label search changes the anchor of a rule already proven",
+      "what_happens": "a proven quote changes or fails",
+      "mitigated": true,
+      "how": "judge_twice runs the second pass only on unconfirmed verdicts; dry-run 35 chapters, 22,532 rules: 0 changed",
+      "repro": "pytest tests/test_council_quote.py -k not_judged_again"
+    },
+    {
+      "scenario": "Reader's words differ from the council's but match once a label line is skipped",
+      "what_happens": "a reworded rule shown as proven",
+      "mitigated": true,
+      "how": "the second pass uses the same judge(): exact needs every character in order, recovered needs anchors plus 0.6 overlap and no cut words; the shown text is copied from the PDF",
+      "repro": "pytest tests/test_council_quote.py -k words_not_printed"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Run council_quote.py --apply on the 4 chapters with gains (needs user yes) and re-count hidden rules"
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q",
+    "fails_when": "judge_twice skips the second pass (Hornsby 248365 test goes red) or bare numbers count as labels (table test goes red); both mutations were run and went red",
+    "observed_red": "2026-10-27: second pass replaced by judge(row, streams) -> '1 failed, 44 passed'; label regex made [.)]? -> '1 failed, 44 passed'"
+  }
+}
