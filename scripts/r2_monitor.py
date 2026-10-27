@@ -1584,6 +1584,18 @@ def not_checked_note(results: dict) -> str:
     return note
 
 
+def quiet_run_outcome(results: dict) -> tuple[int, str]:
+    """(exit code, headline word) for a run with no changes and no real failures.
+
+    Zero chapters checked is never "no changes". With no infra reason it means the monitor
+    itself stopped working, so it fails (1). When every chapter was blocked or timed out it
+    stays 0, as infra always has, but the headline says nothing was checked.
+    """
+    if chapters_checked(results) > 0:
+        return 0, "no changes"
+    return (0 if not_checked_note(results) else 1), "NOTHING CHECKED"
+
+
 def reseed_hashes(conn, council_filter: str | None, dry_run: bool, delay: float = 5.0) -> None:
     """
     Re-download all active chapters and update stored content_hash, url_etag,
@@ -1831,13 +1843,18 @@ def main():
         print(f"  Chapters flagged with needs_extraction=TRUE in dcp_chapter_registry.")
         sys.exit(exit_code)  # 2 = changes detected (CI trigger); real_failed==0 here
     else:
+        quiet_code, headline = quiet_run_outcome(results)
         send_telegram(
-            f"DCP Monitor: no changes ({results['checked']} chapters checked){infra_note}"
+            f"DCP Monitor: {headline} ({results['checked']} chapters checked){infra_note}"
         )
-        print("\n  No changes detected." + (
-            " Some chapters were NOT checked:" + infra_note if infra_note
-            else " All chapters are current."))
-        sys.exit(0)
+        if headline == "NOTHING CHECKED":
+            print("\n  NOTHING CHECKED: 0 chapters were checked." + (infra_note or
+                  " No infra reason recorded -- the monitor itself is not working."))
+        else:
+            print("\n  No changes detected." + (
+                " Some chapters were NOT checked:" + infra_note if infra_note
+                else " All chapters are current."))
+        sys.exit(quiet_code)
 
 
 if __name__ == "__main__":
