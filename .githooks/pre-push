@@ -622,6 +622,10 @@ SOL_BRANCH="$(printf '%s' "$SOL_REF" | tr '/' '-')-${SOL_HASH:-nohash}"
 SOL_STATE_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/sol-review"
 SOL_ADJUDICATED="$SOL_STATE_DIR/$SOL_BRANCH.json"
 SOL_ROUNDS="$SOL_STATE_DIR/$SOL_BRANCH.rounds"
+# Whether each run FINISHED and which model answered. check_pr_gates.py reads
+# it at merge time; an outage or a DeepSeek fallback leaves no "reviewed by Sol"
+# row, so the merge is refused instead of the gap passing silently.
+SOL_REVIEW_LOG="$SOL_STATE_DIR/$SOL_BRANCH.reviews.jsonl"
 mkdir -p "$SOL_STATE_DIR" 2>/dev/null || true
 
 if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_review.py ]; then
@@ -630,7 +634,7 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
     echo "=== [7] Sol cross-review (BLOCKING on HIGH — diff touches served/printed output) ==="
     echo "    reviewing $SOL_BASE..HEAD (new commits only, not the whole branch)"
     SOL_RC=0
-    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512 --fail-on high       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated || SOL_RC=$?
+    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512 --fail-on high       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated --review-log "$SOL_REVIEW_LOG" || SOL_RC=$?
     if [ "$SOL_RC" -ne 0 ]; then
       SOL_ROUND_N=$(( $(cat "$SOL_ROUNDS" 2>/dev/null || echo 0) + 1 ))
       echo "$SOL_ROUND_N" > "$SOL_ROUNDS" 2>/dev/null || true
@@ -715,7 +719,7 @@ if [ "${SOL_REVIEW:-1}" = "1" ] && [ -n "$SOL_CHANGED" ] && [ -f scripts/cross_r
     # loss. The record carries each finding's text now too, but this keeps the
     # full report — scenario and suggested fix included — which the record does
     # not store.
-    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated 2>&1 | tee "$SOL_STATE_DIR/$SOL_BRANCH.last-review.txt" || true
+    python scripts/cross_review.py --base "$SOL_BASE" --max-diff-kb 512       --adjudicated "$SOL_ADJUDICATED" --record-adjudicated --review-log "$SOL_REVIEW_LOG" 2>&1 | tee "$SOL_STATE_DIR/$SOL_BRANCH.last-review.txt" || true
     echo "(advisory only — verify each finding against the code; never a merge gate)"
     echo "    full report kept at $SOL_STATE_DIR/$SOL_BRANCH.last-review.txt"
   fi

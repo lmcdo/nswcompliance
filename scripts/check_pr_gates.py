@@ -42,9 +42,13 @@ different problems with different fixes:
   READY       a gates run exists for the head sha and concluded success
   NOT-RUN     no gates run exists for the head sha (usually: the PR conflicts)
   FAILED      a run exists and did not succeed
+  NOT-REVIEWED  CI passed, but a code commit on the branch was never read by a
+              finished Sol review (2026-10-27; see scripts/review_coverage.py).
+              An outage, a 429 or a DeepSeek fallback counts as not reviewed.
 
     python scripts/check_pr_gates.py 907        # exit 0 only if READY
     python scripts/check_pr_gates.py 907 --wait # poll while a run is in flight
+    python scripts/check_pr_gates.py 907 --review-override "why no review is acceptable"
 """
 
 from __future__ import annotations
@@ -54,6 +58,12 @@ import json
 import subprocess
 import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
+import review_coverage
+
+REPO = Path(__file__).resolve().parents[1]
 
 POLL_SECONDS = 20
 DEFAULT_WAIT_MINUTES = 10
@@ -71,10 +81,65 @@ def gh(*args: str) -> str:
 
 def pr_facts(pr: int) -> tuple[str, str, str]:
     """Return (head_sha, mergeable, state) for the PR."""
-    data = json.loads(
-        gh("pr", "view", str(pr), "--json", "headRefOid,mergeable,state,headRefName")
-    )
+    data = pr_view(pr)
     return data["headRefOid"], data.get("mergeable", "UNKNOWN"), data["state"]
+
+
+def pr_view(pr: int) -> dict:
+    return json.loads(
+        gh("pr", "view", str(pr), "--json", "headRefOid,mergeable,state,headRefName,baseRefName")
+    )
+
+
+def review_gap(pr: int, override: str | None) -> tuple[str, str]:
+    """(verdict, message): READY, or NOT-REVIEWED with the commits nobody read.
+
+    Raises RuntimeError when the facts cannot be established, which main()
+    reports as a refusal: an unreadable ledger is not a reviewed branch.
+    """
+    data = pr_view(pr)
+    head, ref = data["headRefOid"], data["headRefName"]
+    base_ref = f"origin/{data.get('baseRefName') or 'main'}"
+    review_coverage._git(REPO, "fetch", "-q", "origin", ref, data.get("baseRefName") or "main")
+    base = review_coverage._git(REPO, "merge-base", base_ref, head).strip()
+    log = review_coverage.log_path(REPO, ref)
+    rows = review_coverage.read_rows(log)
+
+    gap = review_coverage.uncovered(REPO, base, head, rows)
+    if not gap:
+        return "READY", "every code commit was read by a finished Sol review"
+
+    recorded = review_coverage.has_override(rows, head)
+    if override is not None:
+        if len(override.strip()) < review_coverage.MIN_OVERRIDE_CHARS:
+            return "NOT-REVIEWED", (
+                f"--review-override needs a reason of at least "
+                f"{review_coverage.MIN_OVERRIDE_CHARS} characters; it is the only record "
+                "of why unreviewed code was merged."
+            )
+        review_coverage.append_row(log, {
+            "base": base, "head": head, "outcome": review_coverage.OUTCOME_OVERRIDE,
+            "reason": override.strip(), "uncovered": gap,
+        })
+        recorded = override.strip()
+    if recorded:
+        return "READY", (
+            f"{len(gap)} code commit(s) unreviewed, merged on a recorded override: {recorded}"
+        )
+
+    listing = "\n".join(f"    {c[:8]}" for c in gap[:10])
+    more = f"\n    ... and {len(gap) - 10} more" if len(gap) > 10 else ""
+    return "NOT-REVIEWED", (
+        f"{len(gap)} code commit(s) on {ref} were never read by a finished Sol review:\n"
+        f"{listing}{more}\n"
+        "  A 429, a timeout, a too-large diff, SOL_REVIEW=0, --no-verify or a DeepSeek\n"
+        "  fallback all leave a commit here. The next push will NOT re-read them: its\n"
+        "  base is the last push, not the last review. Review them now:\n"
+        f"    git checkout {ref} && python scripts/cross_review.py --base {base[:12]} \\n"
+        f"      --max-diff-kb 512 --review-log \"{log}\"\n"
+        "  Or merge anyway, on the record:\n"
+        f"    python scripts/check_pr_gates.py {pr} --review-override \"<why>\""
+    )
 
 
 def gates_run_for(sha: str) -> dict | None:
@@ -137,6 +202,11 @@ def main() -> int:
         help="poll while a run is in flight rather than reporting PENDING",
     )
     ap.add_argument("--wait-minutes", type=int, default=DEFAULT_WAIT_MINUTES)
+    ap.add_argument(
+        "--review-override",
+        metavar="REASON",
+        help="merge although a code commit was never Sol-reviewed; the reason is recorded",
+    )
     args = ap.parse_args()
 
     deadline = time.time() + args.wait_minutes * 60
@@ -154,6 +224,15 @@ def main() -> int:
             time.sleep(POLL_SECONDS)
             continue
         break
+
+    if verdict == "READY":
+        print(f"{verdict}  {message}")
+        try:
+            verdict, message = review_gap(args.pr, args.review_override)
+        except (RuntimeError, OSError, KeyError) as exc:
+            print(f"UNKNOWN  {exc}", file=sys.stderr)
+            print("Refusing: could not establish whether the branch was reviewed.", file=sys.stderr)
+            return 2
 
     print(f"{verdict}  {message}")
 

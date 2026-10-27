@@ -57,6 +57,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for the sibling module
+import review_coverage
 import sol_common
 # DQ-54: git exports GIT_DIR and GIT_INDEX_FILE to its hooks and they OVERRIDE
 # cwd, so a hook-invoked script that passes cwd= can silently read a DIFFERENT
@@ -611,6 +612,9 @@ def main() -> None:
                              "without calling the model. Prefix the text 'real:' or 'wrong:' to score "
                              "it; anything else is kept as a reason and stays unreviewed.")
     parser.add_argument("--branch", help="Branch name to stamp on ledger rows (default: the current ref).")
+    parser.add_argument("--review-log", type=Path,
+                        help="Append a row saying whether this run finished and which model answered "
+                             "(read by check_pr_gates.py at merge time).")
     parser.add_argument("--verdict-report", action="store_true",
                         help="Print the accumulated verdict counts for the --adjudicated record's ledger and exit.")
     args = parser.parse_args()
@@ -630,9 +634,18 @@ def main() -> None:
         _apply_verdict(args.adjudicated, args.record_verdict, args.branch)
         return
 
+    # Pessimistic by construction: the row is written at exit and only says
+    # "reviewed" once the model has answered. A 429, a timeout, a too-large diff
+    # or a crash all leave "did-not-finish", which check_pr_gates.py refuses.
+    run_state = {"outcome": review_coverage.OUTCOME_UNFINISHED, "model": None}
+    if args.review_log and not (args.pr or args.staged):
+        _register_review_row(args, run_state)
+
     api_key = sol_common.load_api_key(_REPO_ROOT)
     diff = get_diff(args)
     result = call_model(build_messages(diff, load_checklist(args.base)), args.model, api_key)
+    run_state.update(outcome=review_coverage.OUTCOME_REVIEWED,
+                     model=sol_common.LAST_MODEL or args.model)
     findings = rank(result["findings"])
 
     # Split into findings this branch has already been shown, and genuinely new
@@ -811,6 +824,28 @@ def _apply_verdict(record_path: Path, text: str, branch: str | None) -> None:
         print("  counts toward neither side of the false-positive rate. Prefix it to score:")
         print("    SOL_OVERRIDE=\"wrong: the null guard at line 40 already covers this\"")
         print("    SOL_OVERRIDE=\"real: correct finding, but out of scope for this PR\"")
+
+
+def _register_review_row(args: argparse.Namespace, run_state: dict) -> None:
+    """Write one ledger row when the process exits, however it exits."""
+    import atexit
+    try:
+        head = review_coverage._git(_REPO_ROOT, "rev-parse", "HEAD").strip()
+        base = review_coverage._git(_REPO_ROOT, "merge-base", args.base, "HEAD").strip()
+    except RuntimeError as exc:
+        print(f"  (review log not written: {exc})", file=sys.stderr)
+        return
+
+    def _write() -> None:
+        try:
+            review_coverage.append_row(args.review_log, {
+                "base": base, "head": head, "requested": args.model,
+                "model": run_state["model"], "outcome": run_state["outcome"],
+            })
+        except OSError as exc:
+            print(f"  (review log not written: {exc})", file=sys.stderr)
+
+    atexit.register(_write)
 
 
 def _now() -> str:

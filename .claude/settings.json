@@ -84,6 +84,16 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/surface-prior-art-guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/pr-merge-guard.py\"",
+            "timeout": 300
+          }
+        ]
       }
     ],
     "PostToolUse": [
