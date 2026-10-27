@@ -54,14 +54,31 @@ def sh(*args, cwd=None):
         return ""
 
 
-def main():
+
+def _payload() -> dict:
+    """The hook payload. Claude Code sends it as JSON on stdin; TOOL_INPUT is
+    only a fallback. Reading the environment alone left this hook dead: Claude
+    Code never sets TOOL_INPUT, so every command looked empty (found 2026-10-27)."""
+    raw = ""
     try:
-        data = json.loads(os.environ.get("TOOL_INPUT", "{}"))
+        if not sys.stdin.isatty():
+            raw = sys.stdin.read()
+    except OSError:
+        raw = ""
+    raw = raw.strip() or os.environ.get("TOOL_INPUT", "")
+    try:
+        data = json.loads(raw) if raw else {}
     except json.JSONDecodeError:
-        sys.exit(0)
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    tool_input = data.get("tool_input") or data.get("toolInput") or data
+    return tool_input if isinstance(tool_input, dict) else {}
+
+def main():
     # `or ""` not a default: a key PRESENT with value null skips the
     # default and would hand None to the `in` test below.
-    command = data.get("command") or ""
+    command = _payload().get("command") or ""
 
     if "git push" not in command:
         sys.exit(0)
