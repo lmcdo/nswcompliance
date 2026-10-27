@@ -66,6 +66,8 @@ interface PartBasedDCPSectionProps {
   zone: string;
   developmentType: string;
   lotArea?: number;  // For subdivision filtering (cadastre area in m²)
+  /** LEP minimum lot size (constraints.minLotSize); null = unknown, nothing hidden. */
+  minLotSize?: number | null;
   heritage?: any;  // For heritage filtering
 }
 
@@ -79,11 +81,12 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
   zone,
   developmentType,
   lotArea,
+  minLotSize,
   heritage
 }) => {
   // Subdivision filter state
   const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
-  const propertyCanSubdivide = canSubdivide(lotArea);
+  const propertyCanSubdivide = canSubdivide(lotArea, minLotSize);
 
   // Heritage filter state
   const [showHeritageOverride, setShowHeritageOverride] = useState(false);
@@ -198,7 +201,7 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
                 {subdivisionFiltered && (
                   <div className="flex items-center justify-between">
                     <p className="text-blue-800 text-xs">
-                      • Subdivision: Property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'} - too small to subdivide (450m² minimum)
+                      • Subdivision: Property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'} - below the LEP minimum lot size of {minLotSize}m²
                     </p>
                     <button
                       onClick={() => setShowSubdivisionOverride(true)}
@@ -236,6 +239,7 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
           developmentType={developmentType}
           formerCouncil={formerCouncil}
           lotArea={lotArea}
+          minLotSize={minLotSize}
           heritage={heritage}
           showSubdivisionOverride={showSubdivisionOverride}
           showHeritageOverride={showHeritageOverride}

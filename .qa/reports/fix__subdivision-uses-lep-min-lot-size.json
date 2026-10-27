@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "commit_hash": "0d1987fb",
+  "justification": "A typed 450 m2 decided which rules a user sees, for every council. Standard: one pure function, one new optional prop on three sections.",
+  "files": [
+    "frontend-nextjs/lib/requirement-prioritization.ts",
+    "frontend-nextjs/components/compliance/ComplianceDashboard.tsx",
+    "frontend-nextjs/components/compliance/DARequirementsSection.tsx",
+    "frontend-nextjs/components/compliance/GeneralDCPSection.tsx",
+    "frontend-nextjs/components/compliance/PartBasedDCPSection.tsx",
+    "frontend-nextjs/__tests__/lib/can-subdivide-lep-min-lot-size.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "constraints.minLotSize from the Planning Portal Lot Size layer (frontend-nextjs/lib/nsw-planning-portal.ts:782)",
+    "assumption_mismatch": "No Lot Size layer for the address gives null, so nothing is hidden",
+    "new_vs_existing": "Render-time only, every page view from deploy"
+  },
+  "functions": [
+    {
+      "name": "canSubdivide",
+      "file_line": "frontend-nextjs/lib/requirement-prioritization.ts:147",
+      "input": "lot area as number or text, plus the LEP minimum lot size",
+      "output": "boolean, false hides subdivision rows",
+      "if_none": "either value missing returns true so rows show"
+    }
+  ],
+  "values": [
+    {
+      "value": "constraints.minLotSize",
+      "read_at": "ComplianceDashboard.tsx:253",
+      "nullable": "yes",
+      "guard_at": "requirement-prioritization.ts:150",
+      "if_missing": "subdivision rules shown"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A 300 m2 lot in a council whose LEP minimum is 200 m2",
+      "what_happens": "Before: subdivision rules hidden as too small. Now: shown",
+      "mitigated": true,
+      "how": "compares with lepMinLotSize",
+      "repro": "npx jest __tests__/lib/can-subdivide-lep-min-lot-size.test.ts"
+    },
+    {
+      "scenario": "The address has no Lot Size layer so minLotSize is null",
+      "what_happens": "All subdivision rules are shown, none hidden",
+      "mitigated": true,
+      "how": "null guard returns true",
+      "repro": "same test"
+    },
+    {
+      "scenario": "A lot just above the minimum that still cannot make two lots",
+      "what_happens": "Subdivision rules show; user reads them, nothing wrongly hidden",
+      "mitigated": true,
+      "how": "Showing is the safe side; hiding needs the LEP figure",
+      "repro": "canSubdivide(700, 600)"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/lib/can-subdivide-lep-min-lot-size.test.ts",
+    "fails_when": "Typed 450 restored: 3 failed / 2 passed (docs/qa/session-b/5a-subdivide-red.txt)",
+    "observed_red": "Ran the new test against the unfixed function: 3 failed, 2 passed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

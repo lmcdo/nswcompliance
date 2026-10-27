@@ -250,7 +250,7 @@ export function ComplianceDashboard({
 
     // Apply subdivision filter - prefer cadastre area (legally authoritative)
     const lotArea = propertyData?.lotDimensions?.area ?? propertyData?.propertyArea;
-    const propertyCanSubdivide = canSubdivide(lotArea);
+    const propertyCanSubdivide = canSubdivide(lotArea, propertyData?.constraints?.minLotSize);
     if (!propertyCanSubdivide) {
       filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
     }
@@ -275,7 +275,7 @@ export function ComplianceDashboard({
 
     // Apply subdivision filter - prefer cadastre area (legally authoritative)
     const lotArea = propertyData?.lotDimensions?.area ?? propertyData?.propertyArea;
-    const propertyCanSubdivide = canSubdivide(lotArea);
+    const propertyCanSubdivide = canSubdivide(lotArea, propertyData?.constraints?.minLotSize);
     if (!propertyCanSubdivide) {
       filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
     }
@@ -1413,6 +1413,7 @@ export function ComplianceDashboard({
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
                   lotArea={propertyData.lotDimensions?.area}
+                  minLotSize={propertyData.constraints?.minLotSize ?? null}
                   heritage={propertyData.heritage}
                 />
               ) : (
@@ -1424,6 +1425,7 @@ export function ComplianceDashboard({
                   developmentType={developmentType}
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
                   lotArea={propertyData.lotDimensions?.area}
+                  minLotSize={propertyData.constraints?.minLotSize ?? null}
                   heritage={propertyData.heritage}
                   daRequirementsCount={dcpCompleteData.da_requirements?.requirements?.length || 0}
                   displayModeSetterRef={displayModeSetterRef}
