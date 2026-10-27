@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "commit_hash": "4f241caf",
+  "justification": "A broken monitor could report healthy. Standard: end-of-run message and exit code; no query change.",
+  "files": [
+    "scripts/r2_monitor.py",
+    "tests/test_r2_monitor_zero_checked.py"
+  ],
+  "pre_impl": {
+    "existing_data": "None read or written; run summary and exit code only",
+    "assumption_mismatch": "A council-filter run with a typo now exits 1 instead of 0, which is correct: it checked nothing",
+    "new_vs_existing": "From the next monitor run onward; no stored rows change"
+  },
+  "functions": [
+    {
+      "name": "quiet_run_outcome",
+      "file_line": "scripts/r2_monitor.py:1587",
+      "input": "results dict from run_monitor with bucket lists",
+      "output": "exit code and headline word for a quiet run",
+      "if_none": "zero checked and no reason returns exit 1"
+    }
+  ],
+  "values": [
+    {
+      "value": "chapters_checked(results)",
+      "read_at": "scripts/r2_monitor.py:1594",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "KeyError, run fails loudly"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The registry query returns no chapters after a schema change",
+      "what_happens": "Before: All chapters are current, exit 0. Now: NOTHING CHECKED, exit 1",
+      "mitigated": true,
+      "how": "quiet_run_outcome",
+      "repro": "pytest tests/test_r2_monitor_zero_checked.py"
+    },
+    {
+      "scenario": "Every council site blocks the Railway IP on one night",
+      "what_happens": "Exit stays 0 as before; message now says NOTHING CHECKED with the reasons",
+      "mitigated": true,
+      "how": "infra note present keeps exit 0",
+      "repro": "same test file"
+    },
+    {
+      "scenario": "A normal night with forty chapters unchanged",
+      "what_happens": "Unchanged: no changes, exit 0",
+      "mitigated": true,
+      "how": "checked above zero",
+      "repro": "same test file"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_r2_monitor_zero_checked.py",
+    "fails_when": "Fix reverted: 4 failed (docs/qa/session-b/9-monitor-zero-checked-red.txt)",
+    "observed_red": "Ran the new tests against unfixed r2_monitor.py: 4 failed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

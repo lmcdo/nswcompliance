@@ -1,0 +1,36 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\lawre\Downloads\solvyra\projects\compliance engine\compliance-engine\.claude\worktrees\monitor-zero-checked
+configfile: pytest.ini
+plugins: hypothesis-6.155.1, anyio-4.14.1, Faker-40.43.0, platformdirs-4.12.2, asyncio-1.3.0, split-0.11.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 4 items
+
+tests\test_r2_monitor_zero_checked.py FFFF                               [100%]
+
+================================== FAILURES ===================================
+_____________ test_nothing_checked_and_nothing_explains_it_fails ______________
+tests\test_r2_monitor_zero_checked.py:39: in test_nothing_checked_and_nothing_explains_it_fails
+    assert r2_monitor.quiet_run_outcome(_results()) == (1, "NOTHING CHECKED")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'r2_monitor' has no attribute 'quiet_run_outcome'
+___ test_nothing_checked_because_every_site_blocked_stays_quiet_but_says_so ___
+tests\test_r2_monitor_zero_checked.py:43: in test_nothing_checked_because_every_site_blocked_stays_quiet_but_says_so
+    code, word = r2_monitor.quiet_run_outcome(_results(waf_blocked=[{"council": "x"}]))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'r2_monitor' has no attribute 'quiet_run_outcome'
+___________________ test_a_normal_quiet_run_is_still_clean ____________________
+tests\test_r2_monitor_zero_checked.py:48: in test_a_normal_quiet_run_is_still_clean
+    assert r2_monitor.quiet_run_outcome(_results(checked=40, unchanged=40)) == (0, "no changes")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'r2_monitor' has no attribute 'quiet_run_outcome'
+______________________________ test_main_uses_it ______________________________
+tests\test_r2_monitor_zero_checked.py:53: in test_main_uses_it
+    assert "quiet_run_outcome(results)" in src
+E   assert 'quiet_run_outcome(results)' in '#!/usr/bin/env python3\n"""\nWeekly DCP Chapter Monitor\n===========================\nFor each council, scrapes the h...te\n            else " All chapters are current."))\n        sys.exit(0)\n\n\nif __name__ == "__main__":\n    main()\n'
+=========================== short test summary info ===========================
+FAILED tests/test_r2_monitor_zero_checked.py::test_nothing_checked_and_nothing_explains_it_fails
+FAILED tests/test_r2_monitor_zero_checked.py::test_nothing_checked_because_every_site_blocked_stays_quiet_but_says_so
+FAILED tests/test_r2_monitor_zero_checked.py::test_a_normal_quiet_run_is_still_clean
+FAILED tests/test_r2_monitor_zero_checked.py::test_main_uses_it - assert 'qui...
+============================== 4 failed in 2.21s ==============================
