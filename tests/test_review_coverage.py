@@ -129,7 +129,8 @@ def test_torn_ledger_line_is_ignored(tmp_path):
 
 
 @pytest.mark.parametrize("model, ok", [
-    ("gpt-5.6", True), ("deepseek/deepseek-v3.2", False), (None, False), ("", False), ("  ", False),
+    ("gpt-5.6", True), ("gpt-5.6-sol", True), ("deepseek/deepseek-v3.2", False), ("deepseek-v3", False),
+    ("openai/gpt-5.6", False), (None, False), ("", False), ("  ", False),
 ])
 def test_is_sol(model, ok):
     assert rc.is_sol(model) is ok

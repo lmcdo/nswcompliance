@@ -92,8 +92,9 @@ def log_path(repo: Path, ref: str) -> Path:
 
 
 def is_sol(model: object) -> bool:
-    """An OpenAI model id. OpenRouter ids carry a vendor prefix: "deepseek/..."."""
-    return isinstance(model, str) and bool(model.strip()) and "/" not in model
+    """An OpenAI GPT model id, by allowlist. A bare "deepseek-v3" must not pass
+    just because it lacks OpenRouter's vendor prefix (Sol, 2026-10-27)."""
+    return isinstance(model, str) and model.strip().lower().startswith("gpt-") and "/" not in model
 
 
 def append_row(path: Path, row: dict) -> None:
