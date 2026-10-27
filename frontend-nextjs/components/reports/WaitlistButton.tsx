@@ -86,7 +86,8 @@ export function WaitlistButton({
       const json = await res.json().catch(() => ({}));
       setEmailSent(json.email_sent === true);
       // No email or address in the event — conversion is measured without PII.
-      posthog.capture('lead_submitted', { interest_type: interestType, variant });
+      // Analytics must never turn a stored lead into an on-screen failure.
+      try { posthog.capture('lead_submitted', { interest_type: interestType, variant }); } catch { /* analytics only */ }
       setState('done');
       onSuccess?.();
     } catch (err) {

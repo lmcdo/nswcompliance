@@ -28,8 +28,8 @@ interface Props {
 }
 
 const PRODUCT = {
-  duplex: { noun: 'duplex', tool: 'upzoning-check', interestType: 'dual-occ-referral' },
-  'granny-flat': { noun: 'granny flat', tool: 'granny-flat', interestType: 'granny-flat-referral' },
+  duplex: { noun: 'duplex', tool: 'upzoning-check', interestType: 'dual-occ-referral', consentVersion: '2026-07-19' },
+  'granny-flat': { noun: 'granny flat', tool: 'granny-flat', interestType: 'granny-flat-referral', consentVersion: '2026-10-28-granny-flat' },
 } as const;
 
 interface Opt {
@@ -50,15 +50,14 @@ const OWNERSHIP: Opt[] = [
   { v: 'other', l: 'Agent / someone else' },
 ];
 
-// Bump when the consent wording below changes — stored with each lead so we can
-// always show a regulator the exact statement a given person agreed to.
-const CONSENT_VERSION = '2026-07-19';
+// Consent versions live in PRODUCT (one per wording) — bump when the wording
+// changes, so a regulator can be shown the exact statement a person agreed to.
 
 const STEPS = ['timeline', 'ownership', 'contact'] as const;
 const TOTAL = STEPS.length;
 
 export function BuilderReferralCard({ address, lgaName, verdict = 'eligible', product = 'duplex' }: Props) {
-  const { noun, tool, interestType } = PRODUCT[product];
+  const { noun, tool, interestType, consentVersion } = PRODUCT[product];
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [firstName, setFirstName] = useState('');
@@ -130,7 +129,7 @@ export function BuilderReferralCard({ address, lgaName, verdict = 'eligible', pr
             finance: null,
             budget: null,
           },
-          consent_version: CONSENT_VERSION,
+          consent_version: consentVersion,
           consent_wording: shareWording,
         }),
       });
