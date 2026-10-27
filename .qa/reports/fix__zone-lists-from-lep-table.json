@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "65bb7b21",
+  "commit_hash": "067c8125",
   "justification": "Typed zone lists decided a warning and whether Housing SEPP rules load. Standard: two components, one new reader of an existing endpoint.",
   "files": [
     "frontend-nextjs/lib/lep-permissibility.ts",
@@ -59,7 +59,7 @@
   ],
   "falsifiable_check": {
     "command": "npx jest __tests__/components/compliance/adg-zone-warning-from-lep.test.tsx __tests__/components/compliance/state-level-housing-sepp-zone-from-lep.test.tsx",
-    "fails_when": "Typed lists restored: 4 failed / 1 passed (docs/qa/session-b/5b-zone-lists-red.md)",
+    "fails_when": "Typed lists restored: 4 failed / 1 passed (docs/qa/session-b/5b-zone-lists-red.txt)",
     "observed_red": "Ran the new component tests against the unfixed components: 4 failed, 1 passed."
   },
   "post_merge": {
