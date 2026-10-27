@@ -345,11 +345,16 @@ export async function POST(req: NextRequest) {
       ...(qualification ? { qualification } : {}),
       ...(consentRecord ? { consent: consentRecord } : {}),
     }).select('id').single();
-    if (insertErr) console.error('[canibuildit/lead] insert failed:', insertErr.message);
+    if (insertErr) throw new Error(insertErr.message);
     leadId = inserted?.id ?? null;
   } catch (err) {
-    // Non-blocking — don't error the user if DB insert fails, but say so in the logs
-    console.error('[canibuildit/lead] insert threw:', err);
+    // A lost lead must not read as success: the forms show this error and keep
+    // the person's input, so they can retry instead of waiting for nothing.
+    console.error('[canibuildit/lead] insert failed:', err);
+    return NextResponse.json(
+      { error: 'We could not save that just now. Please try again.' },
+      { status: 500 },
+    );
   }
 
   // --- 8. Send confirmation email ---
@@ -402,15 +407,22 @@ export async function POST(req: NextRequest) {
   } catch (emailErr) {
     console.error('[canibuildit/lead] Resend error:', emailErr);
   }
-  if (leadId !== null) {
-    try {
-      await getSupabase().from('canibuildit_leads').update({ email_sent: emailSent }).eq('id', leadId);
-    } catch (err) {
-      console.error('[canibuildit/lead] email_sent update failed:', err);
-    }
-  }
+  if (leadId !== null) await recordEmailSent(leadId, emailSent);
 
   return NextResponse.json({ ok: true });
+}
+
+// Best-effort: the lead and the email already happened; failing the request
+// here would make the person resubmit a lead that was stored.
+async function recordEmailSent(leadId: number, emailSent: boolean): Promise<boolean> {
+  try {
+    const { error } = await getSupabase().from('canibuildit_leads').update({ email_sent: emailSent }).eq('id', leadId);
+    if (error) throw new Error(error.message);
+    return true;
+  } catch (err) {
+    console.error('[canibuildit/lead] email_sent update failed:', err);
+    return false;
+  }
 }
 
 // address is user-submitted (Zod only bounds its length, not its character set)

@@ -328,9 +328,11 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           consent_wording: WHAT_TO_CHANGE_WORDING,
         }),
       });
-      if (res.ok) posthog.capture('lead_submitted', { interest_type: 'granny-flat', variant: 'what-to-change' });
+      // A failed save leaves the form in place to retry, never a false "Done".
+      if (!res.ok) return;
+      posthog.capture('lead_submitted', { interest_type: 'granny-flat', variant: 'what-to-change' });
     } catch {
-      // Silent
+      return;
     }
     setEmailSubmitted(true);
   };

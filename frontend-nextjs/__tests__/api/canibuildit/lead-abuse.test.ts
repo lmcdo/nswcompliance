@@ -38,7 +38,8 @@ jest.mock('@/lib/rate-limit', () => ({
 // The lead route now uses @supabase/supabase-js directly (service role client),
 // so we mock that module. @/lib/supabase/server mock kept for other tests that use it.
 jest.mock('@supabase/supabase-js', () => {
-  const insertMock = jest.fn().mockResolvedValue({ error: null });
+  // The route chains .insert(...).select('id').single() and then updates email_sent.
+  const insertMock = jest.fn().mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
   const limitMock = jest.fn().mockResolvedValue({ data: [], error: null });
   const chain = {
     select: jest.fn().mockReturnThis(),
@@ -46,6 +47,7 @@ jest.mock('@supabase/supabase-js', () => {
     gte: jest.fn().mockReturnThis(),
     limit: limitMock,
     insert: insertMock,
+    update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
   };
   return {
     createClient: jest.fn().mockReturnValue({ from: jest.fn().mockReturnValue(chain) }),
@@ -115,7 +117,7 @@ describe('POST /api/canibuildit/lead — happy path', () => {
     jest.clearAllMocks();
     (checkRateLimit as jest.Mock).mockResolvedValue({ success: true, limit: 3, remaining: 2, reset: Date.now() + 600000 });
     limitMock.mockResolvedValue({ data: [], error: null });
-    insertMock.mockResolvedValue({ error: null });
+    insertMock.mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
     emailSendMock.mockResolvedValue({ id: 'mock-id' });
   });
 
@@ -333,7 +335,7 @@ describe('POST /api/canibuildit/lead — duplicate detection', () => {
 
   it('inserts and emails when no duplicate found', async () => {
     limitMock.mockResolvedValueOnce({ data: [], error: null });
-    insertMock.mockResolvedValue({ error: null });
+    insertMock.mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
     emailSendMock.mockResolvedValue({ id: 'ok' });
     await POST(makeRequest({ email: 'new@example.com', address: '99 New St, Sydney NSW 2000' }));
     expect(insertMock).toHaveBeenCalledTimes(1);
@@ -342,7 +344,7 @@ describe('POST /api/canibuildit/lead — duplicate detection', () => {
 
   it('still returns 200 if duplicate check throws (non-blocking)', async () => {
     limitMock.mockRejectedValueOnce(new Error('DB timeout'));
-    insertMock.mockResolvedValue({ error: null });
+    insertMock.mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
     emailSendMock.mockResolvedValue({ id: 'ok' });
     const res = await POST(makeRequest({ email: 'fallback@example.com', address: '1 Fallback Rd' }));
     expect(res.status).toBe(200);
@@ -358,7 +360,7 @@ describe('POST /api/canibuildit/lead — MX domain check', () => {
     jest.clearAllMocks();
     (checkRateLimit as jest.Mock).mockResolvedValue({ success: true, limit: 3, remaining: 2, reset: Date.now() + 600000 });
     limitMock.mockResolvedValue({ data: [], error: null });
-    insertMock.mockResolvedValue({ error: null });
+    insertMock.mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
     emailSendMock.mockResolvedValue({ id: 'ok' });
     // Default: domain has valid MX records
     mockResolveMx.mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }]);

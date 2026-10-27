@@ -104,11 +104,12 @@ describe('email_sent', () => {
     expect(updateMock).toHaveBeenCalledWith({ email_sent: false });
   });
 
-  it('skips the update (and still returns ok) when the insert failed', async () => {
+  it('returns 500 and sends nothing when the insert failed (a lost lead must not read as success)', async () => {
     singleMock.mockResolvedValue({ data: null, error: { message: 'insert failed' } });
     sendMock.mockResolvedValue({ data: { id: 'em_1' }, error: null });
     const res = await POST(req(LEAD));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
+    expect(sendMock).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
   });
 });
