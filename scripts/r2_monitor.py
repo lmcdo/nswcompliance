@@ -917,6 +917,7 @@ def run_monitor(
         "transient": [],
         "hub_errors": [],
         "rate_limited": [],
+        "register_failed": [],  # new hub documents we failed to add -- real failures
     }
 
     # Spread the load across the run: randomise council order + a paced gap
@@ -1053,6 +1054,7 @@ def run_monitor(
                     results["hub_alerts"].append(f"removed: {council}/{key}")
 
                 # New/unmatched chapters — classify and auto-handle where possible.
+                registration_failed = False
                 for item in diff.added:
                     print(f"  [NEW] {item['label']}  {item['url']}")
                     if not dry_run:
@@ -1060,11 +1062,18 @@ def run_monitor(
                             reg_result = _auto_register_chapter(conn, council, council_chapters, item, hub_url)
                             registration_results.append(reg_result)
                         except Exception as exc:
+                            # A new document we failed to add is a real failure, not a quiet print:
+                            # count it, alert on it, and keep the old hub count below.
                             print(f"    [auto-reg ERROR] {exc}")
                             conn.rollback()
+                            registration_failed = True
+                            council_hub_alerts.append(f"Not added: {item['label']} ({exc})")
+                            results["register_failed"].append(
+                                f"auto-register failed: {council}/{item['label']} {item['url']}: {exc}")
 
-                # Update hub_last_pdf_count for delta tracking
-                if not dry_run:
+                # Update hub_last_pdf_count for delta tracking. Not after a failed
+                # registration: the old count keeps the new document visible next run.
+                if not dry_run and not registration_failed:
                     cur2 = conn.cursor()
                     cur2.execute(
                         """UPDATE dcp_chapter_registry
@@ -1762,7 +1771,10 @@ def main():
     total_checked = results["checked"] + results["unchanged"]
     n_transient = len(results["transient"])
     n_waf = len(results["waf_blocked"])
-    real_failed = results["failed"]  # transient + WAF are bucketed separately, not here
+    # transient + WAF are bucketed separately, not here; a new document we failed to add is real.
+    check_failed = results["failed"]
+    register_failed = results.get("register_failed", [])
+    real_failed = check_failed + len(register_failed)
     exit_code = run_exit_code(n_changed, real_failed)
     n_rate = len(results["rate_limited"])
     infra_note = (
@@ -1774,9 +1786,13 @@ def main():
     if exit_code == 1:
         msg = (
             f"DCP Monitor ERROR\n"
-            f"{real_failed}/{total_checked} chapters failed to check (real errors).{infra_note}\n"
+            f"{check_failed}/{total_checked} chapters failed to check (real errors).{infra_note}\n"
             f"Investigate — this is a data/extraction problem, not infra."
         )
+        if register_failed:
+            msg += f"\n{len(register_failed)} new document(s) found on a council page but NOT added:"
+            for line in register_failed:
+                msg += f"\n  {line}"
         print(f"\n  ERROR: {real_failed} real failures (excludes transient/WAF infra).")
         send_telegram(msg)
         sys.exit(1)
