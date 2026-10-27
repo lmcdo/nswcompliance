@@ -54,8 +54,16 @@ CONSTANT = re.compile(
     r"FLOOR_?AREA|SITE_?COVER|GFA)[A-Za-z0-9_]*['\"]?\s*[:=]\s*\d+(?:\.\d+)?)", re.I)
 PLANNING = re.compile(
     r"setback|height|lot|frontage|floor|FSR|parking|site area|coverage|storey|SEPP|LEP|DCP|cl\.|clause|"
-    r"minimum|maximum|open space|landscap|sunlight|solar access|separation|dwelling|granny|secondary", re.I)
-CITED = re.compile(r"(SEPP|LEP|DCP|Act|Regulation|Code|Guide)\b.*\b(?:s|cl|clause|section|part|schedule)\.?\s*\d", re.I)
+    r"minimum|maximum|\bmin\b(?![-\[])|\bmax\b(?![-\[])|open space|landscap|sunlight|solar access|separation|dwelling|granny|"
+    r"secondary", re.I)
+# A bare number (2+ digits) compared with a lot measure: `return areaSqm >= 450;` has no unit (2026-10-26).
+COMPARE = re.compile(
+    r"\b([A-Za-z_.]*(?:area|lot|width|depth|frontage|height|setback|fsr|storey)[A-Za-z0-9_]*\s*(?:>=|<=|>|<)\s*"
+    r"\d{2,}(?:\.\d+)?)\b", re.I)
+# A typed list of two or more zone codes: zone lists decide applicability and are not numbers (2026-10-26).
+_ZONE = r"""['"](?:R[1-5]|RU[1-6]|RE[12]|E[1-5]|MU1|SP[1-5]|IN[1-4]|B[1-8]|C[1-4]|W[1-4])['"]"""
+ZONE_LIST = re.compile(rf"(\[\s*{_ZONE}(?:\s*,\s*{_ZONE})+)")
+CITED =re.compile(r"(SEPP|LEP|DCP|Act|Regulation|Code|Guide)\b.*\b(?:s|cl|clause|section|part|schedule)\.?\s*\d", re.I)
 
 
 def hits_in_text(text: str, suffix: str = ".ts") -> list[str]:
@@ -68,6 +76,9 @@ def hits_in_text(text: str, suffix: str = ".ts") -> list[str]:
             continue
         if SUPPRESS in line:
             continue
+        if suffix in (".py", ".ts", ".tsx"):
+            # Their own planning words: a lot-measure name, or zone codes.
+            out += COMPARE.findall(line) + ZONE_LIST.findall(line)
         if not PLANNING.search(line):
             continue
         if suffix in (".md", ".mdx"):
@@ -137,6 +148,9 @@ def judge(found: dict[str, list[str]], ledger: dict) -> list[str]:
     for k, e in entries.items():
         if e.get("fate") == "cited" and not CITED.search(e.get("reason") or ""):
             problems.append(f"CITED WITHOUT INSTRUMENT + CLAUSE: {k}")
+        if e.get("fate") == "cited" and re.search(r"paraphras", e.get("reason") or "", re.I):
+            # `cited` means a verbatim quote; a paraphrase is a typed figure (2026-10-26).
+            problems.append(f"CITED BUT PARAPHRASED (not verbatim): {k}")
         if e.get("fate") == "not_regulatory" and len((e.get("reason") or "").split()) < 4:
             problems.append(f"NOT_REGULATORY WITHOUT A REASON: {k}")
         if e.get("fate") not in ("open", "cited", "not_regulatory"):
