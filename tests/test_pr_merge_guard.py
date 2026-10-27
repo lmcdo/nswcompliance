@@ -126,6 +126,31 @@ def test_sol2_override_on_one_merge_does_not_cover_the_next(monkeypatch, tmp_pat
     assert rc == 2 and calls == [2]
 
 
+def test_sol_r2_pin_inside_a_comment_is_not_a_pin(monkeypatch):
+    cmd = f"gh pr merge 5 --squash # --match-head-commit {HEAD}"
+    rc, _ = _run(monkeypatch, {"tool_input": {"command": cmd}}, gate_rc=0)
+    assert rc == 2
+
+
+@pytest.mark.parametrize("cmd", [
+    "gh pr \\\nmerge 902 --squash",
+    "gh pr merge \\\n  902 --squash",
+    "gh pr `\nmerge 902",
+])
+def test_sol_r2_line_continuations_are_joined(cmd):
+    assert guard.find_merges(cmd) == ["902"]
+
+
+def test_sol_r2_gate_refuses_when_head_moved_between_ci_and_review(tmp_path, monkeypatch):
+    sys.path.insert(0, str(_HOOK.parents[2] / "scripts"))
+    import check_pr_gates as g
+    monkeypatch.setattr(g, "pr_view", lambda pr: {
+        "headRefOid": "b" * 40, "headRefName": "feat/x", "baseRefName": "main"})
+    monkeypatch.setattr(g.review_coverage, "_git", lambda *a, **k: pytest.fail("must stop first"))
+    verdict, msg = g.review_gap(1, None, expected_head="a" * 40)
+    assert verdict == "NOT-RUN" and "moved" in msg
+
+
 def test_sol5_override_that_cannot_be_recorded_is_blocked(monkeypatch, tmp_path):
     monkeypatch.setattr(guard, "OVERRIDE_LOG", tmp_path / "missing-dir" / "o.jsonl")
     cmd = 'MERGE_GATE_OVERRIDE="CI runner offline, checked by hand" gh pr merge 9'

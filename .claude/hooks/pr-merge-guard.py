@@ -54,6 +54,10 @@ OVERRIDE_LOG = REPO / ".claude" / ".merge-gate-overrides.jsonl"
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1.*?^\s*\2\s*$", re.S | re.M)
 _MESSAGE_ARG = re.compile(
     r"(?:-m|--message|-b|--body|-t|--title|--subject)(?:\s+|=)(\"[^\"]*\"|'[^']*')")
+# Bash backslash-newline and PowerShell backtick-newline continuations.
+_CONTINUATION = re.compile(r"[\\`]\r?\n")
+# A shell comment: `#` at a word start, unless it is a `#123` PR reference.
+_COMMENT = re.compile(r"(^|\s)#(?!\d+\b)[^\n]*", re.M)
 # One shell command per segment: an override only counts on its own segment.
 _SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|&\n]")
 _GH_MERGE = re.compile(r"\bgh(?:\.exe)?\b.*?\bpr\s+merge\b(?P<args>.*)", re.I)
@@ -81,6 +85,12 @@ class Merge:
 def parse_merges(command: str) -> list[Merge]:
     """Every merge a command would perform, one per shell segment."""
     command = _MESSAGE_ARG.sub(" ", _HEREDOC.sub(" ", command))
+    # The shell joins continuations before it runs anything, so join them first,
+    # or `gh pr \<newline>merge 902` splits into two harmless-looking segments.
+    command = _CONTINUATION.sub(" ", command)
+    # A comment is not an argument: `gh pr merge 902 # --match-head-commit <sha>`
+    # runs unpinned. `#902` (a PR reference) is kept.
+    command = _COMMENT.sub("", command)
     merges: list[Merge] = []
     for seg in _SEGMENT_SPLIT.split(command):
         gh = _GH_MERGE.search(seg)

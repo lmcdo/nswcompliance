@@ -91,7 +91,7 @@ def pr_view(pr: int) -> dict:
     )
 
 
-def review_gap(pr: int, override: str | None) -> tuple[str, str]:
+def review_gap(pr: int, override: str | None, expected_head: str | None = None) -> tuple[str, str]:
     """(verdict, message): READY, or NOT-REVIEWED with the commits nobody read.
 
     Raises RuntimeError when the facts cannot be established, which main()
@@ -99,6 +99,11 @@ def review_gap(pr: int, override: str | None) -> tuple[str, str]:
     """
     data = pr_view(pr)
     head, ref = data["headRefOid"], data["headRefName"]
+    # CI was checked for one head; review must be checked for the SAME head, or
+    # a push in between pairs CI-for-A with review-for-B (Sol, 2026-10-27).
+    if expected_head and head != expected_head:
+        return "NOT-RUN", (f"PR head moved from `{expected_head[:8]}` to `{head[:8]}` while it "
+                           "was being checked. Run the gate again.")
     base_ref = f"origin/{data.get('baseRefName') or 'main'}"
     review_coverage._git(REPO, "fetch", "-q", "origin", ref, data.get("baseRefName") or "main")
     base = review_coverage._git(REPO, "merge-base", base_ref, head).strip()
@@ -133,9 +138,9 @@ def review_gap(pr: int, override: str | None) -> tuple[str, str]:
         f"{len(gap)} code commit(s) on {ref} were never read by a finished Sol review:\n"
         f"{listing}{more}\n"
         "  A 429, a timeout, a too-large diff, SOL_REVIEW=0, --no-verify or a DeepSeek\n"
-        "  fallback all leave a commit here. The next push will NOT re-read them: its\n"
-        "  base is the last push, not the last review. Review them now:\n"
-        f"    git checkout {ref} && python scripts/cross_review.py --base {base[:12]} \\n"
+        "  fallback all leave a commit here. A later push re-reads them only if its\n"
+        "  review finishes on Sol. Review them now:\n"
+        f"    git checkout {ref} && python scripts/cross_review.py --base {base[:12]} \\\n"
         f"      --max-diff-kb 512 --review-log \"{log}\"\n"
         "  Or merge anyway, on the record:\n"
         f"    python scripts/check_pr_gates.py {pr} --review-override \"<why>\""
@@ -161,6 +166,7 @@ def gates_run_for(sha: str) -> dict | None:
 def assess(pr: int) -> tuple[str, str]:
     """Return (verdict, message). Verdict is READY, NOT-RUN, FAILED or PENDING."""
     sha, mergeable, state = pr_facts(pr)
+    assess.checked_sha = sha  # the head CI was judged on; review_gap must match it
     short = sha[:8]
 
     if state != "OPEN":
@@ -228,7 +234,8 @@ def main() -> int:
     if verdict == "READY":
         print(f"{verdict}  {message}")
         try:
-            verdict, message = review_gap(args.pr, args.review_override)
+            verdict, message = review_gap(args.pr, args.review_override,
+                                          getattr(assess, "checked_sha", None))
         except (RuntimeError, OSError, KeyError) as exc:
             print(f"UNKNOWN  {exc}", file=sys.stderr)
             print("Refusing: could not establish whether the branch was reviewed.", file=sys.stderr)
