@@ -1,0 +1,2 @@
+max_open 125, one new open figure added -> passes
+max_open 124, one new open figure added -> OPEN COUNT ROSE: 125 > max_open 124
