@@ -1,0 +1,63 @@
+{
+  "tier": "standard",
+  "justification": "Standard: wakes two development-process hooks that never ran (they read TOOL_INPUT, which Claude Code does not set), deletes a third that duplicated .githooks/pre-commit, and adds a test that every registered hook reacts to its payload on stdin. No database, no served output, no customer-facing text. Not Minor: once live, the two hooks can block commits and pushes.",
+  "commit_hash": "8c612017",
+  "files": [
+    ".claude/hooks/pre-commit-gate.py",
+    ".claude/hooks/push-retry-needs-full-output.py",
+    ".claude/hooks/no-unreferenced-new-file.py",
+    ".claude/settings.json",
+    "tests/test_hooks_not_silently_dead.py"
+  ],
+  "pre_impl": {
+    "existing_data": "None. Inputs are the hook payload (JSON on stdin), git state of the working tree, and .claude/.push-attempts.json.",
+    "assumption_mismatch": "The three hooks assumed Claude Code sets TOOL_INPUT. It sends JSON on stdin instead, so each saw an empty command and exited 0. .claude/.push-attempts.json existed nowhere, which push-retry writes on every push.",
+    "new_vs_existing": "Replay of the last 30 recorded commit/push commands, each against the repo state when it ran: the two woken hooks block 0. The third, once woken, blocked 5 wrongly (3 first commits with no report yet, 2 qa_gate time-outs at 30 s); .githooks/pre-commit lines 262-280 already does its job and lets first commits through, so it was deleted rather than patched.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "The operator is the user: a wrongly blocked commit or push. Measured 0 of 30."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_hooks_not_silently_dead.py -q",
+    "fails_when": "Either woken hook reverted to its origin/main version (reads TOOL_INPUT only), or a hook is added to settings.json with no must-react case and no INPUT_FREE reason.",
+    "observed_red": "With the origin/main versions of the two hooks: 2 failed, 12 passed. With this branch: 14 passed."
+  },
+  "functions": [
+    {
+      "name": "_payload",
+      "file_line": ".claude/hooks/push-retry-needs-full-output.py (same in no-unreferenced-new-file.py)",
+      "input": "Hook payload JSON on stdin; TOOL_INPUT env as fallback",
+      "output": "The tool_input dict holding the Bash command the hook inspects",
+      "if_none": "Empty or invalid input gives {} and the hook allows"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A future hook added to settings.json reads its input from the wrong place.",
+      "what_happens": "It silently allows everything, as these three did for weeks.",
+      "mitigated": true,
+      "how": "test_every_registered_hook_has_a_case fails unless the hook has a must-react case or a named INPUT_FREE reason; test_hook_reacts_to_stdin_payload then sends the case on stdin.",
+      "repro": "python -m pytest tests/test_hooks_not_silently_dead.py -q"
+    },
+    {
+      "scenario": "A woken hook starts blocking ordinary commands.",
+      "what_happens": "Every Bash call would be refused by the hook.",
+      "mitigated": true,
+      "how": "test_bash_hook_allows_a_harmless_command sends `git status` to every Bash hook; replay of 30 real commands blocked 0.",
+      "repro": "python -m pytest tests/test_hooks_not_silently_dead.py -q -k harmless"
+    },
+    {
+      "scenario": "no-unreferenced-new-file runs before the whole command, so `git add new.py && git commit` stages the file after the hook looked.",
+      "what_happens": "That new file is not checked.",
+      "mitigated": false,
+      "how": "Known limit of a PreToolUse hook; recorded here, not fixed in this PR.",
+      "repro": "Send `git add x.py && git commit -m y` with x.py unstaged: exit 0."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Restart Claude Code so the hook list reloads."
+  }
+}
