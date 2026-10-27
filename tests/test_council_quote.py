@@ -14,7 +14,8 @@ import citation_proof as cp  # noqa: E402
 import council_quote as cq  # noqa: E402
 
 
-def stream(pages: dict[int, list[str]], margin: dict[int, list[str]] | None = None) -> cq.Stream:
+def stream(pages: dict[int, list[str]], margin: dict[int, list[str]] | None = None,
+           skip_labels: bool = False) -> cq.Stream:
     """A one-reading stream: lines as printed (cased); the cache holds them lowercased.
     `margin` lines are in the PDF but dropped from the reading (footers, page numbers)."""
     lines, cased = [], {}
@@ -26,7 +27,7 @@ def stream(pages: dict[int, list[str]], margin: dict[int, list[str]] | None = No
             ln = cp.Line(page, 100.0 + 12 * n, 72.0, t.strip().lower())
             lines.append(ln)
             cased[(ln.page, ln.y, ln.x, ln.text)] = t.strip()
-    return cq.Stream(SimpleNamespace(lines=lines), cased)
+    return cq.Stream(SimpleNamespace(lines=lines), cased, skip_labels=skip_labels)
 
 
 def row(text: str, page: int = 1, rid: int = 1) -> dict:
@@ -381,3 +382,37 @@ def test_a_bare_label_line_does_not_block_a_proof():
     out = cq.judge(row("Applicants are required to ensure that the proposal is consistent with:\n3.\n"
                        "Roof coverage and panels number is appropriate to the scale of the building."), [st])
     assert out["reason"] == "pieces"
+
+
+HORNSBY = {5: ["Height", "a.", "Sites with the following maximum building heights under Clause 4.3",
+               "should comply with the maximum number of storeys in Table 3.5.4-a."]}
+DROPPED_LABEL = ("Height Sites with the following maximum building heights under Clause 4.3 should "
+                 "comply with the maximum number of storeys in Table 3.5.4-a.")
+
+
+def test_a_rule_whose_lone_label_line_was_dropped_is_proven_with_the_label_kept():
+    # Hornsby 248365: the reader joined "Height" to the rule and dropped the "a." line between them.
+    assert cq.judge(row(DROPPED_LABEL, page=5), [stream(HORNSBY)])["status"] == "unconfirmed"
+    out = cq.judge_twice(row(DROPPED_LABEL, page=5), [stream(HORNSBY)], [stream(HORNSBY, skip_labels=True)])
+    assert out["status"] == "exact" and out["reason"].endswith("+label_skipped")
+    assert out["quote"].startswith("Height" + chr(10) + "a." + chr(10) + "Sites with")   # the council's text, label included
+
+
+def test_a_rule_proven_as_printed_is_not_judged_again():
+    stored = "a. Sites with the following maximum building heights under Clause 4.3"
+    out = cq.judge_twice(row(stored, page=5), [stream(HORNSBY)], [stream(HORNSBY, skip_labels=True)])
+    assert out["status"] == "exact" and "label_skipped" not in out["reason"]
+
+
+def test_a_bare_number_alone_is_a_table_cell_not_a_label():
+    # "3" alone is a value: skipping it would let "Maximum storeys 2" pass over a printed 3.
+    tbl = {1: ["Maximum storeys in the precinct", "3", "2 for sites fronting a heritage item listed in Schedule 5"]}
+    stored = "Maximum storeys in the precinct 2 for sites fronting a heritage item listed in Schedule 5"
+    out = cq.judge_twice(row(stored), [stream(tbl)], [stream(tbl, skip_labels=True)])
+    assert out["status"] == "unconfirmed"
+
+
+def test_words_not_printed_stay_unconfirmed_with_labels_skipped():
+    stored = "Height Sites with the following maximum building heights must not exceed four storeys anywhere."
+    out = cq.judge_twice(row(stored, page=5), [stream(HORNSBY)], [stream(HORNSBY, skip_labels=True)])
+    assert out["status"] == "unconfirmed"
