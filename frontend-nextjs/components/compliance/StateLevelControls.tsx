@@ -67,6 +67,8 @@ export function StateLevelControls({
   const [adgStructuredRequirements, setAdgStructuredRequirements] = useState<any[]>([]);
   const [transportRequirements, setTransportRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
+  // A failed requirements request is "not checked", never "no requirements".
+  const [seppNotChecked, setSeppNotChecked] = useState(false);
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
   const nearbyTransportRef = useRef<any[]>([]);
@@ -286,6 +288,7 @@ export function StateLevelControls({
     }
 
     setLoadingSepp(true);
+    setSeppNotChecked(false);
     try {
       // Fetch requirements for each detected SEPP
       const results: any[] = [];
@@ -304,7 +307,10 @@ export function StateLevelControls({
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data.hasStructuredRequirements) {
+          if (data?.success !== true || typeof data.data?.hasStructuredRequirements !== 'boolean'
+            || (data.data.hasStructuredRequirements && !Array.isArray(data.data.requirements))) {
+            setSeppNotChecked(true);
+          } else if (data.data.hasStructuredRequirements) {
             // Separate transport infrastructure for dedicated section
             if (seppId === 'transport_infrastructure_2021') {
               transportResults.push(...data.data.requirements);
@@ -312,6 +318,8 @@ export function StateLevelControls({
               results.push(...data.data.requirements);
             }
           }
+        } else {
+          setSeppNotChecked(true);
         }
       }
 
@@ -322,6 +330,7 @@ export function StateLevelControls({
       console.error('[StateLevelControls] Failed to fetch SEPP requirements:', error);
       setStructuredRequirements([]);
       setTransportRequirements([]);
+      setSeppNotChecked(true);
     } finally {
       setLoadingSepp(false);
     }
@@ -851,15 +860,24 @@ export function StateLevelControls({
                 <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-3/4`}></div>
                 <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-1/2`}></div>
               </div>
-            ) : structuredRequirements.length > 0 ? (
-              <StructuredSeppRequirements
-                requirements={structuredRequirements}
-                compact
-              />
             ) : (
-              <p className="text-sm text-gray-500 italic">
-                No Housing SEPP structured requirements for this development type
-              </p>
+              <>
+                {seppNotChecked && (
+                  <p className="text-sm text-gray-500 italic">
+                    SEPP requirements not checked for every policy — a requirements lookup did not answer
+                  </p>
+                )}
+                {structuredRequirements.length > 0 ? (
+                  <StructuredSeppRequirements
+                    requirements={structuredRequirements}
+                    compact
+                  />
+                ) : !seppNotChecked && (
+                  <p className="text-sm text-gray-500 italic">
+                    No Housing SEPP structured requirements for this development type
+                  </p>
+                )}
+              </>
             )}
 
 

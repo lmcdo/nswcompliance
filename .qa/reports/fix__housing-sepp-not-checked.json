@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "commit_hash": "d0fe8b2c",
+  "justification": "One user-facing message: a failed request read as 'no requirements'. Standard: one component, a boolean state.",
+  "files": [
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/__tests__/components/compliance/state-level-sepp-not-checked.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "POST /api/sepp/structured-requirements, one call per detected SEPP",
+    "assumption_mismatch": "A 200 with success false is also treated as not checked",
+    "new_vs_existing": "Render-time only, applies to every page view"
+  },
+  "functions": [
+    {
+      "name": "loadStructuredRequirements",
+      "file_line": "frontend-nextjs/components/compliance/StateLevelControls.tsx:245",
+      "input": "propertyData constraints with detected SEPP ids",
+      "output": "requirement list plus the seppNotChecked flag in state",
+      "if_none": "returns early, no fetch, flag stays false"
+    }
+  ],
+  "values": [
+    {
+      "value": "seppNotChecked",
+      "read_at": "StateLevelControls.tsx structured requirements block",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "N/A boolean defaults false"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The requirements API returns HTTP 500 for the Housing SEPP",
+      "what_happens": "Before: 'No Housing SEPP structured requirements'. Now: not checked",
+      "mitigated": true,
+      "how": "else branch sets seppNotChecked",
+      "repro": "npx jest __tests__/components/compliance/state-level-sepp-not-checked.test.tsx"
+    },
+    {
+      "scenario": "The fetch throws because the network is down",
+      "what_happens": "The card now shows not checked",
+      "mitigated": true,
+      "how": "catch sets seppNotChecked",
+      "repro": "same test, second case"
+    },
+    {
+      "scenario": "One SEPP call fails while another SEPP call returns rows",
+      "what_happens": "Rows from the answered SEPP show, plus the not-checked notice above them",
+      "mitigated": true,
+      "how": "Notice renders whenever seppNotChecked, rows or not",
+      "repro": "two applicableSepps, one 500"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/components/compliance/state-level-sepp-not-checked.test.tsx",
+    "fails_when": "Fix reverted: 2 failed / 1 passed (docs/qa/session-b/2-sepp-red.txt)",
+    "observed_red": "Ran the new test on unfixed StateLevelControls.tsx: 2 failed, 1 passed; the answered-empty case passed, proving the render reaches the text."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
