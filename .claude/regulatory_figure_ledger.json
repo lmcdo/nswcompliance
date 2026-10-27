@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 126,
+ "max_open": 125,
  "entries": [
   {
    "file": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
@@ -1697,12 +1697,6 @@
   {
    "file": "frontend-nextjs/lib/regulatory-constants.ts",
    "text": "['R1', 'R2', 'R3', 'R4', 'RU5'",
-   "fate": "open",
-   "reason": "found by the widened scan 2026-10-26 (min / bare comparison / zone list); serve from the database"
-  },
-  {
-   "file": "frontend-nextjs/lib/requirement-prioritization.ts",
-   "text": "areaSqm >= 450",
    "fate": "open",
    "reason": "found by the widened scan 2026-10-26 (min / bare comparison / zone list); serve from the database"
   },
