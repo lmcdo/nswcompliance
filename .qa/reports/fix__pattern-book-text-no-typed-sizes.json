@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "commit_hash": "083d6558",
+  "commit_hash": "2ee0dbe4",
   "justification": "One explanatory sentence with typed lot sizes; decides nothing. Minor: text only.",
   "files": [
     "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
@@ -8,7 +8,7 @@
   ],
   "falsifiable_check": {
     "command": "npx jest __tests__/components/compliance/pattern-book-no-typed-lot-sizes.test.ts",
-    "fails_when": "Typed sentence restored: 1 failed (docs/qa/session-b/5c-pattern-book-red.md)",
+    "fails_when": "Typed sentence restored: 1 failed (docs/qa/session-b/5c-pattern-book-red.txt)",
     "observed_red": "Ran the new test on the unfixed card: 1 failed."
   },
   "break_it": [
