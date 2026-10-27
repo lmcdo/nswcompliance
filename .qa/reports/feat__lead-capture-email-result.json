@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes a customer-facing capture path and what is stored as consent. Not Critical: no regulatory data, no DB schema change, additive UI.",
-  "commit_hash": "1405cb72",
+  "commit_hash": "c3221f53",
   "files": [
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/components/reports/WaitlistButton.tsx",

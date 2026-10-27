@@ -494,7 +494,7 @@ export function buildEmailContent(product: string, address: string, eligible: bo
           <p style="margin: 16px 0;">
             <a href="https://canibuildit.com.au/reports/flood?address=${encodeURIComponent(address)}" style="background: #0d9488; color: #fff; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px;">Open my flood check</a>
           </p>
-          <p style="color: #999; font-size: 12px; line-height: 1.6;">
+          <p style="color: #999; font-size: 12px;">
             This is a screening check, not a flood certificate. A section 10.7 planning
             certificate shows the flood-related planning controls your council has recorded
             for the lot; your council can tell you what other flood information it holds.
