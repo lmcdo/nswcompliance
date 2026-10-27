@@ -79,6 +79,36 @@ _SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no
 _BARE_LABEL = re.compile(r"^\(?(?:[a-z]|\d{1,2}|[ivx]{1,4}|[A-Z]\.?\d{1,3})[.)]?$", re.I)
 #: How a sentence, a lead-in or a list item ends: "... the development.", "... the following:", "...; and".
 _PIECE_END = re.compile(r"(?:[.:;?!)][\"'”’]?|;\s*(?:and|or))\s*$", re.I)
+# A letter list label printed alone on its line ("a.", "(b)", "iv)"). The reader often drops it when it
+# joins the label to the words beside it ("Height Sites with ..." for "Height / a. / Sites with ...").
+# Never a number, punctuated or not: "3" or "3." alone can be a table value (cross-review, #1519).
+_LIST_LABEL = re.compile(r"^(?:\((?:[a-z]|[ivx]{1,4})\)|(?:[a-z]|[ivx]{1,4})[.)])$", re.I)
+# A lone letter is a list label only when the label before or after it in the same list is printed
+# nearby: a map key's "(x)" (City of Sydney Section 6, "brackets indicate additional height") or a
+# flood category "A." has no neighbour, so it is never skipped (cross-review, #1519).
+LABEL_NEAR = 40
+_ROMAN = "i ii iii iv v vi vii viii ix x xi xii xiii xiv xv xvi xvii xviii xix xx".split()
+
+
+def _label_keys(t: str) -> set[tuple[str, str, int]]:
+    """(wrapping, numbering, position) readings of a list-label line; "i)" is both letter 9 and roman 1."""
+    s = t.strip().lower()
+    wrap, core = ("()", s[1:-1]) if s.startswith("(") else (s[-1], s[:-1])
+    keys = {(wrap, "roman", _ROMAN.index(core) + 1)} if core in _ROMAN else set()
+    if len(core) == 1:
+        keys.add((wrap, "letter", ord(core) - 96))
+    return keys
+
+
+def list_label_lines(text: list[str]) -> set[int]:
+    """Indexes of lone list-label lines with a neighbour label of the same list within LABEL_NEAR lines."""
+    labels = {i: _label_keys(t) for i, t in enumerate(text) if _LIST_LABEL.match(t.strip())}
+    out = set()
+    for i, keys in labels.items():
+        near = [labels[j] for j in range(max(0, i - LABEL_NEAR), i + LABEL_NEAR + 1) if j != i and j in labels]
+        if any((w, n, p + d) in other for w, n, p in keys for d in (-1, 1) for other in near):
+            out.add(i)
+    return out
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
@@ -153,7 +183,7 @@ def load_chapter(r2_path: str):
 class Stream:
     """One reading as a normalized character stream; each character knows its line and offset."""
 
-    def __init__(self, ch, cased: dict):
+    def __init__(self, ch, cased: dict, skip_labels: bool = False):
         self.lines = ch.lines
         self.text = [cased.get((ln.page, ln.y, ln.x, ln.text), ln.text).translate(LIGATURES)
                      for ln in ch.lines]
@@ -163,7 +193,10 @@ class Stream:
         self.uncased = {i for i, ln in enumerate(ch.lines)
                         if (ln.page, ln.y, ln.x, ln.text) not in cased and len(norm(ln.text)) > 4}
         buf, self.at = [], []
+        skip = list_label_lines(self.text) if skip_labels else set()
         for i, t in enumerate(self.text):
+            if i in skip:
+                continue     # the label line stays in copy(): only the search skips it
             for p, c in enumerate(t):
                 if c in UNIT_SUP and p and t[p - 1] in "mM":     # the copy keeps the council's "m²"
                     c = UNIT_SUP[c]
@@ -461,6 +494,17 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     return {**out, "status": "unconfirmed", "reason": "opening_found_no_bound" if found else "not_found"}
 
 
+def judge_twice(row: dict, streams: list[Stream], unlabelled: list[Stream]) -> dict:
+    """judge() as printed; only a rule not proven that way is judged again with lone list-label
+    lines skipped, so no verdict reached as printed can change."""
+    res = judge(row, streams)
+    if res["status"] == "unconfirmed" and res["reason"] != "oversized":
+        res2 = judge(row, unlabelled)
+        if res2["status"] != "unconfirmed":
+            return {**res2, "reason": f"{res2['reason']}+label_skipped"}
+    return res
+
+
 def chapter(args) -> tuple[list[dict], str | None]:
     r2_path, rows = args
     from dotenv import load_dotenv
@@ -474,6 +518,10 @@ def chapter(args) -> tuple[list[dict], str | None]:
                  "text_md5": hashlib.md5((r["provision_text"] or "").encode("utf-8")).hexdigest()}
                 for r in rows], f"{r2_path}: {e}"[:200]
     streams = [Stream(ch, cased) for ch in readings]
+    # The same readings with lone list-label lines skipped, tried only when the rule is not proven
+    # as printed: rows whose text lost a label line (Hornsby 2026-10-27: 32 of 56 hidden rows).
+    # Mixed in with the first, they changed 3 already-proven rows' anchors.
+    unlabelled = [Stream(ch, cased, skip_labels=True) for ch in readings]
     note = None
     if min(st.cased_share for st in streams) < 0.9:
         note = f"{r2_path}: only {min(st.cased_share for st in streams):.0%} of lines re-read with casing"
@@ -483,7 +531,7 @@ def chapter(args) -> tuple[list[dict], str | None]:
     import rule_page_locator as rpl
     pdf = str(CACHE / "pdf" / (probe._cache_file(CACHE, r2_path).stem + ".pdf"))
     for r in rows:
-        res = judge(r, streams)
+        res = judge_twice(r, streams, unlabelled)
         if res["status"] == "unconfirmed" and res["reason"] != "oversized":
             # printed inside a picture: the whole rule, in order, in one picture's OCR text (council_quote_picture.py) --
             # the stored rule was read from that picture by another reader, so two independent readings agree
