@@ -293,3 +293,21 @@ def test_pre_push_filter_is_identical_to_the_python_one():
     out = subprocess.run([bash, "-c", f"grep -E \"$1\" | grep -vE \"$2\" || true", "_", keep, drop],
                          input=listing, capture_output=True, text=True, check=True).stdout.split()
     assert sorted(out) == sorted(p for p, w in PATHS.items() if w)
+
+
+def test_sol_r3_empty_model_answer_stays_unfinished(repo, tmp_path):
+    """`{}` from the model is not a review: the row must not say reviewed."""
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    log = tmp_path / "log.jsonl"
+    base = git(repo, "rev-parse", "HEAD")
+    commit(repo, "services/a.py", "a=1\n", "code")
+    probe = (
+        "import sys; sys.path.insert(0, r'%s'); import cross_review, sol_common;"
+        "cross_review._REPO_ROOT = __import__('pathlib').Path(r'%s');"
+        "sol_common.load_api_key = lambda root: 'k';"
+        "cross_review.call_model = lambda *a: {};"
+        "sys.argv = ['x', '--base', '%s', '--review-log', r'%s']; cross_review.main()"
+    ) % (scripts, repo, base, log)
+    subprocess.run([sys.executable, "-c", probe], cwd=repo, capture_output=True, text=True)
+    rows = rc.read_rows(log)
+    assert len(rows) == 1 and rows[0]["outcome"] == rc.OUTCOME_UNFINISHED

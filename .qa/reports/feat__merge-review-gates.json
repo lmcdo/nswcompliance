@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: two merge-time gates on the development process, not on served output. A PreToolUse hook makes check_pr_gates.py the only way a PR merges from a Claude session, and the merge gate now also refuses a branch whose code commits were never read by a finished Sol review. No database, no customer-facing text. Not Minor: it changes what is allowed to merge.",
-  "commit_hash": "1c3fcefe",
+  "commit_hash": "7975d4c9",
   "files": [
     ".claude/hooks/pr-merge-guard.py",
     ".claude/settings.json",

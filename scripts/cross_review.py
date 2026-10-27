@@ -644,9 +644,10 @@ def main() -> None:
     api_key = sol_common.load_api_key(_REPO_ROOT)
     diff = get_diff(args)
     result = call_model(build_messages(diff, load_checklist(args.base)), args.model, api_key)
+    findings = rank(result["findings"])
+    # Only now: an answer of {} raises on the line above and must stay unfinished.
     run_state.update(outcome=review_coverage.OUTCOME_REVIEWED,
                      model=sol_common.LAST_MODEL or args.model)
-    findings = rank(result["findings"])
 
     # Split into findings this branch has already been shown, and genuinely new
     # ones. Without this the gate cannot converge: it re-reads a diff, an LLM
