@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "3c299cbc",
+  "commit_hash": "72239f07",
   "justification": "Monitor messages overstated coverage and one import failed silently. Standard: summary text, one import, one count; no query change.",
   "files": [
     "scripts/r2_monitor.py",
