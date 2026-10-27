@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { fetchLepTable, permissibilityOf } from '@/lib/lep-permissibility';
 import { ExternalLink, ChevronDown, ChevronUp, Building2, Info, AlertTriangle, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,38 +69,14 @@ interface ADGSummaryData {
 interface ADGSummaryCardProps {
   developmentType: string;
   zoneCode?: string;
+  /** Council name for the LEP land use table lookup. */
+  lga?: string | null;
   onViewAllCriteria?: () => void;
 }
 
-// Zones that typically prohibit or restrict apartment developments.
-//
-// DQ-30 (.claude/DATA_QUALITY_TRACKER.md): this previously listed
-// 'E1','E2','E3','E4' as "Environment zones (new)" and 'C1'-'C4' as
-// "Conservation zones (old)" — backwards. Under the current NSW Standard
-// Instrument (post 26 April 2023 Employment Zones Reform), C1-C4 ARE the
-// current conservation/environmental zone codes (already correctly listed
-// below); E1-E4 are current EMPLOYMENT zones (Local Centre, Commercial
-// Centre, Productivity Support, General Industrial) — E1/E2 commonly permit
-// shop-top housing and residential flat buildings, the opposite of
-// "restricted" (see NSW_STANDARD_ZONES.APARTMENT_PERMITTING in
-// regulatory-constants.ts, which correctly includes them). The old
-// pre-reform "Environmental" E1-E4 zones this list was actually trying to
-// name were themselves renamed to C1-C4 — already present, so E1-E4 was
-// pure duplication of a now-wrong meaning, not additional coverage.
-// IN1-IN4 (legacy industrial codes, genuinely apartment-restricting) are
-// replaced with their real current equivalents E3/E4/E5 -- E3 (Productivity
-// Support) generally excludes residential accommodation the same as E4/E5,
-// per NSW_STANDARD_ZONES.INDUSTRIAL in regulatory-constants.ts, which groups
-// E3/E4/E5 together for exactly this reason.
-const APARTMENT_RESTRICTED_ZONES = [
-  'R2',   // Low Density Residential - usually prohibits RFB
-  'RU1', 'RU2', 'RU3', 'RU4', 'RU5', 'RU6',  // Rural zones
-  'C1', 'C2', 'C3', 'C4',  // Conservation/environmental zones (current codes)
-  'W1', 'W2', 'W3',  // Waterway zones
-  'SP1', 'SP2',  // Special Purpose (varies)
-  'RE1', 'RE2',  // Recreation
-  'E3', 'E4', 'E5',  // Productivity Support / General Industrial / Heavy Industrial (current codes; were IN1-IN4)
-];
+// Whether the zone allows apartments comes from the LEP land use table (lib/lep-permissibility.ts),
+// never a typed zone list: the old APARTMENT_RESTRICTED_ZONES warned on R2 even where the LEP permits
+// residential flat buildings, and said nothing where it prohibits them in a zone not on the list.
 
 // Development types that trigger ADG requirements
 const ADG_APPLICABLE_TYPES = [
@@ -114,7 +91,7 @@ const ADG_APPLICABLE_TYPES = [
   'mixed_use'
 ];
 
-export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }: ADGSummaryCardProps) {
+export function ADGSummaryCard({ developmentType, zoneCode, lga, onViewAllCriteria }: ADGSummaryCardProps) {
   const [data, setData] = useState<ADGSummaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,9 +99,18 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
   const [separationTable, setSeparationTable] = useState<SeparationTableData | null>(null);
   const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
 
-  // Check if zone might restrict apartments (for warning display)
+  // LEP land use table answer for residential flat buildings in this zone: 'prohibited',
+  // 'permitted', ..., null = not checked (not covered, no row, or the request failed).
   const zonePrefix = zoneCode?.split(' ')[0]?.toUpperCase();
-  const isZoneRestricted = zonePrefix ? APARTMENT_RESTRICTED_ZONES.includes(zonePrefix) : false;
+  const [rfbPermissibility, setRfbPermissibility] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    setRfbPermissibility(undefined); // a new zone/LGA must not show the previous one's answer
+    fetchLepTable(zonePrefix, lga).then((table) => {
+      if (live) setRfbPermissibility(permissibilityOf(table, 'residential_flat_buildings'));
+    });
+    return () => { live = false; };
+  }, [zonePrefix, lga]);
 
   useEffect(() => {
     // Always fetch - parent component controls visibility
@@ -234,13 +220,17 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
 
       <CardContent className="pt-2">
         {/* Zone Restriction Warning */}
-        {isZoneRestricted && (
+        {rfbPermissibility === 'prohibited' && (
           <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-amber-800">
-              <span className="font-medium">Zone {zoneCode}</span> may prohibit or restrict apartment developments.
-              Check LEP permissibility before proceeding.
+              The LEP land use table for <span className="font-medium">zone {zoneCode}</span> lists residential flat buildings as prohibited.
             </div>
+          </div>
+        )}
+        {rfbPermissibility === null && (
+          <div className="mb-3 p-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-600">
+            Zone {zoneCode || 'unknown'} not checked against the LEP land use table for residential flat buildings — check the LEP before proceeding.
           </div>
         )}
 
