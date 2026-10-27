@@ -53,8 +53,15 @@ from pathlib import Path
 from qa_report_path import git_env
 
 #: Same path filter as SOL_CHANGED in .githooks/pre-push — what the review reads.
-REVIEWABLE = re.compile(r"^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$")
-NOT_REVIEWABLE = re.compile(r"(test|__tests__|\.spec\.)")
+#: tests/test_review_coverage.py runs both on the same paths, so they cannot drift.
+#: Test files are matched by PATH SHAPE, not the substring "test": the old
+#: filter skipped services/contest.py and src/attestation.ts (Sol, 2026-10-27).
+#: .claude/hooks/*.py is code too: the merge gate itself lives there.
+REVIEWABLE = re.compile(
+    r"^((services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)"
+    r"|\.claude/hooks/[^/]+\.py)$")
+NOT_REVIEWABLE = re.compile(
+    r"(^|/)(tests?|__tests__)/|(^|/)test_[^/]*$|_test\.py$|\.(spec|test)\.[jt]sx?$")
 
 OUTCOME_REVIEWED = "reviewed"
 OUTCOME_UNFINISHED = "did-not-finish"

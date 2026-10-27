@@ -86,7 +86,8 @@ Origin: four prior-art misses in one session, 2026-07-27.
 ## Deployment & Branching [ENFORCED]
 Branch naming: `fix/` | `feat/` | `chore/`
 Workflow: branch → work → commit → `gh pr create` → share preview → user says "merge" →
-**`python scripts/check_pr_gates.py <PR>`** → `gh pr merge --squash`
+**`python scripts/check_pr_gates.py <PR>`** → `gh pr merge <PR> --squash --match-head-commit <head sha>`
+(`.claude/hooks/pr-merge-guard.py` enforces both; the gate also refuses code no finished Sol review read)
 PR body: `## What` (one-line) + `## Why` (problem/feature). No "Test plan". No attribution.
 
 **Never merge on an empty check list. [CRITICAL]**

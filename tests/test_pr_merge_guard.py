@@ -14,6 +14,7 @@ import pytest
 _HOOK = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "pr-merge-guard.py"
 _spec = importlib.util.spec_from_file_location("pr_merge_guard", _HOOK)
 guard = importlib.util.module_from_spec(_spec)
+sys.modules["pr_merge_guard"] = guard  # dataclasses look their module up here
 _spec.loader.exec_module(guard)
 
 
@@ -56,11 +57,15 @@ def test_non_merges_are_not_gated(command):
     assert guard.find_merges(command) == []
 
 
+HEAD = "a" * 40
+
+
 def _run(monkeypatch, payload, gate_rc=1, number=902):
     calls = []
     monkeypatch.setattr(guard, "run_gate", lambda pr, root: (calls.append(pr), (gate_rc, "NOT-RUN  no gates run"))[1])
     monkeypatch.setattr(guard, "resolve_number",
                         lambda sel, cwd: int(sel) if sel and sel.isdigit() else number)
+    monkeypatch.setattr(guard, "pr_head", lambda pr, cwd: HEAD)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
     monkeypatch.delenv("TOOL_INPUT", raising=False)
     return guard.main(), calls
@@ -73,9 +78,59 @@ def test_incident_902_merge_without_a_run_is_blocked(monkeypatch, capsys):
     assert "NOT-RUN" in capsys.readouterr().err
 
 
-def test_ready_pr_is_allowed(monkeypatch):
-    rc, calls = _run(monkeypatch, {"tool_input": {"command": "gh pr merge 5 --squash"}}, gate_rc=0)
+def test_ready_pr_pinned_to_the_checked_head_is_allowed(monkeypatch):
+    cmd = f"gh pr merge 5 --squash --match-head-commit {HEAD}"
+    rc, calls = _run(monkeypatch, {"tool_input": {"command": cmd}}, gate_rc=0)
     assert rc == 0 and calls == [5]
+
+
+def test_ready_rest_merge_pinned_by_sha_is_allowed(monkeypatch):
+    cmd = f"gh api -X PUT repos/o/r/pulls/5/merge -f sha={HEAD}"
+    rc, _ = _run(monkeypatch, {"tool_input": {"command": cmd}}, gate_rc=0)
+    assert rc == 0
+
+
+# ── Sol findings on this branch, 2026-10-27: each is a regression test ──────
+def test_sol4_ready_but_unpinned_merge_is_blocked(monkeypatch, capsys):
+    """Checked at A, merged at B: without the pin a push in between merges unchecked."""
+    rc, _ = _run(monkeypatch, {"tool_input": {"command": "gh pr merge 5 --squash"}}, gate_rc=0)
+    assert rc == 2 and f"--match-head-commit {HEAD}" in capsys.readouterr().err
+
+
+def test_sol4_pin_to_a_different_commit_is_blocked(monkeypatch):
+    cmd = "gh pr merge 5 --squash --match-head-commit " + "b" * 40
+    rc, _ = _run(monkeypatch, {"tool_input": {"command": cmd}}, gate_rc=0)
+    assert rc == 2
+
+
+def test_sol1_shell_variable_selector_fails_closed(monkeypatch):
+    cmd = "PR=902; gh api -X PUT repos/o/r/pulls/$PR/merge"
+    assert guard.find_merges(cmd) == ["$PR"]
+    monkeypatch.setattr(guard, "resolve_number",
+                        lambda sel, cwd: int(sel) if sel and sel.isdigit() else None)
+    monkeypatch.setattr(guard, "run_gate", lambda pr, root: pytest.fail("must not reach the gate"))
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"tool_input": {"command": cmd}})))
+    assert guard.main() == 2
+
+
+def test_sol2_override_text_elsewhere_in_the_command_is_not_an_override(monkeypatch):
+    cmd = "echo 'MERGE_GATE_OVERRIDE=\"this text is not an override\"'; gh pr merge 902"
+    rc, calls = _run(monkeypatch, {"tool_input": {"command": cmd}})
+    assert rc == 2 and calls == [902]
+
+
+def test_sol2_override_on_one_merge_does_not_cover_the_next(monkeypatch, tmp_path):
+    monkeypatch.setattr(guard, "OVERRIDE_LOG", tmp_path / "o.jsonl")
+    cmd = 'MERGE_GATE_OVERRIDE="CI runner offline, checked by hand" gh pr merge 1 && gh pr merge 2'
+    rc, calls = _run(monkeypatch, {"tool_input": {"command": cmd}})
+    assert rc == 2 and calls == [2]
+
+
+def test_sol5_override_that_cannot_be_recorded_is_blocked(monkeypatch, tmp_path):
+    monkeypatch.setattr(guard, "OVERRIDE_LOG", tmp_path / "missing-dir" / "o.jsonl")
+    cmd = 'MERGE_GATE_OVERRIDE="CI runner offline, checked by hand" gh pr merge 9'
+    rc, _ = _run(monkeypatch, {"tool_input": {"command": cmd}})
+    assert rc == 2
 
 
 def test_powershell_tool_is_gated_too(monkeypatch):
@@ -88,8 +143,9 @@ def test_second_of_two_merges_is_checked(monkeypatch):
     results = iter([(0, "READY"), (1, "FAILED")])
     monkeypatch.setattr(guard, "run_gate", lambda pr, root: next(results))
     monkeypatch.setattr(guard, "resolve_number", lambda sel, cwd: int(sel))
+    monkeypatch.setattr(guard, "pr_head", lambda pr, cwd: HEAD)
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(
-        {"tool_input": {"command": "gh pr merge 1 && gh pr merge 2"}})))
+        {"tool_input": {"command": f"gh pr merge 1 --match-head-commit {HEAD} && gh pr merge 2"}})))
     assert guard.main() == 2
 
 

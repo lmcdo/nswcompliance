@@ -600,7 +600,10 @@ fi  # PREPUSH_FULL (jscpd)
 # against real git histories (tests/test_sol_review_base.py) instead of only
 # ever running inside a hook, where a wrong answer is invisible.
 SOL_BASE=$(bash scripts/sol_review_base.sh "$DUP_BASE" 2>/dev/null || echo "$DUP_BASE")
-SOL_CHANGED=$(git diff --name-only "$SOL_BASE"...HEAD 2>/dev/null   | grep -E '^(services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)$'   | grep -vE '(test|__tests__|\.spec\.)' || true)
+# Kept identical to REVIEWABLE / NOT_REVIEWABLE in scripts/review_coverage.py
+# (a test runs both on the same paths). Test files by path shape, not the
+# substring "test", which skipped services/contest.py; hooks are code too.
+SOL_CHANGED=$(git diff --name-only "$SOL_BASE"...HEAD 2>/dev/null   | grep -E '^((services|scripts|src|frontend-nextjs/(app|components|lib))/.*\.(py|ts|tsx)|\.claude/hooks/[^/]+\.py)$'   | grep -vE '(^|/)(tests?|__tests__)/|(^|/)test_[^/]*$|_test\.py$|\.(spec|test)\.[jt]sx?$' || true)
 
 SOL_SCOPED_PATHS='^(frontend-nextjs/(app/api|components/pdf|lib/pdf)/|scripts/generate_conveyancing_report\.py|scripts/conveyancing_db\.py|services/conveyancing\.py)'
 SOL_TOUCHES_OUTPUT=$(echo "$SOL_CHANGED" | grep -E "$SOL_SCOPED_PATHS" || true)

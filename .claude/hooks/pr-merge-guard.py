@@ -19,8 +19,14 @@ argument order, by number, URL or branch, with or without --auto, and the REST
 merge endpoint via `gh api` or curl — and runs check_pr_gates.py for each.
 Anything but exit 0 blocks the command, with the gate's own message.
 
-Fails CLOSED: a merge whose PR cannot be resolved, or a gate that cannot run,
-is blocked. The escape is explicit and leaves a record:
+The merge must also be PINNED to the commit the gate checked:
+    gh pr merge 123 --squash --match-head-commit <full head sha>
+(REST: `-f sha=<full head sha>`). Without the pin, a push landing between the
+check and the merge would be merged unchecked; with it, GitHub refuses.
+
+Fails CLOSED: a merge whose PR cannot be resolved (`pulls/$PR/merge`), a gate
+that cannot run, or an override that cannot be recorded is blocked. The escape
+must prefix the merge command itself and leaves a record:
     MERGE_GATE_OVERRIDE="<reason, 15+ chars>" gh pr merge 123 --squash
 
 Input: Claude Code sends the hook payload as JSON on stdin. TOOL_INPUT is read
@@ -35,6 +41,7 @@ import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,31 +49,58 @@ MIN_OVERRIDE_CHARS = 15
 REPO = Path(__file__).resolve().parents[2]
 OVERRIDE_LOG = REPO / ".claude" / ".merge-gate-overrides.jsonl"
 
-# `gh [global flags] pr merge ...` up to the next shell separator.
-_GH_MERGE = re.compile(r"\bgh(?:\.exe)?\b(?P<pre>[^;&|\n]*?)\bpr\s+merge\b(?P<args>[^;&|\n]*)", re.I)
-# REST merge endpoint: PUT /repos/o/r/pulls/N/merge, via gh api or curl.
-_API_MERGE = re.compile(r"pulls/(?P<num>\d+)/merge\b", re.I)
-_PR_URL = re.compile(r"/pull/(?P<num>\d+)\b")
-_OVERRIDE = re.compile(r"MERGE_GATE_OVERRIDE=(?:\"([^\"]*)\"|'([^']*)'|(\S+))")
-# gh pr merge flags that take a value: their value is not the PR selector.
 # Text that is DATA, not a command: commit messages, PR bodies, heredoc bodies.
 # Without this, `git commit -m "run gh pr merge 902 next"` would be gated.
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1.*?^\s*\2\s*$", re.S | re.M)
 _MESSAGE_ARG = re.compile(
     r"(?:-m|--message|-b|--body|-t|--title|--subject)(?:\s+|=)(\"[^\"]*\"|'[^']*')")
+# One shell command per segment: an override only counts on its own segment.
+_SEGMENT_SPLIT = re.compile(r"&&|\|\||[;|&\n]")
+_GH_MERGE = re.compile(r"\bgh(?:\.exe)?\b.*?\bpr\s+merge\b(?P<args>.*)", re.I)
+# REST merge endpoint: PUT /repos/o/r/pulls/<anything>/merge, via gh api or curl.
+# Any selector, not just digits: `pulls/$PR/merge` must be caught and then fail
+# to resolve, not slip past (Sol finding, 2026-10-27).
+_API_MERGE = re.compile(r"pulls/(?P<sel>[^/\s\"']+)/merge\b", re.I)
+_PR_URL = re.compile(r"/pull/(?P<num>\d+)\b")
+_LEADING_OVERRIDE = re.compile(
+    r"^\s*MERGE_GATE_OVERRIDE=(?:\"(?P<dq>[^\"]*)\"|'(?P<sq>[^']*)'|(?P<bare>\S+))\s+")
+_PIN_FLAG = re.compile(r"--match-head-commit(?:\s+|=)['\"]?(?P<sha>[0-9a-fA-F]+)")
+_PIN_API = re.compile(r"\bsha=['\"]?(?P<sha>[0-9a-fA-F]+)")
+# gh pr merge flags that take a value: their value is not the PR selector.
 _VALUE_FLAGS = {"-b", "--body", "-F", "--body-file", "-t", "--subject", "-A",
                 "--author-email", "--match-head-commit", "-R", "--repo"}
 
 
-def find_merges(command: str) -> list[str | None]:
-    """Every PR a command would merge. None = the current branch's PR."""
+@dataclass
+class Merge:
+    selector: str | None     # None = the current branch's PR
+    override: str | None     # reason from a MERGE_GATE_OVERRIDE prefix on THIS segment
+    pin: str | None          # sha the merge is pinned to, if any
+
+
+def parse_merges(command: str) -> list[Merge]:
+    """Every merge a command would perform, one per shell segment."""
     command = _MESSAGE_ARG.sub(" ", _HEREDOC.sub(" ", command))
-    targets: list[str | None] = []
-    for m in _GH_MERGE.finditer(command):
-        targets.append(_selector(m.group("args")))
-    for m in _API_MERGE.finditer(command):
-        targets.append(m.group("num"))
-    return targets
+    merges: list[Merge] = []
+    for seg in _SEGMENT_SPLIT.split(command):
+        gh = _GH_MERGE.search(seg)
+        api = _API_MERGE.search(seg)
+        if not gh and not api:
+            continue
+        ov = _LEADING_OVERRIDE.match(seg)
+        override = next((g for g in ov.group("dq", "sq", "bare") if g is not None), "") if ov else None
+        if gh:
+            pin = _PIN_FLAG.search(seg)
+            merges.append(Merge(_selector(gh.group("args")), override, pin and pin.group("sha")))
+        else:
+            pin = _PIN_API.search(seg)
+            merges.append(Merge(api.group("sel"), override, pin and pin.group("sha")))
+    return merges
+
+
+def find_merges(command: str) -> list[str | None]:
+    """Every PR selector a command would merge. None = the current branch's PR."""
+    return [m.selector for m in parse_merges(command)]
 
 
 def _selector(args: str) -> str | None:
@@ -88,13 +122,6 @@ def _selector(args: str) -> str | None:
     return None
 
 
-def override_reason(command: str) -> str | None:
-    m = _OVERRIDE.search(command)
-    if not m:
-        return None
-    return next((g for g in m.groups() if g is not None), "")
-
-
 def resolve_number(selector: str | None, cwd: str) -> int | None:
     if selector and selector.isdigit():
         return int(selector)
@@ -104,6 +131,16 @@ def resolve_number(selector: str | None, cwd: str) -> int | None:
     try:
         out = subprocess.run(args, capture_output=True, text=True, cwd=cwd, timeout=30)
         return int(json.loads(out.stdout)["number"]) if out.returncode == 0 else None
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired):
+        return None
+
+
+def pr_head(pr: int, cwd: str) -> str | None:
+    """The PR's current full head sha, or None if it cannot be read."""
+    try:
+        out = subprocess.run(["gh", "pr", "view", str(pr), "--json", "headRefOid"],
+                             capture_output=True, text=True, cwd=cwd, timeout=30)
+        return json.loads(out.stdout)["headRefOid"] if out.returncode == 0 else None
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired):
         return None
 
@@ -135,21 +172,28 @@ def _payload() -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def _record_override(command: str, reason: str) -> None:
+def _record_override(command: str, reason: str) -> bool:
+    """Append the override. False if it could not be written: no record, no merge."""
     try:
         with OVERRIDE_LOG.open("a", encoding="utf-8") as f:
             f.write(json.dumps({"at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 "reason": reason, "command": command[:300]}) + "\n")
+        return True
     except OSError:
-        pass
+        return False
+
+
+def _block(msg: str) -> int:
+    sys.stderr.write(f"MERGE GATE: {msg}\n")
+    return 2
 
 
 def main() -> int:
     data = _payload()
     tool_input = data.get("tool_input") or data.get("toolInput") or data
     command = (tool_input.get("command") if isinstance(tool_input, dict) else "") or ""
-    targets = find_merges(command)
-    if not targets:
+    merges = parse_merges(command)
+    if not merges:
         return 0
 
     # The repo this hook lives in, not the payload's cwd: a cwd in MSYS form
@@ -157,29 +201,35 @@ def main() -> int:
     # "fails closed" for the wrong reason (measured 2026-10-27).
     root = str(REPO)
 
-    reason = override_reason(command)
-    if reason is not None:
-        if len(reason.strip()) >= MIN_OVERRIDE_CHARS:
-            _record_override(command, reason.strip())
-            return 0
-        sys.stderr.write(f"MERGE GATE: MERGE_GATE_OVERRIDE needs a reason of at least "
-                         f"{MIN_OVERRIDE_CHARS} characters.\n")
-        return 2
+    for m in merges:
+        if m.override is not None:
+            if len(m.override.strip()) < MIN_OVERRIDE_CHARS:
+                return _block(f"MERGE_GATE_OVERRIDE needs a reason of at least "
+                              f"{MIN_OVERRIDE_CHARS} characters.")
+            if not _record_override(command, m.override.strip()):
+                return _block(f"the override could not be recorded in {OVERRIDE_LOG}; "
+                              "an override with no record is not allowed.")
+            continue
 
-    for sel in targets:
-        pr = resolve_number(sel, root)
+        pr = resolve_number(m.selector, root)
         if pr is None:
-            sys.stderr.write(
-                f"MERGE GATE: could not tell which PR `{sel or '(current branch)'}` is, so it "
-                "cannot be checked. Name it by number.\n")
-            return 2
+            return _block(f"could not tell which PR `{m.selector or '(current branch)'}` is, so "
+                          "it cannot be checked. Name it by number.")
         rc, out = run_gate(pr, root)
         if rc != 0:
-            sys.stderr.write(
-                f"MERGE GATE: PR #{pr} is not ready to merge.\n\n{out}\n\n"
+            return _block(
+                f"PR #{pr} is not ready to merge.\n\n{out}\n\n"
                 "This is scripts/check_pr_gates.py. Fix what it says, or merge on the record:\n"
-                f"  MERGE_GATE_OVERRIDE=\"<why>\" gh pr merge {pr} ...\n")
-            return 2
+                f"  MERGE_GATE_OVERRIDE=\"<why>\" gh pr merge {pr} ...")
+        head = pr_head(pr, root)
+        if head is None:
+            return _block(f"could not read PR #{pr}'s head commit to pin the merge to.")
+        if not m.pin or m.pin.lower() != head.lower():
+            return _block(
+                f"PR #{pr} passed the gate at {head[:8]}, but the merge is not pinned to that "
+                "commit, so a push landing in between would be merged unchecked. Re-run as:\n"
+                f"  gh pr merge {pr} --squash --match-head-commit {head}\n"
+                f"  (REST: add -f sha={head})")
     return 0
 
 

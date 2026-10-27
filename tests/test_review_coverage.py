@@ -255,3 +255,41 @@ def test_unfinished_row_never_counts_even_when_it_names_sol(repo):
     head = commit(repo, "services/a.py", "a=1\n", "code")
     rows = [row(base, head, model=SOL, outcome=rc.OUTCOME_UNFINISHED)]
     assert rc.uncovered(repo, base, head, rows) == [head]
+
+
+# ── Sol findings 3 and 6 (2026-10-27): what counts as reviewable code ─────────
+PATHS = {
+    "services/contest.py": True,          # was skipped: contains "test"
+    "src/attestation.ts": True,           # was skipped: contains "test"
+    "scripts/latest_report.py": True,     # was skipped: contains "test"
+    ".claude/hooks/pr-merge-guard.py": True,
+    "services/a.py": True,
+    "tests/test_a.py": False,
+    "services/tests/helper.py": False,
+    "scripts/test_thing.py": False,
+    "services/thing_test.py": False,
+    "frontend-nextjs/components/__tests__/x.tsx": False,
+    "frontend-nextjs/lib/x.spec.ts": False,
+    "frontend-nextjs/lib/x.test.tsx": False,
+    "docs/x.md": False,
+    ".claude/hooks/sub/x.py": False,
+}
+
+
+@pytest.mark.parametrize("path, want", sorted(PATHS.items()))
+def test_reviewable_by_path_shape(path, want):
+    got = bool(rc.REVIEWABLE.match(path)) and not rc.NOT_REVIEWABLE.search(path)
+    assert got is want
+
+
+def test_pre_push_filter_is_identical_to_the_python_one():
+    """The push review and the merge gate must agree on what code is."""
+    import re as _re
+    hook = (Path(__file__).resolve().parents[1] / ".githooks" / "pre-push").read_text(encoding="utf-8")
+    line = next(l for l in hook.splitlines() if l.startswith("SOL_CHANGED="))
+    keep, drop = _re.findall(r"grep -v?E '([^']+)'", line)
+    bash = shutil.which("bash") or pytest.skip("no bash")
+    listing = "\n".join(PATHS) + "\n"
+    out = subprocess.run([bash, "-c", f"grep -E \"$1\" | grep -vE \"$2\" || true", "_", keep, drop],
+                         input=listing, capture_output=True, text=True, check=True).stdout.split()
+    assert sorted(out) == sorted(p for p, w in PATHS.items() if w)

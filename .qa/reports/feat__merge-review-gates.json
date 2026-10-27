@@ -10,7 +10,8 @@
     "scripts/cross_review.py",
     "scripts/review_coverage.py",
     "tests/test_pr_merge_guard.py",
-    "tests/test_review_coverage.py"
+    "tests/test_review_coverage.py",
+    "CLAUDE.md"
   ],
   "pre_impl": {
     "existing_data": "No database. Inputs are git objects, the gh CLI, and per-branch JSONL files under the git common dir (sol-review/), next to the existing adjudicated-findings record.",
@@ -22,8 +23,8 @@
   },
   "falsifiable_check": {
     "command": "python -m pytest tests/test_pr_merge_guard.py tests/test_review_coverage.py -q -o addopts=",
-    "fails_when": "Eleven mutations, applied one at a time: find_merges returns nothing; the gate's exit code ignored; an unresolvable PR allowed; any override accepted; a DeepSeek row counted as Sol; an unfinished row counted as reviewed; uncovered() returns []; an override not bound to the head commit; the requested model recorded instead of the one that answered; an optimistic default row; check_pr_gates ignoring the gap.",
-    "observed_red": "11 of 11 mutants killed. The first run killed 9 of 11: an unfinished row only failed because its model was None, so test_unfinished_row_never_counts_even_when_it_names_sol was added, and one mutation anchor was fixed. Live: the real hook, fed a gh pr merge 902 payload, ran check_pr_gates.py through real gh and blocked with exit 2."
+    "fails_when": "Eleven mutations, applied one at a time: find_merges returns nothing; the gate's exit code ignored; an unresolvable PR allowed; any override accepted; a DeepSeek row counted as Sol; an unfinished row counted as reviewed; uncovered() returns []; an override not bound to the head commit; the requested model recorded instead of the one that answered; an optimistic default row; check_pr_gates ignoring the gap. Round 2 (after Sol's review of this branch): six more -- REST selector digits only; override found anywhere in the command; an unpinned merge allowed; an unrecordable override allowed; the substring test filter restored; hooks excluded from review.",
+    "observed_red": "17 of 17 mutants killed. Round 1 killed 9 of 11 and gained test_unfinished_row_never_counts_even_when_it_names_sol. Sol then found 6 real holes (shell-variable selector, override text anywhere, check/merge race, silent override-log failure, substring test filter also in pre-push, hooks not reviewable); each now has a regression test and a mutant. Live: the real hook blocked gh pr merge 902 through real gh (exit 2)."
   },
   "functions": [
     {
@@ -90,6 +91,34 @@
       "mitigated": "Yes -- covered by test_gate_override_needs_a_reason_and_is_recorded, which goes red under the matching mutation.",
       "repro": "python -m pytest tests/ -q -o addopts= -k test_gate_override_needs_a_reason_and_is_recorded",
       "how": "review_coverage.has_override only accepts an override row whose head equals the PR's current head sha."
+    },
+    {
+      "scenario": "Sol 1: PR=902; gh api -X PUT repos/o/r/pulls/$PR/merge -- a shell variable as the PR.",
+      "what_happens": "Caught as a merge; the selector cannot be resolved, so the hook blocks.",
+      "mitigated": "Yes -- test_sol1_shell_variable_selector_fails_closed.",
+      "how": "_API_MERGE accepts any path segment; resolve_number returns None for it and main() blocks.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts= -k sol1"
+    },
+    {
+      "scenario": "Sol 2: echo 'MERGE_GATE_OVERRIDE=...'; gh pr merge 902 -- override text in another command.",
+      "what_happens": "Not treated as an override; the gate runs and blocks.",
+      "mitigated": "Yes -- test_sol2_override_text_elsewhere_in_the_command_is_not_an_override.",
+      "how": "The command is split into shell segments and an override only counts as the leading assignment of the merge's own segment.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts= -k sol2"
+    },
+    {
+      "scenario": "Sol 4: gate checks head A, a push lands B, the merge merges B unchecked.",
+      "what_happens": "Merge blocked unless pinned to the checked head commit.",
+      "mitigated": "Yes -- test_sol4_ready_but_unpinned_merge_is_blocked.",
+      "how": "After READY the hook reads the PR head and requires --match-head-commit (or REST sha=) equal to it, so GitHub refuses a moved head.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts= -k sol4"
+    },
+    {
+      "scenario": "Sol 3: an unreviewed change to services/contest.py is filtered out as a test file.",
+      "what_happens": "Counted as reviewable code, at push and at merge.",
+      "mitigated": "Yes -- test_reviewable_by_path_shape and test_pre_push_filter_is_identical_to_the_python_one.",
+      "how": "Test files are matched by path shape in both review_coverage.py and the pre-push SOL_CHANGED grep, and a test runs both filters on the same paths.",
+      "repro": "python -m pytest tests/test_review_coverage.py -q -o addopts= -k path"
     }
   ],
   "post_merge": {
