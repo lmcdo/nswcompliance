@@ -56,6 +56,7 @@ export function WaitlistButton({
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [emailSent, setEmailSent] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +83,8 @@ export function WaitlistButton({
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || 'Something went wrong');
       }
+      const json = await res.json().catch(() => ({}));
+      setEmailSent(json.email_sent !== false);
       // No email or address in the event — conversion is measured without PII.
       posthog.capture('lead_submitted', { interest_type: interestType, variant });
       setState('done');
@@ -97,7 +100,9 @@ export function WaitlistButton({
       <div className={`rounded-lg bg-teal-50 border border-teal-200 px-4 py-3 ${className}`}>
         <p className="text-sm font-medium text-teal-800">
           {variant === 'email-result'
-            ? `Done. A link to this result is on its way to ${email.trim()}.`
+            ? emailSent
+              ? `Done. A link to this result is on its way to ${email.trim()}.`
+              : 'Saved. We could not send the email just now — bookmark this page to come back to it.'
             : "You're on the list. We'll email you when this report is available for purchase."}
         </p>
       </div>

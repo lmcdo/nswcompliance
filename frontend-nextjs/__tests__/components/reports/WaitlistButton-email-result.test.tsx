@@ -46,6 +46,13 @@ it('does not unlock when the server rejects the lead', async () => {
   expect(posthog.capture).not.toHaveBeenCalled();
 });
 
+it('says saved, not on its way, when the server reports the email did not go', async () => {
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, email_sent: false }) });
+  render(<WaitlistButton interestType="flood-truth" variant="email-result" />);
+  submit();
+  expect(await screen.findByText(/Saved\. We could not send the email/)).toBeInTheDocument();
+});
+
 it('keeps the waitlist copy by default', () => {
   render(<WaitlistButton interestType="solar" />);
   expect(screen.getByRole('button')).toHaveTextContent('Join waitlist');

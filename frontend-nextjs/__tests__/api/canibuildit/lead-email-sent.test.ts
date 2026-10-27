@@ -114,6 +114,21 @@ describe('email_sent', () => {
   });
 });
 
+describe('response and stored id', () => {
+  it('tells the caller when the email did not go', async () => {
+    sendMock.mockResolvedValue({ data: null, error: { message: 'domain not verified' } });
+    const res = await POST(req(LEAD));
+    expect(await res.json()).toMatchObject({ ok: true, email_sent: false });
+  });
+
+  it('treats an insert that returns no id as a failed save', async () => {
+    singleMock.mockResolvedValue({ data: null, error: null });
+    const res = await POST(req(LEAD));
+    expect(res.status).toBe(500);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('consent.shared_with', () => {
   const consent = { consent_version: 'v', consent_wording: 'wording' };
   const sharedWith = () => insertMock.mock.calls[0][0].consent.shared_with;

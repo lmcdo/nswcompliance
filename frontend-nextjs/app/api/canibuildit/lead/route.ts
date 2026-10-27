@@ -346,7 +346,8 @@ export async function POST(req: NextRequest) {
       ...(consentRecord ? { consent: consentRecord } : {}),
     }).select('id').single();
     if (insertErr) throw new Error(insertErr.message);
-    leadId = inserted?.id ?? null;
+    if (typeof inserted?.id !== 'number') throw new Error('insert returned no id');
+    leadId = inserted.id;
   } catch (err) {
     // A lost lead must not read as success: the forms show this error and keep
     // the person's input, so they can retry instead of waiting for nothing.
@@ -409,7 +410,8 @@ export async function POST(req: NextRequest) {
   }
   if (leadId !== null) await recordEmailSent(leadId, emailSent);
 
-  return NextResponse.json({ ok: true });
+  // email_sent lets a form say "saved" rather than "on its way" when it was not.
+  return NextResponse.json({ ok: true, email_sent: emailSent });
 }
 
 // Best-effort: the lead and the email already happened; failing the request

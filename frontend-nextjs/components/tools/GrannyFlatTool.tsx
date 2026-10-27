@@ -236,6 +236,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailError, setEmailError] = useState('');
   // Yield calculator — ineligible "if this lot qualified" teaser only
   const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
@@ -328,12 +329,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           consent_wording: WHAT_TO_CHANGE_WORDING,
         }),
       });
-      // A failed save leaves the form in place to retry, never a false "Done".
-      if (!res.ok) return;
+      // A failed save leaves the form in place with a reason, never a false "Done".
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setEmailError(json.error || 'That did not save. Please try again.');
+        return;
+      }
       posthog.capture('lead_submitted', { interest_type: 'granny-flat', variant: 'what-to-change' });
     } catch {
+      setEmailError('That did not save. Please check your connection and try again.');
       return;
     }
+    setEmailError('');
     setEmailSubmitted(true);
   };
 
@@ -723,6 +730,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                       Email me
                     </button>
                   </form>
+                  {emailError && <p className="text-xs text-red-600 mt-2">{emailError}</p>}
                   <p className="text-xs text-gray-400 mt-2">{WHAT_TO_CHANGE_WORDING}</p>
                   </>
                 ) : (
