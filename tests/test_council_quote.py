@@ -387,7 +387,8 @@ def test_a_bare_label_line_does_not_block_a_proof():
 
 
 HORNSBY = {5: ["Height", "a.", "Sites with the following maximum building heights under Clause 4.3",
-               "should comply with the maximum number of storeys in Table 3.5.4-a."]}
+               "should comply with the maximum number of storeys in Table 3.5.4-a.",
+               "b.", "Development should not exceed the storeys shown."]}
 DROPPED_LABEL = ("Height Sites with the following maximum building heights under Clause 4.3 should "
                  "comply with the maximum number of storeys in Table 3.5.4-a.")
 
@@ -413,6 +414,27 @@ def test_a_number_alone_is_a_table_value_not_a_label(cell):
     stored = "Maximum storeys in the precinct 2 for sites fronting a heritage item listed in Schedule 5"
     out = cq.judge_twice(row(stored), [stream(tbl)], [stream(tbl, skip_labels=True)])
     assert out["status"] == "unconfirmed"
+
+
+@pytest.mark.parametrize("cell", ["(x)", "A.", "c)"])
+def test_a_lone_letter_with_no_list_beside_it_is_not_skipped(cell):
+    # City of Sydney Section 6 map key: "(x)" means "brackets indicate additional height", a value,
+    # not the tenth list item. With no neighbour label of the same list nearby it must stay in the search.
+    page = {5: ["Height", cell] + HORNSBY[5][2:4]}
+    out = cq.judge_twice(row(DROPPED_LABEL, page=5), [stream(page)], [stream(page, skip_labels=True)])
+    assert out["status"] == "unconfirmed"
+
+
+@pytest.mark.parametrize("text, skipped", [
+    (["a.", "x", "b.", "y"], {0, 2}),
+    (["(i)", "x", "(ii)"], {0, 2}),
+    (["i)", "x", "j)"], {0, 2}),          # "i)" read as a letter, next to "j)"
+    (["a.", "x", "(b)"], set()),          # different wrapping: not the same list
+    (["a."] + ["x"] * (cq.LABEL_NEAR + 1) + ["b."], set()),   # too far apart
+    (["(x)", "storeys"], set()),
+])
+def test_list_label_lines(text, skipped):
+    assert cq.list_label_lines(text) == skipped
 
 
 def test_words_not_printed_stay_unconfirmed_with_labels_skipped():

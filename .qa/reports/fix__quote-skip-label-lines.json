@@ -17,7 +17,7 @@
   "functions": [
     {
       "name": "judge_twice",
-      "file_line": "scripts/council_quote.py:470",
+      "file_line": "scripts/council_quote.py:497",
       "input": "row + two stream lists",
       "output": "verdict dict with status, reason, quote and quote_page for the rule",
       "if_none": "no stream text gives the same unconfirmed verdict as before"
