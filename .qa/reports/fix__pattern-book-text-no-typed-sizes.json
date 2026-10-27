@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "commit_hash": "b7fbdb34",
+  "commit_hash": "083d6558",
   "justification": "One explanatory sentence with typed lot sizes; decides nothing. Minor: text only.",
   "files": [
     "frontend-nextjs/components/compliance/PatternBookEligibilityCard.tsx",
