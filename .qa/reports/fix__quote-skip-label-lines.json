@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which council rules are proven (and so shown) by the nightly check; not critical because a rule is proven only if every word is the council's printed text in order, and rules already proven are never re-judged.",
-  "commit_hash": "acec68fc",
+  "commit_hash": "3c1d2a07",
   "files": [
     "scripts/council_quote.py",
     "tests/test_council_quote.py"
