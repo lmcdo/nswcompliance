@@ -47,11 +47,11 @@
       "repro": "python -m pytest tests/test_hooks_not_silently_dead.py -q -k harmless"
     },
     {
-      "scenario": "no-unreferenced-new-file runs before the whole command, so `git add new.py && git commit` stages the file after the hook looked.",
+      "scenario": "no-unreferenced-new-file runs before the whole command, so a file added and committed in ONE command is staged only after the hook looked.",
       "what_happens": "That new file is not checked.",
       "mitigated": false,
       "how": "Known limit of a PreToolUse hook; recorded here, not fixed in this PR.",
-      "repro": "Send `git add x.py && git commit -m y` with x.py unstaged: exit 0."
+      "repro": "Send a single command that runs git add on an unstaged new script and then git commit: the hook exits 0."
     }
   ],
   "post_merge": {
