@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "307a95d6",
+  "commit_hash": "fb710c87",
   "justification": "A typed 450 m2 decided which rules a user sees, for every council. Standard: one pure function, one new optional prop on three sections.",
   "files": [
     "frontend-nextjs/lib/requirement-prioritization.ts",
@@ -11,7 +11,7 @@
     "frontend-nextjs/__tests__/lib/can-subdivide-lep-min-lot-size.test.ts"
   ],
   "pre_impl": {
-    "existing_data": "constraints.minLotSize from the Planning Portal Lot Size layer (lib/nsw-planning-portal.ts:782)",
+    "existing_data": "constraints.minLotSize from the Planning Portal Lot Size layer (frontend-nextjs/lib/nsw-planning-portal.ts:782)",
     "assumption_mismatch": "No Lot Size layer for the address gives null, so nothing is hidden",
     "new_vs_existing": "Render-time only, every page view from deploy"
   },
@@ -59,7 +59,7 @@
   ],
   "falsifiable_check": {
     "command": "npx jest __tests__/lib/can-subdivide-lep-min-lot-size.test.ts",
-    "fails_when": "Typed 450 restored: 3 failed / 2 passed (docs/qa/session-b/5a-subdivide-red.md)",
+    "fails_when": "Typed 450 restored: 3 failed / 2 passed (docs/qa/session-b/5a-subdivide-red.txt)",
     "observed_red": "Ran the new test against the unfixed function: 3 failed, 2 passed."
   },
   "post_merge": {
