@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "commit_hash": "37a7f135",
+  "justification": "Monitor messages overstated coverage and one import failed silently. Standard: summary text, one import, one count; no query change.",
+  "files": [
+    "scripts/r2_monitor.py",
+    "tests/test_r2_monitor_medium_findings.py"
+  ],
+  "pre_impl": {
+    "existing_data": "None read or written; only run summary, Telegram text and the module import",
+    "assumption_mismatch": "If hub_scrapers is missing in the image the monitor now crashes at start; Dockerfile.monitors copies it, test_dockerfile_monitors_imports covers that",
+    "new_vs_existing": "From the next monitor run onward; no stored rows change"
+  },
+  "functions": [
+    {
+      "name": "not_checked_note",
+      "file_line": "scripts/r2_monitor.py:1571",
+      "input": "results dict from run_monitor with bucket lists",
+      "output": "plain text naming every not-checked chapter group",
+      "if_none": "empty string when every chapter was checked"
+    }
+  ],
+  "values": [
+    {
+      "value": "results['skipped_no_url']",
+      "read_at": "scripts/r2_monitor.py:1577",
+      "nullable": "no",
+      "guard_at": "int(results[key]) raises",
+      "if_missing": "run fails loudly"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Three hub-only chapters have no document link on a quiet night",
+      "what_happens": "Before: All chapters are current. Now: names 3 not checked",
+      "mitigated": true,
+      "how": "not_checked_note includes skipped_no_url",
+      "repro": "pytest tests/test_r2_monitor_medium_findings.py"
+    },
+    {
+      "scenario": "hub_scrapers fails to import after a bad refactor",
+      "what_happens": "Before: no council hub scraped, run green. Now: run crashes at import, exit non-zero",
+      "mitigated": true,
+      "how": "try/except removed",
+      "repro": "same test file, import case"
+    },
+    {
+      "scenario": "Ten chapters checked of which seven unchanged",
+      "what_happens": "Before: total 17, sanity ratio diluted. Now: total 10",
+      "mitigated": true,
+      "how": "chapters_checked returns checked only",
+      "repro": "same test file"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_r2_monitor_medium_findings.py",
+    "fails_when": "Fixes reverted: 5 failed (docs/qa/session-b/6-monitor-medium-red.txt)",
+    "observed_red": "Ran the new tests against unfixed r2_monitor.py: 5 failed, 0 passed (two by missing helper names, so their red is weaker)."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
