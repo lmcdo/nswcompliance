@@ -1,0 +1,94 @@
+{
+ "tier": "standard",
+ "justification": "Changes the served flood planning answer in the flood tool and the site brief (102 of 310 saved checks change). Not Critical: only moves a false 'no' to 'not known' and drops extreme-only lines; one raise is a real planning-area hit. Not Minor: served answers change.",
+ "commit_hash": "6478c305",
+ "files": [
+  "scripts/page_integrity/producer_baseline.json",
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "services/intelligence_brief.py",
+  "tests/test_brief_failclosed.py",
+  "tests/test_brief_slice2_distances.py",
+  "tests/test_flood_planning.py",
+  "tests/test_flood_queries.py",
+  "tests/test_flood_truth.py",
+  "tests/test_intelligence_brief_orchestrator.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if coverage is ignored, the near-edge rule is dropped, a failure returns no, or extreme-flood lines count as the planning map (each mutation measured).",
+  "external_authority": "spatial_overlays live: 33 stored flood values all classified (DB test); NSW_Flood_Risk counts match ours for 56 councils; Spatial Services LGA resolved 75/75 height-layer misses.",
+  "observed_red": "Each of 4 deliberate breakages of the producer turned at least one test red."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays flood: 33 values, 72 councils; spatial_overlays_coverage says 12 (stale, not used).",
+  "assumption_mismatch": "The old lookup said False whenever the table had any flood row, and True for PMF and non-flood rows.",
+  "new_vs_existing": "One new producer module; the flood tool's own flood queries removed (producer lint 4->2 in flood_truth).",
+  "external_source_error": "Spatial Services outage or DB error -> None with reason, never no."
+ },
+ "functions": [
+  {
+   "name": "flood_planning_status",
+   "file_line": "services/flood_planning.py",
+   "what": "Yes / no / not known for the council flood planning map at a point.",
+   "input": "lat, lng and an open database connection",
+   "output": "dict with value, reason, council, hits, nearest_m",
+   "if_none": "Any failure returns value None with a reason, never False.",
+   "edge_cases": "PMF-only hit, non-flood rows, council unknown, near the line",
+   "failure_mode": "At worst says not known where a no was possible"
+  },
+  {
+   "name": "_query_ses_flood_study",
+   "file_line": "services/flood_truth.py",
+   "what": "Now reads the producer for in/out and its hits for tiers.",
+   "input": "lat and lng of the address",
+   "output": "ses_* fields plus flood_map_reason and council",
+   "if_none": "Producer None passes through as None.",
+   "edge_cases": "not-flood rows dropped from tiers",
+   "failure_mode": "None on error"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address in a council whose flood map we do not hold",
+   "what_happens": "Answer is not known with the reason, not outside",
+   "mitigated": true,
+   "how": "covered-council check",
+   "repro": "pytest tests/test_flood_planning.py -k hold_no_map"
+  },
+  {
+   "scenario": "Point only inside a PMF extreme flood line",
+   "what_happens": "Not counted as the planning map; reason names the extreme extent",
+   "mitigated": true,
+   "how": "category split",
+   "repro": "pytest -k extreme"
+  },
+  {
+   "scenario": "The height-layer council lookup fails for this point",
+   "what_happens": "Spatial Services boundary names the council",
+   "mitigated": true,
+   "how": "fallback with 5 s timeout",
+   "repro": "pytest -k spatial_services"
+  }
+ ],
+ "verified": [
+  "13 producer tests; 4 mutations caught",
+  "Live DB: 33/33 flood values classified",
+  "1342 flood/brief/intelligence tests pass",
+  "Regression on 310: 32 level changes, only raise has a real planning hit"
+ ],
+ "gaps": [
+  "Conveyancing, CDC, canibuildit check and verify app not yet on the producer (next PRs)",
+  "Brief flood/bushfire/solar sections not yet hidden (next PR)"
+ ],
+ "post_merge": {
+  "action": "After deploy: re-run the 310 comparison against prod and one browser check of a not-held council",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "A Richmond Valley address shows not known, not outside"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "Exercised against the real database and Spatial Services on all 310 saved points before commit; DB test checks every stored value."
+ }
+}
