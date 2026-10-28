@@ -487,3 +487,35 @@ def test_numbered_commands_are_not_contents():
                 "3.4 Screen plant equipment and services from the street and neighbours\n"
                 "3.5 Orient living areas and private open space towards the north")
     assert cq.contents_kind(commands) is None
+
+
+# -- labelled lines: a short lead-in, an unpunctuated last item (Penrith 2026-10-28) -------------------------
+P_BETWEEN = ["i. The minimum rear setback for a single storey building is 4m.",
+             "ii. The minimum rear setback for a two storey building is 6m."]
+
+
+def test_a_short_labelled_lead_in_is_proven_with_its_item():
+    st = stream({1: ["5. Rear setbacks:"] + P_BETWEEN + ["iii. Minor encroachments may be considered on irregular lots."]})
+    out = cq.judge(row("5. Rear setbacks:\niii. Minor encroachments may be considered on irregular lots."), [st])
+    assert out["status"] == "exact" and out["reason"] == "pieces"
+
+
+def test_a_last_labelled_item_without_a_full_stop_is_proven():
+    lead = "7. Encroachments - consideration may be given to minor encroachments to the envelope for:"
+    item = "ii. preserve clusters of established trees as corridors"
+    st = stream({1: [lead, "i. eaves to main roofs", item]})
+    out = cq.judge(row(f"{lead}\n{item}"), [st])
+    assert out["status"] == "exact" and out["reason"] == "pieces"
+
+
+def test_a_short_unlabelled_lead_in_is_still_refused():
+    st = stream({1: ["Rear setbacks:"] + P_BETWEEN})
+    out = cq.judge(row("Rear setbacks:\nii. The minimum rear setback for a two storey building is 6m."), [st])
+    assert out["reason"] != "pieces"
+
+
+def test_an_unpunctuated_labelled_line_before_the_last_is_still_refused():
+    lead = "7. Encroachments - consideration may be given to minor encroachments to the envelope for:"
+    st = stream({1: [lead, "i. eaves to main roofs", "ii. chimneys and antennas"]})
+    out = cq.judge(row(f"{lead}\ni. eaves to main roofs\nii. chimneys and antennas"), [st])
+    assert out["reason"] != "pieces"

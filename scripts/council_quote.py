@@ -77,6 +77,8 @@ _SENTENCE = re.compile(r"\b(?:is|are|be|been|was|were|will|may|can|cannot|not|no
                        r"allowed|need|needs|apply|applies)\b|[a-z]\.(?:\s|$)")
 #: A line that is only a list label: "3.", "(b)", "g)", "C.04".
 _BARE_LABEL = re.compile(r"^\(?(?:[a-z]|\d{1,2}|[ivx]{1,4}|[A-Z]\.?\d{1,3})[.)]?$", re.I)
+#: A line that begins with a list label and then words: "5. Rear setbacks:", "ii. chimneys and antennas", "(b) Fences".
+_LABELLED = re.compile(r"^\(?(?:[a-z]|\d{1,2}|[ivx]{1,4})[.)]\s+[A-Za-z]")
 #: How a sentence, a lead-in or a list item ends: "... the development.", "... the following:", "...; and".
 _PIECE_END = re.compile(r"(?:[.:;?!)][\"'”’]?|;\s*(?:and|or))\s*$", re.I)
 # A letter list label printed alone on its line ("a.", "(b)", "iv)"). The reader often drops it when it
@@ -377,10 +379,17 @@ def prove_pieces(body: str, streams: list[Stream], cqt, page: int | None = None)
     "retained and conserved.") that are each printed but are not one of the council's sentences."""
     lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     prose = [ln for ln in lines if "|" not in ln]
+    # A line that starts with its own list label is one of the council's items, not a two-column fragment: a
+    # labelled lead-in may be short ("5. Rear setbacks:") and the last labelled item may end without a full stop
+    # ("ii. chimneys and antennas"). Penrith 2026-10-28: 27 shown rules hidden behind a plan link by these guards.
+    short_ok = {i for i, ln in enumerate(prose) if _LABELLED.match(ln) and ln.endswith(":")}
+    open_ok = {len(prose) - 1} if prose and _LABELLED.match(prose[-1]) else set()
     if (not page or len(lines) < 2 or not prose or "|" in lines[0]
-            or any(len(norm(ln)) < MIN_CHARS and not _BARE_LABEL.match(ln) for ln in prose)
+            or any(len(norm(ln)) < MIN_CHARS and not _BARE_LABEL.match(ln) and i not in short_ok
+                   for i, ln in enumerate(prose))
             # a fragment stops mid-sentence ("To improve the image, quality and amenity of", Ashfield 123339)
-            or any(not _BARE_LABEL.match(ln) and not _PIECE_END.search(ln) for ln in prose)):
+            or any(not _BARE_LABEL.match(ln) and not _PIECE_END.search(ln) and i not in open_ok
+                   for i, ln in enumerate(prose))):
         return None
     for st in streams:
         for k0 in st.find_all(norm(lines[0])):
