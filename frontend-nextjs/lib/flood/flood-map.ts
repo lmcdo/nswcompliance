@@ -183,7 +183,7 @@ async function fetchStoreStatus(lon: number, lat: number): Promise<StoreFloodSta
   }
 }
 
-const STORE_NOT_ON_MAP = "The address point is not on the council's flood planning map and is more than 200 m from it. The whole lot was not checked.";
+const STORE_NOT_ON_MAP = "The address point is not on the council's flood planning map, but the whole lot was not checked, so part of it may be.";
 
 /** Combine the state layer (whole-lot capable) with our store. Yes from either is Yes; a whole-lot
  *  No from layer 230 stands; a store No (point only) never makes a No here; otherwise not known. */
