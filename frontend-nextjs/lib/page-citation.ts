@@ -70,7 +70,7 @@ export function pageLabel(p: PageFields): string | null {
   if (qp !== null && qp !== positive(p.pdf_page)) return `PDF page ${qp}`;   // printed label is pdf_page's
   if (qp === null && unlocated(p)) {
     const sp = sectionPage(p);
-    if (sp !== null) return `section near PDF page ${sp}`;
+    if (sp !== null) return `near PDF page ${sp}`;
     return positive(p.pdf_page) ? PAGE_NOT_LOCATED : null;
   }
   const label = typeof p.printed_page_label === 'string' ? p.printed_page_label.trim() : '';

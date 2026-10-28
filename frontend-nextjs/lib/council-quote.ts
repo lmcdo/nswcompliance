@@ -52,8 +52,8 @@ function isStateLawRow(p: QuoteFields): boolean {
 export function unprovenNote(p: QuoteFields): string {
   const label = pageLabel(p);
   const sp = sectionPage(p);
-  if (sp !== null && label === `section near PDF page ${sp}`) {
-    return `Wording not shown here — read it in its section, near PDF page ${sp} of the council's plan`;
+  if (sp !== null && label === `near PDF page ${sp}`) {
+    return `Wording not shown here — read it in the council's plan near PDF page ${sp}, which has rules under the same heading`;
   }
   return label && label !== PAGE_NOT_LOCATED
     ? `Wording not shown here — read it on ${label} of the council's plan`

@@ -123,7 +123,7 @@ describe('the pointer shown for a withheld council rule names the page shown bes
 
   it('names the nearby section page from a proven sibling when its own page was not located', () => {
     const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found', section_page: 37 };
-    expect(shownText(p)).toBe("Wording not shown here — read it in its section, near PDF page 37 of the council's plan");
+    expect(shownText(p)).toBe("Wording not shown here — read it in the council's plan near PDF page 37, which has rules under the same heading");
   });
 
   it("keeps the rule's own located page over its section page", () => {
