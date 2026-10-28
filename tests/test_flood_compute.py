@@ -84,13 +84,13 @@ class TestComputeFloodSignal:
             flood_studies=[{"design": {"1pct": 4.5}}],
         )) == "low"
 
-    def test_epi_none_str_with_ems_detected_alone_is_unavailable(self):
-        """EMS alone never decides (EMSR567 is a whole mapped region, not a flood
-        extent): with no other source it stays unavailable, never moderate."""
+    def test_epi_none_str_with_ems_detected_alone_is_low(self):
+        """A hit in a real mapped 2022 extent is evidence about this point, so it
+        lifts "unavailable" -- to "low", never moderate (#1529, #1531)."""
         assert _compute_flood_signal(_base(
             epi_flood_class="none",
             ems_flood_detected=True,
-        )) == "unavailable"
+        )) == "low"
 
     def test_epi_none_str_with_bom_flood_skips_unavailable(self):
         """BOM flood date prevents false-negative guard."""
@@ -311,12 +311,12 @@ class TestComputeFloodSignal:
         assert _compute_flood_signal(_base(jrc_water_occurrence_pct=40.1)) == "elevated"
 
     def test_ems_plus_jrc_14_point_9_not_elevated(self):
-        """14.9 < 15 → jrc_low (a trace) → EMS plus a trace is still EMS alone,
-        which never decides a level: none, not moderate or elevated."""
+        """14.9 < 15 → jrc_low (a trace) → EMS plus a trace is still EMS alone:
+        low, not moderate or elevated."""
         assert _compute_flood_signal(_base(
             ems_flood_detected=True,
             jrc_water_occurrence_pct=14.9,
-        )) == "none"
+        )) == "low"
 
     def test_ems_plus_jrc_15_point_0_is_elevated(self):
         """15.0 >= 15 → jrc_moderate → ems+jrc_moderate → elevated."""
@@ -327,9 +327,9 @@ class TestComputeFloodSignal:
 
     # --- MODERATE: one strong or two weaker ---
 
-    def test_ems_alone_is_not_a_signal(self):
-        """EMS alone never decides: EMSR567 is stored as a whole mapped region."""
-        assert _compute_flood_signal(_base(ems_flood_detected=True)) == "none"
+    def test_ems_alone_is_low(self):
+        """A real mapped 2022 extent alone is "low", never more."""
+        assert _compute_flood_signal(_base(ems_flood_detected=True)) == "low"
 
     def test_moderate_overlay_plus_jrc_low(self):
         """in_overlay AND jrc_low (0 < pct < 15) → moderate."""

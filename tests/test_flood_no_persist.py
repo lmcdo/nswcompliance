@@ -169,3 +169,16 @@ def test_a_duck_typed_request_without_the_field_still_persists(monkeypatch, writ
     assert writes["report"] >= 1, (
         "a request without the persist field stopped writing — the default must be True"
     )
+
+
+def test_the_stored_row_carries_the_served_flood_signal(monkeypatch, writes):
+    """The paid PDF reads the stored row; it held no flood_signal in 0 of 368
+    saved checks and printed "none". The stored level must equal the served one."""
+    _stub_all_sources(monkeypatch, _VIABLE_OVERRIDES)
+    _stub_db(monkeypatch, cache_row=None)
+    stored = []
+    monkeypatch.setattr(ft, "_write_report", lambda *a, **kw: stored.append(a[6]))
+    served = run_flood(_req(persist=True))
+    assert stored, "nothing was written"
+    assert stored[-1].get("flood_signal") == served["outputs"]["flood_signal"]
+    assert stored[-1]["flood_signal"] in {"none", "low", "moderate", "elevated", "unavailable"}

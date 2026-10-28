@@ -1408,7 +1408,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     unavailable — EPI query failed; cannot determine signal (do not show green)
     elevated    — multiple independent sources converge on flood exposure
     moderate    — one strong observed signal OR two weaker signals
-    low         — statutory overlay only (council flood study, no observed events)
+    low         — statutory overlay only, or a mapped 2022 flood extent only
     none        — no indicators across any source
 
     This is a data convergence indicator, not a flood risk determination.
@@ -1446,9 +1446,11 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
     ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
     no_local_study = not ses_queried and not study_in_overlay
-    # EMS is deliberately not a way out of "unavailable": alone it says nothing
-    # about this lot (see the moderate rule below).
-    if epi_no_coverage and no_local_study and not bom_flood and effective_pct < 5:
+    # A hit inside a real mapped flood extent IS evidence about this point, so
+    # it is a way out of "unavailable" (to "low"). A miss is not: the extents
+    # cover only the areas mapped in 2022.
+    if epi_no_coverage and no_local_study and not bom_flood and effective_pct < 5 \
+            and not ems_detected:
         return "unavailable"
 
     jrc_low      = 0 < effective_pct < 15
@@ -1462,19 +1464,20 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
         return "elevated"
 
     # Moderate: one strong observed signal or two weaker ones.
-    # Copernicus EMS corroborates, it never decides alone (2026-10-28): the
-    # stored EMSR567 shape is 86,349 km2 -- the activation's whole mapped
-    # region, not the flooded land -- and alone it put 144 of 308 saved checks
-    # on moderate or above with nothing else saying flood. It still lifts a
-    # level when another source agrees (the elevated rules above).
+    # Copernicus EMS alone is never moderate. Until 2026-10-28 the stored
+    # EMSR567 shape was 86,349 km2 (every layer of the vector packages merged,
+    # not the flooded land) and alone it put 144 of 308 saved checks on
+    # moderate or above. Reloaded as the observed extent only (333.8 km2,
+    # #1529), a hit is one mapped past event at this point: "low" below.
     # Gate: scripts/flood_signal_regression.py, tests/test_flood_signal_known_answers.py.
     if (in_overlay and jrc_low) \
             or (in_overlay and bom_flood) or jrc_moderate \
             or (jrc_low and bom_flood):
         return "moderate"
 
-    # Low: statutory overlay only — council study flags risk but no observed events
-    if in_overlay:
+    # Low: statutory overlay only, or a mapped 2022 flood extent only
+    # (Copernicus EMSR567 observed extent, NSW July/Oct 2022 extents).
+    if in_overlay or ems_detected:
         return "low"
 
     return "none"
@@ -1906,6 +1909,14 @@ def _s1b_gap_affected(start: date, end: date) -> bool:
 # sentinel key is poisoned and must be skipped, never served.
 _CACHE_SENTINEL_KEYS = ("epi_flood_class", "flood_signal")
 
+# Saved checks computed before this date are never re-served. EMSR567 was
+# reloaded on 2026-10-28 (86,349 km2 -> 333.8 km2; #1529) and the EMS rule
+# changed with it, so older rows carry an EMS hit and a level that a fresh run
+# no longer gives (222 of 308 saved checks). run_date, not created_at: a cache
+# copy keeps the ORIGINAL run_date, so a stale row copied today stays excluded.
+# Bump this whenever a flood input table or the signal rule changes.
+FLOOD_CACHE_MIN_RUN_DATE = date(2026, 10, 29)
+
 
 def _first_valid_cached_row(rows):
     """Return the newest cached row whose outputs are flood-shaped.
@@ -2171,8 +2182,9 @@ def run_flood(req: FloodRequest):
                 "WHERE product='flood' AND address=%s "
                 "  AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
                 "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
+                "  AND run_date >= %s "
                 "ORDER BY run_date DESC LIMIT 5",
-                (req.address, req.lat, req.lng)
+                (req.address, req.lat, req.lng, FLOOD_CACHE_MIN_RUN_DATE)
             )
             # #762 (prior-art-checked: same cache read hardened in place, no
             # new source): skip poisoned rows — another product's outputs
@@ -2347,6 +2359,10 @@ def run_flood(req: FloodRequest):
             "data_gaps": _build_data_gap_reasons(internal_outputs),
         }
 
+    # The stored row carries the level it was served with. It used to hold only
+    # the raw inputs, so the paid PDF (route.ts path A reads the stored row)
+    # found no flood_signal in 0 of 368 saved checks and printed "none".
+    internal_outputs["flood_signal"] = _normalise_outputs(internal_outputs)["flood_signal"]
     try:
         write_report(
             req.report_id, req.address, req.lat, req.lng,
