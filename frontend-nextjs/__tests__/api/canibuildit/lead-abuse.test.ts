@@ -139,7 +139,9 @@ describe('POST /api/canibuildit/lead — happy path', () => {
       address: '12 Test St, Marrickville NSW 2204',
       interest_type: 'flood',
     }));
-    expect(emailSendMock).toHaveBeenCalledTimes(1);
+    // One confirmation to the person; the second send is the operator alert.
+    expect(emailSendMock).toHaveBeenCalledTimes(2);
+    expect(emailSendMock.mock.calls[1][0].subject).toMatch(/^Lead: /);
     expect(emailSendMock.mock.calls[0][0].to).toContain('buyer@example.com');
   });
 
@@ -179,7 +181,9 @@ describe('POST /api/canibuildit/lead — happy path', () => {
       address: '14 Stanley Street, Concord NSW',
       interest_type: 'intelligence-brief',
     }));
-    expect(emailSendMock).toHaveBeenCalledTimes(1);
+    // One confirmation to the person; the second send is the operator alert.
+    expect(emailSendMock).toHaveBeenCalledTimes(2);
+    expect(emailSendMock.mock.calls[1][0].subject).toMatch(/^Lead: /);
     const call = emailSendMock.mock.calls[0][0];
     expect(call.from).toBe('PlotDetect <info@plotdetect.com.au>');
     expect(call.replyTo).toBeUndefined();
@@ -282,7 +286,9 @@ describe('POST /api/canibuildit/lead — honeypot', () => {
     emailSendMock.mockResolvedValue({ id: 'ok' });
     const res = await POST(makeRequest({ email: 'real@example.com', address: '5 Real St' }));
     expect(res.status).toBe(200);
-    expect(emailSendMock).toHaveBeenCalledTimes(1);
+    // One confirmation to the person; the second send is the operator alert.
+    expect(emailSendMock).toHaveBeenCalledTimes(2);
+    expect(emailSendMock.mock.calls[1][0].subject).toMatch(/^Lead: /);
   });
 });
 
@@ -339,7 +345,9 @@ describe('POST /api/canibuildit/lead — duplicate detection', () => {
     emailSendMock.mockResolvedValue({ id: 'ok' });
     await POST(makeRequest({ email: 'new@example.com', address: '99 New St, Sydney NSW 2000' }));
     expect(insertMock).toHaveBeenCalledTimes(1);
-    expect(emailSendMock).toHaveBeenCalledTimes(1);
+    // One confirmation to the person; the second send is the operator alert.
+    expect(emailSendMock).toHaveBeenCalledTimes(2);
+    expect(emailSendMock.mock.calls[1][0].subject).toMatch(/^Lead: /);
   });
 
   it('still returns 200 if duplicate check throws (non-blocking)', async () => {

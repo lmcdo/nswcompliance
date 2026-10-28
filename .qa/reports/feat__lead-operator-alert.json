@@ -1,0 +1,71 @@
+{
+  "tier": "standard",
+  "justification": "Standard: adds a second outbound email on a customer-facing route. Not Critical: no regulatory data, no schema change.",
+  "commit_hash": "f2a75ac2",
+  "files": [
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-operator-alert.test.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-verdict-integrity.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "canibuildit_leads: 6 real rows after deleting 3 owner test rows (backup data/db_rollback_backups/canibuildit_leads_owner_tests_pre_2026-10-28T110543.json).",
+    "assumption_mismatch": "Sending the alert to info@plotdetect.com.au would be quarantined by Google Workspace as self-domain mail; app/api/feedback/route.ts already routes to NOTIFY_EMAIL for this reason.",
+    "new_vs_existing": "Reuses the NOTIFY_EMAIL pattern from the feedback route; no new surface or env var.",
+    "external_source_error": "Resend {error} or throw is logged and the request still returns ok, since the lead is stored.",
+    "frontend_type": "N/A: response shape unchanged.",
+    "user_failure_mode": "If the alert fails, the person sees no difference; the failure is in server logs and the lead is in the table."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/canibuildit",
+    "fails_when": "Run with the operator alert call removed from route.ts",
+    "observed_red": "lead-abuse happy-path tests expect 2 sends with the second subject starting 'Lead: '; with no alert they receive 1 and fail."
+  },
+  "functions": [
+    {
+      "name": "buildLeadAlert",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+      "input": "lead fields after validation and storage",
+      "output": "a plain-text subject and body for the operator",
+      "if_none": "optional fields omitted; missing consent says so"
+    },
+    {
+      "name": "notifyOperatorOfLead",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+      "input": "the same lead fields for one stored lead",
+      "output": "true when Resend accepted the send",
+      "if_none": "no API key returns false without throwing"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An attacker puts HTML or a script in the address field",
+      "what_happens": "It could render in the operator's inbox",
+      "mitigated": true,
+      "how": "The alert is plain text only, with no html part",
+      "repro": "lead-operator-alert.test.ts builds text only"
+    },
+    {
+      "scenario": "Resend is down when a lead arrives",
+      "what_happens": "The operator gets no alert for that lead",
+      "mitigated": true,
+      "how": "The lead is still stored and logged; the request still returns ok",
+      "repro": "notifyOperatorOfLead catch path"
+    },
+    {
+      "scenario": "A duplicate submission of the same email and address within 24 hours",
+      "what_happens": "The operator could get repeated alerts for one person",
+      "mitigated": true,
+      "how": "The duplicate check returns before the insert, the email and the alert",
+      "repro": "lead-abuse duplicate detection tests"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No - uses the existing RESEND_API_KEY and optional NOTIFY_EMAIL",
+    "other_repo": "No",
+    "manual_verify": "Yes - submit one lead after deploy and confirm the alert reaches NOTIFY_EMAIL"
+  }
+}

@@ -410,8 +410,78 @@ export async function POST(req: NextRequest) {
   }
   if (leadId !== null) await recordEmailSent(leadId, emailSent);
 
+  // Awaited: an unawaited send can be cancelled when the instance freezes
+  // after the response (see notifyOperator in app/api/feedback/route.ts).
+  await notifyOperatorOfLead({
+    id: leadId, email: cleanEmail, firstName: first_name?.trim() || null, phone: phone?.trim() || null,
+    address: cleanAddress, interestType: interest_type ?? null, lgaName: lga_name?.trim() || null,
+    eligible: storedEligible, qualification: qualification ?? null, emailSent,
+    consentWording: consent_wording ?? null,
+  });
+
   // email_sent lets a form say "saved" rather than "on its way" when it was not.
   return NextResponse.json({ ok: true, email_sent: emailSent });
+}
+
+// Internal alert recipient. Must NOT be @plotdetect.com.au: Resend mail from
+// info@plotdetect.com.au to the same domain is quarantined by Google Workspace
+// (see app/api/feedback/route.ts). A Gmail filter can forward these on.
+const LEAD_ALERT_EMAIL = process.env.NOTIFY_EMAIL || 'lawrence.mcdonell@gmail.com';
+
+export interface LeadAlertFields {
+  id: number | null;
+  email: string;
+  firstName: string | null;
+  phone: string | null;
+  address: string | null;
+  interestType: string | null;
+  lgaName: string | null;
+  eligible: boolean | null;
+  qualification: Record<string, string | null | undefined> | null;
+  emailSent: boolean;
+  consentWording: string | null;
+}
+
+/** Build the operator alert. Pure and plain text, so it is testable and needs no escaping. */
+export function buildLeadAlert(f: LeadAlertFields): { subject: string; text: string } {
+  const answers = f.qualification
+    ? Object.entries(f.qualification).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ')
+    : '';
+  const text = [
+    `Type:      ${f.interestType ?? '(not stated)'}`,
+    `From:      ${f.firstName ? `${f.firstName} ` : ''}<${f.email}>${f.phone ? `  ${f.phone}` : ''}`,
+    `Address:   ${f.address ?? '(none)'}`,
+    f.lgaName ? `Council:   ${f.lgaName}` : null,
+    f.eligible !== null ? `Eligible:  ${f.eligible ? 'yes' : 'no'}` : null,
+    answers ? `Answers:   ${answers}` : null,
+    `Their email sent: ${f.emailSent ? 'yes' : 'NO - reply by hand'}`,
+    // Sent by the form, not proof of a tick: check the form before passing details on.
+    f.consentWording ? `Wording on the form: "${f.consentWording}"` : 'No consent wording recorded.',
+    '',
+    `Lead id ${f.id ?? '(unknown)'}. Reply to this email to reach them.`,
+  ].filter((line) => line !== null).join('\n');
+  return { subject: `Lead: ${f.interestType ?? '(not stated)'} - ${f.address ?? f.email}`, text };
+}
+
+// Never throws and never fails the request: the lead is already stored.
+async function notifyOperatorOfLead(f: LeadAlertFields): Promise<boolean> {
+  try {
+    const resend = getResend();
+    if (!resend) return false;
+    const { subject, text } = buildLeadAlert(f);
+    const result = await resend.emails.send({
+      from: 'PlotDetect <info@plotdetect.com.au>',
+      to: [LEAD_ALERT_EMAIL],
+      replyTo: f.email,
+      subject,
+      text,
+    });
+    if (result?.error) throw new Error(result.error.message);
+    return true;
+  } catch (err) {
+    console.error('[canibuildit/lead] operator alert failed:', err);
+    return false;
+  }
 }
 
 // Best-effort: the lead and the email already happened; failing the request
