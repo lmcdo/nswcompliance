@@ -4204,7 +4204,12 @@ def generate_pdf(
         if layer_type == "flood" and _flood_plan.get("value") is not True:
             if _flood_plan.get("value") is False:
                 return [label, Paragraph("Not on the council's flood planning map", ss["ok"]), "PostGIS"]
-            return None
+            # Not known is shown, never left out: a buyer must see that flood
+            # was not established and why (cross-review: a failed check had
+            # vanished from the paid report).
+            _why = _flood_plan.get("reason") or "flood planning map could not be checked"
+            return [label, Paragraph(f"Not known — {_why}. Ask council for a Section 10.7 certificate.",
+                                     ss["warn"]), "PostGIS"]
         # 1. PostGIS hit (detailed spatial data)
         if layer_type in unique_by_type:
             base_label = _HIT_LABELS.get(layer_type, "Present")
