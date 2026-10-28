@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Changes which council rules the nightly quote check may prove as the council's words. Measured on all 617 unproven shown rules: 34 become exact (18 Penrith, 16 Parramatta), each eye-checked against the stored rule; 0 others change.",
-  "commit_hash": "7154ec4a",
+  "justification": "Changes which council rules the nightly quote check may prove as the council's words. Measured on all 617 unproven shown rules: 26 become exact (18 Penrith, 8 Parramatta), each eye-checked against the stored rule; 0 others change.",
+  "commit_hash": "58150e9d",
   "files": [
     "scripts/council_quote.py",
     "tests/test_council_quote.py"
@@ -53,7 +53,7 @@
       "scenario": "The item is matched under a different list's lead-in.",
       "what_happens": "The quote would join the wrong list item to a lead-in.",
       "mitigated": true,
-      "how": "Unchanged guards: lead-in on the stored page or the one before, item after it within one page; fleet run 34 of 34 eye-checked.",
+      "how": "A relaxed line is refused when another lead-in (a line ending ':') is printed between it and the line before; test added. Fleet: 8 Parramatta items under sub-headings now refused.",
       "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k labelled"
     }
   ],
