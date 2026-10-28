@@ -79,9 +79,28 @@ def test_an_extreme_flood_only_hit_is_not_the_planning_map():
 
 def test_a_council_we_hold_no_map_for_is_unknown_never_no():
     s = fp.flood_planning_status(-29.04, 153.25, conn_with(
-        [], [("RICHMOND VALLEY",)], [("BALLINA",), ("TWEED",)]))
+        [], [("RICHMOND VALLEY",)], [("BALLINA",), ("TWEED",)], [(False,)]))
     assert s["value"] is None
-    assert s["reason"] == "we do not hold this council's flood planning map"
+    assert s["reason"] == "we do not hold this council's flood planning map for this area"
+
+
+def test_a_partial_council_map_gives_no_only_inside_its_study_area():
+    """Bellingen's map covers one river study area (2026-10-29): inside it a
+    clear point is 'no'; elsewhere in the council it stays 'not known'."""
+    inside = fp.flood_planning_status(-30.45, 152.9, conn_with(
+        [], [("BELLINGEN",)], [("BALLINA",)], [(True,)], [(None,)]))
+    assert inside["value"] is False
+    fp._covered_cache.update(councils=None, at=0.0)  # each call reads the covered list afresh
+    outside = fp.flood_planning_status(-30.45, 152.9, conn_with(
+        [], [("BELLINGEN",)], [("BALLINA",)], [(False,)]))
+    assert outside["value"] is None and "for this area" in outside["reason"]
+
+
+def test_partial_maps_never_count_a_whole_council_as_covered():
+    c = conn_with([], [("BALLINA",)], [("BALLINA",)], [(None,)])
+    fp.flood_planning_status(-28.86, 153.56, c)
+    covered_sql = [q for q in c.cursor.return_value.sql if "DISTINCT lga_name" in q]
+    assert covered_sql and "NOT LIKE 'PARTIAL" in covered_sql[0]
 
 
 def test_an_unknown_council_is_unknown(monkeypatch):

@@ -40,6 +40,11 @@ Adding new studies:
 """
 
 import argparse
+import os as _os
+
+# Large council flood polygons (Cessnock 1% AEP, 2026-10-29) exceed GDAL's default
+# GeoJSON object size and were skipped as unreadable. 0 = no limit.
+_os.environ.setdefault("OGR_GEOJSON_MAX_OBJ_SIZE", "0")
 import json
 import os
 import re
@@ -170,6 +175,62 @@ STUDIES = {
     # Only one layer (id=3): FPL at 1:100 ARI + 0.5m freeboard + CC to 2100.
     # Fields: OBJECTID, Id, Shape__Area, Shape__Length — binary FPA mask, no AEP col.
     # GIS_GISDATA_flood service is identical data — skip it.
+    # PARTIAL council maps (2026-10-29): each covers only the council's studied
+    # area, not the whole council. Instrument keys start with PARTIAL_ so
+    # services/flood_planning.py never treats the council as fully mapped: a
+    # "no" is given only inside a loaded study-area outline (layer_type
+    # 'flood_coverage'); elsewhere it is "not known". Vetted 2026-10-28: public
+    # ArcGIS Online items from the council's own account, no licence stated.
+    "bellingen_fpa": {
+        "label": "Bellingen — Lower Bellinger & Kalang Rivers FRMS: Flood Planning Area (PARTIAL)",
+        "lga_names": ["BELLINGEN"],
+        "currency_date": None,
+        "instrument_prefix": "PARTIAL_BELLINGEN_FPA",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services7.arcgis.com/kkiBaYsUIhK1wEpz/arcgis/rest/services/Lower_Bellinger_and_Kalang_Rivers_Floodplain_Risk_Management_Study/FeatureServer",
+        "layer_id": 6,          # 'Flood Planning Area - Levels' (306 features, 2026-10-28)
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
+    },
+    "bellingen_coverage": {
+        "label": "Bellingen — Lower Bellinger & Kalang Rivers FRMS: study area (coverage outline)",
+        "lga_names": ["BELLINGEN"],
+        "currency_date": None,
+        "instrument_prefix": "PARTIAL_BELLINGEN_STUDY_AREA",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services7.arcgis.com/kkiBaYsUIhK1wEpz/arcgis/rest/services/Lower_Bellinger_and_Kalang_Rivers_Floodplain_Risk_Management_Study/FeatureServer",
+        "layer_id": 0,          # 'Study Area' (5 features)
+        "aep_source": "fixed",
+        "fixed_scenario": "study_area",
+        "fixed_ari": None,
+        "layer_type": "flood_coverage",
+    },
+    "coffs_fpa": {
+        "label": "Coffs Harbour — Flood Planning Area (11 studies, PARTIAL)",
+        "lga_names": ["COFFS HARBOUR"],
+        "currency_date": None,
+        "instrument_prefix": "PARTIAL_COFFS_FPA",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services6.arcgis.com/Dt97ZETeCwwpu8nw/arcgis/rest/services/Flood_Planning_Area_WFL1/FeatureServer",
+        "layer_id": 3,          # EP_TYPE = FPL_Ext (25 features); layer 2 is PROPOSED, not loaded
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
+    },
+    "cessnock_1pct": {
+        "label": "Cessnock — 1% AEP flood extent (9 studies, PARTIAL)",
+        "lga_names": ["CESSNOCK"],
+        "currency_date": None,
+        "instrument_prefix": "PARTIAL_CESSNOCK_1PCT",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services-ap1.arcgis.com/qO0YnxzFsZREWsj6/arcgis/rest/services/Flood_Embedded_Map___1_percent/FeatureServer",
+        "layer_id": 0,          # 15 features, flood_type Overland/Riverine
+        "aep_source": "fixed",
+        "fixed_scenario": "1%AEP",
+        "fixed_ari": 100,
+    },
+
     "byron_fpa": {
         "label": "Byron Shire — Future Flood Planning Level FPA (ArcGIS FeatureServer)",
         "lga_names": ["BYRON"],
@@ -1385,7 +1446,7 @@ def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_
                 rows_to_insert.append((
                     instrument_key,
                     lga_primary,
-                    "flood",
+                    study.get("layer_type", "flood"),  # 'flood_coverage' for a study-area outline
                     norm_label,
                     float(ari) if ari is not None else None,
                     currency_date,
