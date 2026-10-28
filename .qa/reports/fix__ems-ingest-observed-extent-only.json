@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
- "commit_hash": "7d2721ad",
+ "commit_hash": "898f78e1",
  "files": [
   "scripts/ingest_copernicus_ems.py",
   "tests/test_ingest_copernicus_ems_guard.py"
@@ -92,8 +92,8 @@
   "Production row still holds the 13-map version (333.8 km2) until re-loaded"
  ],
  "post_merge": {
-  "action": "Production row already replaced on 2026-10-28 (new id 5); backup data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json in main checkout",
-  "db_reset": "None needed: production row already replaced 2026-10-28 (id 1 -> id 5); rollback = re-insert from the backup JSON",
+  "action": "RE-LOAD NEEDED: production holds the 13-map row (333.8 km2, id 5). Run python scripts/ingest_copernicus_ems.py --source EMSR567 --clear (user yes required) to load all 21 maps (522.9 km2). Backups: data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json (+ a fresh one before the re-load).",
+  "db_reset": "Re-load EMSR567 as above; then SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events shows EMSR567 ~523 km2",
   "secrets": "None: no new secrets or env vars",
   "other_repo": "None: no other repository affected",
   "manual_verify": "SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events -> EMSR567 333.5, none over 5,000"
