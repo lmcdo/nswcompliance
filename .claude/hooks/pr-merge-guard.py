@@ -69,7 +69,12 @@ _PR_URL = re.compile(r"/pull/(?P<num>\d+)\b")
 _LEADING_OVERRIDE = re.compile(
     r"^\s*MERGE_GATE_OVERRIDE=(?:\"(?P<dq>[^\"]*)\"|'(?P<sq>[^']*)'|(?P<bare>\S+))\s+")
 _PIN_FLAG = re.compile(r"--match-head-commit(?:\s+|=)['\"]?(?P<sha>[0-9a-fA-F]+)")
-_PIN_API = re.compile(r"\bsha=['\"]?(?P<sha>[0-9a-fA-F]+)")
+# The pin only counts as a request FIELD (`-f sha=...`) or a JSON body (`"sha": "..."`). A `?sha=` in the URL is
+# ignored by GitHub, so it pins nothing (cross-review 2026-10-28).
+_PIN_API = re.compile(r"(?:(?:^|\s)(?:-f|-F|--field|--raw-field)\s+['\"]?sha=|\"sha\"\s*:\s*\")(?P<sha>[0-9a-fA-F]+)")
+# Inside a DOUBLE-quoted message the shell still runs `$( ... )` and backticks: `git commit -m "$(gh pr merge 902)"`
+# merges. Those parts are kept as their own segments; the rest of the message is data (cross-review 2026-10-28).
+_SUBSTITUTION = re.compile(r"\$\(([^()]*(?:\([^()]*\)[^()]*)*)\)|`([^`]*)`")
 # gh pr merge flags that take a value: their value is not the PR selector.
 _VALUE_FLAGS = {"-b", "--body", "-F", "--body-file", "-t", "--subject", "-A",
                 "--author-email", "--match-head-commit", "-R", "--repo"}
@@ -82,9 +87,17 @@ class Merge:
     pin: str | None          # sha the merge is pinned to, if any
 
 
+def _keep_substitutions(m: re.Match) -> str:
+    quoted = m.group(1)
+    if not quoted.startswith('"'):
+        return " "            # single quotes: nothing inside runs
+    runs = [a or b for a, b in _SUBSTITUTION.findall(quoted)]
+    return " ; " + " ; ".join(runs) + " ; " if runs else " "
+
+
 def parse_merges(command: str) -> list[Merge]:
     """Every merge a command would perform, one per shell segment."""
-    command = _MESSAGE_ARG.sub(" ", _HEREDOC.sub(" ", command))
+    command = _MESSAGE_ARG.sub(_keep_substitutions, _HEREDOC.sub(" ", command))
     # The shell joins continuations before it runs anything, so join them first,
     # or `gh pr \<newline>merge 902` splits into two harmless-looking segments.
     command = _CONTINUATION.sub(" ", command)
