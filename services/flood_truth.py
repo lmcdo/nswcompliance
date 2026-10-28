@@ -997,7 +997,8 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
                     key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99)),
                 "ses_study_name": None,
                 "ses_study_lga": None,
-                "flood_map_reason": status.get("reason"),
+                # The reason, then where this council's own flood information is.
+                "flood_map_reason": " ".join(t for t in (status.get("reason"), status.get("council_info_text")) if t),
                 "flood_map_council": status.get("council"),
             }
         # Map all raw values to display labels
@@ -2162,7 +2163,7 @@ def flood_planning(req: FloodPlanningRequest) -> dict:
                 conn.close()
             except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
                 pass
-    return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m", "whole_lot")}
+    return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m", "whole_lot", "council_info_text")}
 
 
 @router.post("/flood", response_model=Union[FloodResponse, FloodRefusedResponse])

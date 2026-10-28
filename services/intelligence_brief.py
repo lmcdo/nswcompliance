@@ -3291,7 +3291,10 @@ def _build_environmental(
             confidence=na if ((both_failed and flood_status is None) or flood_epi is None) else auth,
             source="postgis_overlays", as_at=today,
             reason=("Flood overlay and portal controls both unavailable"
-                    if (both_failed and flood_status is None) else (flood_status or {}).get("reason") if flood_epi is not True else None),
+                    if (both_failed and flood_status is None)
+                    else (" ".join(t for t in ((flood_status or {}).get("reason"),
+                                               (flood_status or {}).get("council_info_text")) if t) or None)
+                    if flood_epi is not True else None),
         ),
         overlays=DataField(value=env_overlays, confidence=overlay_auth, source="postgis_overlays", as_at=today),
         overlay_coverage=DataField(value=covered, confidence=overlay_auth, source="postgis_overlays", as_at=today),

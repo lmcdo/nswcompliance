@@ -186,7 +186,7 @@ def _trusted_lot(cur, lot_wkt: Optional[str], lat: float, lng: float) -> Optiona
         return None
 
 
-def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
+def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
     """The one answer. Never raises; a failure is value None with its reason.
 
     With lot_wkt (a WGS84 POLYGON WKT the caller already holds), the WHOLE lot is
@@ -267,3 +267,64 @@ def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] =
         logger.warning(f"flood_planning_status failed: {e}")
         out["reason"] = "flood planning map could not be checked"
         return out
+
+
+def _council_info(conn, council: Optional[str]) -> Optional[dict]:
+    """What the council publishes about flooding (council_flood_context,
+    migration 118): only facts confirmed on the council's own page, each with
+    its link. None when we hold nothing for the council or the lookup fails."""
+    if not council:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT viewer_label, viewer_url, certificate_label, certificate_url, certificate_fee, "
+                "fpl_quote, fpl_url, data_sources, checked_on FROM council_flood_context WHERE lga_name = %s",
+                (council.strip().upper(),),
+            )
+            row = cur.fetchone()
+        if not row:
+            return None
+        keys = ("viewer_label", "viewer_url", "certificate_label", "certificate_url", "certificate_fee",
+                "fpl_quote", "fpl_url", "data_sources", "checked_on")
+        info = dict(zip(keys, _cols(row, *keys)))
+        info["checked_on"] = str(info.get("checked_on")) if info.get("checked_on") else None  # noqa: bracket-access
+        return info
+    except Exception as e:  # noqa: BLE001 -- missing context never changes the answer
+        logger.warning(f"council_flood_context lookup failed: {e}")
+        try:
+            conn.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
+
+def council_info_sentence(info: Optional[dict]) -> Optional[str]:
+    """One plain sentence on where to get this council's flood information,
+    built only from confirmed facts. None when there is nothing to say."""
+    if not info:
+        return None
+    parts = []
+    if info.get("certificate_url"):
+        fee = f" (fee: {info.get('certificate_fee')})" if info.get("certificate_fee") else ""
+        parts.append(f"the council issues {info.get('certificate_label') or 'flood information'}{fee}: "
+                     f"{info.get('certificate_url')}")
+    if info.get("viewer_url"):
+        parts.append(f"it publishes a flood map ({info.get('viewer_label') or 'online viewer'}): {info.get('viewer_url')}")
+    if info.get("fpl_quote"):
+        parts.append(f"its flood planning level: \"{info.get('fpl_quote')}\" ({info.get('fpl_url')})")
+    data = info.get("data_sources") or []
+    if not parts and data:
+        parts.append(f"its flood studies are listed at {data[0].get('url')}")
+    if not parts:
+        return None
+    return "For this council, " + "; ".join(parts) + "."
+
+
+def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
+    """The one answer, plus what the council itself publishes about flooding
+    (viewer, certificate, data links) so a "not known" tells the user where to go."""
+    out = _flood_planning_core(lat, lng, conn, lot_wkt=lot_wkt)
+    out["council_info"] = _council_info(conn, out.get("council"))
+    out["council_info_text"] = council_info_sentence(out.get("council_info"))
+    return out

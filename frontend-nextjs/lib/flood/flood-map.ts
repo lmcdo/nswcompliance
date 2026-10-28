@@ -161,6 +161,8 @@ async function queryLot(lon: number, lat: number, boundary: LotBoundary | null |
 export interface StoreFloodStatus {
   value: boolean | null;
   reason?: string | null;
+  /** Where this council's own flood information is (confirmed facts only). */
+  council_info_text?: string | null;
 }
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
@@ -197,7 +199,8 @@ export function combineFloodAnswers(state: FloodMapStatus, store: StoreFloodStat
   // Neither can say: keep the state layer's explanation (and its "did not answer" flag), adding
   // our store's reason so the page says why our own maps could not answer either.
   if (!store?.reason) return state;
-  return { ...state, note: `${state.note} Our council flood map check: ${store.reason}.` };
+  const council = store.council_info_text ? ` ${store.council_info_text}` : '';
+  return { ...state, note: `${state.note} Our council flood map check: ${store.reason}.${council}` };
 }
 
 export async function floodMapStatus(

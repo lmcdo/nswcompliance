@@ -1,0 +1,1169 @@
+[
+ {
+  "council": "Albury City",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Council datasets on NSW Flood Data Portal (flood studies, levee audit)",
+    "url": "https://flooddata.ses.nsw.gov.au/organization/about/albury-city-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Flood studies (Bungambrawatha Creek; South Albury levee/Murray River) on the NSW Flood Data Portal; no council viewer or certificate page found in 1 search; contact info@alburycity.nsw.gov.au (per portal entry).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Bega Valley",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Bega Valley Shire Council datasets on data.nsw.gov.au (Bega/Brogo, Merimbula Lake flood studies)",
+    "url": "https://data.nsw.gov.au/data/organization/bega-valley-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council says Wolumla has no flood study or mapping (https://begavalley.nsw.gov.au/council/help-us-plan-for-future-flood-risk-management-in-wolumla); mapped areas limited to studied catchments. No viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Bland",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Wyalong and West Wyalong Flood Study - GIS Mapping",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-wwwfs_gis_mapping",
+    "licence": "Licence Specified by Agency (text not shown)",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Flood study (Feb 2023, Wyalong and West Wyalong only) on council site: https://www.blandshire.nsw.gov.au/Environment/Wyalong-and-West-Wyalong-Flood-Study-Report ; Ungarie also has a study on the portal. Rest of shire not found mapped.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Bourke",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Bourke Floodplain Risk Management Study and Plan - Reports",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-bfrms-p_reports",
+    "licence": "Creative Commons Attribution (as shown on portal listing)",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   },
+   {
+    "label": "Louth Flood Study and FRMS&P - Reports",
+    "url": "https://data.nsw.gov.au/data/dataset/101ed3b1-e885-4aae-8a31-dc5f9c32ff4e",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Studies cover Bourke township (published Dec 2022) and Louth only; no viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Burwood",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Burwood Council datasets on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/organization/burwood-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Studies listed: Exile Bay/St Lukes/William St, Powells Creek, Dobroyd Canal, Cooks River Overland (https://flooddata.ses.nsw.gov.au/flood-projects/cooks-river-overland-flood-study-burwood-council). One DA report applied 1% AEP + 500mm freeboard (site-specific, not a council definition). No viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Central Coast",
+  "viewer": {
+   "label": "Online flood mapping tool (Flood Planning Area check), referenced on Your Voice Our Coast",
+   "url": "https://www.yourvoiceourcoast.com/floodplain-management",
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood Information Certificate (also Flood Information Application Form for minimum floor level); sample certificate published",
+   "url": "https://centralcoast.nsw.gov.au/plan-and-build/planning-and-development-within-flood-zones",
+   "fee": null,
+   "confirmed": true,
+   "check": "2/2 key words on page"
+  },
+  "fpl": null,
+  "layers": "not looked at (council page returned 403 to fetch; summary from search snippets only)",
+  "data": [],
+  "notes": "Snippets: standard certificate 15 business days, urgent 3 (legacy page); Chapter 9 of s10.7 certificate covers flooding. Sample: https://www.centralcoast.nsw.gov.au/sites/default/files/2023-06/example_flood_certificate_-_81_howarth_street_wyong.pdf . Fee not seen. Council page blocked (403), recorded blocked.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Cobar",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [],
+  "notes": "nothing found in 1 lookup (NSW SES local info page only: https://www.ses.nsw.gov.au/local-information/cobar); no Cobar Shire flood study found.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Eurobodalla",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "flood planning level means the level of a 1:100 ARI (average recurrent interval) flood event plus 0.5 metre freeboard.",
+   "url": "https://legislation.nsw.gov.au/view/pdf/asmade/epi-2020-563",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Eurobodalla Shire Council datasets on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/organization/eurobodalla-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Quote is from a 2020 LEP amendment surfaced by search (not re-opened); LEP Amendment 14 introduced flood mapping and cl 6.5 (https://www.planningportal.nsw.gov.au/ppr/lep-decision/amendment-14-eurobodalla-lep-2012-flood-mapping-and-amendments-various-planning). Council viewer/certificate not found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Greater Hume Shire",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Culcairn, Henty, Holbrook Flood Studies - Report",
+    "url": "https://data.nsw.gov.au/data/dataset/8b64be74-0156-4778-9b1e-10f198495e2a",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council page lists flood planning area maps and flood studies/FRMS&P for Culcairn, Henty and Holbrook (PDFs): https://www.greaterhume.nsw.gov.au/Your-Greater-Hume-Council/Building-and-Development/Planning-Guides-and-Tools/Studies-and-Documents/Flood-Studies . Only those towns appear mapped; page body not fully readable by fetch.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Hay",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [],
+  "notes": "Hay and Maude Flood Risk Management Study and Plan (Rev 1.5, Mar 2025) figures PDF on council site: https://www.hay.nsw.gov.au/Portals/0/Hay and Maude Flood Risk Management Plan - Figures and Maps.pdf . Town relies on levees with gates; no viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Kempsey",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Search Application (property flood info: stormwater, riverine, storm tide)",
+   "url": "https://kempsey.nsw.gov.au/files/sharedassets/public/v/1/forms/forms-2020/flood-search.pdf",
+   "fee": null,
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Kempsey Shire Council datasets on data.nsw.gov.au (Lower Macleay FMP, flood planning area, hydraulic categories)",
+    "url": "https://data.nsw.gov.au/data/organization/kempsey-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Form (2011 PDF, unreadable by fetch); per search summary it covers studies/FRMPs/historical info, not planning controls. Fee not found. Flood info page: https://www.kempsey.nsw.gov.au/Your-Valley/Fire-floods-emergencies/Flood-information (no viewer listed).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Lane Cove",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [],
+  "notes": "nothing found in 1 lookup; no Lane Cove Council page surfaced (results were Ku-ring-gai studies and the Willoughby/Lane Cove Flood Emergency Sub Plan: https://www.ses.nsw.gov.au/media/6680/willoughby-lane-cove-lfp-vol-1-dec-2023.pdf).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Mosman",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Mosman LGA Flood Study - Final Report (listed 20/04/2026) on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/dataset/35731609-b968-434e-ac6f-a9f3786810f4",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council page referred to preliminary Flood Planning Area maps with the Draft Mosman Flood Study (https://mosman.nsw.gov.au/node/13312; https://mosmanvoice.engagementhq.com/flood-study); final study now published so mapping may be newer. No viewer, certificate or fee found.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Nambucca Valley",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Level Enquiry Application Form (payment required before release, per search summary)",
+   "url": "https://www.nambucca.nsw.gov.au/files/assets/public/v/1/council/complianceformspolicies-amp-reporting/forms/digital-form-flood-level-enquiry-application-form-july-2023.pdf",
+   "fee": null,
+   "confirmed": false,
+   "check": "page 404"
+  },
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Nambucca flood studies on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/dataset/8803699e-9d55-4ebd-9146-21a358cfaf93",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council Flood Information page lists PDFs only (1% AEP event maps for Nambucca and Deep Creek, Flood Risk Matrix, hazard classification, FRM Study and Plan): https://www.nambucca.nsw.gov.au/Environment/Our-Guiding-Documents/Flood-Information . No online viewer named. Form URL returned 404 on fetch; fee not seen.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Northern Beaches",
+  "viewer": {
+   "label": "NBC Flood Hazard Map",
+   "url": "https://nb-icongis.azurewebsites.net/planningmap.html?l=NBC%20Flood%20Hazard%20Map",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood Information Report Application",
+   "url": "https://northernbeaches.nsw.gov.au/environment/natural-hazards/flooding",
+   "fee": null,
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "fpl": {
+   "quote": "Medium Flood Risk Precinct ... equivalent to the Flood Planning Area (land affected by the 1% AEP flood, with a freeboard added)",
+   "url": "https://northernbeaches.nsw.gov.au/environment/natural-hazards/flooding",
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "layers": "From page text only (viewer not opened): flood-prone extent split into Medium (= Flood Planning Area, 1% AEP + freeboard), High (high hydraulic hazard, inside Medium) and Low (PMF outside Medium) precincts.",
+  "data": [
+   {
+    "label": "Northern Beaches Council datasets on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/organization/northern-beaches-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Fee not stated on page; page gives no freeboard figure.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Port Stephens",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Certificate Application (includes Land Check); issued under s733 Local Government Act 1993",
+   "url": "https://portstephens.nsw.gov.au/development/flood-safety",
+   "fee": null,
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Port Stephens Council datasets on data.nsw.gov.au",
+    "url": "https://data.nsw.gov.au/data/organization/about/port-stephens-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council web map exists (disclaimer https://www.portstephens.nsw.gov.au/council/maps/webmap-disclaimer) saying a Flood Certificate gives the most up-to-date info; council pages returned 403 on fetch (blocked), details from search snippets. Contact FloodCertificates@portstephens.nsw.gov.au. Fee not seen.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Strathfield",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Strathfield Municipal Council datasets on data.nsw.gov.au (Cooks River/Coxs Creek; Powells Creek/Saleyards Creek revised)",
+    "url": "https://data.nsw.gov.au/data/organization/strathfield-municipal-council",
+    "licence": "one mirror lists lsba; otherwise none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Two flood studies on the portal. No council viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Upper Hunter",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [
+   {
+    "label": "Upper Hunter Shire Council datasets on data.nsw.gov.au (Aberdeen, Scone, Merriwa, Murrurundi/Blandford/Willow Tree)",
+    "url": "https://data.nsw.gov.au/data/organization/upper-hunter-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Studies cover Aberdeen, Scone (FRMS&P 2025), Merriwa flash flood, Murrurundi/Blandford/Willow Tree only. No viewer or certificate found in 1 search.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Warren",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "not looked at (no public viewer found)",
+  "data": [],
+  "notes": "Council flood study in progress (Stage 2 by HydroSpatial; https://www.warren.nsw.gov.au/environment/flood-study); no flood map published online, maps only viewable at drop-in session; no fee mentioned; Engineering Services 02 6847 6600. Levee audit 2020: https://flooddata.ses.nsw.gov.au/flood-projects/warren-audit-for-flood-levees",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Armidale Regional",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Hazard Certificate (complying development on flood affected lots); also Flood Level Application Form",
+   "url": "https://www.armidale.nsw.gov.au/Development/Land-Use-Planning/Flood-Affected-Land",
+   "fee": "A fee is applicable (amount not on page; see council fees and charges)",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Search summary of council pages: 1% AEP flood extent map and Flood Planning Level map exist; viewer not found/opened. Certificate gives minimum flood heights, hazard, flood storage/floodway/flow path.",
+  "data": [
+   {
+    "label": "Armidale Flood Study 2004 GIS (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-armidale-flood-study-2004-gis",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council has said it has no flood study information for Guyra; an older page said the 2004/1999 studies were not adopted. Confirm with council.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Bellingen",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "flood planning area is based on the 1% AEP event plus a 0.5m freeboard (study recommendation, per search summary of the Lower Bellinger and Kalang FRMS)",
+   "url": "https://www.bellingen.nsw.gov.au/Development/Planning-Controls/Lower-Bellinger-and-Kalang-Rivers-Floodplain-Risk-Management-Study",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "layers": null,
+  "data": [
+   {
+    "label": "Bellingen Shire flood datasets (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/organization/bellingen-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Study recommends flood info on 10.7 certificates and GIS on council website; no certificate or viewer found. Flood rules in DCP 2017 Chapter 8.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Blue Mountains",
+  "viewer": null,
+  "certificate": {
+   "label": "Section 10.7(2) planning certificate; forms page lists a Flood affected residents contact form",
+   "url": "https://www.bmcc.nsw.gov.au/residents/buying-and-selling-property/planning-and-building-certificates",
+   "fee": null,
+   "confirmed": true,
+   "check": "1/2 key words on page"
+  },
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Lapstone/South Glenbrook/South Blaxland FRMSP flood hazard (council on data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-lapstone-south-glenbrook-and-south-blaxland-frmsp-flood-hazard",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No viewer or standalone flood certificate found in 2 lookups; flood studies are per catchment (Hazelbrook, South Leura, Lapstone etc).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Brewarrina",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "flood planning level which is 500mm (freeboard) above the level of the highest known flood; 1:100 ARI flood = 1974 flood, 117.4m AHD (DCP 2023, per search summary)",
+   "url": "https://brewarrina.nsw.gov.au/wp-content/uploads/2024/05/BSC_DCP.pdf",
+   "confirmed": true,
+   "check": "4/6 key words on page"
+  },
+  "layers": null,
+  "data": [
+   {
+    "label": "Brewarrina Shire Local Flood Plan (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-brewarrina-shire-local-flood-plan-report",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No council flood map. DCP treats grey soil near Darling and tributaries as flood affected. NSW SES Local Flood Insights covers area: https://www.ses.nsw.gov.au/local-information/brewarrina",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Camden",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Certificate Application Form",
+   "url": "https://www.camden.nsw.gov.au/environment/flood-information",
+   "fee": "$180.00 on 2019-2020 form (outdated; current fee not stated on page)",
+   "confirmed": true,
+   "check": "2/2 key words on page"
+  },
+  "fpl": null,
+  "layers": "Page says general flood maps are approximate; certificate gives flood levels (AHD), FPL, velocities subject to information availability. No viewer on page.",
+  "data": [],
+  "notes": "Covers Nepean River, Narellan Creek, South Creek catchments. Floodplain team 13 22 63. 2006 policy marked superseded; current freeboard not confirmed.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Central Darling",
+  "viewer": {
+   "label": "Flood Mapping Portal (IntraMaps)",
+   "url": "https://maps.centraldarling.nsw.gov.au/IntraMaps910/?configId=576168ac-8377-437a-b402-10a96c782bc1&project=CDSCPublic&module=Flooding",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": null,
+  "fpl": null,
+  "layers": "Viewer not opened; council page says mapping is for planning and building on flood affected land. Darling River Louth to Menindee; 20/100/500-year design layers listed on data.nsw.",
+  "data": [
+   {
+    "label": "Central Darling Flood Mapping Report April 2023",
+    "url": "https://data.nsw.gov.au/data/en/dataset/fdp-central-darling-flood-mapping-report-april-2023",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   },
+   {
+    "label": "Council page with 74MB PDF",
+    "url": "https://www.centraldarling.nsw.gov.au/Planning/Central-Darling-Shire-Flood-Mapping",
+    "licence": "none stated",
+    "confirmed": false,
+    "check": "page 403"
+   }
+  ],
+  "notes": "Covers Darling River only; FRMSP for Wilcannia, Menindee, Ivanhoe, Tilpa, Sunset Strip was underway in 2024.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Coffs Harbour",
+  "viewer": {
+   "label": "Online Mapping Tool (IntraMaps); page says it shows whether property is in Flood Planning Area (flood layers not confirmed)",
+   "url": "https://chcc.spatial.t1cloud.com/spatial/IntraMaps/?configId=002f3dcb-246d-4ce9-9a12-ce55e9df910f",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood Certificate via Flood Level Information request form; or 10.7(2)+(5) planning certificate showing 1% AEP level and FPL",
+   "url": "https://www.coffsharbour.nsw.gov.au/Environment/Flooding/Get-flooding-information-for-a-property",
+   "fee": null,
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Viewer not opened.",
+  "data": [
+   {
+    "label": "Coffs Creek flood risk map (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/33f5dcbd-8c90-4574-aa92-b15165549c39",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Page says not all information is available for all properties. Fees not on page.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Fairfield",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood map issued only with a s10.7(2)&(5) planning certificate (email floodmap@fairfieldcity.nsw.gov.au); draft studies via free informal GIPA request",
+   "url": "https://www.fairfieldcity.nsw.gov.au/Planning-and-Building/Application-Guide/Flood-maps-for-the-development-of-flood-affected-land",
+   "fee": "GIPA route: free of charge; email route fee not stated",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Adopted Flood Planning Maps as PDFs per catchment (Cabravale, Cabramatta Creek, Prospect Creek, Eastern/Reedy/Ropes Creek, etc); no online viewer.",
+  "data": [
+   {
+    "label": "Fairfield Flood Planning Map (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/22728035-26b3-4d2c-b31f-5e9e2ec49030",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   },
+   {
+    "label": "Council Flood Maps page (PDFs)",
+    "url": "https://www.fairfieldcity.nsw.gov.au/Planning-and-Building/Planning-and-Policies/Flood-Maps",
+    "licence": "Page: reproduction or use for commercial purposes is not permitted",
+    "confirmed": false,
+    "check": "page 403"
+   }
+  ],
+  "notes": "Council page: not designed to be accurate at the individual property level. One flood map per planning certificate.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Griffith",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "100 year ARI flood level plus a freeboard of 500 mm adopted as the Flood Planning Level (Flood Liable Lands policy CS-CP-403, per search summary)",
+   "url": "https://www.griffith.nsw.gov.au/Council/Forms-and-documents/Policies/CS-CP-403-Griffith-Flood-Liable-Lands",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "layers": null,
+  "data": [
+   {
+    "label": "Griffith Main Drain J and Mirrool Creek Flood Study GIS layers (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/en/dataset/fdp-griffith-main-drain-j-and-mirrool-creek-flood-study-gis-layers",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council says it can supply FPL for properties in Main Drain J floodplain; call 1300 176 077. Flood info page: https://www.griffith.nsw.gov.au/Building/Planning/Flood-Information. Yenda flood maps updated 2021. Policy record is old.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Hunters Hill",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Hunters Hill LGA Flood Study Final Report (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/ec90f04a-cb09-4474-b158-e68567e55626",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No council flood certificate or viewer found in 2 lookups; formal access application $30 per council page (search summary). Stormwater asset maps only.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Kiama",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "FPL is the 1% AEP flood level plus a freeboard, usually 0.5 m (council flood studies FAQ; DCP 2020 ch.2 requires 1% AEP plus 0.5 m, per search summary)",
+   "url": "https://www.kiama.nsw.gov.au/files/sharedassets/public/v/2/council/community-plans/plans/frequently-asked-questions-flood-studies.pdf",
+   "confirmed": false,
+   "check": "2/6 key words on page"
+  },
+  "layers": "Flood studies page lists map sheets per scenario (Surf Beach, Spring Creek, Ooaree Creek/Werri Lagoon); not opened.",
+  "data": [
+   {
+    "label": "Council Flood studies page",
+    "url": "https://www.kiama.nsw.gov.au/Services/Environment/Flood-studies",
+    "licence": "none stated",
+    "confirmed": false,
+    "check": "page 403"
+   }
+  ],
+  "notes": "Property-specific levels: ask council (4232 0444). FAQ describes studies as drafts; status unclear. Some catchments have no study.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Lockhart",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Lockhart Flood Study (NSW Flood Data Portal)",
+    "url": "https://flooddata.ses.nsw.gov.au/flood-projects/lockhart-fs",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No viewer. 2014 studies for Lockhart and The Rock; reviews under way (draft The Rock study exhibited Nov 2025). Yerong Creek has no study.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Murrumbidgee",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Council Flood Studies page (Darlington Point, Jerilderie)",
+    "url": "https://www.murrumbidgee.nsw.gov.au/My-council/Plans-strategies-policies-council-information/Development-Town-Plans/Flood-Studies",
+    "licence": "none stated",
+    "confirmed": false,
+    "check": "page 403"
+   },
+   {
+    "label": "Darlington Point flood study GIS (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/398d8101-0cc2-493b-9ed6-62f54ba466a4",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Flood studies only for Darlington Point and Jerilderie; land use plan says flood information elsewhere (incl. Coleambally) is largely anecdotal. No certificate found.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Newcastle",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood Certificates (City of Newcastle)",
+   "url": "https://www.ncc.nsw.gov.au/development/building-and-construction/flood-certificates",
+   "fee": null,
+   "confirmed": true,
+   "check": "2/2 key words on page"
+  },
+  "fpl": {
+   "quote": "FPL is the peak flood level for the defined flood event plus a freeboard, usually 500mm (certificate notes, per search summary)",
+   "url": "https://www.ncc.nsw.gov.au/getmedia/b37a4e83-6861-4f49-b9a5-2d69a8108d12/Additional-information-for-the-holders-of-Flood-Information-Certificates-TSCC-2023-Area.pdf",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "layers": null,
+  "data": [
+   {
+    "label": "Newcastle Flood Planning Stage 1 hydraulic model (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/36dc18ea-62e2-4d3a-8794-d5b75c60d85f",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Certificate page redirects to a t1cloud page that returned 403 (blocked); fee not read. Certificates give 1% AEP and PMF levels, hazard; applicant must survey AHD levels; not warranted after issue date.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Oberon",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [],
+  "notes": "Nothing found in 2 lookups beyond SES Flood Emergency Sub Plan (Nov 2024). Old DCP asks floors 1 m above known 1:100 levels; flood-affected land is excluded from complying development under DCP Part M.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Richmond Valley",
+  "viewer": {
+   "label": "WaterRIDE online flood mapping",
+   "url": "https://waterride.net/flooddata/richmondvalley/",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood Information Report Application Form",
+   "url": "https://richmondvalley.nsw.gov.au/services/flood/flood-information-report-enquiry/",
+   "fee": "Not stated; Council will contact the applicant regarding payment",
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "fpl": null,
+  "layers": "Page says WaterRIDE shows available flood-related mapping and information for a searched property; layers not listed; viewer not opened.",
+  "data": [
+   {
+    "label": "Richmond River Flood Mapping Study ASCII grids (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/9dcae9c3-f6d0-4cef-bfcd-8ddb8d8ddc04",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Phone 02 6660 0300 for postal reports. Page: https://richmondvalley.nsw.gov.au/services/flood/online-flood-mapping-apply-for-a-flood-information-report/",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Tenterfield",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "1%, 5%, 20% AEP and PMF extents for Tooloom Creek, Urbenville, Woodenbong (data.nsw listing); not viewed.",
+  "data": [
+   {
+    "label": "U&W Flood Study Mapped Flood Extents (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-u-w-flood-study-mapped-flood-extents",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No viewer. Council hosts Tenterfield FRMSP (adopted Dec 2014) and Urbenville/Woodenbong flood study PDFs: https://www.tenterfield.nsw.gov.au/your-council/council-documents/plans-reports. Flood info via 10.7 certificate.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Wagga Wagga",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Revised Murrumbidgee River FRMSP spatial flood layers (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/dataset/16c9e640-9247-4e6a-b65f-275009a13407",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "blocked: council floods page (wagga.nsw.gov.au/services/emergencies/floods) returned 403 to fetch, not bypassed; search summary says it links a Riverine Flooding Story Map (link not verified). No certificate page found.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Willoughby",
+  "viewer": {
+   "label": "Flood Information Availability address check (map)",
+   "url": "https://www.willoughby.nsw.gov.au/Council/Forms/Flood-Information-Certificate-Application/Flood-Information-Availability",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "certificate": {
+   "label": "Apply for a flood information certificate",
+   "url": "https://www.willoughby.nsw.gov.au/MyWilloughby-home-page/MyWilloughby-online-services/Apply-for-a-flood-information-certificate",
+   "fee": "Not stated; Payment will be charged on lodgement (see adopted fees and charges); fee may not be refunded if no flood information is available",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Availability map only (page: flood information only available for properties in the green area); certificate gives 1% and 5% AEP depths/heights (search summary).",
+  "data": [
+   {
+    "label": "Willoughby flood studies (data.nsw)",
+    "url": "https://data.nsw.gov.au/data/organization/about/willoughby-city-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Certificates not available for Scotts Creek catchment (search summary). Flood planning per Willoughby DCP Part I Attachment 2.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Balranald",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Balranald Euston flood protection works - Balranald levee concept design report (NSW Flood Data Portal)",
+    "url": "https://devweb.dga.links.com.au/data/dataset/fdp-balranald-euston-flood-protection-works-balranald-levee-concept-design-report",
+    "licence": "none stated",
+    "confirmed": false,
+    "check": "page None"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for viewer or certificate; flood emergency sub plan on SES site only. Contact council@balranald.nsw.gov.au (per data portal).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Blacktown",
+  "viewer": {
+   "label": "Maps Online (layer: Flooding Precincts)",
+   "url": "https://maps.blacktown.nsw.gov.au/",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood advice letter (email floodadvice@blacktown.nsw.gov.au)",
+   "url": "https://www.blacktown.nsw.gov.au/Our-environment/Waterways/Flooding-in-Blacktown-City/Flood-maps",
+   "fee": "There is a processing fee for this service. (amount not stated)",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Flooding Precincts layer shows flood extents; page says nothing may show if flooding does not reach the area or no information exists. Viewer not opened by me; layer description from council page.",
+  "data": [
+   {
+    "label": "Wianamatta South Creek Flood Study and flood depth/hazard/level grids (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/organization/blacktown-city-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Council page gives no FPL definition. Sample advice letter (search summary) gives FPL in mAHD; older precinct docs cite 1% AEP + 0.5 m but are precinct-specific/dated. Viewer requires accepting a disclaimer.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Bogan",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Bogan River at Nyngan Flood Study report (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/en/dataset/fdp-bogan-river-at-nyngan-flood-study-report",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for council viewer or certificate. Nyngan flood study reports/LiDAR on data portal.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Broken Hill",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Broken Hill Flood Study Volume 1 Final Report; Silverton flood study extents (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-final-report_vol1",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for council viewer or certificate. Aug 2025 business paper said flood study outputs (1% AEP, PMF, hazard H1-H6) were going to public exhibition: https://www.brokenhill.nsw.gov.au/files/assets/public/v/1/documents/business-papers/2025/2508-open-business-paper-extraordinary-council-meeting-13-august-2025.pdf",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Carrathool",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Flood Study Report (Carrathool, 2 volumes incl. flood maps) on NSW Flood Data Portal",
+    "url": "https://data.nsw.gov.au/data/en/dataset/fdp-fs-report",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for council viewer or certificate. Studies cover Hillston area; contact council@carrathool.nsw.gov.au (per data portal).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Cessnock",
+  "viewer": {
+   "label": "Flooding Hub (ArcGIS Hub)",
+   "url": "https://flooding-cessnock-council.hub.arcgis.com",
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "certificate": {
+   "label": "Flood Information Certificate / Flood Certificate and Flood Data Application Form",
+   "url": "https://www.cessnock.nsw.gov.au/Council/Forms-and-documents/Forms/Flood-Certificate-and-Flood-Data-Application-Form",
+   "fee": "Fees are calculated in accordance with Council's current Fees and Charges at the time of lodgement of this application. (amount not on page; charged per lot)",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": null,
+  "layers": "Council page says the map shows current adopted flood studies only; land beside a watercourse outside adopted mapping falls to DCP Chapter 9. Layers not inspected by me.",
+  "data": [
+   {
+    "label": "Cessnock City Council datasets (NSW Flood Data Portal), e.g. Wollombi flood study maps",
+    "url": "https://data.nsw.gov.au/data/organization/cessnock-city-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Certificate form requests 1-in-100-year flood level and minimum floor level; council disclaims accuracy. Flooding page mentions land at or below the flood planning level but does not define it.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Coonamble",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "West Coonamble FRMS&P, Quambone FRMS&P, Coonamble levee reports (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/en/dataset/efbab1a4-03f3-49ad-bae9-cfe1667e442b",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for a council viewer or certificate. Council hosts West Coonamble FRMS&P PDF: https://www.coonambleshire.nsw.gov.au/__media_downloads/plans/210701_West_Coonamble_Floodplain_Risk_Management_Study_and_Plan.pdf",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Glen Innes Severn",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [],
+  "notes": "nothing found in 1 lookup (only SES Local Flood Insights page https://www.ses.nsw.gov.au/local-information/glen-innes-severn and flood emergency sub plan). Contact council@gisc.nsw.gov.au.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Gwydir",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [],
+  "notes": "nothing found in 1 lookup for council flood map or certificate. Only the state Gwydir Valley Floodplain Management Plan 2016 maps: https://legislation.nsw.gov.au/view/whole/html/inforce/2020-09-22/sl-2016-0509/maps and SES page https://www.ses.nsw.gov.au/local-information/gwydir",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Inverell",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [],
+  "notes": "nothing found in 2 lookups (search plus a certificate form PDF I could not read). Council has a certificate application form: https://inverell.nsw.gov.au/wp-content/uploads/2024/07/Updated-2024-2025-Certificate-Application-Form.pdf (flood content unconfirmed). SES page https://www.ses.nsw.gov.au/local-information/inverell",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Ku-Ring-Gai",
+  "viewer": {
+   "label": "Ku-ring-gai Maps (hydrology layers include flood planning area)",
+   "url": "https://www.krg.nsw.gov.au/Council/About-Ku-ring-gai/Ku-ring-gai-maps",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "certificate": {
+   "label": "Flood certificate report (email floodriskmanagement@krg.nsw.gov.au)",
+   "url": "https://www.krg.nsw.gov.au/Environment/Sustainable-living/Prepare-for-extreme-weather/Flooding/Flood-risk-FAQs",
+   "fee": "can be purchased (amount not stated)",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "fpl": {
+   "quote": "the addition of a designated freeboard, this is known as the flood planning level (FPL)",
+   "url": "https://www.krg.nsw.gov.au/Environment/Sustainable-living/Prepare-for-extreme-weather/Flooding/Flood-risk-FAQs",
+   "confirmed": false,
+   "check": "page 403"
+  },
+  "layers": "Council FAQ says flood planning area mapping is under the hydrology layers of the online map viewer. Viewer not opened by me. FAQ describes flood planning area as 1% AEP flood plus freeboard (search summary).",
+  "data": [
+   {
+    "label": "Ku-ring-gai Council flood datasets incl. flood level and flood planning area (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/organization/ku-ring-gai-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Lane Cove northern/southern and Middle Harbour catchment studies in draft/exhibition per council flooding page: https://www.krg.nsw.gov.au/Environment/Your-local-environment/Waterways/Flooding",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Moree Plains",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": "Atlas map of the LGA showing inundated areas, low/high hazard and flood contours (per data portal description). Atlas itself not opened.",
+  "data": [
+   {
+    "label": "Moree Plains - Flood Mapping Atlas (NSW Flood Data Portal)",
+    "url": "https://www.data.nsw.gov.au/data/dataset/c1f5c0a5-b899-4949-b99e-ec7b439686a4",
+    "licence": "Licence Specified by Agency",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 2 lookups for a council viewer or certificate. Atlas is on the SES flood data portal: https://flooddata.ses.nsw.gov.au/flood-projects/moree-plains-flood-mapping-atlas (fetch returned 403, blocked, not retried).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Muswellbrook",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood certificates issued by council (sample on council site, application page not found)",
+   "url": "https://www.muswellbrook.nsw.gov.au/wp-content/uploads/2024/02/DA-2024-9-Flood-Certificates-36-38-Maitland-St-Muswellbrook.pdf",
+   "fee": null,
+   "confirmed": false,
+   "check": "page 404"
+  },
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Muswellbrook FRMS&P GIS; Muscle Creek and Hunter River flood studies (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-muswellbrook-frms-p-gis",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Sample certificate (search result summary; fetch 404) says it represents the most current flood information held at time of creation, with 1% AEP depth/velocity/hazard maps. DCP Section 13 Floodplain Management 2022: https://www.muswellbrook.nsw.gov.au/wp-content/uploads/2022/03/Section-13-Floodplain-Management-Adopted-2022.pdf (FPL definition not extracted).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "North Sydney",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "North Sydney LGA wide FRMS&P - Spatial flood extent layers (shapefiles)",
+    "url": "https://data.nsw.gov.au/data/dataset/7124f8b3-2c56-45a5-bf45-8a5e55bf5b6b",
+    "licence": "Creative Commons Attribution",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No council online flood viewer or certificate found in 3 lookups. Council says Flood Planning Area lots show as flood control lot on the 10.7 certificate: https://www.northsydney.nsw.gov.au/floodstudy",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Parkes",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "PTCFDS Final Report and Maps (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/fdp-ptcfds-final-report-and-maps",
+    "licence": "Creative Commons Attribution",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "No online viewer or certificate/fee on council pages; property-specific info by contacting council@parkes.nsw.gov.au or 02 6861 2333: https://www.parkes.nsw.gov.au/Services/Environment/Flooding/Is-my-property-flood-affected . Flood studies page: https://www.parkes.nsw.gov.au/Services/Environment/Flooding/Flood-Studies-Reports",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Shellharbour",
+  "viewer": null,
+  "certificate": {
+   "label": "Flood level information request form (page last updated 24 Dec 2019)",
+   "url": "https://www.shellharbour.nsw.gov.au/node/34155",
+   "fee": null,
+   "confirmed": true,
+   "check": "1/1 key words on page"
+  },
+  "fpl": null,
+  "layers": null,
+  "data": [],
+  "notes": "Page lists form and Apply online but gives no fee, no map link; form text refers to Section 149 certificates for development controls (dated wording). Nothing else found in 2 lookups.",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "The Hills Shire",
+  "viewer": null,
+  "certificate": null,
+  "fpl": {
+   "quote": "FPL3 = 100-year ARI level plus 0.5 m freeboard (DCP Part C Section 6 table; from search summary, PDF not opened by me; verify current version)",
+   "url": "https://www.thehills.nsw.gov.au/files/sharedassets/public/v/2/ecm-website-documents/page-documents/building/dcp/part_c_section_6_-_flood_controlled_land.pdf",
+   "confirmed": false,
+   "check": "1/4 key words on page"
+  },
+  "layers": null,
+  "data": [],
+  "notes": "No council viewer or certificate page found in 3 lookups (guessed council flooding URL returned 404). DCP is dated (2012); LEP 2019 clause 7.3 reportedly uses 1% AEP plus 0.5 m (search summary only).",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Walgett",
+  "viewer": null,
+  "certificate": null,
+  "fpl": null,
+  "layers": null,
+  "data": [
+   {
+    "label": "Walgett Levee Flood Study; Flood Management Options for Walgett (draft); Rowena flood study (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/organization/walgett-shire-council",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Nothing found in 1 lookup for a council viewer or certificate. Council page is flood recovery only: https://www.walgett.nsw.gov.au/Departments/Assets-and-Infrastructure/Emergency-management/Flood-recovery-information-for-local-communities",
+  "checked": "2026-10-29"
+ },
+ {
+  "council": "Wollondilly",
+  "viewer": {
+   "label": "Council public mapping system (IntraMaps), module Flood Consultation 2024 (draft mapping)",
+   "url": "https://maps.wollondilly.nsw.gov.au/IntraMaps21B/?configId=d0cab3ba-eb7f-4a0c-87a0-2d17376a0c07",
+   "confirmed": false,
+   "check": "0/1 key words on page"
+  },
+  "certificate": {
+   "label": "Application for Flood Information",
+   "url": "https://www.wollondilly.nsw.gov.au/resident-services/water-management/floodplain-risk-management",
+   "fee": null,
+   "confirmed": false,
+   "check": "page 404"
+  },
+  "fpl": null,
+  "layers": "Per council FAQ: Flood Planning Areas (based on 1% AEP map), flood extent for 10% AEP, 1% AEP, 1 in 500 AEP and PMF, and depth maps 5 cm to over 4 m. Must accept terms and select the Flood Consultation 2024 module. Viewer not opened by me.",
+  "data": [
+   {
+    "label": "Draft Wollondilly Shire Flood Study incl. Detailed Study Areas (NSW Flood Data Portal)",
+    "url": "https://data.nsw.gov.au/data/dataset/76ad764d-994d-4f7b-bbd2-f553771038bb",
+    "licence": "none stated",
+    "confirmed": true,
+    "check": "1/1 key words on page"
+   }
+  ],
+  "notes": "Shire-wide flood study is DRAFT (not provided to insurers per FAQ); form fee not found. Layer description source: https://www.yoursay.wollondilly.nsw.gov.au/wollondilly-shire-wide-flood-study/widgets/372234/faqs",
+  "checked": "2026-10-29"
+ }
+]

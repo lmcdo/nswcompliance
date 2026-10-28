@@ -4229,7 +4229,8 @@ def generate_pdf(
             # was not established and why (cross-review: a failed check had
             # vanished from the paid report).
             _why = _flood_plan.get("reason") or "flood planning map could not be checked"
-            return [label, Paragraph(f"Not known — {_why}. Ask council for a Section 10.7 certificate.",
+            _council = _flood_plan.get("council_info_text") or ""
+            return [label, Paragraph(f"Not known — {_why}. Ask council for a Section 10.7 certificate. {_council}".strip(),
                                      ss["warn"]), "PostGIS"]
         # 1. PostGIS hit (detailed spatial data)
         if layer_type in unique_by_type:
