@@ -141,3 +141,37 @@ def test_a_server_error_raises_rather_than_skipping(monkeypatch):
     monkeypatch.setattr(ems.requests, "get", lambda *a, **k: Resp())
     with pytest.raises(RuntimeError, match="500"):
         ems._fetch_s3_zip_geometries("https://example/EMSR567_AOI07_x.zip")
+
+
+def test_a_feature_without_geometry_stops_the_read():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(f"{PREFIX}observedEventA_r1_v1.json", json.dumps({"type": "FeatureCollection",
+                    "features": [{"type": "Feature", "properties": {}, "geometry": None}]}))
+    with pytest.raises(ems.ExtentRejected, match="no geometry"):
+        ems._read_observed_geometries(buf.getvalue())
+
+
+def test_a_source_that_loads_nothing_rolls_back_its_clear(monkeypatch):
+    """--clear on all sources: an empty NSW-202207 must not let NSW-202210's commit save its DELETE."""
+    log = []
+
+    class Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None): log.append(("execute", sql.split()[0], params))
+
+    class Conn:
+        def cursor(self): return Cur()
+        def commit(self): log.append(("commit",))
+        def rollback(self): log.append(("rollback",))
+        def close(self): pass
+
+    monkeypatch.setattr(ems, "_get_conn", lambda: Conn())
+    monkeypatch.setattr(ems, "SOURCES", [ems.SOURCE_MAP["NSW-202207"], ems.SOURCE_MAP["NSW-202210"]])
+    monkeypatch.setattr(ems, "ingest_featureserver",
+                        lambda s, conn, dry_run=False: 0 if s.source_id == "NSW-202207" else (conn.commit(), 1)[1])
+    monkeypatch.setattr(sys, "argv", ["x", "--clear"])
+    ems.main()
+    first_commit = log.index(("commit",))
+    assert ("rollback",) in log[:first_commit]

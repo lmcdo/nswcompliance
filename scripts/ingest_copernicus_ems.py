@@ -217,11 +217,13 @@ def _read_observed_geometries(zip_bytes: bytes) -> list:
             if not is_observed_layer(name):
                 continue
             for feat in json.loads(zf.read(name)).get("features") or []:
+                # None of the 3,258 real features lacks a shape (2026-10-28);
+                # one that does means a broken download, so stop.
                 if not feat.get("geometry"):
-                    continue
+                    raise ExtentRejected(f"{Path(name).name}: a flood feature has no geometry")
                 geom = shape(feat["geometry"])
                 if geom.is_empty:
-                    continue
+                    raise ExtentRejected(f"{Path(name).name}: a flood feature has an empty geometry")
                 geoms.append(geom if geom.is_valid else geom.buffer(0))
     return geoms
 
@@ -434,6 +436,10 @@ def main():
             else:
                 n = ingest_featureserver(source, conn, dry_run=args.dry_run)
 
+            if n == 0 and conn is not None:
+                # Nothing inserted: undo this source's --clear DELETE so the
+                # next source's commit cannot save it.
+                conn.rollback()
             log.info(f"  Done: {n} row(s) inserted")
 
     finally:
