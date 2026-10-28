@@ -26,7 +26,7 @@ export const floodConfig: ProductLandingConfig = {
   ],
 
   featuresTitle: "What This Check Looks At",
-  featuresSubtitle: "Each source is checked at your exact point. A source that does not cover your area is reported as not covering it, never as clear.",
+  featuresSubtitle: "The maps and satellite records are checked at your exact point; river gauges are the nearest one to it. A source that does not cover your area is reported as not covering it, never as clear.",
   features: [
     {
       icon: Building2,
@@ -60,5 +60,5 @@ export const floodConfig: ProductLandingConfig = {
     },
   ],
 
-  methodology: "Your address is turned into a point, then each source is checked at that point. The result is one of five levels: none, low, moderate, elevated, or not enough data. Not enough data means the planning overlay did not answer or does not cover the area and we hold no council study for it; that is never shown as clear. This is a screening check, not a flood certificate: ask your council for a Section 10.7 certificate.",
+  methodology: "Your address is turned into a point; the maps and satellite records are checked at that point, and the nearest river gauge is looked up. The result is one of five levels: none, low, moderate, elevated, or not enough data. Not enough data means the planning overlay did not answer or does not cover the area and we hold no council study for it; that is never shown as clear. This is a screening check, not a flood certificate: ask your council for a Section 10.7 certificate.",
 }
