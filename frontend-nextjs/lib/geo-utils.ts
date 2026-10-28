@@ -32,5 +32,17 @@ export function lotRingsToWgs84Wkt(rings: number[][][] | null | undefined, wkid:
     if (pts[0] !== pts[pts.length - 1]) pts.push(pts[0]);
     return `(${pts.join(', ')})`;
   };
-  return `POLYGON(${ll.map(ring).join(', ')})`;
+  // ESRI rings: outer rings run clockwise, holes anticlockwise. A lot in several
+  // pieces is several outer rings, so group each with the holes that follow it;
+  // writing them all as one POLYGON would make the later pieces "holes" and the
+  // backend would reject the outline (cross-review).
+  const signedArea = (r: number[][]) =>
+    r.reduce((a, [x1, y1], i) => { const [x2, y2] = r[(i + 1) % r.length]; return a + (x1 * y2 - x2 * y1); }, 0);
+  const parts: number[][][][] = [];
+  for (const r of ll) {
+    if (signedArea(r) <= 0 || parts.length === 0) parts.push([r]);
+    else parts[parts.length - 1].push(r);
+  }
+  const poly = (p: number[][][]) => `(${p.map(ring).join(', ')})`;
+  return parts.length === 1 ? `POLYGON${poly(parts[0])}` : `MULTIPOLYGON(${parts.map(poly).join(', ')})`;
 }

@@ -40,3 +40,21 @@ describe('lotRingsToWgs84Wkt', () => {
     expect(lotRingsToWgs84Wkt(rings as number[][][] | undefined, wkid as number | null)).toBeNull();
   });
 });
+
+describe('lotRingsToWgs84Wkt with several rings', () => {
+  // ESRI: outer rings clockwise (y up), holes anticlockwise.
+  const cw = (x: number, y: number) => [[x, y], [x, y + 1], [x + 1, y + 1], [x + 1, y], [x, y]];
+  const ccw = (x: number, y: number) => [[x, y], [x + 0.2, y], [x + 0.2, y + 0.2], [x, y + 0.2], [x, y]];
+
+  it('writes a lot in two pieces as a MULTIPOLYGON, never as a polygon with a hole', () => {
+    const wkt = lotRingsToWgs84Wkt([cw(150, -33), cw(152, -33)], 4326)!;
+    expect(wkt.startsWith('MULTIPOLYGON(((150 -33')).toBe(true);
+    expect(wkt).toContain(')), ((152 -33');
+  });
+
+  it('keeps a hole inside the piece it belongs to', () => {
+    const wkt = lotRingsToWgs84Wkt([cw(150, -33), ccw(150.4, -32.6)], 4326)!;
+    expect(wkt.startsWith('POLYGON((150 -33')).toBe(true);
+    expect(wkt).toContain('), (150.4 -32.6');
+  });
+});
