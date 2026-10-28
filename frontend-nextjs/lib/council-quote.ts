@@ -134,7 +134,7 @@ export function numbersUsable(p: QuoteFields): boolean {
 
 /** The quote columns every route serving council DCP rules selects, for a table alias (a
  *  regulatory_provisions row). section_page: for a rule whose words are not proven, the quote_page
- *  of a PROVEN rule in the same council, chapter and section heading -- a page whose words were found
+ *  of a PROVEN rule in the same document, council, chapter and section heading -- a page whose words were found
  *  in the current PDF -- the one nearest the rule's own pdf_page, and only within one reader chunk
  *  (12 pages): headings repeat across a chapter (Ashfield "DS4.1" is proven on 12 pages, 2026-10-28).
  *  No heading, no pdf_page, or no proven rule that near -> NULL, and the rule links to the plan with
@@ -147,7 +147,7 @@ export function quoteColumns(alias = 'rp'): string {
           AND ${a}.pdf_page > 0
           AND ${a}.quote_status IS DISTINCT FROM 'exact' AND ${a}.quote_status IS DISTINCT FROM 'recovered'
       THEN (SELECT sib.quote_page FROM regulatory_provisions sib
-            WHERE sib.is_current AND sib.source_council = ${a}.source_council
+            WHERE sib.is_current AND sib.document_id = ${a}.document_id AND sib.source_council = ${a}.source_council
               AND sib.source_chapter_key = ${a}.source_chapter_key AND sib.section_header = ${a}.section_header
               AND sib.quote_status IN ('exact', 'recovered') AND sib.quote_page > 0
               AND COALESCE(BTRIM(sib.council_quote), '') <> ''

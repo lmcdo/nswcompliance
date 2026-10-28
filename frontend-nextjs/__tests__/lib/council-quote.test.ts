@@ -151,6 +151,7 @@ describe('section_page SQL takes the page only from a proven rule of the same ch
   const sql = quoteColumns('rp');
   it.each([
     "sib.quote_status IN ('exact', 'recovered')",
+    'sib.document_id = rp.document_id',
     'sib.source_council = rp.source_council',
     'sib.source_chapter_key = rp.source_chapter_key',
     'sib.section_header = rp.section_header',

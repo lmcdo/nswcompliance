@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes the page link and pointer text served for council rules whose words are hidden, on every route that uses quoteColumns. Read path only - no write, no schema change.",
-  "commit_hash": "3ef9e374",
+  "commit_hash": "72651d2e",
   "files": [
     "frontend-nextjs/lib/council-quote.ts",
     "frontend-nextjs/lib/page-citation.ts",
