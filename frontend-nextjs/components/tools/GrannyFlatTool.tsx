@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { WaitlistButton } from '@/components/reports/WaitlistButton';
+import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
 import { DATA_PROVENANCE } from '@/lib/disclaimers';
 import { posthog } from '@/components/providers/PostHogProvider';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
@@ -124,6 +125,10 @@ function seppStandardLabel(standardType: string): string {
   return `${SEPP_STANDARD_NAMES[base] ?? base} (${band} m² lot)${grows ? ' — base; more for a taller building' : ''}`;
 }
 
+// Stored with the "what could change this" lead so we can show what was asked for.
+const WHAT_TO_CHANGE_CONSENT_VERSION = '2026-10-28';
+const WHAT_TO_CHANGE_WORDING = 'Email me a link to this check and what would need to change on this lot. No marketing emails.';
+
 const SEPP_LEGISLATION_URL =
   'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
 
@@ -231,6 +236,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
   // Yield calculator — ineligible "if this lot qualified" teaser only
   const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
@@ -311,18 +318,32 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     e.preventDefault();
     if (!email.trim() || !eligibility) return;
     try {
-      await fetch('/api/canibuildit/lead', {
+      const res = await fetch('/api/canibuildit/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
           address: eligibility.address,
           eligible: eligibility.sepp_eligible,
+          interest_type: 'granny-flat',
+          consent_version: WHAT_TO_CHANGE_CONSENT_VERSION,
+          consent_wording: WHAT_TO_CHANGE_WORDING,
         }),
       });
+      // A failed save leaves the form in place with a reason, never a false "Done".
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setEmailError(json.error || 'That did not save. Please try again.');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      setEmailSent(json.email_sent === true);
+      posthog.capture('lead_submitted', { interest_type: 'granny-flat', variant: 'what-to-change' });
     } catch {
-      // Silent
+      setEmailError('That did not save. Please check your connection and try again.');
+      return;
     }
+    setEmailError('');
     setEmailSubmitted(true);
   };
 
@@ -549,6 +570,11 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                   <p className="text-sm text-red-700">{errorMsg}</p>
                 </div>
               )}
+              <BuilderReferralCard
+                address={eligibility.address ?? address}
+                lgaName={eligibility.lga_name}
+                product="granny-flat"
+              />
               <LockedPreviewCard
                 lga_name={eligibility.lga_name}
                 address={eligibility.address ?? address}
@@ -690,6 +716,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                   {deriveWhatToChange(eligibility.sepp_ineligible_reason)}
                 </p>
                 {!emailSubmitted ? (
+                  <>
                   <form onSubmit={handleEmailSubmit} className="flex gap-2">
                     <input
                       type="email"
@@ -703,12 +730,17 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                       type="submit"
                       className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
                     >
-                      Notify me
+                      Email me
                     </button>
                   </form>
+                  {emailError && <p className="text-xs text-red-600 mt-2">{emailError}</p>}
+                  <p className="text-xs text-gray-400 mt-2">{WHAT_TO_CHANGE_WORDING}</p>
+                  </>
                 ) : (
                   <p className="text-sm text-teal-700 font-medium">
-                    Got it — we&apos;ll be in touch when the full report is ready.
+                    {emailSent
+                      ? `Done. A link to this check is on its way to ${email}.`
+                      : 'Saved. We could not send the email just now — bookmark this page to come back to it.'}
                   </p>
                 )}
               </div>

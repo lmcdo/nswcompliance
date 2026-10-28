@@ -30,7 +30,8 @@ jest.mock('@/lib/rate-limit', () => ({
 }));
 
 jest.mock('@supabase/supabase-js', () => {
-  const insertMock = jest.fn().mockResolvedValue({ error: null });
+  // The route chains .insert(...).select('id').single() and then updates email_sent.
+  const insertMock = jest.fn().mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
   const limitMock = jest.fn().mockResolvedValue({ data: [], error: null }); // no duplicate, ever
   const chain = {
     select: jest.fn().mockReturnThis(),
@@ -38,6 +39,7 @@ jest.mock('@supabase/supabase-js', () => {
     gte: jest.fn().mockReturnThis(),
     limit: limitMock,
     insert: insertMock,
+    update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
   };
   return {
     createClient: jest.fn().mockReturnValue({ from: jest.fn().mockReturnValue(chain) }),
@@ -116,7 +118,7 @@ let fetchMock: jest.Mock;
 let abortTimeoutSpy: jest.SpyInstance;
 beforeEach(() => {
   jest.clearAllMocks();
-  insertMock.mockResolvedValue({ error: null });
+  insertMock.mockImplementation(() => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 1 }, error: null }) }) }));
   emailSendMock.mockResolvedValue({ id: 'mock-id' });
   fetchMock = jest.fn();
   global.fetch = fetchMock as unknown as typeof fetch;

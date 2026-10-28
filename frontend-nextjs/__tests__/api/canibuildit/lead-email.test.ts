@@ -22,18 +22,26 @@ describe('buildEmailContent', () => {
       expect(subject).toContain(ADDR);
     });
 
-    it('body explains the wait', () => {
+    it('body links back to this address and promises no background run', () => {
       const { body } = buildEmailContent('granny-flat', ADDR);
-      expect(body).toMatch(/1.3 minutes|1–3 minutes/i);
-      expect(body).toContain(ADDR);
+      expect(body).toContain(`reports/granny-flat?address=${encodeURIComponent(ADDR)}`);
+      expect(body).not.toMatch(/minutes|close the tab|is running/i);
     });
   });
 
   describe('flood / flood-truth aliases', () => {
     it('"flood" returns flood subject', () => {
       const { subject } = buildEmailContent('flood', ADDR);
-      expect(subject).toMatch(/flood risk/i);
+      expect(subject).toMatch(/flood check/i);
       expect(subject).toContain(ADDR);
+    });
+
+    it('body links back to this address and states no flood finding', () => {
+      // The client can send any verdict; an email from our domain must never
+      // assert one, or it becomes a tool for sending fake flood warnings.
+      const { body } = buildEmailContent('flood-truth', ADDR);
+      expect(body).toContain(`reports/flood?address=${encodeURIComponent(ADDR)}`);
+      expect(body).not.toMatch(/elevated|moderate|flood zone|depth|1-in-100/i);
     });
 
     it('"flood-truth" alias resolves to same copy', () => {
@@ -91,6 +99,15 @@ describe('buildEmailContent', () => {
       const { body } = buildEmailContent('dual-occ-referral', ADDR);
       expect(body).toMatch(/referral fee/i);
       expect(body).toMatch(/only for this introduction/i);
+      expect(body).toContain(ADDR);
+    });
+  });
+
+  describe('granny-flat-referral', () => {
+    it('names the introduction and discloses the referral fee', () => {
+      const { subject, body } = buildEmailContent('granny-flat-referral', ADDR);
+      expect(subject).toMatch(/granny flat builder/i);
+      expect(body).toMatch(/referral fee/i);
       expect(body).toContain(ADDR);
     });
   });

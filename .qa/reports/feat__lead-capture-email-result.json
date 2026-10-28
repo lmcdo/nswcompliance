@@ -1,0 +1,83 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes a customer-facing capture path and what is stored as consent. Not Critical: no regulatory data, no DB schema change, additive UI.",
+  "commit_hash": "c3221f53",
+  "files": [
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/components/reports/WaitlistButton.tsx",
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+    "frontend-nextjs/components/tools/BuilderReferralCard.tsx",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email-sent.test.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
+    "frontend-nextjs/__tests__/components/reports/WaitlistButton-email-result.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "canibuildit_leads: 9 rows (3 owner tests, 6 real, all Oct 2026); email_sent boolean and consent jsonb NULL on all 9.",
+    "assumption_mismatch": "email_sent NULL looked like 'not sent'; the route never wrote it. Resend SDK returns {error} rather than throwing, so a rejected send was silently treated as success.",
+    "new_vs_existing": "Reuses WaitlistButton, BuilderReferralCard and /api/canibuildit/lead; no new surface. Adds interest_type granny-flat-referral.",
+    "external_source_error": "Resend failure now logged and stored as email_sent=false.",
+    "frontend_type": "onSuccess fires only on res.ok; email_sent boolean, never null for new rows with an id.",
+    "user_failure_mode": "If the lead POST fails, flood numbers stay blurred and an error is shown (visible). If the email fails, the lead is still stored and email_sent=false (visible in DB)."
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/api/canibuildit/lead-email-sent.test.ts",
+    "fails_when": "Run with origin/main's version of route.ts copied over this branch's",
+    "observed_red": "6 failed, 2 passed: email_sent never updated; shared_with 'duplex-referral-partner' for granny-flat and plain leads."
+  },
+  "functions": [
+    {
+      "name": "POST /api/canibuildit/lead",
+      "file_line": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+      "input": "lead JSON with email, address, interest_type and consent wording",
+      "output": "ok:true; row with consent + email_sent",
+      "if_none": "no API key -> email_sent=false; insert error -> no update, still 200"
+    },
+    {
+      "name": "WaitlistButton variant=email-result",
+      "file_line": "frontend-nextjs/components/reports/WaitlistButton.tsx",
+      "input": "an email typed into the flood result unlock form",
+      "output": "onSuccess on 2xx, lead_submitted event without PII",
+      "if_none": "non-2xx -> error shown, no unlock"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "record send outcome",
+      "file_line": "route.ts step 8",
+      "where_clause": "WHERE id = inserted id",
+      "if_zero": "update skipped when insert returned no id",
+      "if_wrong": "N/A single-row by primary key"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Attacker posts a lead claiming a flood verdict for a victim's email",
+      "what_happens": "Email from our domain would assert flood risk",
+      "mitigated": true,
+      "how": "flood email carries no finding, only a link that re-runs server-side",
+      "repro": "lead-email.test.ts flood body test"
+    },
+    {
+      "scenario": "Someone reads the blurred numbers without giving an email",
+      "what_happens": "They can read the six numbers without leaving an email",
+      "mitigated": false,
+      "how": "Accepted: data was already in the DOM before this change and payments are off",
+      "repro": "inspect element"
+    },
+    {
+      "scenario": "Granny-flat referral consent recorded as duplex partner",
+      "what_happens": "Consent audit names wrong recipient",
+      "mitigated": true,
+      "how": "REFERRAL_RECIPIENT map; null for non-referral",
+      "repro": "lead-email-sent.test.ts consent.shared_with"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "Yes - confirm Vercel RESEND_API_KEY belongs to a Resend account with plotdetect.com.au verified",
+    "other_repo": "No",
+    "manual_verify": "Yes - submit one flood lead with the owner's email after deploy and check canibuildit_leads.email_sent for that row"
+  }
+}

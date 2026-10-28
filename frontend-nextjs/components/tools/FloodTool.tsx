@@ -344,6 +344,9 @@ function FloodLockedPreviewCard({
 }) {
   const o = result.outputs;
   const signal = o.flood_signal ?? 'none';
+  // The numbers are already in the page; the blur is a prompt, not protection.
+  // An email unlocks them on screen and sends a link back to this check.
+  const [unlocked, setUnlocked] = useState(false);
 
   const alarmHeadline = signal === 'unavailable'
     ? 'No automated flood data for this address — this is the riskiest result'
@@ -413,7 +416,7 @@ function FloodLockedPreviewCard({
           {rows.map(({ label, preview }) => (
             <div key={label} className="flex items-center justify-between gap-4 text-sm">
               <span className="text-gray-700">{label}</span>
-              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums text-right">
+              <span className={`${unlocked ? '' : 'blur-sm select-none pointer-events-none '}font-medium text-gray-900 tabular-nums text-right`}>
                 {preview}
               </span>
             </div>
@@ -440,7 +443,18 @@ function FloodLockedPreviewCard({
       )}
 
       <div className="bg-white px-5 pb-5 pt-2">
-        <WaitlistButton interestType="flood-truth" address={result.address} />
+        {!unlocked && (
+          <p className="text-sm font-semibold text-gray-900 mb-2">
+            See these numbers free. Enter your email and we&apos;ll also send you a link to this check.
+          </p>
+        )}
+        <WaitlistButton
+          interestType="flood-truth"
+          address={result.address}
+          variant="email-result"
+          label="Show my numbers"
+          onSuccess={() => setUnlocked(true)}
+        />
       </div>
     </div>
   );
