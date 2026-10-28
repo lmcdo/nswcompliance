@@ -1,11 +1,14 @@
 {
  "tier": "standard",
  "justification": "Changes the served flood signal rule (EMS alone -> low) and the flood cache read. Not Critical: measured RAISED 0 on all 308 saved checks. Not Minor: changes served levels for future addresses.",
- "commit_hash": "e1a434ac",
+ "commit_hash": "0014e7dd",
  "files": [
   "services/flood_truth.py",
   "tests/test_flood_truth.py",
-  "tests/fixtures/flood_known_answers.json"
+  "tests/fixtures/flood_known_answers.json",
+  "tests/test_flood_no_persist.py",
+  "tests/test_flood_normalise.py",
+  "tests/test_flood_compute.py"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_flood_truth.py tests/test_flood_signal_known_answers.py -q",
@@ -55,8 +58,9 @@
   }
  ],
  "verified": [
-  "218 flood tests pass",
-  "Gate: RAISED 0 of 308; 7 real-extent hits all already positive"
+  "867 flood tests pass (pytest -k flood)",
+  "Gate: RAISED 0 of 308; 7 real-extent hits all already positive",
+  "Stored row now carries flood_signal equal to the served one (test)"
  ],
  "gaps": [
   "Cached rows from 2026-10-28 computed after the reload are also recomputed once (harmless)"
