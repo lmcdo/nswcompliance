@@ -126,7 +126,7 @@ def council_at(lat: float, lng: float, cur) -> Optional[str]:
     )
     row = cur.fetchone()
     name = _cols(row, "lga_name")[0] if row else None
-    if name:
+    if name and name.strip().upper() != "UNKNOWN":  # 'UNKNOWN' is no answer: fall through
         return name
     try:
         r = requests.get(_SS_LGA, params={

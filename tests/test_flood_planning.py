@@ -98,6 +98,14 @@ def test_the_spatial_services_fallback_names_the_council(monkeypatch):
     assert s["council"] == "CUMBERLAND" and s["value"] is None
 
 
+def test_an_unknown_height_layer_council_uses_the_fallback(monkeypatch):
+    resp = MagicMock(json=lambda: {"features": [{"attributes": {"lganame": "Ballina"}}]})
+    resp.raise_for_status = lambda: None
+    monkeypatch.setattr(fp, "requests", MagicMock(get=MagicMock(return_value=resp)))
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with([], [("UNKNOWN",)], [("TWEED",)]))
+    assert s["council"] == "BALLINA"
+
+
 def test_near_the_line_is_unknown_not_no():
     s = fp.flood_planning_status(-28.86, 153.56, conn_with(
         [], [("BALLINA",)], [("BALLINA",)], [(32.4,)]))
