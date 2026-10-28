@@ -57,7 +57,7 @@ LATEST_SQL = """
     FROM property_reports
     WHERE product = 'flood' AND outputs ? 'epi_flood_class'
       AND address NOT ILIKE 'calibration %%'
-    ORDER BY address, run_date DESC, id DESC
+    ORDER BY address, run_date DESC NULLS LAST, id DESC
 """
 
 
