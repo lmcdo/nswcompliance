@@ -199,7 +199,7 @@ def flood_planning_status(lat: float, lng: float, conn) -> dict:
             d = _cols(got, "min")[0] if got else None
             if d is not None:
                 out.update(nearest_m=round(float(d), 1),
-                           reason="within 200 m of the council's flood planning map; the whole lot was not checked")
+                           reason=f"within {NEAR_EDGE_M:.0f} m of the council's flood planning map; the whole lot was not checked")
                 return out
             out.update(value=False, category="extreme_only" if extreme_only else None,
                        reason=("not on the council's flood planning map; inside a rarer (extreme) flood extent"
