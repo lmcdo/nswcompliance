@@ -1,0 +1,79 @@
+{
+  "tier": "critical",
+  "justification": "Critical: changes the flood verdict served on the flood tool, the PDF and the Site Report. 144 of 308 saved checks move down a level.",
+  "commit_hash": "a9b56782",
+  "files": [
+    "services/flood_truth.py",
+    "tests/test_flood_compute.py",
+    "tests/test_flood_normalise.py",
+    "tests/test_flood_truth.py",
+    "tests/test_flood_signal_known_answers.py"
+  ],
+  "pre_impl": {
+    "existing_data": "copernicus_flood_events EMSR567 = one row of 86,349 km2 (5 polygons); the ingest merged every shapefile in each ZIP, including area-of-interest layers. property_reports: 308 latest flood checks, 144 at moderate or above with EMS (alone or with a water trace under 15%) the only positive.",
+    "assumption_mismatch": "EMS was treated as an observed flood extent; EMSR567 is a whole mapped region, so a hit says nothing about the lot.",
+    "new_vs_existing": "Edits the single rule every surface reads (_compute_flood_signal); the PDF and Site Report take flood_signal from it, so no surface computes its own verdict.",
+    "external_source_error": "No new external call. EMS lookup failure already returns None, which never counted.",
+    "frontend_type": "flood_signal values unchanged in type: one of none/low/moderate/elevated/unavailable.",
+    "user_failure_mode": "A lot that truly flooded and is covered only by EMS now shows no signal; mitigated because the real 2022 extents in the fixture also carry council/study positives and stay elevated."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/flood_signal_regression.py --baseline data/flood_signal_baseline_2026-10-28.json",
+    "fails_when": "EMS alone can still decide a level, or any saved check moves up a level",
+    "observed_red": "Before the fix the same command printed EMS_ONLY_POSITIVE=144; after it prints EMS_ONLY_POSITIVE=0 RAISED=0 LOWERED=144 UNCHANGED=164."
+  },
+  "functions": [
+    {
+      "name": "_compute_flood_signal",
+      "file_line": "services/flood_truth.py:1404",
+      "input": "the normalised flood outputs dict for one lot, from every queried source",
+      "output": "one of none, low, moderate, elevated or unavailable",
+      "if_none": "missing inputs count as negative; EPI query failure returns unavailable"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A lot that really flooded in 2022 is covered only by an EMS extent",
+      "what_happens": "The page now shows that lot with no flood signal at all, although it flooded",
+      "mitigated": false,
+      "how": "Accepted until EMSR567 is re-ingested with flood-extent layers only (next step); the three real-extent fixture cases also carry council or study positives and stay elevated",
+      "repro": "tests/test_flood_signal_known_answers.py nsw_2022_real_extent cases"
+    },
+    {
+      "scenario": "The fix accidentally raises a lot that had no flood signal",
+      "what_happens": "A lot with no flood evidence would get a new and false flood warning",
+      "mitigated": true,
+      "how": "Regression gate requires RAISED=0 over all 308 saved checks",
+      "repro": "python scripts/flood_signal_regression.py --baseline data/flood_signal_baseline_2026-10-28.json"
+    },
+    {
+      "scenario": "Real flood evidence is lost along with EMS",
+      "what_happens": "Council flood planning areas or overlay lots would drop to showing no signal",
+      "mitigated": true,
+      "how": "Known-answer positives still pass with EMS ignored entirely (mutation check: 13 passed)",
+      "repro": "set ems_detected = False and run the known-answer tests"
+    },
+    {
+      "scenario": "An old saved result is served from the cache after the fix",
+      "what_happens": "A customer re-opening an older check could still see the old moderate verdict",
+      "mitigated": true,
+      "how": "flood_signal is never stored; it is recomputed from saved inputs on every read, so cached checks get the new rule",
+      "repro": "SELECT count(*) FROM property_reports WHERE product='flood' AND outputs ? 'flood_signal' returns 0"
+    },
+    {
+      "scenario": "An EMS-only lot with no local flood study now reads as clear",
+      "what_happens": "An absence of flood data could be read by the owner as no flood risk",
+      "mitigated": false,
+      "how": "Lots with no council study and no water history still return unavailable; lots where the council was queried return none. The page wording for none is fixed in the next page PR",
+      "repro": "tests/test_flood_compute.py test_epi_none_str_with_ems_detected_alone_is_unavailable"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - re-run scripts/run_flood_calibration_2022.py and correct the published recall in docs/qa/flood-calibration-2022-result.md before quoting any accuracy figure"
+  }
+}
