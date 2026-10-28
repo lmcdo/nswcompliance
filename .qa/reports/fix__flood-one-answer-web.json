@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Website readers of the flood planning answer (verify app, DA intake, consumer check) and the brief's withdrawn sections. Not Critical: yes answers only widen (the 47 store-only addresses) and the consumer check can no longer pass from a map. Not Minor: served answers and page sections change.",
- "commit_hash": "523d5e14",
+ "commit_hash": "01fbd5c4",
  "files": [
   "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
   "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
@@ -9,15 +9,8 @@
   "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
   "frontend-nextjs/lib/flood/flood-map.ts",
   "scripts/page_integrity/producer_baseline.json",
-  "services/flood_planning.py",
   "services/flood_truth.py",
-  "services/intelligence_brief.py",
-  "tests/test_brief_failclosed.py",
-  "tests/test_brief_slice2_distances.py",
-  "tests/test_flood_planning.py",
-  "tests/test_flood_queries.py",
-  "tests/test_flood_truth.py",
-  "tests/test_intelligence_brief_orchestrator.py"
+  "tests/test_flood_planning.py"
  ],
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest __tests__/lib/flood __tests__/app/brief-satellite-parity.test.tsx",
