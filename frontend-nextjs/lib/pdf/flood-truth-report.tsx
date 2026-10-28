@@ -128,12 +128,16 @@ const GRAY_500   = '#6b7280';
 const GRAY_300   = '#d1d5db';
 const GRAY_100   = '#f3f4f6';
 
+// Same plain verdicts as the web page (components/tools/FloodTool.tsx).
+// not_recorded: a saved check from before 2026-10-29 stored no level; it is
+// never shown as "none".
 const SIGNAL_META: Record<string, { label: string; sublabel: string; bg: string; color: string }> = {
-  none:     { label: 'No flood indicators detected', sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records', bg: GREEN_LIGHT, color: GREEN },
-  low:      { label: 'Low flood signal', sublabel: 'Property is within a statutory flood zone — no observed inundation events on record', bg: AMBER_LIGHT, color: AMBER },
-  moderate: { label: 'Moderate flood signal', sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing', bg: ORANGE_LIGHT, color: ORANGE },
-  elevated:    { label: 'Elevated flood signal', sublabel: 'Multiple independent sources indicate flood exposure — professional flood study advisable', bg: RED_LIGHT, color: RED },
-  unavailable: { label: 'Flood data unavailable', sublabel: 'Statutory flood data could not be retrieved for this address — this does not indicate absence of flood risk', bg: GRAY_100, color: GRAY_500 },
+  none:     { label: 'No mapped flood risk found', sublabel: 'None of the sources we checked map flooding at this point: the NSW planning flood overlay, council flood studies where we hold them, the mapped 2022 flood extents, and satellite water history. This is not a flood certificate, and a source that does not cover this area cannot rule flooding out.', bg: GREEN_LIGHT, color: GREEN },
+  low:      { label: 'Low flood signal', sublabel: 'One source shows flooding here: a planning flood zone, or a mapped 2022 flood. No other source we checked agrees.', bg: AMBER_LIGHT, color: AMBER },
+  moderate: { label: 'Moderate flood signal', sublabel: 'One strong source, or two weaker ones, show flooding at this point.', bg: ORANGE_LIGHT, color: ORANGE },
+  elevated:    { label: 'Elevated flood signal', sublabel: 'Several separate sources show flooding at this point.', bg: RED_LIGHT, color: RED },
+  unavailable: { label: 'Not enough flood data for this address', sublabel: 'The planning flood overlay does not cover this area and we hold no council flood study for it. No result here is not a clear result. Ask the council for its flood information.', bg: GRAY_100, color: GRAY_500 },
+  not_recorded: { label: 'Flood level not recorded for this saved check', sublabel: 'This check was saved before the flood level was stored with it. The source figures below are as recorded; run the check again for a level.', bg: GRAY_100, color: GRAY_500 },
 };
 
 const EPI_CLASS_META: Record<string, { label: string }> = {
@@ -270,7 +274,7 @@ function buildFindings(data: FloodReportData): Finding[] {
   const findings: Finding[] = [];
   const epiKey = data.epi_flood_class ?? 'none';
   const epiLabel = EPI_CLASS_META[epiKey]?.label ?? epiKey;
-  const signal = data.flood_signal ?? 'none';
+  const signal = data.flood_signal ?? 'not_recorded';
 
   // 1. Government flood overlay
   if (epiKey === 'none' && (signal === 'moderate' || signal === 'elevated')) {
@@ -285,14 +289,14 @@ function buildFindings(data: FloodReportData): Finding[] {
     findings.push({
       label: 'NSW EPI Flood WFS',
       value: 'Not mapped as flood-prone',
-      detail: 'This property is not in a gazetted flood zone under NSW planning instruments. Lenders and insurers typically don\'t flag properties outside this overlay.',
+      detail: 'This property is not in a gazetted flood zone under NSW planning instruments. The overlay does not cover every council, so this alone does not rule flooding out.',
       severity: 'green',
     });
   } else {
     findings.push({
       label: 'NSW EPI Flood WFS',
       value: epiLabel,
-      detail: 'This property is inside a gazetted flood zone. Your lender\'s valuer will note this, and insurers will price flood loading into your premium.',
+      detail: 'This property is inside a gazetted flood zone under the NSW planning instruments.',
       severity: 'red',
     });
   }
@@ -498,8 +502,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
     );
   }
 
-  const signal     = data.flood_signal ?? 'none';
-  const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.none;
+  const signal     = data.flood_signal ?? 'not_recorded';
+  const signalMeta = SIGNAL_META[signal] ?? SIGNAL_META.not_recorded;
   const isPaid     = data.is_paid === true;
   const hasStudies = isPaid && (data.flood_studies ?? []).length > 0;
   const hasTile    = !!data.tile_b64;

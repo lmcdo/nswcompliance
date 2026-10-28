@@ -1,0 +1,85 @@
+{
+ "tier": "standard",
+ "justification": "User-facing flood page copy and the paid-PDF route. Not Critical: no rule or data change; the route change only refuses. Not Minor: changes what every flood result says and removes liability copy.",
+ "commit_hash": "11932a5c",
+ "files": [
+  "frontend-nextjs/components/tools/FloodTool.tsx",
+  "frontend-nextjs/app/api/reports/flood/generate/route.ts",
+  "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/components/tools/FloodTool-paywall.test.tsx",
+  "fails_when": "Fails if lender/valuer/underwriter copy, the 'In paid report' box, the word 'safe', or a bare dash returns, or if the none verdict loses its limits sentence.",
+  "external_authority": "property_reports: 0 of 368 flood rows store flood_signal (live query 2026-10-28), so the PDF route had no level to print.",
+  "observed_red": "The previous assertions (multiple independent flood sources, 0 events since 2000) failed against the new copy and were replaced."
+ },
+ "pre_impl": {
+  "existing_data": "FloodTool renders FLOOD_SIGNAL_META per flood_signal; PDF path A reads property_reports.outputs.",
+  "assumption_mismatch": "The 'Historical inundation events since 2000' row counted the three 2022 extent maps, not events since 2000.",
+  "new_vs_existing": "No new component; copy edited in place and FreePaidComparison removed.",
+  "external_source_error": "PDF route returns 409 when the stored row has no level; a missing level never prints as none."
+ },
+ "functions": [
+  {
+   "name": "FloodLockedPreviewCard",
+   "file_line": "frontend-nextjs/components/tools/FloodTool.tsx",
+   "what": "Neutral headline, no record for missing figures, 2022 map count.",
+   "input": "the flood API result for one address",
+   "output": "the figures card shown under the verdict",
+   "if_none": "ems_activations null shows no record, not zero",
+   "edge_cases": "unavailable keeps the council steps",
+   "failure_mode": "Copy only; cannot change a level"
+  },
+  {
+   "name": "POST /api/reports/flood/generate",
+   "file_line": "frontend-nextjs/app/api/reports/flood/generate/route.ts",
+   "what": "Path A refuses a row without a stored flood_signal.",
+   "input": "report_id of a saved flood check",
+   "output": "PDF, or 409 with a re-run message",
+   "if_none": "outputs null or no flood_signal returns 409",
+   "edge_cases": "Rows from 2026-10-29 store it (#1531)",
+   "failure_mode": "Old reports cannot be printed until re-run"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Old saved row without flood_signal requested for PDF",
+   "what_happens": "The route returns 409 and asks for a re-run",
+   "mitigated": true,
+   "how": "typeof check on outputs.flood_signal",
+   "repro": "POST /api/reports/flood/generate with an old report_id"
+  },
+  {
+   "scenario": "Mapped-flood lookup failed (ems_activations null)",
+   "what_happens": "The row shows no record instead of 0 of 3 maps",
+   "mitigated": true,
+   "how": "Array.isArray check",
+   "repro": "jest FloodTool-paywall"
+  },
+  {
+   "scenario": "Satellite water history is 0.03 percent of passes",
+   "what_happens": "Shows under 0.1% in green instead of amber 0.0%",
+   "mitigated": true,
+   "how": "pct < 0.05 band",
+   "repro": "render with dea_wofs_frequency_pct 0.03"
+  }
+ ],
+ "verified": [
+  "14/14 FloodTool-paywall jest tests",
+  "Type check 0 errors",
+  "Liability scan: only 'Payment confirmed' and 'confirm their requirements directly' remain"
+ ],
+ "gaps": [
+  "Screenshot gate (3 addresses vs API) runs on the Vercel preview after the backend PRs deploy"
+ ],
+ "post_merge": {
+  "action": "Check the preview on 3 addresses (flood / none / unavailable)",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Badge text equals FLOOD_SIGNAL_META[flood_signal] from the API response"
+ },
+ "real_layer_exempt": {
+  "frontend-nextjs/app/api/reports/flood/generate/route.ts": "Adds a refusal before any new query; the Supabase read is unchanged."
+ }
+}

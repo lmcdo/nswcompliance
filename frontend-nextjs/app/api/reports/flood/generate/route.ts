@@ -151,7 +151,11 @@ export async function POST(req: NextRequest) {
     flood_studies: Array.isArray(raw.flood_studies) ? raw.flood_studies : [],
     s1_gap_warning: (raw.s1_gap_warning as string | null) ?? null,
     data_currency: String(raw.data_currency ?? 'unknown'),
-    flood_signal: (raw.flood_signal as FloodReportData['flood_signal']) ?? null,
+    // Rows saved before 2026-10-29 hold no level (0 of 368 had one). Anything
+    // not one of the five levels goes to the PDF as null, which it prints as
+    // "Flood level not recorded" -- never as "none". A paid report still prints.
+    flood_signal: (['none', 'low', 'moderate', 'elevated', 'unavailable'] as const)
+      .find((v) => v === raw.flood_signal) ?? null,
     confidence: String(raw.confidence ?? 'low'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],

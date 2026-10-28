@@ -124,6 +124,30 @@ describe('POST /api/reports/flood/generate — Path A (DB)', () => {
     const renderedProps = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
     expect(renderedProps.is_paid).toBe(true);
   });
+
+  // Saved rows before 2026-10-29 store no level (0 of 368). The PDF must still
+  // print (it may be paid for) and must get null -- "not recorded" -- not "none".
+  it.each([
+    ['missing', undefined],
+    ['not one of the five levels', 'high'],
+    ['empty', ''],
+  ])('prints with flood_signal null when the stored level is %s', async (_name, stored) => {
+    const outputs: Record<string, unknown> = { ...COMPLETE_ROW.outputs };
+    if (stored === undefined) delete outputs.flood_signal; else outputs.flood_signal = stored;
+    mockSingle.mockResolvedValueOnce({ data: { ...COMPLETE_ROW, outputs }, error: null });
+    const res = await POST(makeReq({ report_id: VALID_UUID }));
+    expect(res.status).toBe(200);
+    const data = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
+    expect(data.flood_signal).toBeNull();
+  });
+
+  it('passes a real stored level through unchanged', async () => {
+    mockSingle.mockResolvedValueOnce({
+      data: { ...COMPLETE_ROW, outputs: { ...COMPLETE_ROW.outputs, flood_signal: 'low' } }, error: null });
+    await POST(makeReq({ report_id: VALID_UUID }));
+    const data = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
+    expect(data.flood_signal).toBe('low');
+  });
 });
 
 describe('POST /api/reports/flood/generate — Path B (HMAC)', () => {
