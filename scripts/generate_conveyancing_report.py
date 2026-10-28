@@ -3604,6 +3604,9 @@ def generate_pdf(
     # clean absence. None (older callers) = nothing reported failed.
     db_fetch_failed: Optional[dict] = None,
     proximity_m: Optional[dict] = None,
+    # The flood planning answer the caller already used (e.g. for the CDC
+    # screen), so one document never holds two different flood answers.
+    flood_plan: Optional[dict] = None,
     bushfire_live: Optional[dict] = None,
     anef_live: Optional[dict] = None,
     contributions: Optional[dict] = None,
@@ -3800,7 +3803,7 @@ def generate_pdf(
     # (heritage is portal-sourced; PostGIS heritage row unlikely but guard against it)
     # Flood counts only when the flood planning check says yes: a PMF or
     # non-flood row in the 'flood' layer is not the planning map.
-    _flood_plan = get_flood_planning_status(lat, lng)
+    _flood_plan = flood_plan if flood_plan is not None else get_flood_planning_status(lat, lng)
     _constraint_layer_types = {o["layer_type"] for o in unique_overlays
                                 if o["layer_type"] in ("biodiversity", "riparian", "wetlands",
                                    "landslide", "bushfire", "anef")}
@@ -5808,10 +5811,11 @@ def main():
     # CDC screen (#820): verdict from the backend engine + verified Codes SEPP
     # standards; None renders "Not assessed" — never a zone-list guess.
     from services.cdc_screen import run_cdc_screen_for_report
+    _flood_plan = get_flood_planning_status(lat, lng)
     _cdc_result = run_cdc_screen_for_report(
         os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
         controls.get("heritage_items"), controls.get("heritage_hca"),
-        unique_overlays, covered_layers, get_flood_planning_status(lat, lng),
+        unique_overlays, covered_layers, _flood_plan,
     )
     if _cdc_result is None:
         print("  [warn] CDC screen unavailable — CDC row renders 'Not assessed'")
@@ -5998,6 +6002,7 @@ def main():
             lep_clauses=lep_clauses,
             dcp_setbacks_db=dcp_setbacks_db,
             proximity_m=proximity_m,
+            flood_plan=_flood_plan,
             bushfire_live=bushfire_live,
             anef_live=anef_live,
             contributions=contributions,

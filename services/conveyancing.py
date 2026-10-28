@@ -610,10 +610,12 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
 
         headroom = calc_development_headroom(controls, valuation)
         sepp_standards, tax_config = _load_regulatory_configs()
+        # One flood planning answer for the whole document (CDC + PDF rows).
+        flood_plan = get_flood_planning_status(lat, lng)
         cdc_result = run_cdc_screen_for_report(
             os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
-                controls.get("heritage_items"), controls.get("heritage_hca"),
-            unique_overlays, covered_layers, get_flood_planning_status(lat, lng),
+            controls.get("heritage_items"), controls.get("heritage_hca"),
+            unique_overlays, covered_layers, flood_plan,
         )
         feasibility = calc_feasibility(
             controls, valuation, unique_overlays,
@@ -880,6 +882,7 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         dcp_setbacks_db=dcp_setbacks_db,
         db_fetch_failed=db_fetch_failed,
         proximity_m=proximity_m,
+        flood_plan=flood_plan,
         bushfire_live=bushfire_live,
         anef_live=anef_live,
         contributions=contributions_result,
