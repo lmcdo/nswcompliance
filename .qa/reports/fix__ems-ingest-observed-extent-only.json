@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
- "commit_hash": "144de8d3",
+ "commit_hash": "7d2721ad",
  "files": [
   "scripts/ingest_copernicus_ems.py",
   "tests/test_ingest_copernicus_ems_guard.py"
@@ -83,11 +83,13 @@
   "10/10 new tests pass; 19/19 flood known-answer tests pass",
   "Dry run then live write: 3,259 polygons, 333.8 km2",
   "After write: rows over 5,000 km2 = 0, garbled names = 0, 3 rows total",
-  "Saved checks (308): EMSR567 hits 223 -> 1; signal unchanged 285, elevated->moderate 18, elevated->low 5, none raised"
+  "Saved checks (308): EMSR567 hits 223 -> 1; signal unchanged 285, elevated->moderate 18, elevated->low 5, none raised",
+  "All 21 EMSR567 maps: dry run 5,586 polygons, 522.9 km2; saved checks inside 2 of 308"
  ],
  "gaps": [
-  "AOI05, AOI11, AOI12 have no DEL vector ZIP on the Copernicus server; not covered (same as before)",
-  "Flood recall not re-measured yet (step 3)"
+  "Flood recall not re-measured yet (step 3)",
+  "AOI11 has no vector map on S3; not covered",
+  "Production row still holds the 13-map version (333.8 km2) until re-loaded"
  ],
  "post_merge": {
   "action": "Production row already replaced on 2026-10-28 (new id 5); backup data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json in main checkout",
