@@ -274,20 +274,17 @@ async function checkFileSystem() {
     const fs = require('fs').promises;
     const path = require('path');
 
-    // Check if we can write to temp directory
-    const tempDir = process.cwd();
-    const testFile = path.join(tempDir, '.health-check');
-
-    await fs.writeFile(testFile, 'health-check');
-    await fs.unlink(testFile);
+    // Read-only check: the deployed disk is read-only on Vercel, so a write test always failed and
+    // /api/health returned 503 for a healthy app (2026-10-28)
+    await fs.access(path.join(process.cwd()), require('fs').constants.R_OK);
 
     return {
       status: 'pass' as const,
       duration: Date.now() - startTime,
-      message: 'File system is writable',
+      message: 'File system is readable',
       details: {
         cwd: process.cwd(),
-        writable: true
+        readable: true
       }
     };
 
