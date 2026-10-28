@@ -3199,9 +3199,34 @@ def _build_environmental(
             _level(None, "planning_portal_protection"),
         )
 
-    flood_epi = any(
-        o.get("layer_type") in ("flood", "flood_planning") for o in overlay_list
-    ) or controls.get("flood_epi", False)
+    # The ONE flood planning answer (services/flood_planning.py). This used to
+    # be False whenever no overlay row matched, including councils whose flood
+    # map we do not hold, and True for any 'flood' row, including extreme-flood
+    # (PMF) and non-flood rows ('Other', 'Transitional Land'). A portal hit is
+    # still a yes.
+    flood_status = None
+    if lat is not None and lng is not None:
+        try:
+            from flood_planning import flood_planning_status
+            _fconn = _get_db_conn()
+            try:
+                flood_status = flood_planning_status(lat, lng, _fconn)
+            finally:
+                _fconn.close()
+        except Exception as e:  # noqa: BLE001 -- no answer is None, never "no"
+            logger.warning(f"flood_planning_status failed in brief: {e}")
+    from flood_planning import category_of as _flood_category
+    overlay_flood_yes = any(
+        o.get("layer_type") in ("flood", "flood_planning")
+        and _flood_category(o.get("value")) in ("planning", "frequent")
+        for o in overlay_list
+    )
+    if controls.get("flood_epi") or overlay_flood_yes:
+        flood_epi = True
+    elif flood_status is not None:
+        flood_epi = flood_status.get("value")
+    else:
+        flood_epi = None  # no point to check: not known, never "no"
 
     bushfire_designation = None
     for o in overlay_list:
@@ -3259,9 +3284,10 @@ def _build_environmental(
     return EnvironmentalConstraints(
         flood_epi=DataField(
             value=None if both_failed else flood_epi,
-            confidence=na if both_failed else auth,
+            confidence=na if (both_failed or flood_epi is None) else auth,
             source="postgis_overlays", as_at=today,
-            reason="Flood overlay and portal controls both unavailable" if both_failed else None,
+            reason=("Flood overlay and portal controls both unavailable" if both_failed
+                    else (flood_status or {}).get("reason") if flood_epi is not True else None),
         ),
         overlays=DataField(value=env_overlays, confidence=overlay_auth, source="postgis_overlays", as_at=today),
         overlay_coverage=DataField(value=covered, confidence=overlay_auth, source="postgis_overlays", as_at=today),

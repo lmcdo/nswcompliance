@@ -1525,7 +1525,7 @@ _EXPECTED_OUTPUT_KEYS = {
     "epi_flood_class", "epi_flood_label", "sar_flood_detected", "sar_confidence",
     "sar_analysis_date", "ems_flood_detected", "ems_activations",
     "jrc_water_occurrence_pct", "jrc_data_year", "dea_wofs_frequency_pct",
-    "ses_in_flood_planning_area", "ses_flood_class", "ses_study_name", "ses_study_lga",
+    "ses_in_flood_planning_area", "ses_flood_class", "ses_study_name", "flood_map_reason", "flood_map_council", "ses_study_lga",
     "bom_gauge_name", "bom_gauge_distance_km", "bom_last_major_flood_date",
     "bom_last_major_flood_peak_m", "bom_flood_history",
     "flood_study_name", "flood_study_date", "s1_gap_warning", "data_currency",
