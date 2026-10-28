@@ -84,3 +84,46 @@ def test_a_cell_running_into_the_next_row_is_refused():
     """Cross-review 2026-10-13: 'Gymnasium Bulky goods premises' spans two printed rows of the first column."""
     out = cq.judge(row("Gymnasium Bulky goods premises | 1 space per 45sq.m GFA"), [table_stream(PARKING)])
     assert out["status"] != "exact"
+
+
+def test_a_plain_line_between_two_rows_is_never_copied():
+    import council_quote_table as cqt
+    lines = ["Setback | Minimum", "a stray half row", "Front | 10m"]
+    assert cqt.prove_rows("\n".join(lines), [], 1, cq.norm) is None
+
+
+# Hornsby 3.2.5-a as printed: the first column's cell wraps over two lines of one column
+FACADE = [(1, 60, 50, "Table 3.2.5-a: Facade Articulation"),
+          (1, 100, 50, "For facades that"), (1, 111, 50, "face a street"), (1, 140, 50, "All other facades"),
+          (1, 100, 300, "6m"), (1, 140, 300, "8m"), (1, 100, 400, "8m"), (1, 140, 400, "12m")]
+
+
+def test_a_cell_wrapped_over_two_lines_of_one_column_is_proven():
+    out = cq.judge(row("For facades that face a street | 6m | 8m\nAll other facades | 8m | 12m"), [table_stream(FACADE)])
+    assert out["reason"] == "table_rows"
+    assert out["quote"].splitlines()[0] == "For facades that face a street | 6m | 8m"
+
+
+def test_a_wrapped_cell_must_cover_its_lines_exactly():
+    out = cq.judge(row("For facades that face | 6m | 8m\nAll other facades | 8m | 12m"), [table_stream(FACADE)])
+    assert out["reason"] != "table_rows"
+
+
+def test_a_table_with_its_caption_is_proven():
+    out = cq.judge(row("For facades that face a street | 6m | 8m\nAll other facades | 8m | 12m\n"
+                       "Table 3.2.5-a: Facade Articulation"), [table_stream(FACADE)])
+    assert out["reason"] == "table_rows" and out["quote"].endswith("Table 3.2.5-a: Facade Articulation")
+
+
+def test_two_compact_rows_are_never_joined_into_one_wrapped_cell():
+    compact = [(1, 100, 50, "Gymnasium"), (1, 112, 50, "Bulky goods premises"),
+               (1, 100, 300, "1 space per 25sq.m GFA"), (1, 112, 300, "1 space per 45sq.m GFA")]
+    out = cq.judge(row("Gymnasium Bulky goods premises | 1 space per 25sq.m GFA"), [table_stream(compact)])
+    assert out["reason"] != "table_rows"
+
+
+def test_a_caption_that_is_only_part_of_a_printed_line_is_refused():
+    longer = [(1, 60, 50, "Table 3.2.5-a: Facade Articulation requirements apply")] + FACADE[1:]
+    out = cq.judge(row("For facades that face a street | 6m | 8m\nAll other facades | 8m | 12m\n"
+                       "Table 3.2.5-a: Facade Articulation"), [table_stream(longer)])
+    assert out["reason"] != "table_rows"
