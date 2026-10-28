@@ -1,0 +1,47 @@
+{
+  "tier": "standard",
+  "justification": "Changes the page link and pointer text served for council rules whose words are hidden, on every route that uses quoteColumns. Read path only - no write, no schema change.",
+  "commit_hash": "3ef9e374",
+  "files": [
+    "frontend-nextjs/lib/council-quote.ts",
+    "frontend-nextjs/lib/page-citation.ts",
+    "frontend-nextjs/components/compliance/PageGroupedProvisions.tsx",
+    "frontend-nextjs/__tests__/lib/council-quote.test.ts",
+    "frontend-nextjs/__tests__/lib/page-citation.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/council-quote.test.ts __tests__/lib/page-citation.test.ts",
+    "fails_when": "a proven rule's page is replaced by a section page, a hidden rule with no section_page gets an anchor, the rule's own located page loses to the section page, or the section_page SQL drops the proven / same chapter / same heading / 12-page window conditions",
+    "observed_red": "First version took min(quote_page) over the section. Live measure: 64 of 314 links landed >10 pages from the rule (Ashfield DS4.1 proven on 12 pages, rule on 199 linked to 17). Window + nearest: 294 linked, 0 with gap >10, median gap 0. Tests pin the window and ORDER BY."
+  },
+  "pre_impl": {
+    "existing_data": "2026-10-28 production read: 684 live actionable rules quote_status='unconfirmed'. 294 get section_page; 66 have no section heading; 324 have no proven rule of the same heading within 12 pages.",
+    "assumption_mismatch": "Section headings are not unique within a chapter (Ashfield DS numbers, Parramatta 'Controls'), so 'same section' alone does not fix a page.",
+    "new_vs_existing": "Reuses quoteColumns (selected by every serving route) and pageAnchor/pageLabel/unprovenNote; no new route or table. Prior-art: no sibling-page code existed (grep section_page/sibling/#page=)."
+  },
+  "functions": [
+    {"name": "quoteColumns", "file_line": "frontend-nextjs/lib/council-quote.ts:142", "input": "table alias of a regulatory_provisions row", "output": "quote columns plus section_page: nearest proven sibling quote_page within 12 pages, same council/chapter/heading", "if_none": "NULL when no heading, no pdf_page, rule proven, or no proven sibling near"},
+    {"name": "sectionPage", "file_line": "frontend-nextjs/lib/page-citation.ts:45", "input": "a served rule row with page and quote fields", "output": "section_page when the rule does not show council words", "if_none": "returns null, so no section page is used"},
+    {"name": "pageAnchor", "file_line": "frontend-nextjs/lib/page-citation.ts:63", "input": "a served rule row with page and quote fields", "output": "quote page, else own located page, else section page for an unlocated row", "if_none": "null - plan opens with no page"},
+    {"name": "pageLabel", "file_line": "frontend-nextjs/lib/page-citation.ts:68", "input": "a served rule row with page and quote fields", "output": "'section near PDF page N' for an unlocated row with a section page", "if_none": "same labels as before this change"},
+    {"name": "unprovenNote", "file_line": "frontend-nextjs/lib/council-quote.ts:52", "input": "a served rule row with page and quote fields", "output": "'Wording not shown here — read it in its section, near PDF page N of the council's plan'", "if_none": "unchanged pointer with no page"}
+  ],
+  "values": [
+    {"value": "regulatory_provisions.section_header", "read_at": "frontend-nextjs/lib/council-quote.ts:142", "if_missing": "blank or NULL -> no section_page"},
+    {"value": "regulatory_provisions.pdf_page", "read_at": "frontend-nextjs/lib/council-quote.ts:142", "if_missing": "NULL or 0 -> no section_page"}
+  ],
+  "queries": [
+    {"purpose": "Nearest proven page of the same council, chapter and section heading", "file_line": "frontend-nextjs/lib/council-quote.ts:142", "where_clause": "sib.is_current AND sib.source_council = a.source_council AND sib.source_chapter_key = a.source_chapter_key AND sib.section_header = a.section_header AND sib.quote_status IN ('exact','recovered') AND sib.quote_page > 0 AND council_quote not blank AND abs(sib.quote_page - a.pdf_page) <= 12"}
+  ],
+  "break_it": [
+    {"scenario": "A repeated heading sends the rule to a far page of another part of the chapter.", "what_happens": "Reader opens the wrong page.", "mitigated": true, "how": "Nearest proven page within 12 pages only; measured 0 of 294 links more than 10 pages from the rule.", "repro": "SELECT ... quoteColumns('a') ... WHERE is_current AND v2_is_actionable AND quote_status='unconfirmed' -> count abs(pdf_page-section_page)>10"},
+    {"scenario": "The rule was dropped from the new PDF, so a nearby page does not hold it.", "what_happens": "Pointer says 'in its section, near PDF page N' - it does not claim the rule is on that page; words stay hidden.", "mitigated": true, "how": "Wording says 'near', and the page is always one whose words were proven in the current PDF.", "repro": "jest council-quote.test.ts"},
+    {"scenario": "Correlated subquery slows serving routes.", "what_happens": "Property and chapter pages load more slowly.", "mitigated": true, "how": "Evaluated only for unproven rows; uses idx_rp_source_chapter. Explain analyze on a whole chapter: 294 ms.", "repro": "EXPLAIN ANALYZE SELECT quoteColumns('a') FROM regulatory_provisions a WHERE document_id=... AND is_current"}
+  ],
+  "post_merge": {
+    "db_reset": "No. Read-path SQL only.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: open a Hornsby or Ashfield property page with a hidden rule and confirm the pointer names a PDF page and the chapter link has #page=."
+  }
+}
