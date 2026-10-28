@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Website readers of the flood planning answer (verify app, DA intake, consumer check) and the brief's withdrawn sections. Not Critical: yes answers only widen (the 47 store-only addresses) and the consumer check can no longer pass from a map. Not Minor: served answers and page sections change.",
- "commit_hash": "01fbd5c4",
+ "commit_hash": "66d71da3",
  "files": [
   "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
   "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
