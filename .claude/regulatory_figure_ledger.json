@@ -372,13 +372,6 @@
    "count": 1
   },
   {
-   "file": "frontend-nextjs/components/reports/landing/data/flood.ts",
-   "text": "\"100%\"",
-   "fate": "not_regulatory",
-   "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24",
-   "count": 1
-  },
-  {
    "file": "frontend-nextjs/components/reports/landing/data/threat-radar.ts",
    "text": "\"Every DA lodged within 500m of your property in the last 6 months — including the development description, estimated cost, and how many new dwellings are proposed.\"",
    "fate": "open",

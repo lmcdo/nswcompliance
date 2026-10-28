@@ -291,3 +291,47 @@ describe('FloodTool — PaidDownloadCTA after payment success', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Failure states found by the live browser check (2026-10-28)
+// ---------------------------------------------------------------------------
+
+describe('FloodTool — when a source or the request fails', () => {
+  it('never shows a green overlay row when the overlay did not answer', async () => {
+    const failed = {
+      ...NONE_RESULT,
+      outputs: {
+        ...NONE_RESULT.outputs,
+        epi_flood_class: null,
+        data_currency: 'query_failed',
+        flood_signal: 'unavailable' as const,
+      },
+    };
+    await runFloodCheck(failed as unknown as typeof ELEVATED_RESULT);
+    expect(screen.queryByText('Not mapped as flood-prone')).toBeNull();
+    expect(screen.getByText(/did not answer on this check, so we cannot give a level/i)).toBeInTheDocument();
+    expect(screen.queryByText(/does not cover this area and we hold no council flood study/i)).toBeNull();
+  });
+
+  it('shows a plain message, not a JSON parse error, when the server returns an HTML page', async () => {
+    render(<FloodTool />);
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      new Response('<!DOCTYPE html><html>504</html>', { status: 504, headers: { 'Content-Type': 'text/html' } }));
+    fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Test St Cecil Park NSW 2178' } });
+    fireEvent.click(screen.getByRole('button', { name: /run flood check/i }));
+    await waitFor(() => screen.getByText(/did not finish/i));
+    expect(screen.queryByText(/not valid JSON|Unexpected token/i)).toBeNull();
+  });
+});
+
+describe('FloodTool — a "none" without the overlay', () => {
+  it('is shown as not enough data, never as no mapped flood risk', async () => {
+    const partial = {
+      ...NONE_RESULT,
+      outputs: { ...NONE_RESULT.outputs, epi_flood_class: null, data_currency: 'query_failed' },
+    };
+    await runFloodCheck(partial as unknown as typeof ELEVATED_RESULT);
+    expect(screen.queryByText('No mapped flood risk found')).toBeNull();
+    expect(screen.getByText('Not enough flood data for this address')).toBeInTheDocument();
+  });
+});

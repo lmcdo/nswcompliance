@@ -1,0 +1,85 @@
+{
+ "tier": "standard",
+ "justification": "User-facing flood result failure states, the flood proxy route timeout, and landing-page claims. Not Critical: no rule or data change. Not Minor: changes what users see when a source fails.",
+ "commit_hash": "9348b098",
+ "files": [
+  "frontend-nextjs/components/tools/FloodTool.tsx",
+  "frontend-nextjs/app/api/satellite/flood/route.ts",
+  "frontend-nextjs/components/reports/landing/data/flood.ts",
+  "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/components/tools/FloodTool-paywall.test.tsx",
+  "fails_when": "Fails if a failed overlay shows a green row, the coverage sublabel or a none verdict, or if an HTML error response surfaces a JSON parse error.",
+  "external_authority": "Live browser run on verify.plotdetect.com.au 2026-10-28: a Tweed address returned data_currency query_failed with a green overlay row; a Fairfield address showed the raw JSON parse error. property_reports: 11 of 378 flood rows query_failed.",
+  "observed_red": "Both failures were seen on the live site before the fix (screenshots in the session scratchpad)."
+ },
+ "pre_impl": {
+  "existing_data": "Flood proxy maxDuration 60 s; address lookup 25 s timeout; pipeline 55 s timeout.",
+  "assumption_mismatch": "epi_flood_class null was rendered as 'none' (not in overlay).",
+  "new_vs_existing": "No new files; edits in place.",
+  "external_source_error": "Overlay failure is shown as not checked; pipeline failure returns 504 JSON with plain words."
+ },
+ "functions": [
+  {
+   "name": "FloodCard",
+   "file_line": "frontend-nextjs/components/tools/FloodTool.tsx",
+   "what": "Overlay failure is never shown as clear.",
+   "input": "the flood API result for one address",
+   "output": "verdict card with one row per source",
+   "if_none": "epi_flood_class null shows not checked, never green",
+   "edge_cases": "none plus failed overlay is shown as unavailable",
+   "failure_mode": "Copy only; cannot change a stored level"
+  },
+  {
+   "name": "POST /api/satellite/flood",
+   "file_line": "frontend-nextjs/app/api/satellite/flood/route.ts",
+   "what": "One 57 s budget across lookup and pipeline.",
+   "input": "address string from the flood form",
+   "output": "flood JSON, or JSON error with plain words",
+   "if_none": "pipeline failure returns 504 JSON",
+   "edge_cases": "minimum 5 s pipeline window",
+   "failure_mode": "A slow check returns a retry message instead of an HTML page"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The overlay query fails on the state server",
+   "what_happens": "Result says not checked and gives no green overlay row",
+   "mitigated": true,
+   "how": "epiFailed branch",
+   "repro": "jest FloodTool-paywall -t 'did not answer'"
+  },
+  {
+   "scenario": "Vercel cuts the function off and returns HTML",
+   "what_happens": "User sees a plain retry message instead of a parse error",
+   "mitigated": true,
+   "how": "res.json().catch and the shared budget",
+   "repro": "jest FloodTool-paywall -t 'HTML page'"
+  },
+  {
+   "scenario": "Backend sends none while the overlay failed",
+   "what_happens": "Page shows not enough data instead of no mapped flood risk",
+   "mitigated": true,
+   "how": "shownSignal guard",
+   "repro": "jest FloodTool-paywall -t 'without the overlay'"
+  }
+ ],
+ "verified": [
+  "Full jest 2,471/2,471 before the last guard; FloodTool-paywall 17/17 after",
+  "3 new failure-state tests"
+ ],
+ "gaps": [
+  "Overlay outages themselves are not retried (a retry would push past the 60 s budget)"
+ ],
+ "post_merge": {
+  "action": "Re-run the 3 live browser checks plus the Fairfield address",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "A failed-overlay result shows no green overlay row"
+ },
+ "real_layer_exempt": {
+  "frontend-nextjs/app/api/satellite/flood/route.ts": "Timeout budget and error text only; exercised live in the post-merge browser check."
+ }
+}
