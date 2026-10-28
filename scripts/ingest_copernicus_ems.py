@@ -195,18 +195,28 @@ def is_observed_layer(name: str) -> bool:
     return base.endswith(".json") and any(f"_{lay}_" in base for lay in OBSERVED_LAYERS)
 
 
-def _list_emsr567_vector_zips(base_url: str) -> list[list[str]]:
-    """
-    Vector ZIP URLs per EMSR567 AOI, in order of preference.
-    Naming convention: EMSR567_AOI{nn}_DEL_PRODUCT_r1_RTP01_v1_vector.zip
-    Delineation (DEL) products only. RTP01 and RTP02 were byte-identical for
-    every AOI that had both (2026-10-28), so the first one found is used.
-    """
-    return [
-        [f"{base_url}/EMSR567_AOI{aoi:02d}_DEL_PRODUCT_r1_{rtp}_v1_vector.zip"
-         for rtp in ("RTP01", "RTP02")]
-        for aoi in range(1, 17)  # AOI01-AOI16
-    ]
+# Every EMSR567 delineation map on S3, per AOI (probed 2026-10-28): the first
+# map (PRODUCT) and later monitoring maps (MONIT01-03) of the same flood, all
+# observed extents. AOI05 is published only as v2 and AOI12 only as MONIT01;
+# AOI11 has no vector map at all. Each listed map must load, or nothing is
+# written: a map that silently drops out serves "no flood" for its area.
+EMSR567_MAPS = {
+    1: ("PRODUCT", "MONIT01"), 2: ("PRODUCT",), 3: ("PRODUCT",), 4: ("PRODUCT",),
+    5: ("PRODUCT",), 6: ("PRODUCT", "MONIT02"), 7: ("PRODUCT", "MONIT01"),
+    8: ("PRODUCT", "MONIT01"), 9: ("PRODUCT",), 10: ("PRODUCT",), 12: ("MONIT01",),
+    13: ("PRODUCT", "MONIT01"), 14: ("PRODUCT",), 15: ("PRODUCT", "MONIT01"),
+    16: ("PRODUCT",),
+}
+
+
+def _list_emsr567_vector_zips(base_url: str) -> dict[str, list[str]]:
+    """{map name: candidate URLs, v1 before v2} for every map in EMSR567_MAPS.
+    RTP01 and RTP02 were byte-identical wherever both existed, so RTP01 only."""
+    return {
+        f"AOI{aoi:02d}_{prod}": [
+            f"{base_url}/EMSR567_AOI{aoi:02d}_DEL_{prod}_r1_RTP01_{v}_vector.zip" for v in ("v1", "v2")]
+        for aoi, prods in EMSR567_MAPS.items() for prod in prods
+    }
 
 
 def _read_observed_geometries(zip_bytes: bytes) -> list:
@@ -246,17 +256,12 @@ def _fetch_s3_zip_geometries(zip_url: str) -> Optional[list]:
     return _read_observed_geometries(r.content)
 
 
-# AOIs with no DEL vector ZIP on S3 under either RTP name (checked 2026-10-28).
-# Any other AOI coming back empty means the download is incomplete.
 # prior-art-checked: guard flagged pip internals only; this edits the existing ingest in place.
-EMSR567_AOIS_WITHOUT_DEL = {5, 11, 12}
-
-
 def build_emsr567_extent(source: FloodSource):
-    """Download every AOI, keep observed flood polygons only, union, check."""
+    """Download every listed map, keep observed flood polygons only, union, check."""
     all_geoms = []
     missing = []
-    for aoi, candidates in enumerate(_list_emsr567_vector_zips(source.url), 1):
+    for map_name, candidates in _list_emsr567_vector_zips(source.url).items():
         for url in candidates:
             geoms = _fetch_s3_zip_geometries(url)
             if geoms:
@@ -264,11 +269,10 @@ def build_emsr567_extent(source: FloodSource):
                 all_geoms.extend(geoms)
                 break
         else:
-            if aoi not in EMSR567_AOIS_WITHOUT_DEL:
-                missing.append(aoi)
+            missing.append(map_name)
     if missing:
         raise ExtentRejected(
-            f"{source.source_id}: no observed flood polygons for AOI {missing} -- "
+            f"{source.source_id}: no observed flood polygons for {missing} -- "
             "download incomplete; nothing written")
     log.info(f"EMSR567: unioning {len(all_geoms)} polygons ...")
     merged = unary_union(all_geoms) if all_geoms else None

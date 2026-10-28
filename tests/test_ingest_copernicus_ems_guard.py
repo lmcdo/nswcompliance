@@ -114,20 +114,29 @@ def _aoi(url: str) -> int:
     return int(url.split("_AOI")[1][:2])
 
 
-def test_a_missing_aoi_stops_the_load(monkeypatch):
-    """AOI07 failing to come back must not quietly drop it from the extent."""
+def test_a_missing_map_stops_the_load(monkeypatch):
+    """AOI07's monitoring map failing to come back must not quietly drop it."""
     monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
-                        lambda url: None if _aoi(url) in (5, 7, 11, 12) else [FLOOD])
+                        lambda url: None if "AOI07_DEL_MONIT01" in url else [FLOOD])
     called = []
     monkeypatch.setattr(ems, "_insert_row", lambda *a: called.append(a))
-    with pytest.raises(ems.ExtentRejected, match=r"AOI \[7\]"):
+    with pytest.raises(ems.ExtentRejected, match="AOI07_MONIT01"):
         ems.ingest_emsr567(ems.SOURCE_MAP["EMSR567"], conn=object())
     assert called == []
 
 
-def test_the_known_absent_aois_are_allowed(monkeypatch):
+def test_every_listed_map_is_requested_v1_then_v2():
+    urls = ems._list_emsr567_vector_zips("B")
+    assert urls["AOI05_PRODUCT"] == ["B/EMSR567_AOI05_DEL_PRODUCT_r1_RTP01_v1_vector.zip",
+                                     "B/EMSR567_AOI05_DEL_PRODUCT_r1_RTP01_v2_vector.zip"]
+    assert "AOI12_MONIT01" in urls and "AOI12_PRODUCT" not in urls
+    assert not any(k.startswith("AOI11") for k in urls)
+    assert len(urls) == 21
+
+
+def test_a_v2_only_map_loads(monkeypatch):
     monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
-                        lambda url: None if _aoi(url) in ems.EMSR567_AOIS_WITHOUT_DEL else [FLOOD])
+                        lambda url: None if ("AOI05" in url and url.endswith("v1_vector.zip")) else [FLOOD])
     assert ems.build_emsr567_extent(ems.SOURCE_MAP["EMSR567"]).area > 0
 
 
