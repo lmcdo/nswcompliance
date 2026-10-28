@@ -1,0 +1,93 @@
+{
+ "tier": "standard",
+ "justification": "Changes what the served flood planning answer tests (point -> whole lot) on three live surfaces. Not Critical: the lot outline is only used when it contains the point, and it can only add a yes or keep not-known. Not Minor: changes served flood answers.",
+ "commit_hash": "9663836c",
+ "files": [
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "frontend-nextjs/lib/geo-utils.ts",
+  "frontend-nextjs/lib/flood/flood-map.ts",
+  "frontend-nextjs/app/api/canibuildit/check/route.ts",
+  "frontend-nextjs/app/api/satellite/flood/route.ts",
+  "tests/test_flood_planning.py",
+  "tests/test_flood_truth.py",
+  "frontend-nextjs/__tests__/lib/lot-rings-to-wkt.test.ts",
+  "tests/fixtures/flood_partial_map_edge_lot.json"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if the flood check drops the lot outline, if a partial-council point beside a line says 'not held', or if a whole-lot clear lot outside a partial study area becomes no.",
+  "external_authority": "Live DB 2026-10-29 on a real cadastre lot in Cessnock (fixture): 44.7 m2 of 809.5 m2 inside the 1% AEP extent; point-only answer not known (5.9 m), with the lot yes.",
+  "observed_red": "Live /pipeline/flood-planning for that point returned 'we do not hold this council's flood planning map for this area'; the lead was emailed a 'none' result."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays flood rows for 75 councils; Cessnock PARTIAL 1%AEP; _trusted_lot already requires the outline to contain the point.",
+  "assumption_mismatch": "The one-answer PRs supported lot_wkt but no website caller sent it.",
+  "new_vs_existing": "No new source; an existing parameter is now used by every caller.",
+  "external_source_error": "A malformed or non-containing outline is ignored (point rule); an unknown coordinate system gives null and the point rule."
+ },
+ "functions": [
+  {
+   "name": "lotRingsToWgs84Wkt",
+   "file_line": "frontend-nextjs/lib/geo-utils.ts",
+   "what": "Lot rings to a WGS84 POLYGON WKT.",
+   "input": "ESRI rings and their coordinate system id",
+   "output": "WKT text, or null when it cannot be trusted",
+   "if_none": "null rings give null, so only the point is tested",
+   "edge_cases": "open rings closed; unknown wkid null",
+   "failure_mode": "Null falls back to the point answer"
+  },
+  {
+   "name": "_flood_planning_core",
+   "file_line": "services/flood_planning.py",
+   "what": "Partial-council point beside a line says near, not not-held.",
+   "input": "point, database connection and optional lot",
+   "output": "the one flood planning answer with its reason",
+   "if_none": "no line within 200 m keeps the not-held reason",
+   "edge_cases": "with a lot the distance query is skipped",
+   "failure_mode": "Can only change one not-known reason to another not-known reason"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Lot point 6 m outside a partial council flood line",
+   "what_happens": "With the lot it is yes; point only it says near the map",
+   "mitigated": true,
+   "how": "lot_wkt passed by all callers; _nearest_yes_m on partial path",
+   "repro": "pytest tests/test_flood_planning.py -k partial"
+  },
+  {
+   "scenario": "Caller sends a neighbouring or stale lot outline",
+   "what_happens": "Outline ignored and only the point rule is applied",
+   "mitigated": true,
+   "how": "_trusted_lot ST_Covers check",
+   "repro": "pytest -k untrusted_lot"
+  },
+  {
+   "scenario": "Lot boundary in an unexpected coordinate system",
+   "what_happens": "Helper returns null and the point rule is used",
+   "mitigated": true,
+   "how": "wkid allow-list",
+   "repro": "jest lot-rings-to-wkt"
+  }
+ ],
+ "verified": [
+  "flood pytest 918/918",
+  "jest related 152/152 + 8 new",
+  "Live DB on the fixture lot: point not known (5.9 m), lot yes"
+ ],
+ "gaps": [
+  "Re-check the lead's address on production after deploy",
+  "Saved checks are not re-scored; old point-only rows stop being served at 2026-10-31"
+ ],
+ "post_merge": {
+  "action": "Re-run the flood check for the Heddon Greta lead address on production",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function."
+ }
+}
