@@ -1,0 +1,96 @@
+{
+ "tier": "standard",
+ "justification": "Adds a whole-lot test to the flood planning answer for callers holding the lot outline. Not Critical: only replaces a point-distance guess with a lot test, untrusted outlines ignored. Not Minor: served flood answers in the brief and paid report change.",
+ "commit_hash": "c7a9e38c",
+ "files": [
+  "scripts/generate_conveyancing_report.py",
+  "services/conveyancing.py",
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "services/intelligence_brief.py",
+  "tests/test_brief_failclosed.py",
+  "tests/test_brief_slice2_distances.py",
+  "tests/test_conveyancing_flood_planning.py",
+  "tests/test_flood_planning.py",
+  "tests/test_flood_queries.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if a clear whole lot is not a no, a lot hit is not a yes, or an untrusted outline is used for a no.",
+  "external_authority": "Same trusted-boundary rule as lib/flood/flood-map.ts (Sol review 2026-10-20).",
+  "observed_red": "The three new tests describe behaviour absent before (no lot_wkt parameter existed)."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays flood: 33 values, 72 councils; spatial_overlays_coverage says 12 (stale, not used).",
+  "assumption_mismatch": "The old lookup said False whenever the table had any flood row, and True for PMF and non-flood rows.",
+  "new_vs_existing": "One new producer module; the flood tool's own flood queries removed (producer lint 4->2 in flood_truth).",
+  "external_source_error": "Spatial Services outage or DB error -> None with reason, never no."
+ },
+ "functions": [
+  {
+   "name": "flood_planning_status",
+   "file_line": "services/flood_planning.py",
+   "what": "Optional lot outline: whole-lot yes/no.",
+   "input": "lat, lng, a DB connection and an optional lot outline",
+   "output": "dict with value, reason, whole_lot flag",
+   "if_none": "No outline keeps the point rule unchanged.",
+   "edge_cases": "outline invalid or not at the address",
+   "failure_mode": "Falls back to the point rule, never a stronger no"
+  },
+  {
+   "name": "_trusted_lot",
+   "file_line": "services/flood_planning.py",
+   "what": "Uses the outline only if valid and at the address.",
+   "input": "cursor, outline WKT, lat, lng",
+   "output": "the same outline, or None when it is not used",
+   "if_none": "Any error returns None (outline not used).",
+   "edge_cases": "neighbouring or stale boundary",
+   "failure_mode": "Point rule"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Large lot partly on the map with the address point off it",
+   "what_happens": "The lot test finds the hit and answers yes",
+   "mitigated": true,
+   "how": "intersects on the outline",
+   "repro": "pytest -k hit_anywhere_on_the_lot"
+  },
+  {
+   "scenario": "Outline is a neighbouring lot's boundary",
+   "what_happens": "Ignored; point rule applies, never a whole-lot no",
+   "mitigated": true,
+   "how": "ST_DWithin to the address point",
+   "repro": "pytest -k untrusted_lot_outline"
+  },
+  {
+   "scenario": "Whole lot clear in a council whose map we hold",
+   "what_happens": "Real no worded as no part of the lot",
+   "mitigated": true,
+   "how": "lot path before the 200 m rule",
+   "repro": "pytest -k whole_lot_clear"
+  }
+ ],
+ "verified": [
+  "19 producer tests",
+  "1936 flood/brief/conveyancing/cdc tests pass",
+  "producer lint OK"
+ ],
+ "gaps": [
+  "Flood tool and verify app do not pass a lot outline (verify keeps its layer-230 whole-lot test)"
+ ],
+ "post_merge": {
+  "action": "After deploy: brief for one held-council address shows 'no part of the lot' wording",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Conveyancing PDF flood row for a large partly-flooded lot reads yes"
+ },
+ "real_layer_exempt": {
+  "services/flood_truth.py": "Passes the lot outline to the producer, whose queries are exercised live (#1539).",
+  "services/intelligence_brief.py": "Passes the lot outline to the producer, whose queries are exercised live (#1539).",
+  "services/conveyancing.py": "Passes the lot outline to the producer, whose queries are exercised live (#1539).",
+  "scripts/generate_conveyancing_report.py": "Passes the lot outline to the producer, whose queries are exercised live (#1539).",
+  "services/flood_planning.py": "New SQL path checked against the live DB before merge (see post_merge); unit tests cover the branches."
+ }
+}
