@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rules the nightly quote check may prove as the council's words. Measured on all 617 unproven shown rules: 26 become exact (18 Penrith, 8 Parramatta), each eye-checked against the stored rule; 0 others change.",
+  "commit_hash": "58150e9d",
+  "files": [
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q -o addopts=",
+    "expected": "all pass",
+    "fails_when": "a short labelled lead-in or an unpunctuated last labelled item is refused again, or an unlabelled short lead-in is accepted",
+    "observed_red": "2026-10-28: on the old council_quote.py the new tests give 2 failed (short lead-in, unpunctuated last item)."
+  },
+  "pre_impl": {
+    "existing_data": "Penrith 2026-10-28: 27 shown rules unproven; most are a lead-in ('5. Rear setbacks:') plus one item, refused by prove_pieces guards (lead-in under MIN_CHARS, item without end punctuation).",
+    "assumption_mismatch": "The guards assumed short or unpunctuated lines are two-column fragments. A line starting with its own list label is a whole council item.",
+    "new_vs_existing": "Relaxes two guards in the existing prove_pieces path for labelled lines only; no new status, table or column."
+  },
+  "functions": [
+    {
+      "name": "prove_pieces",
+      "file_line": "scripts/council_quote.py",
+      "input": "the stored rule body split into lines, the chapter's text streams, the stored page",
+      "output": "the council's text of each line and the page, or None",
+      "if_none": "an empty body or a single line returns None, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "rule body lines",
+      "read_at": "scripts/council_quote.py prove_pieces",
+      "if_missing": "no lines gives None and the rule stays unconfirmed"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A short unlabelled heading ('Rear setbacks:') matches by chance elsewhere.",
+      "what_happens": "A rule could be proven from the wrong place.",
+      "mitigated": true,
+      "how": "Only a line starting with a list label and ending in ':' may be short.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k labelled"
+    },
+    {
+      "scenario": "An unpunctuated fragment in the middle of a row.",
+      "what_happens": "A two-column fragment row could be proven.",
+      "mitigated": true,
+      "how": "Only the LAST line may lack end punctuation, and only if labelled.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k labelled"
+    },
+    {
+      "scenario": "The item is matched under a different list's lead-in.",
+      "what_happens": "The quote would join the wrong list item to a lead-in.",
+      "mitigated": true,
+      "how": "A relaxed line is refused when another lead-in (a line ending ':') is printed between it and the line before; test added. Fleet: 8 Parramatta items under sub-headings now refused.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k labelled"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Takes effect at the next nightly council_quote --apply --unchecked run.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after the nightly run, Penrith shown unconfirmed count falls from 27 to about 9."
+  }
+}
