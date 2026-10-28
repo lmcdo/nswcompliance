@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which council rules the nightly quote check may mark proven from picture OCR, and proven rules are served as the council's own words. No schema change; the change lands at the next council_quote run.",
-  "commit_hash": "36e9852e",
+  "commit_hash": "b781369c",
   "files": ["scripts/council_quote_picture.py", "tests/test_council_quote_picture.py"],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_council_quote_picture.py -q -o addopts=",
