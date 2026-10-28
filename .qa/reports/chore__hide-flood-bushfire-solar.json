@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Removes links to four products site-wide and adds noindex. Not Critical: no data or rule change; pages still work. Not Minor: 50 files of user-facing navigation and copy.",
- "commit_hash": "6102c09d",
+ "commit_hash": "3dc79788",
  "files": [
   "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx",
   "frontend-nextjs/__tests__/lib/data-dictionary.test.ts",
