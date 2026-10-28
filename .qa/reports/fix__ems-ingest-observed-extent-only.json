@@ -1,0 +1,103 @@
+{
+ "tier": "standard",
+ "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
+ "commit_hash": "f04f5240",
+ "files": [
+  "scripts/ingest_copernicus_ems.py",
+  "tests/test_ingest_copernicus_ems_guard.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_ingest_copernicus_ems_guard.py -q",
+  "fails_when": "Fails if any non-flood layer (all 10 real AOI01 layer names are in the fixture ZIP) is read, if a 43,000 km2 footprint-sized extent passes, or if a refused extent reaches the insert.",
+  "external_authority": "Area checked against PostGIS ST_Area(geography) on the written row: 333.5 km2 vs script 333.8 km2; old row 86,348.6 km2. The independent EPSG:3577 geopandas measure gave 333.5 km2.",
+  "observed_red": "Red seen on the real data, not on the tests: the old code produced the live 86,348.6 km2 row (ST_Area). The new tests cannot run against the old file at all (it has no check_extent / is_observed_layer), so they were not shown red on it."
+ },
+ "pre_impl": {
+  "existing_data": "copernicus_flood_events: 3 rows. EMSR567 86,349 km2 / 5 polygons; NSW-202207 410 km2; NSW-202210 842 km2. Per-layer areas measured on all 13 downloaded AOIs: imageFootprintA up to 48,392 km2, observedEventA 0.9-106 km2.",
+  "assumption_mismatch": "The plan said the event names were mojibake in the DB; the stored bytes are valid UTF-8 (e2 80 93, c3 b1) in the table and in all 270 saved-check copies. The garbling was console display.",
+  "new_vs_existing": "No new script; the existing ingest is fixed in place.",
+  "external_source_error": "A missing ZIP (403/404) is skipped; no flood layer at all, area over 5,000 km2 or non lon/lat bounds raise ExtentRejected and nothing is committed (DELETE and INSERT share one commit)."
+ },
+ "functions": [
+  {
+   "name": "check_extent",
+   "file_line": "scripts/ingest_copernicus_ems.py",
+   "what": "Refuses an empty, oversized or non-Australian lon/lat extent before any write.",
+   "input": "source id, merged shapely geometry",
+   "output": "area of the extent in km2, or raises ExtentRejected",
+   "if_none": "None or empty raises ExtentRejected",
+   "edge_cases": "Projected metres coordinates caught by the bounds check",
+   "failure_mode": "Refuses loudly; cannot write a bad extent"
+  },
+  {
+   "name": "is_observed_layer",
+   "file_line": "scripts/ingest_copernicus_ems.py",
+   "what": "Allow-lists observedEventA GeoJSON by file name.",
+   "input": "one file name from inside a vector ZIP",
+   "output": "True only for an observedEventA GeoJSON file",
+   "if_none": "not reachable: ZipFile.namelist always gives strings",
+   "edge_cases": "subdirectory paths; .shp twin ignored",
+   "failure_mode": "A renamed layer gives no geometries, which check_extent then refuses"
+  },
+  {
+   "name": "area_km2",
+   "file_line": "scripts/ingest_copernicus_ems.py",
+   "what": "Spherical polygon area, holes subtracted.",
+   "input": "a shapely polygon or multipolygon in lon/lat degrees",
+   "output": "area in square kilometres as a float",
+   "if_none": "not reachable: callers pass a checked non-empty geometry",
+   "edge_cases": "holes",
+   "failure_mode": "~0.1% vs geodesic at these latitudes"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "ZIP with every real layer, footprint-sized",
+   "expected": "only observedEventA read",
+   "test": "test_only_the_observed_flood_layer_is_read",
+   "what_happens": "Ignored: only observedEventA by name is read",
+   "mitigated": true,
+   "repro": "python -m pytest tests/test_ingest_copernicus_ems_guard.py -k only_the_observed",
+   "how": "Allow-list, not block-list"
+  },
+  {
+   "scenario": "ZIP without a flood layer",
+   "expected": "no geometries -> refused",
+   "test": "test_a_zip_without_the_flood_layer_gives_nothing / test_no_extent_is_refused",
+   "what_happens": "No geometries; ingest raises before writing; old row kept",
+   "mitigated": true,
+   "repro": "python -m pytest tests/test_ingest_copernicus_ems_guard.py -k without_the_flood_layer",
+   "how": "DELETE commits only with INSERT"
+  },
+  {
+   "scenario": "merged extent > 5,000 km2",
+   "expected": "ExtentRejected, insert never called",
+   "test": "test_refused_extent_writes_nothing",
+   "what_happens": "ExtentRejected above 5,000 km2; insert never called",
+   "mitigated": true,
+   "repro": "python -m pytest tests/test_ingest_copernicus_ems_guard.py -k refused_extent_writes_nothing",
+   "how": "Area cap in check_extent"
+  }
+ ],
+ "verified": [
+  "10/10 new tests pass; 19/19 flood known-answer tests pass",
+  "Dry run then live write: 3,259 polygons, 333.8 km2",
+  "After write: rows over 5,000 km2 = 0, garbled names = 0, 3 rows total",
+  "Saved checks (308): EMSR567 hits 223 -> 1; signal unchanged 285, elevated->moderate 18, elevated->low 5, none raised",
+  "All 21 EMSR567 maps: dry run 5,586 polygons, 522.9 km2; saved checks inside 2 of 308"
+ ],
+ "gaps": [
+  "Flood recall not re-measured yet (step 3)",
+  "AOI11 has no vector map on S3; not covered"
+ ],
+ "post_merge": {
+  "action": "Done 2026-10-28: production EMSR567 re-loaded with all 21 maps (id 6, 522.4 km2, 5,586 polygons). Backups: data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json and copernicus_emsr567_13maps_pre_2026-10-28T1600.json.",
+  "db_reset": "None needed; already re-loaded",
+  "secrets": "None: no new secrets or env vars",
+  "other_repo": "None: no other repository affected",
+  "manual_verify": "SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events -> EMSR567 333.5, none over 5,000"
+ },
+ "real_layer_exempt": {
+  "scripts/ingest_copernicus_ems.py": "One-time ingest. The real HTTP and DB layers were exercised for real on 2026-10-28: 13 Copernicus S3 ZIPs downloaded, row written to production, then read back with PostGIS ST_Area (333.5 km2, 3,259 polygons). A test that writes copernicus_flood_events would change the served flood check."
+ }
+}

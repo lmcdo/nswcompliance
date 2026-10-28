@@ -1,0 +1,196 @@
+"""The Copernicus ingest keeps only the observed flood extent.
+
+On 2026-10-28 copernicus_flood_events held EMSR567 as one 86,349 km2 shape:
+the ingest had merged every layer in each vector ZIP -- the satellite image
+footprint (up to 48,000 km2 per area), area of interest, roads, buildings,
+land use. The observedEventA layers alone are 333.8 km2. These tests build a
+ZIP with the real layer names from EMSR567_AOI01 and check that only the
+flood layer survives, and that an extent too big to be flooded land, or none
+at all, is refused before anything is written.
+"""
+from __future__ import annotations
+
+import io
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+import pytest
+from shapely.geometry import MultiPolygon, box
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import ingest_copernicus_ems as ems  # noqa: E402
+
+PREFIX = "EMSR567_AOI01_DEL_PRODUCT_"
+# Every layer in the real AOI01 package (listed 2026-10-28).
+LAYERS = ["areaOfInterestA", "builtUpA", "facilitiesA", "facilitiesL", "hydrographyA",
+          "hydrographyL", "imageFootprintA", "naturalLandUseA", "observedEventA",
+          "transportationL"]
+
+FLOOD = box(153.27, -28.82, 153.29, -28.80)       # ~4.3 km2 near Lismore
+FOOTPRINT = box(152.0, -30.0, 154.0, -28.0)       # ~43,000 km2, like imageFootprintA
+
+
+def _fc(geom) -> bytes:
+    return json.dumps({"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {}, "geometry": geom.__geo_interface__}]}).encode()
+
+
+def _zip(layers: dict) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        for lay, geom in layers.items():
+            zf.writestr(f"{PREFIX}{lay}_r1_v1.json", _fc(geom))
+            zf.writestr(f"{PREFIX}{lay}_r1_v1.shp", b"not read")
+    return buf.getvalue()
+
+
+def test_only_the_observed_flood_layer_is_read():
+    layers = {lay: FOOTPRINT for lay in LAYERS}
+    layers["observedEventA"] = FLOOD
+    geoms = ems._read_observed_geometries(_zip(layers))
+    assert len(geoms) == 1
+    assert geoms[0].equals(FLOOD)
+
+
+def test_layer_names():
+    assert ems.is_observed_layer(f"sub/{PREFIX}observedEventA_r1_v1.json")
+    for lay in LAYERS:
+        if lay != "observedEventA":
+            assert not ems.is_observed_layer(f"{PREFIX}{lay}_r1_v1.json"), lay
+    assert not ems.is_observed_layer(f"{PREFIX}observedEventA_r1_v1.shp")
+
+
+def test_a_zip_without_the_flood_layer_gives_nothing():
+    assert ems._read_observed_geometries(_zip({lay: FOOTPRINT for lay in LAYERS
+                                               if lay != "observedEventA"})) == []
+
+
+def test_area_matches_a_known_box():
+    # 0.1 deg x 0.1 deg at 33 S: 11.12 km x 9.33 km = 103.7 km2.
+    assert ems.area_km2(box(151.0, -33.05, 151.1, -32.95)) == pytest.approx(103.7, rel=0.01)
+
+
+def test_area_subtracts_holes():
+    outer = box(151.0, -33.1, 151.2, -32.9)
+    holed = outer.difference(box(151.05, -33.05, 151.15, -32.95))
+    assert ems.area_km2(holed) == pytest.approx(ems.area_km2(outer) * 0.75, rel=0.01)
+
+
+def test_footprint_sized_extent_is_refused():
+    with pytest.raises(ems.ExtentRejected, match="> 5,000 km2"):
+        ems.check_extent("EMSR567", MultiPolygon([FOOTPRINT]))
+
+
+def test_no_extent_is_refused():
+    with pytest.raises(ems.ExtentRejected, match="no observed flood extent"):
+        ems.check_extent("EMSR567", None)
+    with pytest.raises(ems.ExtentRejected, match="no observed flood extent"):
+        ems.check_extent("EMSR567", MultiPolygon())
+
+
+def test_projected_coordinates_are_refused():
+    # Metres (e.g. EPSG:3577) read as degrees would be wildly out of range.
+    with pytest.raises(ems.ExtentRejected, match="not lon/lat"):
+        ems.check_extent("EMSR567", box(2_000_000, -3_300_000, 2_000_100, -3_299_900))
+
+
+def test_a_real_sized_extent_passes():
+    assert ems.check_extent("EMSR567", MultiPolygon([FLOOD])) == pytest.approx(4.3, rel=0.05)
+
+
+def test_refused_extent_writes_nothing(monkeypatch):
+    """build fails before ingest_emsr567 reaches the insert."""
+    monkeypatch.setattr(ems, "_fetch_s3_zip_geometries", lambda url: [FOOTPRINT])
+    called = []
+    monkeypatch.setattr(ems, "_insert_row", lambda *a: called.append(a))
+    with pytest.raises(ems.ExtentRejected):
+        ems.ingest_emsr567(ems.SOURCE_MAP["EMSR567"], conn=object())
+    assert called == []
+
+
+def _aoi(url: str) -> int:
+    return int(url.split("_AOI")[1][:2])
+
+
+def test_a_missing_map_stops_the_load(monkeypatch):
+    """AOI07's monitoring map failing to come back must not quietly drop it."""
+    monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
+                        lambda url: None if "AOI07_DEL_MONIT01" in url else [FLOOD])
+    called = []
+    monkeypatch.setattr(ems, "_insert_row", lambda *a: called.append(a))
+    with pytest.raises(ems.ExtentRejected, match="AOI07_MONIT01"):
+        ems.ingest_emsr567(ems.SOURCE_MAP["EMSR567"], conn=object())
+    assert called == []
+
+
+def test_every_listed_map_is_requested_v1_then_v2():
+    urls = ems._list_emsr567_vector_zips("B")
+    assert urls["AOI05_PRODUCT"] == ["B/EMSR567_AOI05_DEL_PRODUCT_r1_RTP01_v1_vector.zip",
+                                     "B/EMSR567_AOI05_DEL_PRODUCT_r1_RTP01_v2_vector.zip"]
+    assert "AOI12_MONIT01" in urls and "AOI12_PRODUCT" not in urls
+    assert not any(k.startswith("AOI11") for k in urls)
+    assert len(urls) == 21
+
+
+def test_a_v2_only_map_loads(monkeypatch):
+    monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
+                        lambda url: None if ("AOI05" in url and url.endswith("v1_vector.zip")) else [FLOOD])
+    assert ems.build_emsr567_extent(ems.SOURCE_MAP["EMSR567"]).area > 0
+
+
+def test_a_server_error_raises_rather_than_skipping(monkeypatch):
+    class Resp:
+        status_code = 500
+
+        def raise_for_status(self):
+            raise RuntimeError("500 Server Error")
+
+    monkeypatch.setattr(ems.requests, "get", lambda *a, **k: Resp())
+    with pytest.raises(RuntimeError, match="500"):
+        ems._fetch_s3_zip_geometries("https://example/EMSR567_AOI07_x.zip")
+
+
+def test_a_feature_without_geometry_stops_the_read():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(f"{PREFIX}observedEventA_r1_v1.json", json.dumps({"type": "FeatureCollection",
+                    "features": [{"type": "Feature", "properties": {}, "geometry": None}]}))
+    with pytest.raises(ems.ExtentRejected, match="no geometry"):
+        ems._read_observed_geometries(buf.getvalue())
+
+
+def test_a_source_that_loads_nothing_rolls_back_its_clear(monkeypatch):
+    """--clear on all sources: an empty NSW-202207 must not let NSW-202210's commit save its DELETE."""
+    log = []
+
+    class Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None): log.append(("execute", sql.split()[0], params))
+
+    class Conn:
+        def cursor(self): return Cur()
+        def commit(self): log.append(("commit",))
+        def rollback(self): log.append(("rollback",))
+        def close(self): pass
+
+    monkeypatch.setattr(ems, "_get_conn", lambda: Conn())
+    monkeypatch.setattr(ems, "SOURCES", [ems.SOURCE_MAP["NSW-202207"], ems.SOURCE_MAP["NSW-202210"]])
+    monkeypatch.setattr(ems, "ingest_featureserver",
+                        lambda s, conn, dry_run=False: 0 if s.source_id == "NSW-202207" else (conn.commit(), 1)[1])
+    monkeypatch.setattr(sys, "argv", ["x", "--clear"])
+    ems.main()
+    first_commit = log.index(("commit",))
+    assert ("rollback",) in log[:first_commit]
+
+
+def test_a_feature_that_repairs_to_nothing_stops_the_read():
+    flat = {"type": "Polygon", "coordinates": [[[153.0, -28.0], [153.1, -28.0], [153.2, -28.0], [153.0, -28.0]]]}
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(f"{PREFIX}observedEventA_r1_v1.json", json.dumps({"type": "FeatureCollection",
+                    "features": [{"type": "Feature", "properties": {}, "geometry": flat}]}))
+    with pytest.raises(ems.ExtentRejected, match="repaired to nothing"):
+        ems._read_observed_geometries(buf.getvalue())
