@@ -504,8 +504,12 @@ def build_cdc_inputs(
         # The one flood planning answer (services/flood_planning.py) when the
         # caller has it: a PMF or non-flood row is not "flood prone", and a
         # council whose map we do not hold is unknown, not clear.
-        flood_prone=(flood_status.get("value") if flood_status is not None
-                     else _overlay_state("flood")),
+        # Only a YES from the map counts here. "Not on the map" is not "not a
+        # flood control lot": for CDC that is settled by the council's s10.7
+        # certificate and flood levels, so a map "no" stays unchecked (None)
+        # and can never make a lot look more CDC-eligible (cross-review).
+        flood_prone=((True if flood_status.get("value") is True else None)
+                     if flood_status is not None else _overlay_state("flood")),
         bushfire_prone=_overlay_state("bushfire"),
         acid_sulfate_class=acid_class,
     )

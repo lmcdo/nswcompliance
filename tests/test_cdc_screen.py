@@ -383,8 +383,9 @@ class TestBuildCdcInputs:
         layer is not flood prone, and an unheld council is unknown."""
         from services.cdc_screen import build_cdc_inputs
         pmf_row = [{"layer_type": "flood", "value": "PMF"}]
+        # A map "no" is not "not a flood control lot": stays unchecked.
         assert build_cdc_inputs("R2", 500.0, [], [], pmf_row, {"flood"},
-                                {"value": False}).flood_prone is False
+                                {"value": False}).flood_prone is None
         assert build_cdc_inputs("R2", 500.0, [], [], [], {"flood"},
                                 {"value": None}).flood_prone is None
         assert build_cdc_inputs("R2", 500.0, [], [], [], set(),
