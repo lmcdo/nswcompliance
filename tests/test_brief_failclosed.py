@@ -87,9 +87,20 @@ def test_overlays_failed_blanks_overlay_fields_not_authoritative():
     assert env.overlay_coverage.confidence == NA
 
 
-def test_flood_epi_survives_when_only_overlays_fail():
-    # overlays failed but controls succeeded -> flood_epi keeps the portal answer, not NOT_AVAILABLE.
-    env = _build_environmental(_CONTROLS, _OVERLAYS, None, overlays_failed=True, controls_failed=False)
+def _flood_no(monkeypatch):
+    import flood_planning
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+        "value": False, "reason": "not on the council's flood planning map", "council": "BALLINA",
+        "hits": [], "category": None, "nearest_m": None})
+    import services.intelligence_brief as ib
+    monkeypatch.setattr(ib, "_get_db_conn", lambda: type("C", (), {"close": lambda self: None})())
+
+
+def test_flood_epi_survives_when_only_overlays_fail(monkeypatch):
+    # overlays failed but the flood planning check answered -> authoritative, not NOT_AVAILABLE.
+    _flood_no(monkeypatch)
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None, lat=-28.86, lng=153.56,
+                               overlays_failed=True, controls_failed=False)
     assert env.flood_epi.confidence == AUTH
 
 
@@ -99,8 +110,10 @@ def test_flood_epi_not_available_when_both_sources_fail():
     assert env.flood_epi.value is None
 
 
-def test_environmental_genuine_success_is_authoritative():
-    env = _build_environmental(_CONTROLS, _OVERLAYS, None, overlays_failed=False, controls_failed=False)
+def test_environmental_genuine_success_is_authoritative(monkeypatch):
+    _flood_no(monkeypatch)
+    env = _build_environmental(_CONTROLS, _OVERLAYS, None, lat=-28.86, lng=153.56,
+                               overlays_failed=False, controls_failed=False)
     assert env.flood_epi.confidence == AUTH
     assert env.overlays.confidence == AUTH
 
@@ -219,3 +232,18 @@ def test_coastal_overlay_failure_is_still_a_gap():
     ch = env.coastal_hazards
     assert ch.confidence == ConfidenceLevel.NOT_AVAILABLE
     assert ch.reason is not None
+
+
+def test_a_flood_planning_yes_survives_when_both_other_sources_fail(monkeypatch):
+    """The flood planning check is its own source: its yes is not discarded
+    because the overlay fetch and the portal both failed (cross-review)."""
+    import flood_planning
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+        "value": True, "reason": "on the council's flood planning map", "council": "BALLINA",
+        "hits": [], "category": "planning", "nearest_m": None})
+    import services.intelligence_brief as ib
+    monkeypatch.setattr(ib, "_get_db_conn", lambda: type("C", (), {"close": lambda self: None})())
+    env = _build_environmental({}, _OVERLAYS, None, lat=-28.86, lng=153.56,
+                               overlays_failed=True, controls_failed=True)
+    assert env.flood_epi.value is True
+    assert env.flood_epi.confidence == AUTH

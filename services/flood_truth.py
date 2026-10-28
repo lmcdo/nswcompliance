@@ -953,9 +953,10 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
 
     Returns:
       ses_in_flood_planning_area: bool | None
-        True  — point is inside at least one flood extent polygon
-        False — spatial_overlays has flood rows but point is outside all of them
-        None  — spatial_overlays has no flood rows (table empty/unavailable)
+        True  — on the council's flood planning map (flood_planning_status)
+        False — not on it, for a council whose map we hold, > 50 m from it
+        None  — not known: council's map not held, council unknown, near the
+                line, or the check failed (reason in flood_map_reason)
       ses_flood_class: str | None   — most frequent (highest AEP%) tier matched
       ses_aep_tiers: list[str]      — all matched tier display labels
       ses_study_name: str | None    — instrument_key of the primary matched row
@@ -971,31 +972,33 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
     conn = None
     try:
         conn = _get_conn()
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SET LOCAL statement_timeout = '5000'")
-            cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
-            if cur.fetchone()["n"] == 0:
-                return null_result
-            # Fetch ALL matching flood polygons — no LIMIT so multi-AEP studies return all tiers.
-            cur.execute("SET LOCAL statement_timeout = '5000'")
-            cur.execute(
-                """
-                SELECT DISTINCT ON (value) instrument_key, lga_name, value
-                FROM spatial_overlays
-                WHERE layer_type = 'flood'
-                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                ORDER BY value, currency_date DESC
-                """,
-                (lng, lat),
-            )
-            rows = cur.fetchall()
-        if not rows:
+        # In/out is decided by the ONE producer (services/flood_planning.py):
+        # "no" only for a council whose map we hold and a point clear of it;
+        # otherwise None with a reason. This used to be False whenever the
+        # TABLE held any flood row, so 102 of 310 checked addresses in councils
+        # we hold no map for read "outside the mapped extent" (2026-10-28).
+        from flood_planning import flood_planning_status, category_of
+        status = flood_planning_status(lat, lng, conn)
+        # The rows it matched (one query, not a second copy here): one per
+        # value, non-flood rows ('Other', 'Transitional Land') dropped.
+        seen = set()
+        rows = []
+        for h in (status.get("hits") or []):
+            if h.get("category") == "not_flood" or h.get("value") in seen:
+                continue
+            seen.add(h.get("value"))
+            rows.append(h)
+        if status.get("value") is not True:
             return {
-                "ses_in_flood_planning_area": False,
+                "ses_in_flood_planning_area": status.get("value"),
                 "ses_flood_class": None,
-                "ses_aep_tiers": [],
+                "ses_aep_tiers": sorted(
+                    (_SES_CLASS_DISPLAY.get(r["value"], r["value"]) for r in rows),
+                    key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99)),
                 "ses_study_name": None,
                 "ses_study_lga": None,
+                "flood_map_reason": status.get("reason"),
+                "flood_map_council": status.get("council"),
             }
         # Map all raw values to display labels
         tiers = [_SES_CLASS_DISPLAY.get(r["value"], r["value"]) for r in rows]
@@ -1012,6 +1015,8 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
             "ses_aep_tiers": sorted(tiers, key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99)),
             "ses_study_name": primary_row["instrument_key"],
             "ses_study_lga": primary_row["lga_name"],
+            "flood_map_reason": status.get("reason"),
+            "flood_map_council": status.get("council"),
         }
     except Exception as e:
         logger.warning(f"SES flood study query: {e}")
@@ -1812,6 +1817,8 @@ def _normalise_outputs(raw: dict) -> dict:
         "ses_flood_class":            raw.get("ses_flood_class"),
         "ses_study_name":             raw.get("ses_study_name"),
         "ses_study_lga":              raw.get("ses_study_lga"),
+        "flood_map_reason":           raw.get("flood_map_reason"),
+        "flood_map_council":          raw.get("flood_map_council"),
         "bom_gauge_name":             raw.get("bom_gauge_name"),
         "bom_gauge_distance_km":      raw.get("bom_gauge_distance_km"),
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
@@ -1915,7 +1922,9 @@ _CACHE_SENTINEL_KEYS = ("epi_flood_class", "flood_signal")
 # no longer gives (222 of 308 saved checks). run_date, not created_at: a cache
 # copy keeps the ORIGINAL run_date, so a stale row copied today stays excluded.
 # Bump this whenever a flood input table or the signal rule changes.
-FLOOD_CACHE_MIN_RUN_DATE = date(2026, 10, 29)
+# 2026-10-30: the flood planning map answer moved to services/flood_planning.py
+# (102 of 310 saved checks change). Older rows are recomputed, not re-served.
+FLOOD_CACHE_MIN_RUN_DATE = date(2026, 10, 30)
 
 
 def _first_valid_cached_row(rows):
@@ -2058,6 +2067,10 @@ class FloodOutputs(BaseModel):
     ses_flood_class: Optional[str] = None
     ses_study_name: Optional[str] = None
     ses_study_lga: Optional[str] = None
+    # Why the flood planning map answer is what it is (services/flood_planning.py),
+    # e.g. "we do not hold this council's flood planning map". Shown with a None.
+    flood_map_reason: Optional[str] = None
+    flood_map_council: Optional[str] = None
     bom_gauge_name: Optional[str] = None
     bom_gauge_distance_km: Optional[float] = None
     bom_last_major_flood_date: Optional[str] = None

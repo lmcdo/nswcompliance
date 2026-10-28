@@ -73,7 +73,7 @@ SAMPLE_CONTROLS = {
 SAMPLE_OVERLAYS_DATA = {
     "overlays": [
         {"layer_type": "heritage", "value": "Conservation Area - General", "instrument_key": "IW LEP 2022", "lga": "inner_west"},
-        {"layer_type": "flood", "value": "Flood Planning", "instrument_key": "IW LEP 2022", "lga": "inner_west"},
+        {"layer_type": "flood", "value": "Flood Planning Area", "instrument_key": "IW LEP 2022", "lga": "inner_west"},
     ],
     "covered_layers": ["heritage", "flood", "bushfire", "biodiversity"],
     "proximity_m": {},
@@ -276,9 +276,11 @@ class TestBuildEnvironmental:
         env = _build_environmental({}, SAMPLE_OVERLAYS_DATA, None)
         assert env.flood_epi.value is True
 
-    def test_no_flood(self):
+    def test_no_overlay_hit_and_no_point_is_unknown_not_no(self):
+        """No overlay row is not 'no': the council's map may not be held
+        (services/flood_planning.py; 102 of 310 checks, 2026-10-28)."""
         env = _build_environmental({}, {"overlays": [], "covered_layers": []}, None)
-        assert env.flood_epi.value is False
+        assert env.flood_epi.value is None
 
     def test_heritage_postgis_populated(self):
         heritage = {"hca": ["HCA 1"], "items": [], "has_heritage": True, "raw": []}

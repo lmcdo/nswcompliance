@@ -928,13 +928,30 @@ class TestQuerySesFloodStudy:
         assert result["ses_in_flood_planning_area"] is None
         assert result["ses_flood_class"] is None
 
-    def test_no_intersecting_rows_returns_false(self, monkeypatch):
+    def test_no_hit_in_a_council_we_hold_no_map_for_is_unknown(self, monkeypatch):
+        """The old rule said False whenever the TABLE had flood rows: 102 of 310
+        checked addresses in councils we hold no map for read 'outside'."""
+        import flood_planning
         conn = self._make_conn(count=5, rows=[])
         monkeypatch.setattr(ft, "_get_conn", lambda: conn)
-        result = ft._query_ses_flood_study(-33.87, 151.21)
+        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c: {
+            "value": None, "reason": "we do not hold this council's flood planning map",
+            "council": "RICHMOND VALLEY", "hits": [], "category": None, "nearest_m": None})
+        result = ft._query_ses_flood_study(-29.04, 153.25)
+        assert result["ses_in_flood_planning_area"] is None
+        assert result["flood_map_reason"] == "we do not hold this council's flood planning map"
+        assert result["ses_aep_tiers"] == []
+
+    def test_no_hit_in_a_held_council_clear_of_the_line_is_false(self, monkeypatch):
+        import flood_planning
+        conn = self._make_conn(count=5, rows=[])
+        monkeypatch.setattr(ft, "_get_conn", lambda: conn)
+        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c: {
+            "value": False, "reason": "not on the council's flood planning map",
+            "council": "BALLINA", "hits": [], "category": None, "nearest_m": None})
+        result = ft._query_ses_flood_study(-28.86, 153.56)
         assert result["ses_in_flood_planning_area"] is False
         assert result["ses_flood_class"] is None
-        assert result["ses_aep_tiers"] == []
 
     def test_single_match_returns_true(self, monkeypatch):
         rows = [{"value": "flood_planning_area", "instrument_key": "LEP2009", "lga_name": "Wollongong"}]
@@ -979,14 +996,16 @@ class TestQuerySesFloodStudy:
         ft._query_ses_flood_study(-33.87, 151.21)
         mock_conn.close.assert_called_once()
 
-    def test_unknown_value_passed_through(self, monkeypatch):
-        """Unknown value not in _SES_CLASS_DISPLAY is used as-is."""
+    def test_unknown_value_is_listed_but_never_a_yes(self, monkeypatch):
+        """An unclassified value (not in services/flood_planning.py's lists) is
+        shown as a tier as-is, but never makes 'on the flood planning map':
+        'Other' and 'Transitional Land' sat in the flood layer (2026-10-28)."""
         rows = [{"value": "SomeCustomZone", "instrument_key": "LEP", "lga_name": "LGA"}]
         conn = self._make_conn(count=1, rows=rows)
         monkeypatch.setattr(ft, "_get_conn", lambda: conn)
         result = ft._query_ses_flood_study(-33.87, 151.21)
-        assert result["ses_in_flood_planning_area"] is True
-        assert result["ses_flood_class"] == "SomeCustomZone"
+        assert result["ses_in_flood_planning_area"] is not True
+        assert "SomeCustomZone" in result["ses_aep_tiers"]
 
     def test_campbelltown_aep_tiers(self, monkeypatch):
         """Campbelltown-specific AEP values should map correctly."""

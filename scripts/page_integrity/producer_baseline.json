@@ -114,7 +114,8 @@
   "frontend-nextjs/lib/see/intake.ts": 3,
   "services/bushfire_prescreen.py": 2,
   "services/cdc_screen.py": 1,
-  "services/flood_truth.py": 4
+  "services/flood_planning.py": 3,
+  "services/flood_truth.py": 2
  },
  "front": {
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts": 1,
@@ -164,7 +165,6 @@
   "frontend-nextjs/app/api/canibuildit/check/route.ts": 1,
   "frontend-nextjs/components/compliance/ComplianceDashboard.tsx": 1,
   "frontend-nextjs/components/compliance/LepControls.tsx": 2,
-  "frontend-nextjs/lib/property-data.ts": 1,
   "frontend-nextjs/lib/see/seeBuilders.ts": 1,
   "scripts/generate_conveyancing_report.py": 1,
   "services/intelligence_brief.py": 1
