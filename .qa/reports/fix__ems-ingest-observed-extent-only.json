@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
- "commit_hash": "898f78e1",
+ "commit_hash": "f04f5240",
  "files": [
   "scripts/ingest_copernicus_ems.py",
   "tests/test_ingest_copernicus_ems_guard.py"
@@ -88,12 +88,11 @@
  ],
  "gaps": [
   "Flood recall not re-measured yet (step 3)",
-  "AOI11 has no vector map on S3; not covered",
-  "Production row still holds the 13-map version (333.8 km2) until re-loaded"
+  "AOI11 has no vector map on S3; not covered"
  ],
  "post_merge": {
-  "action": "RE-LOAD NEEDED: production holds the 13-map row (333.8 km2, id 5). Run python scripts/ingest_copernicus_ems.py --source EMSR567 --clear (user yes required) to load all 21 maps (522.9 km2). Backups: data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json (+ a fresh one before the re-load).",
-  "db_reset": "Re-load EMSR567 as above; then SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events shows EMSR567 ~523 km2",
+  "action": "Done 2026-10-28: production EMSR567 re-loaded with all 21 maps (id 6, 522.4 km2, 5,586 polygons). Backups: data/db_rollback_backups/copernicus_emsr567_pre_2026-10-28T1420.json and copernicus_emsr567_13maps_pre_2026-10-28T1600.json.",
+  "db_reset": "None needed; already re-loaded",
   "secrets": "None: no new secrets or env vars",
   "other_repo": "None: no other repository affected",
   "manual_verify": "SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events -> EMSR567 333.5, none over 5,000"
