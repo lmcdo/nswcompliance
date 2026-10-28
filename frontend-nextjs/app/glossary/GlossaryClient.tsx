@@ -16,13 +16,11 @@ interface Definition {
 
 /** Map domain tags to relevant tool CTAs */
 const TAG_TOOL_MAP: Record<string, { label: string; href: string }> = {
-  flood: { label: 'Check flood risk', href: '/flood-risk' },
   heritage: { label: 'Check planning controls', href: '/assessment' },
   setback: { label: 'Check planning controls', href: '/assessment' },
   parking: { label: 'Check planning controls', href: '/assessment' },
   landscaping: { label: 'Check planning controls', href: '/assessment' },
   tree: { label: 'Check planning controls', href: '/assessment' },
-  bushfire: { label: 'Check bushfire status', href: '/bushfire' },
   stormwater: { label: 'Check planning controls', href: '/assessment' },
 };
 

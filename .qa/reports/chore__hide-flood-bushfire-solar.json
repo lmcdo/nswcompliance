@@ -1,0 +1,134 @@
+{
+ "tier": "standard",
+ "justification": "Removes links to four products site-wide and adds noindex. Not Critical: no data or rule change; pages still work. Not Minor: 50 files of user-facing navigation and copy.",
+ "commit_hash": "3dc79788",
+ "files": [
+  "frontend-nextjs/__tests__/components/tools/CrossSellCards.test.tsx",
+  "frontend-nextjs/__tests__/lib/data-dictionary.test.ts",
+  "frontend-nextjs/__tests__/lib/hidden-products-not-linked.test.ts",
+  "frontend-nextjs/app/(tools)/browse/page.tsx",
+  "frontend-nextjs/app/(tools)/conveyancing/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/(tools)/granny-flat/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/(tools)/granny-flat/page.tsx",
+  "frontend-nextjs/app/(tools)/layout.tsx",
+  "frontend-nextjs/app/(tools)/planning-controls/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/(tools)/pre-da-history/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/(tools)/threat-radar/[lga-slug]/page.tsx",
+  "frontend-nextjs/app/blog/aasb-s2-mandatory-climate-reporting-property/page.tsx",
+  "frontend-nextjs/app/blog/aasb-s2-property-climate-data/page.tsx",
+  "frontend-nextjs/app/blog/apra-cpg-229-property-assessment/page.tsx",
+  "frontend-nextjs/app/blog/bushfire-attack-level-bal-property-buyers/page.tsx",
+  "frontend-nextjs/app/blog/ccnh-sepp-nsw-development-changes/page.tsx",
+  "frontend-nextjs/app/blog/climate-risk-data-provider-australia/page.tsx",
+  "frontend-nextjs/app/blog/is-my-house-in-a-flood-zone-nsw/page.tsx",
+  "frontend-nextjs/app/blog/nathers-ratings-historical-weather-accuracy/page.tsx",
+  "frontend-nextjs/app/blog/qld-seller-disclosure-nsw-comparison/page.tsx",
+  "frontend-nextjs/app/blog/regional-property-conveyancing-nsw/page.tsx",
+  "frontend-nextjs/app/blog/section-10-7-flood-risk-nsw/page.tsx",
+  "frontend-nextjs/app/blog/tree-change-checklist-nsw-planning/page.tsx",
+  "frontend-nextjs/app/blog/uninsurable-households-australia-2050/page.tsx",
+  "frontend-nextjs/app/blog/uninsurable-property-climate-risk/page.tsx",
+  "frontend-nextjs/app/for/buyers-agents/page.tsx",
+  "frontend-nextjs/app/for/homebuyers/page.tsx",
+  "frontend-nextjs/app/glossary/GlossaryClient.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx",
+  "frontend-nextjs/app/internal/page.tsx",
+  "frontend-nextjs/app/layout.tsx",
+  "frontend-nextjs/app/not-found.tsx",
+  "frontend-nextjs/app/open-data/fields/[slug]/page.tsx",
+  "frontend-nextjs/app/open-data/page.tsx",
+  "frontend-nextjs/app/page.tsx",
+  "frontend-nextjs/app/reports/granny-flat/page.tsx",
+  "frontend-nextjs/app/reports/layout.tsx",
+  "frontend-nextjs/app/reports/page.tsx",
+  "frontend-nextjs/app/site-directory/page.tsx",
+  "frontend-nextjs/app/sitemap.ts",
+  "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+  "frontend-nextjs/components/BrowseByArea.tsx",
+  "frontend-nextjs/components/home/PropertyProfile.tsx",
+  "frontend-nextjs/components/marketing/SiteFooter.tsx",
+  "frontend-nextjs/components/reports/ToolCrossSell.tsx",
+  "frontend-nextjs/components/tools/BushfireTool.tsx",
+  "frontend-nextjs/components/tools/GrannyFlatTool.tsx",
+  "frontend-nextjs/lib/data-dictionary.ts",
+  "frontend-nextjs/lib/hidden-products.ts",
+  "frontend-nextjs/middleware.ts",
+  "frontend-nextjs/public/llms.txt"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/hidden-products-not-linked.test.ts",
+  "fails_when": "Fails if any page, component or lib file contains a route string pointing at a withdrawn product.",
+  "external_authority": "Owner instruction 2026-10-28: remove flood, bushfire, solar (and climate risk) from all menus, sitemaps and links.",
+  "observed_red": "Before the edits the test listed 120 links in 43 files."
+ },
+ "pre_impl": {
+  "existing_data": "No product visibility switch existed; only per-page noindex metadata.",
+  "assumption_mismatch": "/reports routes leave middleware early, so the header is set on both exits.",
+  "new_vs_existing": "One new list file; every other change removes existing links.",
+  "external_source_error": "Not applicable: no external source is called."
+ },
+ "functions": [
+  {
+   "name": "isHiddenPath",
+   "file_line": "frontend-nextjs/lib/hidden-products.ts",
+   "what": "Matches a withdrawn route or any of its sub-pages.",
+   "input": "a path or full URL string",
+   "output": "true when the path is withdrawn",
+   "if_none": "A malformed URL returns false, not an error.",
+   "edge_cases": "/reports/floodplain does not match /reports/flood",
+   "failure_mode": "A missed prefix leaves a page indexed; the gate test lists every prefix"
+  },
+  {
+   "name": "sitemap",
+   "file_line": "frontend-nextjs/app/sitemap.ts",
+   "what": "Filters every chunk through isHiddenPath.",
+   "input": "sitemap chunk id from the index",
+   "output": "sitemap entries with withdrawn routes removed",
+   "if_none": "A chunk with only withdrawn routes returns an empty list.",
+   "edge_cases": "chunks 2-4 kept so the index never 404s",
+   "failure_mode": "None beyond an empty chunk"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A new blog post links to /reports/flood",
+   "what_happens": "The link gate test fails in CI",
+   "mitigated": true,
+   "how": "repo-wide string scan",
+   "repro": "jest hidden-products-not-linked"
+  },
+  {
+   "scenario": "Google crawls /flood-risk/penrith from an old link",
+   "what_happens": "The page is served with X-Robots-Tag noindex",
+   "mitigated": true,
+   "how": "middleware header on both exits",
+   "repro": "curl -I https://canibuildit.com.au/flood-risk/penrith after deploy"
+  },
+  {
+   "scenario": "The sitemap index lists chunk 2 (flood)",
+   "what_happens": "Chunk 2 returns an empty but valid sitemap",
+   "mitigated": true,
+   "how": "chunk ids kept, entries filtered",
+   "repro": "curl https://canibuildit.com.au/sitemap/2.xml after deploy"
+  }
+ ],
+ "verified": [
+  "Link gate 0 offenders (was 120 in 43 files)",
+  "Full jest 2,474/2,474 (198 suites)",
+  "tsc clean"
+ ],
+ "gaps": [
+  "Prose that mentions the products without a link (e.g. /for/homebuyers hero) not rewritten",
+  "Site brief still shows flood, bushfire and solar sections (owner to decide)"
+ ],
+ "post_merge": {
+  "action": "After deploy: curl -I a withdrawn page for X-Robots-Tag; fetch sitemaps 0-7 and confirm no withdrawn URL",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Header, footer and home page show no flood, bushfire, solar or climate links"
+ },
+ "real_layer_exempt": {
+  "frontend-nextjs/middleware.ts": "Adds one response header; checked live after deploy."
+ }
+}

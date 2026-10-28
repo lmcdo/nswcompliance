@@ -142,8 +142,6 @@ export default function GrannyFlatHubPage() {
         <h3 className="font-semibold text-gray-900 mb-3">Other checks for your property</h3>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Flood Screening', desc: 'Statutory overlay + ARI data', href: '/flood-risk', color: 'text-blue-600' },
-            { label: 'Solar Yield', desc: 'Roof yield estimate', href: '/solar-potential', color: 'text-amber-600' },
             { label: 'Threat Radar', desc: 'Nearby DA + CDC activity', href: '/threat-radar', color: 'text-violet-600' },
           ].map(({ label, desc, href, color }) => (
             <Link key={href} href={href} className="rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 transition-colors">

@@ -131,8 +131,6 @@ const DATASETS = [
     currency: 'Study publications 2024–2025',
     source: 'NSW Flood Data Portal (NSW SES) and council flood studies',
     sourceUrl: 'https://flooddata.ses.nsw.gov.au',
-    pageUrl: '/reports/flood',
-    pageLabel: 'Flood Report',
     variableMeasured: [
       'Peak flood level (m AHD)',
       'Peak flood depth (m)',
@@ -173,7 +171,7 @@ export default function OpenDataPage() {
           key={ds.name}
           name={ds.name}
           description={ds.description}
-          url={`https://canibuildit.com.au${ds.pageUrl}`}
+          url={`https://canibuildit.com.au${'pageUrl' in ds ? ds.pageUrl : '/open-data'}`}
           spatialCoverage="New South Wales, Australia"
           variableMeasured={[...ds.variableMeasured]}
           license="Derived from NSW Government open data and legislative instruments"
@@ -207,12 +205,14 @@ export default function OpenDataPage() {
                   {ds.description}
                 </p>
               </div>
-              <Link
-                href={ds.pageUrl}
-                className="shrink-0 inline-flex items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
-              >
-                {ds.pageLabel}
-              </Link>
+              {'pageUrl' in ds && (
+                <Link
+                  href={ds.pageUrl}
+                  className="shrink-0 inline-flex items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
+                >
+                  {ds.pageLabel}
+                </Link>
+              )}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">

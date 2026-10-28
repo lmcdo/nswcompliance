@@ -17,22 +17,6 @@ export const metadata: Metadata = {
 // exist at /reports/intelligence-brief and /reports/conveyancing.
 const TOOLS = [
   {
-    href: '/reports/flood',
-    title: 'Flood Screening',
-    tagline: 'How deep does it flood — not just whether it floods.',
-    description:
-      'NSW Government overlays, ESA satellite radar, Bureau of Meteorology river gauges, and council flood model depths cross-referenced for any NSW address.',
-    badge: 'Free + $49',
-  },
-  {
-    href: '/reports/bushfire',
-    title: 'Bushfire Pre-Screen',
-    tagline: 'Is this address on Bush Fire Prone Land?',
-    description:
-      'RFS BFPL overlay status and estimated BAL band. Required for any new dwelling, addition, or change of use in a bushfire-prone area.',
-    badge: 'Free',
-  },
-  {
     href: '/reports/granny-flat',
     title: 'Granny Flat Feasibility',
     tagline: 'Could this property earn an extra $280\u2013$340/week?',
@@ -55,14 +39,6 @@ const TOOLS = [
     description:
       'Every DA and CDC within 500m of your property \u2014 with weekly email alerts for new lodgements.',
     badge: 'Free',
-  },
-  {
-    href: '/reports/solar-yield',
-    title: 'Rooftop Solar Potential',
-    tagline: 'How much could solar earn on this roof?',
-    description:
-      'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation.',
-    badge: '$39',
   },
 ];
 

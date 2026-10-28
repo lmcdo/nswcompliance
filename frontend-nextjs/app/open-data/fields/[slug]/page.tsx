@@ -144,22 +144,24 @@ export default function DataDictionaryFieldPage({ params }: Props) {
       </section>
 
       {/* Related pages */}
-      <section className="mb-10">
-        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
-          Where this field appears on PlotDetect
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {field.related.map((r) => (
-            <Link
-              key={r.href}
-              href={r.href}
-              className="inline-flex items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
-            >
-              {r.label}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {field.related.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
+            Where this field appears on PlotDetect
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {field.related.map((r) => (
+              <Link
+                key={r.href}
+                href={r.href}
+                className="inline-flex items-center rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100 transition-colors"
+              >
+                {r.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* All fields */}
       <section className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 sm:p-8">

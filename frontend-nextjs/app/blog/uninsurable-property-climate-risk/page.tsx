@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
-import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
@@ -230,38 +228,6 @@ export default function UninsurablePropertyPage() {
             creates professional liability. The tools to check are now available — the question is
             whether the profession integrates them into standard pre-purchase workflows.
           </p>
-        </section>
-
-        {/* CTA */}
-        <section className="mt-12 space-y-6">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check the climate risk profile before you buy
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect provides free, instant climate risk assessment for any NSW address —
-              flood depth, bushfire BAL estimation, heat stress projections, and coastal hazard
-              data from government sources. No account required.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <TrackedLink
-                href="/reports/flood"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-                page="uninsurable-property-climate-risk"
-                cta="check_flood"
-              >
-                Check flood risk
-                <ArrowRight className="w-4 h-4" />
-              </TrackedLink>
-              <Link
-                href="/reports/bushfire"
-                className="inline-flex items-center gap-2 px-6 py-3 text-slate-700 text-sm font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
-              >
-                Check bushfire risk
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
         </section>
 
         <BlogDisclaimer />

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {
-  Droplets, Flame, FileCheck, Building2, Radar, Sun, Satellite,
+  FileCheck, Building2, Radar, Satellite,
   ShieldCheck, Map, BarChart3, Thermometer, ArrowRight,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
@@ -14,26 +14,6 @@ import { COVERAGE_DISPLAY } from '@/lib/coverage';
 /* ------------------------------------------------------------------ */
 
 const TOOLS = [
-  {
-    href: '/reports/flood',
-    title: 'Flood Screening',
-    question: 'stop',
-    tagline: 'How deep does it flood — not just whether it floods.',
-    badge: 'Free + $49',
-    icon: Droplets,
-    iconColor: 'text-blue-600',
-    iconBg: 'bg-blue-500/10',
-  },
-  {
-    href: '/reports/bushfire',
-    title: 'Bushfire Pre-Screen',
-    question: 'stop',
-    tagline: 'Bush Fire Prone Land status, BAL band estimate, and CDC pathway.',
-    badge: 'Free + $39',
-    icon: Flame,
-    iconColor: 'text-orange-600',
-    iconBg: 'bg-orange-500/10',
-  },
   {
     href: '/reports/conveyancing',
     title: 'Conveyancing Disclosure',
@@ -63,16 +43,6 @@ const TOOLS = [
     icon: Radar,
     iconColor: 'text-violet-600',
     iconBg: 'bg-violet-500/10',
-  },
-  {
-    href: '/reports/solar-yield',
-    title: 'Solar Potential',
-    question: 'worth',
-    tagline: 'Roof geometry, orientation, and estimated annual generation from satellite and BoM data.',
-    badge: '$39',
-    icon: Sun,
-    iconColor: 'text-amber-500',
-    iconBg: 'bg-amber-500/10',
   },
   {
     href: '/reports/pre-da-history',
@@ -271,7 +241,7 @@ export default function HomePage() {
                 Every check, grouped by your question
               </h2>
               <p className="text-slate-500 max-w-lg">
-                Eight instant checks on one engine — find the question you&apos;re asking.
+                Instant checks on one engine — find the question you&apos;re asking.
                 Free checks first; detailed reports resolve what they find. No account required.
               </p>
             </div>
@@ -438,15 +408,6 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 mt-8">
-            <TrackedLink
-              href="/climate-risk"
-              page="home"
-              cta="climate_section_check"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-            >
-              Free climate risk check
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
             <Link
               href="/blog/uninsurable-property-climate-risk"
               className="text-sm text-slate-400 hover:text-teal-400 transition-colors"
@@ -454,9 +415,6 @@ export default function HomePage() {
               How climate risk is repricing real estate →
             </Link>
           </div>
-          <p className="text-xs text-slate-600 mt-4">
-            Climate Risk Report ($99) available after PlotDetect Pty Ltd incorporation and professional indemnity insurance.
-          </p>
         </div>
       </section>
 

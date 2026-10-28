@@ -112,7 +112,7 @@ export default function PreDaHistoryLgaPage(
       <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
         <h3 className="font-semibold text-gray-900">Need the full planning picture?</h3>
         <p className="text-sm text-gray-500 mt-1 mb-4">
-          Site history is one layer. Check flood risk, bushfire status, granny flat eligibility,
+          Site history is one layer. Check granny flat eligibility
           and nearby development activity for the same address.
         </p>
         <a
@@ -123,9 +123,6 @@ export default function PreDaHistoryLgaPage(
         </a>
         <p className="text-xs text-gray-400 mt-3">
           Also check:{' '}
-          <a href={`/bushfire/${lga.slug}`} className="text-orange-600 hover:underline mr-2">
-            bushfire risk in {lga.name}
-          </a>
           {hasGrannyFlat && (
             <a href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">
               granny flat eligibility in {lga.name}

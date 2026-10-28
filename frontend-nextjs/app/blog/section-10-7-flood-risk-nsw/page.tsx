@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
-import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
@@ -300,37 +298,7 @@ export default function Section107FloodRiskPage() {
 
             <div className="rounded-2xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                2. Run a flood risk check that goes beyond the binary
-              </h3>
-              <p className="text-slate-700 leading-relaxed">
-                Tools that cross-reference multiple data sources &mdash; LEP
-                overlays, flood study modelling, and historical event data
-                &mdash; can show depth and frequency information the s10.7 does
-                not include. PlotDetect&apos;s{' '}
-                <Link
-                  href="/reports/flood"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  free Flood Screening
-                </Link>{' '}
-                does this for any NSW address. For the broader picture
-                &mdash; flood, bushfire, coastal, and heat exposure combined
-                &mdash; PlotDetect&apos;s{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk score
-                </Link>{' '}
-                checks five government-mapped hazard layers in one view. It
-                shows which hazards overlap your property &mdash; it does not
-                predict whether damage will occur.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                3. Check the SES Flood Data Portal
+                2. Check the SES Flood Data Portal
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 The NSW SES Flood Data Portal (flooddata.ses.nsw.gov.au) hosts
@@ -343,7 +311,7 @@ export default function Section107FloodRiskPage() {
 
             <div className="rounded-2xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                4. Ask council for flood study data directly
+                3. Ask council for flood study data directly
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 Some councils will provide flood study information for specific
@@ -356,7 +324,7 @@ export default function Section107FloodRiskPage() {
 
             <div className="rounded-2xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                5. Look beyond the flood planning area boundary
+                4. Look beyond the flood planning area boundary
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 Flood planning areas are based on the 1% AEP flood plus a
@@ -628,14 +596,8 @@ export default function Section107FloodRiskPage() {
           <p className="text-slate-700 leading-relaxed">
             The irony is hard to miss. Some of the most flood-affected areas in
             NSW &mdash; places that have made national headlines &mdash; have
-            the least accessible flood data for property buyers. The{' '}
-            <Link
-              href="/flood-risk/hawkesbury"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              Hawkesbury
-            </Link>{' '}
-            experienced two major floods within three years (2021 and 2022), yet
+            the least accessible flood data for property buyers. The
+            Hawkesbury experienced two major floods within three years (2021 and 2022), yet
             the state EPI layer returns nothing for most addresses in the
             valley.
           </p>
@@ -812,30 +774,6 @@ export default function Section107FloodRiskPage() {
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              See what your Section 10.7 certificate does not show
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s free Flood Screening shows modelled flood depth
-              at multiple return intervals &mdash; not just the binary yes/no
-              from the planning certificate. Enter any NSW address for instant
-              results. No account required.
-            </p>
-            <TrackedLink
-              href="/reports/flood"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
-              page="section-10-7-flood-risk-nsw"
-              cta="check_flood"
-            >
-              Check flood risk &mdash; free
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

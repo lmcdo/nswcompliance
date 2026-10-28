@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Radar, Droplets, Flame, Building2, ArrowRight, Sun, Satellite,
-  FileCheck, ShieldCheck, Map, BarChart3, Thermometer,
+  Radar, Building2, ArrowRight, Satellite,
+  FileCheck, ShieldCheck, Map, BarChart3,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
@@ -19,45 +19,6 @@ export const metadata: Metadata = {
 /* ------------------------------------------------------------------ */
 
 const WORKFLOW_SECTIONS = [
-  {
-    heading: 'Risk screening',
-    subtitle: 'The "should my client avoid this?" questions',
-    tools: [
-      {
-        icon: Droplets,
-        iconColor: 'text-blue-600',
-        iconBg: 'bg-blue-500/10',
-        title: 'Flood Screening',
-        question: 'Does it flood? How deep?',
-        answer:
-          'ARI return period depths from council flood studies — not just whether the overlay exists. Know the difference between ankle-deep and ground-floor-underwater.',
-        href: '/reports/flood',
-        badge: 'Free + $49 report',
-      },
-      {
-        icon: Flame,
-        iconColor: 'text-orange-600',
-        iconBg: 'bg-orange-500/10',
-        title: 'Bushfire Pre-Screen',
-        question: 'Is it bushfire-prone? What does that cost?',
-        answer:
-          'Bush Fire Prone Land status, estimated BAL band, 10/50 vegetation clearing obligations, and CDC pathway impact. Directly affects insurance premiums and building constraints.',
-        href: '/reports/bushfire',
-        badge: 'Free + $39 report',
-      },
-      {
-        icon: Thermometer,
-        iconColor: 'text-red-600',
-        iconBg: 'bg-red-500/10',
-        title: 'Climate Risk Intelligence',
-        question: 'What is the long-term risk trajectory?',
-        answer:
-          'Five-hazard compound scoring — flood, bushfire, heat stress, precipitation change, and coastal risk. NARCliM 2.0 projections to 2099. The "should I buy in this suburb long-term" answer.',
-        href: '/climate-risk',
-        badge: 'Free check',
-      },
-    ],
-  },
   {
     heading: 'Planning intelligence',
     subtitle: 'The "what can be built here?" questions',
@@ -100,17 +61,6 @@ const WORKFLOW_SECTIONS = [
           'SEPP Housing eligibility, satellite structure detection for existing secondary dwellings, and rental yield estimate. Filters investment properties fast.',
         href: '/reports/granny-flat',
         badge: 'Free + $49 report',
-      },
-      {
-        icon: Sun,
-        iconColor: 'text-amber-500',
-        iconBg: 'bg-amber-500/10',
-        title: 'Rooftop Solar Yield',
-        question: 'What solar output could this property generate?',
-        answer:
-          'Roof geometry, orientation, and estimated annual generation from satellite imagery and Bureau of Meteorology irradiance data. Useful for sustainability-conscious buyers and cost-of-living conversations.',
-        href: '/reports/solar-yield',
-        badge: '$39',
       },
       {
         icon: Satellite,
@@ -194,9 +144,8 @@ export default function BuyersAgentsPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed mb-8">
-            Flood depth, bushfire BAL, zone and FSR, heritage, nearby DAs, granny flat
-            eligibility, climate projections, and DA analytics — 11 checks
-            that replace 7 government portals. Free, no account required.
+            Zone and FSR, heritage, nearby DAs, granny flat eligibility and DA
+            analytics in one place. Free, no account required.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

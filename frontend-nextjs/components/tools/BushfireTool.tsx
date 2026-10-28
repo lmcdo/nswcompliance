@@ -143,19 +143,7 @@ export function BushfireTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef
 }
 
 function BushfireShareActions({ result }: { result: BushfireResult }) {
-  const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
-
-  const shareUrl = result.report_id
-    ? `${window.location.origin}/reports/bushfire/${result.report_id}`
-    : '';
-
-  const handleCopy = async () => {
-    if (!shareUrl) return;
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handlePdf = async () => {
     if (!result.report_id) return;
@@ -185,12 +173,6 @@ function BushfireShareActions({ result }: { result: BushfireResult }) {
 
   return (
     <div className="flex gap-2 mb-4">
-      <button
-        onClick={handleCopy}
-        className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-      >
-        {copied ? 'Copied!' : 'Share link'}
-      </button>
       <button
         onClick={handlePdf}
         disabled={downloading}

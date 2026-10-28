@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
-import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
@@ -81,7 +79,7 @@ export default function FloodZoneCheckPage() {
           <p className="text-slate-700 leading-relaxed">
             A property can be &ldquo;flood prone&rdquo; without being in the Flood Planning Area, and
             vice versa. The FPA is the one that matters most for planning approvals and is typically
-            based on a design flood (the large, rare flood the council plans for) plus a freeboard allowance that council sets. <Link href="/flood-risk" className="text-teal-600 underline underline-offset-2 hover:text-teal-500">See the flood information for your property</Link>.
+            based on a design flood (the large, rare flood the council plans for) plus a freeboard allowance that council sets.
           </p>
         </section>
 
@@ -266,29 +264,6 @@ export default function FloodZoneCheckPage() {
             get at my specific address, and how often?</span> That requires flood study data — the
             modelled depth at different ARI return periods — not just the binary overlay.
           </p>
-        </section>
-
-        {/* CTA */}
-        <section className="mt-12 space-y-6">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check flood risk for any NSW address — free instant results
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s free Flood Screening goes beyond the binary yes/no. Where flood study
-              data is available, it shows modelled depth at 1-in-20 through 1-in-500 year return
-              intervals — plus LEP flood overlay status from the NSW Planning Portal. No account required.
-            </p>
-            <TrackedLink
-              href="/reports/flood"
-              page="is-my-house-in-a-flood-zone-nsw"
-              cta="check_flood"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
-            >
-              Check flood risk — free
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
         </section>
 
         <BlogDisclaimer />

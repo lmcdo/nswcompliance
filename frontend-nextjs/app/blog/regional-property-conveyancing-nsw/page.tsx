@@ -326,17 +326,6 @@ export default function RegionalPropertyConveyancingPage() {
               </li>
             </ul>
           </div>
-          <p className="text-slate-700 leading-relaxed">
-            PlotDetect&apos;s{' '}
-            <Link
-              href="/reports/bushfire"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              Bushfire Risk Report
-            </Link>{' '}
-            provides an indicative BAL risk band for any NSW address using
-            satellite vegetation data and the RFS fire register.
-          </p>
         </section>
 
         {/* ITEM 3: Minimum lot sizes */}
@@ -568,22 +557,7 @@ export default function RegionalPropertyConveyancingPage() {
               free property check
             </Link>{' '}
             covers zoning, hazard overlays, and LEP constraints for any NSW
-            address. For a more detailed view of flood and bushfire exposure,
-            see the{' '}
-            <Link
-              href="/reports/flood"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              Flood Screening Report
-            </Link>{' '}
-            and{' '}
-            <Link
-              href="/reports/bushfire"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              Bushfire Risk Report
-            </Link>
-            .
+            address.
           </p>
         </section>
 

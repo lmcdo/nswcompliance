@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas';
-import { FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas';
-import { SOLAR_LGA_SLUG_MAP } from '@/lib/lga-data/solar-lgas';
 import { THREAT_RADAR_LGA_SLUG_MAP } from '@/lib/lga-data/threat-radar-lgas';
-import { BUSHFIRE_LGA_SLUG_MAP } from '@/lib/lga-data/bushfire-lgas';
 import { PRE_DA_HISTORY_LGA_SLUG_MAP } from '@/lib/lga-data/pre-da-history-lgas';
 
 export const metadata: Metadata = {
@@ -15,10 +12,7 @@ export const metadata: Metadata = {
 
 const TOOLS = [
   { label: 'Granny Flat', prefix: '/granny-flat', map: GRANNY_FLAT_LGA_SLUG_MAP, color: 'bg-teal-600' },
-  { label: 'Flood', prefix: '/flood-risk', map: FLOOD_LGA_SLUG_MAP, color: 'bg-blue-600' },
   { label: 'DA Monitor', prefix: '/threat-radar', map: THREAT_RADAR_LGA_SLUG_MAP, color: 'bg-amber-600' },
-  { label: 'Solar', prefix: '/solar-potential', map: SOLAR_LGA_SLUG_MAP, color: 'bg-yellow-600' },
-  { label: 'Bushfire', prefix: '/bushfire', map: BUSHFIRE_LGA_SLUG_MAP, color: 'bg-red-600' },
   { label: 'Site History', prefix: '/pre-da-history', map: PRE_DA_HISTORY_LGA_SLUG_MAP, color: 'bg-violet-600' },
 ] as const;
 

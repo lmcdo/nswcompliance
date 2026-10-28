@@ -49,8 +49,6 @@ export default function ConveyancingLgaPage(
           Free summary online, $49 for the full PDF report with data citations.
           Also check{' '}
           <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
-          {' '}and{' '}
-          <Link href={`/flood-risk/${lga.slug}`} className="text-blue-600 hover:underline">flood risk</Link>
           {' '}for any {lga.name} address.
         </p>
       </div>
@@ -161,15 +159,6 @@ export default function ConveyancingLgaPage(
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Granny flat eligibility</p>
               <p className="text-xs text-gray-400 mt-0.5">SEPP Housing 2021 check</p>
-            </div>
-          </a>
-          <a
-            href={`/flood-risk/${lga.slug}`}
-            className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Flood risk</p>
-              <p className="text-xs text-gray-400 mt-0.5">Statutory + satellite flood data</p>
             </div>
           </a>
           <a

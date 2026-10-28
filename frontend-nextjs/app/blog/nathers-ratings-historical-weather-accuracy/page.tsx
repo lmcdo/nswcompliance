@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
-import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
@@ -406,15 +404,7 @@ export default function NatHERSHistoricalWeatherPage() {
                 Some climate zones will shift categories under projected
                 warming. Western Sydney, currently classified as a temperate
                 zone, is projected to experience conditions more consistent
-                with subtropical zones by mid-century. PlotDetect&apos;s{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk assessment
-                </Link>{' '}
-                shows projected temperature and hazard changes for any NSW
-                address.
+                with subtropical zones by mid-century.
               </p>
             </div>
 
@@ -510,29 +500,6 @@ export default function NatHERSHistoricalWeatherPage() {
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              See how climate projections affect your property
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s climate risk assessment shows projected
-              temperature changes and hazard exposure for any NSW address,
-              using NARCliM 2.0 climate projections.
-            </p>
-            <TrackedLink
-              href="/climate-risk"
-              page="nathers-ratings-historical-weather-accuracy"
-              cta="climate_check"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-            >
-              Check climate risk
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">
