@@ -168,6 +168,11 @@ def flood_planning_status(lat: float, lng: float, conn) -> dict:
                            reason="on the council's flood planning map")
                 return out
             extreme_only = any(h.get("category") == "extreme" for h in hits)
+            if any(h.get("category") == "unclassified" for h in hits):
+                # A flood value nobody has sorted yet touches this point: it may
+                # be a planning line, so the honest answer is "not known".
+                out["reason"] = "an unclassified flood line touches this point"
+                return out
 
             council = council_at(lat, lng, cur)
             out["council"] = council

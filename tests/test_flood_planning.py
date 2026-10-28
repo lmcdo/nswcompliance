@@ -138,6 +138,13 @@ def test_a_not_flood_row_never_makes_a_yes():
     assert s["value"] is not True
 
 
+def test_an_unclassified_flood_value_at_the_point_is_unknown_never_no():
+    """A new value (e.g. 'Flood Planning Area 2') may be a planning line."""
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [("Flood Planning Area 2", "K", "BALLINA")]))
+    assert s["value"] is None and "unclassified" in s["reason"]
+
+
 def test_a_database_error_is_unknown_never_no():
     c = MagicMock()
     c.cursor.side_effect = RuntimeError("db down")
