@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "User-facing flood result failure states, the flood proxy route timeout, and landing-page claims. Not Critical: no rule or data change. Not Minor: changes what users see when a source fails.",
- "commit_hash": "36cfa075",
+ "commit_hash": "9348b098",
  "files": [
   "frontend-nextjs/components/tools/FloodTool.tsx",
   "frontend-nextjs/app/api/satellite/flood/route.ts",
