@@ -478,3 +478,12 @@ def test_standards_and_values_are_not_contents():
     values = ("3.1 Building height 9 metres\n3.2 Front setback 6 metres\n3.3 Site coverage 50 percent\n"
               "3.4 Landscaped area 30 percent\n3.5 Parking two spaces")
     assert cq.contents_kind(values) is None
+
+
+def test_numbered_commands_are_not_contents():
+    commands = ("3.1 Locate car parking behind the front building line where possible\n"
+                "3.2 Provide deep soil planting along the rear boundary of the site\n"
+                "3.3 Retain existing trees that are prominent streetscape features of the area\n"
+                "3.4 Screen plant equipment and services from the street and neighbours\n"
+                "3.5 Orient living areas and private open space towards the north")
+    assert cq.contents_kind(commands) is None

@@ -343,7 +343,9 @@ def contents_kind(body: str) -> str | None:
     if paged >= 3 and paged / len(lines) >= 0.4:
         return "contents_page"
     # A title carries no value: "3.1 Building height 9 metres" is a control, "3.1.2 Setbacks" a title
-    numbered = sum(1 for ln in lines if _CONTENTS_NUM.match(ln) and not re.search(r"\d", _CONTENTS_NUM.sub("", ln)))
+    # and is short: "3.1 Locate parking behind the building line on corner sites" is a command
+    numbered = sum(1 for ln in lines if _CONTENTS_NUM.match(ln) and not re.search(r"\d", _CONTENTS_NUM.sub("", ln))
+                   and len(ln.split()) <= 8)
     if numbered / len(lines) >= 0.6 and not any(_RULE_WORDS.search(ln) for ln in lines):
         return "contents_page"
     return None
