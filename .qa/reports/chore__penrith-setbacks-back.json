@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One published count in coverage.ts, 16 -> 17, after Penrith setback rows were re-checked against the 1 Oct 2026 edition and released (backup data/db_rollback_backups/penrith_setbacks_release_pre_2026-10-28T161027.json).",
-  "commit_hash": "860266c9",
+  "commit_hash": "2c01efbf",
   "files": [
     "frontend-nextjs/lib/coverage.ts"
   ],
