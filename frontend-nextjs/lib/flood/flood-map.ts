@@ -155,12 +155,57 @@ async function queryLot(lon: number, lat: number, boundary: LotBoundary | null |
   return { features: 0, wholeLot: l != null };
 }
 
+/** The one flood planning answer from the backend (services/flood_planning.py): our store holds
+ *  71 councils' flood planning maps, where the state layer 230 above holds ~10. On 2026-10-28 the
+ *  store found 47 of 310 checked addresses on a map that layer 230 did not have. */
+export interface StoreFloodStatus {
+  value: boolean | null;
+  reason?: string | null;
+}
+
+const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+
+async function fetchStoreStatus(lon: number, lat: number): Promise<StoreFloodStatus | null> {
+  try {
+    // fetchWithTimeout, not a bare timer: it obeys the property lookup's overall budget, so a
+    // stalled backend can never hold the page past it.
+    const r = await fetchWithTimeout(`${PYTHON_API}/pipeline/flood-planning`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng: lon }),
+      cache: 'no-store',
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d && (d.value === true || d.value === false || d.value === null) ? d : null;
+  } catch {
+    return null; // unknown, never "no"
+  }
+}
+
+const STORE_NOT_ON_MAP = "The address point is not on the council's flood planning map and is more than 200 m from it. The whole lot was not checked.";
+
+/** Combine the state layer (whole-lot capable) with our store. Yes from either is Yes; a whole-lot
+ *  No from layer 230 stands; a store No is a point answer, worded as one; otherwise not known. */
+export function combineFloodAnswers(state: FloodMapStatus, store: StoreFloodStatus | null): FloodMapStatus {
+  if (state.floodProne === true) return state;
+  if (store?.value === true) return { floodProne: true, note: ON_MAP };
+  if (state.floodProne === false) return state;
+  if (store?.value === false) return { floodProne: false, note: STORE_NOT_ON_MAP };
+  // Neither can say: keep the state layer's explanation (and its "did not answer" flag), adding
+  // our store's reason so the page says why our own maps could not answer either.
+  if (!store?.reason) return state;
+  return { ...state, note: `${state.note} Our council flood map check: ${store.reason}.` };
+}
+
 export async function floodMapStatus(
   lon: number,
   lat: number,
   lotPlans: string[],
   boundary?: LotBoundary | null,
 ): Promise<FloodMapStatus> {
-  const [hit, plansWithMap] = await Promise.all([queryLot(lon, lat, boundary), plansWithAFloodMap()]);
-  return decideFloodMap(hit, lotPlans, plansWithMap);
+  const [hit, plansWithMap, store] = await Promise.all([
+    queryLot(lon, lat, boundary), plansWithAFloodMap(), fetchStoreStatus(lon, lat),
+  ]);
+  return combineFloodAnswers(decideFloodMap(hit, lotPlans, plansWithMap), store);
 }

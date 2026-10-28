@@ -272,17 +272,17 @@ export async function POST(req: NextRequest) {
   const minLotSizeM2: number | null = minLotVal != null ? (parseFloat(String(minLotVal)) || null) : null;
 
   // 5. Spatial overlays — independent try/catch
-  // flood: Hazard MapServer, 12 LGAs only — no rows = unknown UNLESS lga has flood data (then pass)
+  // flood: the one flood planning answer (services/flood_planning.py via /pipeline/flood-planning)
   // biodiversity/acid_sulfate: Protection MapServer, state-wide — no rows = pass only if query ran
   let overlayTypes = new Set<string>();
   let spatialQueryRan = false;
-  let lgaHasFloodData = false;
+  let floodOnMap: boolean | null = null;
   if (centroidLng !== null && centroidLat !== null) {
     try {
       const sr = await query(
         `SELECT layer_type FROM spatial_overlays
          WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
-         AND layer_type IN ('flood', 'biodiversity', 'acid_sulfate')`,
+         AND layer_type IN ('biodiversity', 'acid_sulfate')`,
         [centroidLng, centroidLat]
       );
       overlayTypes = new Set(sr.rows.map((r: any) => r.layer_type));
@@ -291,17 +291,28 @@ export async function POST(req: NextRequest) {
       // spatialQueryRan stays false — all spatial checks fall to 'unknown'
     }
   }
-  // Check if this LGA has flood coverage — allows returning 'pass' (not 'unknown') for clear properties
-  if (lgaName) {
+  // Flood control lot (secondary dwellings excluded, SEPP Housing 2021): only a YES from the
+  // council's flood planning map is an answer. "Not on the map" is not "not a flood control lot"
+  // (that is the council's s10.7 certificate), so it stays unknown and can never read "pass".
+  // This used to pass any point outside a 'flood' row in a council with any flood row, and fail
+  // on extreme-flood (PMF) and non-flood rows (2026-10-28).
+  if (centroidLng !== null && centroidLat !== null) {
     try {
-      const fcr = await query(
-        `SELECT 1 FROM spatial_overlays WHERE lga_name = $1 AND layer_type = 'flood' LIMIT 1`,
-        [lgaName.toUpperCase()]
-      );
-      lgaHasFloodData = fcr.rows.length > 0;
+      const fr = await fetch(`${process.env.PYTHON_API_URL || 'http://localhost:8000'}/pipeline/flood-planning`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: centroidLat, lng: centroidLng }),
+        signal: AbortSignal.timeout(8000),
+        cache: 'no-store',
+      });
+      if (fr.ok) {
+        const fd = await fr.json();
+        if (fd?.value === true) floodOnMap = true;
+      }
     } catch {
-      // lgaHasFloodData stays false — flood falls back to 'unknown' (safe)
+      // floodOnMap stays null — flood reads 'unknown' (safe)
     }
+  }
   }
 
   // 5b. ePlanning Phase 1: Dual occupancy prohibition (layer 452)
@@ -345,8 +356,8 @@ export async function POST(req: NextRequest) {
     lot_area: 'unknown',
     zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail', // qa-ignore: type-boundary — zone is string|null from geocode API
     heritage: planningControls.length === 0 ? 'unknown' : hasHeritage ? 'fail' : 'pass',
-    // flood: fail if in flood zone; pass if LGA has coverage but point is clear; unknown if no LGA data
-    flood: overlayTypes.has('flood') ? 'fail' : lgaHasFloodData ? 'pass' : 'unknown',
+    // flood: fail only on a flood planning map yes; otherwise unknown (never pass from a map)
+    flood: floodOnMap === true ? 'fail' : 'unknown',
     // biodiversity/acid_sulfate: state-wide — no rows = pass, but only if query actually ran
     biodiversity: overlayTypes.has('biodiversity') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
     acid_sulfate: overlayTypes.has('acid_sulfate') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
