@@ -13,7 +13,7 @@ Usage:
     python3 scripts/dcp_extract_changed.py               # extract all flagged chapters
     python3 scripts/dcp_extract_changed.py --council marrickville
     python3 scripts/dcp_extract_changed.py --dry-run     # extract but no DB writes
-    python3 scripts/dcp_extract_changed.py --review      # extract to review file, no DB writes
+    python3 scripts/dcp_extract_changed.py --review      # extract to a review file and queue the changes for review; live rules untouched
     python3 scripts/dcp_extract_changed.py --council ku_ring_gai --review
 
 Exit codes:
@@ -5883,7 +5883,7 @@ def main() -> None:
         action="store_true",
         help=(
             "Extract to memory only — write a human-readable review file with section "
-            "lists, sample provision texts, and artifact checks. No DB writes. "
+            "lists, sample provision texts, and artifact checks, and queue the changes in dcp_review_queue. Live rules are not changed. "
             "Inspect the file, then re-run without --review to commit."
         ),
     )
@@ -5931,7 +5931,7 @@ def main() -> None:
     print("=" * 60)
     print(f"DCP Extraction Pipeline — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
     if args.review:
-        print("REVIEW MODE — no DB writes, generates review file for inspection")
+        print("REVIEW MODE — live rules untouched; writes a review file and queues changes in dcp_review_queue")
     elif args.dry_run:
         print("DRY RUN")
     print("=" * 60)
