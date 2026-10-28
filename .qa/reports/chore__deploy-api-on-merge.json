@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "New CI workflow that deploys the Railway API service after merges to main. Not Critical: it only starts the deploy Railway should have started; no code path served to users changes. Not Minor: it triggers production deploys.",
- "commit_hash": "f86936c0",
+ "commit_hash": "083f05a1",
  "files": [
   ".github/workflows/deploy-api.yml",
   "scripts/railway_deploy_api.py",
