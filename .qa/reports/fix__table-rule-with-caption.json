@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council table rules the nightly quote check may prove as the council's words. Fleet run on all unproven shown rules (2026-10-28, old vs new code): 13 become exact (6 Parramatta, 4 Ashfield, Hornsby, City of Sydney, Waverley); each read; 0 others change.",
+  "commit_hash": "22abf8f1",
+  "files": [
+    "scripts/council_quote_table.py",
+    "tests/test_council_quote_table.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote_table.py -q -o addopts=",
+    "expected": "all pass",
+    "fails_when": "a wrapped cell or a captioned table is refused again, or a plain line between two rows is copied",
+    "observed_red": "2026-10-28: on origin/main council_quote_table.py the new tests give 2 failed (wrapped cell, caption)."
+  },
+  "pre_impl": {
+    "existing_data": "Hornsby re-read 2026-10-28: facade articulation and two setback tables unproven because cells wrap over two printed lines and rules carry a caption line.",
+    "assumption_mismatch": "prove_rows assumed every line is a table row and every cell sits on one printed line.",
+    "new_vs_existing": "Extends prove_rows/_prove_row in the existing table proof; no new status, table or column."
+  },
+  "functions": [
+    {
+      "name": "_wrapped_hits",
+      "file_line": "scripts/council_quote_table.py",
+      "input": "one cell's normalised text, the stream, and the page number",
+      "output": "first line and lines of each place the cell covers consecutive lines of one column exactly",
+      "if_none": "no match gives an empty list, so the cell is refused as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "page line positions (x, y)",
+      "read_at": "scripts/council_quote_table.py _wrapped_hits",
+      "if_missing": "no lines on the page gives no hits and the row stays unproven"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A wrapped cell joins the next row's first line.",
+      "what_happens": "A value could be paired with the wrong row.",
+      "mitigated": true,
+      "how": "The joined lines must equal the cell text exactly and lie within 16pt of each other in one column.",
+      "repro": "python -m pytest tests/test_council_quote_table.py -q -o addopts="
+    },
+    {
+      "scenario": "A plain half-row between two table rows is copied.",
+      "what_happens": "The table would be printed scrambled to visitors.",
+      "mitigated": true,
+      "how": "Plain lines are allowed only before or after the table rows; test added.",
+      "repro": "python -m pytest tests/test_council_quote_table.py -q -o addopts="
+    },
+    {
+      "scenario": "A cell continues from the bottom of one column to the top of the next.",
+      "what_happens": "Text from two columns could be joined into one wrong cell.",
+      "mitigated": true,
+      "how": "Not allowed: same left edge and 16pt gap required, so it stays unproven (Hornsby p57 tables).",
+      "repro": "python -m pytest tests/test_council_quote_table.py -q -o addopts="
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Takes effect at the next nightly council_quote --apply --unchecked run.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
