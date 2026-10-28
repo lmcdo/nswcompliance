@@ -196,7 +196,8 @@ def test_the_endpoint_returns_the_producer_answer(monkeypatch):
     monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out == {"value": None, "reason": "we do not hold this council's flood planning map",
-                   "council": "NEWCASTLE", "category": None, "nearest_m": None, "whole_lot": None}
+                   "council": "NEWCASTLE", "category": None, "nearest_m": None, "whole_lot": None,
+                   "council_info_text": None}
 
 
 def test_the_endpoint_never_raises(monkeypatch):
@@ -229,3 +230,25 @@ def test_an_untrusted_lot_outline_falls_back_to_the_point_rule():
         [(False,)], [], [("BALLINA",)], [("BALLINA",)], [(120.0,)]), lot_wkt=LOT)
     assert s["whole_lot"] is False
     assert s["value"] is None and s["nearest_m"] == 120.0
+
+
+def test_council_info_sentence_uses_only_what_is_held():
+    s = fp.council_info_sentence({"certificate_label": "Flood Certificates (City of Newcastle)",
+                                  "certificate_url": "https://www.ncc.nsw.gov.au/x", "data_sources": []})
+    assert s.startswith("For this council, the council issues Flood Certificates")
+    assert "https://www.ncc.nsw.gov.au/x" in s
+    assert fp.council_info_sentence(None) is None
+    assert fp.council_info_sentence({"data_sources": []}) is None
+
+
+def test_council_info_falls_back_to_the_flood_study_link():
+    s = fp.council_info_sentence({"data_sources": [{"url": "https://flooddata.ses.nsw.gov.au/dataset/x"}]})
+    assert "flood studies are listed at https://flooddata.ses.nsw.gov.au/dataset/x" in s
+
+
+def test_the_answer_carries_council_info(monkeypatch):
+    monkeypatch.setattr(fp, "_council_info", lambda conn, council: {
+        "certificate_label": "Flood Certificates", "certificate_url": "https://u", "data_sources": []})
+    s = fp.flood_planning_status(-32.93, 151.78, conn_with(
+        [], [("NEWCASTLE",)], [("BALLINA",)], [(False,)]))
+    assert s["value"] is None and s["council_info_text"].startswith("For this council")
