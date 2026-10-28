@@ -649,7 +649,7 @@ def main() -> int:
     ap.add_argument("--chapter", help="one chapter_key (needs --council): the publish step runs this per chapter")
     ap.add_argument("--ids", help="comma-separated rule ids")
     ap.add_argument("--unchecked", action="store_true",
-                    help="only rules whose quote_status is NULL (re-prove after a PDF or text change)")
+                    help="only rules with no verdict, plus unproven rules not re-checked for a week (council_quote_db.UNCHECKED_SQL)")
     ap.add_argument("--out", default=str(Path(os.environ.get("CLAUDE_JOB_DIR", ROOT)) / "tmp" / "council_quote_dryrun.json"))
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()

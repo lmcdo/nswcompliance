@@ -588,3 +588,11 @@ def test_a_table_chapter_with_one_repeated_sentence_is_not_read_as_doubled():
     texts += ["y", "y", "shrub", "shrub"] * 10
     lines = [cp.Line(1, 100.0 + 12 * n, 72.0, t) for n, t in enumerate(texts)]
     assert cq.doubled_lines(lines) == set()
+
+
+def test_the_nightly_sweep_rechecks_unproven_rules_weekly():
+    import council_quote_db as db
+    assert "quote_status IS NULL" in db.UNCHECKED_SQL            # new and edited rules, as before
+    assert "quote_status = 'unconfirmed' AND v2_is_actionable" in db.UNCHECKED_SQL   # and unproven SHOWN rules come back
+    assert f"interval '{db.RECHECK_DAYS} days'" in db.UNCHECKED_SQL and db.RECHECK_DAYS == 7
+    assert "'exact'" not in db.UNCHECKED_SQL and "'recovered'" not in db.UNCHECKED_SQL   # proven rules are not re-judged
