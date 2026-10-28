@@ -83,15 +83,8 @@
    "compound_wetlands": null,
    "data_currency": "2022-12-16",
    "dea_wofs_frequency_pct": 0.04,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "flood_planning_area",
    "epi_flood_label": "Flood Planning Area",
    "flood_event_count": null,
@@ -156,15 +149,8 @@
    "compound_wetlands": null,
    "data_currency": "2019-05-03",
    "dea_wofs_frequency_pct": 0.4,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "flood_planning_area",
    "epi_flood_label": "Flood Planning Area",
    "flood_event_count": null,
@@ -225,15 +211,8 @@
    "compound_wetlands": null,
    "data_currency": "2019-05-03",
    "dea_wofs_frequency_pct": 93.91,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "flood_planning_area",
    "epi_flood_label": "Flood Planning Area",
    "flood_event_count": null,
@@ -426,12 +405,6 @@
      "event_date": "2022-07-01",
      "event_name": "NSW Floods July 2022",
      "flood_type": "observed"
-    },
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
     }
    ],
    "ems_flood_detected": true,
@@ -541,15 +514,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.18,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -646,15 +612,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.07,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -710,15 +669,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.27,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -774,15 +726,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.18,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -838,15 +783,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.08,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -901,15 +839,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.08,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -965,15 +896,8 @@
    "compound_wetlands": null,
    "data_currency": "unknown",
    "dea_wofs_frequency_pct": 0.38,
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": "none",
    "epi_flood_label": "No EPI Flood Overlay",
    "flood_event_count": null,
@@ -1023,15 +947,8 @@
    "bom_last_major_flood_date": null,
    "bom_last_major_flood_peak_m": null,
    "data_currency": "query_failed",
-   "ems_activations": [
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
-    }
-   ],
-   "ems_flood_detected": true,
+   "ems_activations": [],
+   "ems_flood_detected": false,
    "epi_flood_class": null,
    "epi_flood_label": null,
    "flood_event_count": null,
@@ -1159,12 +1076,6 @@
      "event_date": "2022-07-01",
      "event_name": "NSW Floods July 2022",
      "flood_type": "observed"
-    },
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
-     "flood_type": "observed"
     }
    ],
    "ems_flood_detected": true,
@@ -1279,12 +1190,6 @@
      "activation_id": "NSW-202207",
      "event_date": "2022-07-01",
      "event_name": "NSW Floods July 2022",
-     "flood_type": "observed"
-    },
-    {
-     "activation_id": "EMSR567",
-     "event_date": "2022-02-26",
-     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
      "flood_type": "observed"
     }
    ],

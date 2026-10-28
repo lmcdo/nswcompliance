@@ -143,10 +143,24 @@ def test_signal_epi_medium_flood_risk_returns_low():
 # _compute_flood_signal — moderate
 # ---------------------------------------------------------------------------
 
-def test_signal_ems_detected_alone_returns_none():
-    """EMS alone never decides a level (EMSR567 is a whole mapped region)."""
+def test_signal_ems_detected_alone_returns_low():
+    """A hit inside a real mapped 2022 extent alone is "low", never more
+    (EMSR567 reloaded as the observed extent only, 333.8 km2, #1529)."""
     out = _outputs(ems_flood_detected=True)
-    assert _compute_flood_signal(out) == "none"
+    assert _compute_flood_signal(out) == "low"
+
+
+def test_signal_ems_hit_lifts_unavailable_to_low():
+    """Outside EPI coverage with no local study, a real extent hit is still
+    evidence about this point."""
+    out = _outputs(epi_flood_class="none", ems_flood_detected=True)
+    assert _compute_flood_signal(out) == "low"
+
+
+def test_signal_ems_miss_does_not_lift_unavailable():
+    """A miss says nothing: the 2022 extents cover only the areas mapped then."""
+    out = _outputs(epi_flood_class="none", ems_flood_detected=False)
+    assert _compute_flood_signal(out) == "unavailable"
 
 
 def test_signal_epi_plus_jrc_low_returns_moderate():
@@ -2302,3 +2316,14 @@ def test_bounds_proxy_uses_pmf_extent_not_smaller_1pct_grid(tmp_path, monkeypatc
     assert "probe" in matched, "study skipped — bounds proxy used the smaller 1% grid"
     assert matched["probe"]["design"]["pmf"] == {"depth_m": 2.0, "level_m_ahd": 2.0}
     assert "1pct" not in matched["probe"]["design"]  # point is outside the 1% grid
+
+
+def test_cache_never_serves_a_check_from_before_the_emsr567_reload():
+    """Saved checks before 2026-10-29 carry the 86,349 km2 EMS hit (222 of 308);
+    the cache read must exclude them by their ORIGINAL run_date."""
+    import inspect
+    import services.flood_truth as ft
+    assert ft.FLOOD_CACHE_MIN_RUN_DATE >= date(2026, 10, 29)
+    src = inspect.getsource(ft)
+    assert "AND run_date >= %s" in src
+    assert "req.lng, FLOOD_CACHE_MIN_RUN_DATE)" in src
