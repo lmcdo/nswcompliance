@@ -102,14 +102,30 @@ def _covered_councils(cur) -> Optional[set]:
     now = time.time()
     if _covered_cache.get("councils") is not None and now - (_covered_cache.get("at") or 0.0) < _COVERED_TTL_S:
         return _covered_cache.get("councils")
+    # PARTIAL_ maps cover only a studied area, never the whole council
+    # (scripts/ingest_flood_studies.py); they count only via a study-area
+    # outline (_inside_study_area), never here.
     cur.execute(
         "SELECT DISTINCT lga_name FROM spatial_overlays "
-        "WHERE layer_type = 'flood' AND value = ANY(%s) AND lga_name <> 'UNKNOWN'",
+        "WHERE layer_type = 'flood' AND value = ANY(%s) AND lga_name <> 'UNKNOWN' "
+        "AND instrument_key NOT LIKE 'PARTIAL\_%%'",
         (sorted(_YES),),
     )
     councils = {_cols(r, "lga_name")[0] for r in cur.fetchall()}
     _covered_cache.update(at=now, councils=councils)
     return councils
+
+
+def _inside_study_area(cur, lat: float, lng: float, council: str) -> bool:
+    """Is the point inside a loaded study-area outline for this council? A
+    partial council map supports a "no" only there."""
+    cur.execute(
+        "SELECT EXISTS(SELECT 1 FROM spatial_overlays WHERE layer_type = 'flood_coverage' "
+        "AND lga_name = %s AND ST_Covers(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)))",
+        (council, lng, lat),
+    )
+    row = cur.fetchone()
+    return bool(_cols(row, "exists")[0]) if row else False
 
 
 def council_at(lat: float, lng: float, cur) -> Optional[str]:
@@ -216,8 +232,8 @@ def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] =
                 out["reason"] = "council could not be identified"
                 return out
             covered = _covered_councils(cur)
-            if council not in covered:
-                out["reason"] = "we do not hold this council's flood planning map"
+            if council not in covered and not _inside_study_area(cur, lat, lng, council):
+                out["reason"] = "we do not hold this council's flood planning map for this area"
                 return out
             if lot is not None:
                 out.update(value=False, category="extreme_only" if extreme_only else None,

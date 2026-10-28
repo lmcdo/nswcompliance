@@ -1,0 +1,87 @@
+{
+ "tier": "standard",
+ "justification": "Lets the flood planning answer use council maps that cover only studied areas, without false no answers elsewhere. Not Critical: only adds yes answers and in-study no answers. Not Minor: served flood answers change once the 3 maps load.",
+ "commit_hash": "3ff1e472",
+ "files": [
+  "scripts/ingest_flood_studies.py",
+  "services/flood_planning.py",
+  "tests/test_flood_planning.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if a PARTIAL map makes a whole council covered, or a partial council gives no outside its study area.",
+  "external_authority": "Vetted council ArcGIS items 2026-10-28; dry runs read 306/5/25/15 shapes from the live services.",
+  "observed_red": "The new tests describe behaviour absent before: any planning row made the whole council covered."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays flood: 33 values, 72 councils; spatial_overlays_coverage says 12 (stale, not used).",
+  "assumption_mismatch": "The old lookup said False whenever the table had any flood row, and True for PMF and non-flood rows.",
+  "new_vs_existing": "One new producer module; the flood tool's own flood queries removed (producer lint 4->2 in flood_truth).",
+  "external_source_error": "Spatial Services outage or DB error -> None with reason, never no."
+ },
+ "functions": [
+  {
+   "name": "_covered_councils",
+   "file_line": "services/flood_planning.py",
+   "what": "Excludes PARTIAL_ maps from whole-council coverage.",
+   "input": "an open database cursor on spatial_overlays",
+   "output": "set of councils with full flood planning maps",
+   "if_none": "Errors propagate to the caller, which returns None.",
+   "edge_cases": "council with only PARTIAL_ rows",
+   "failure_mode": "At worst not known"
+  },
+  {
+   "name": "_inside_study_area",
+   "file_line": "services/flood_planning.py",
+   "what": "Is the point inside a loaded study-area outline.",
+   "input": "cursor, latitude, longitude, council name",
+   "output": "true when the point is inside an outline",
+   "if_none": "No outline rows means false, so not known.",
+   "edge_cases": "council without outlines (Coffs, Cessnock)",
+   "failure_mode": "Not known"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address in Bellingen outside the river study area",
+   "what_happens": "Answer stays not known, never a false no",
+   "mitigated": true,
+   "how": "study-area check",
+   "repro": "pytest -k partial_council_map"
+  },
+  {
+   "scenario": "Address in Coffs Harbour inside a mapped flood planning area",
+   "what_happens": "Answer is yes from the partial map",
+   "mitigated": true,
+   "how": "hits use all flood rows",
+   "repro": "pytest -k planning_line_hit"
+  },
+  {
+   "scenario": "A PARTIAL map row is mistaken for a full council map",
+   "what_happens": "Never counted as whole-council coverage",
+   "mitigated": true,
+   "how": "NOT LIKE 'PARTIAL_%' in the covered query",
+   "repro": "pytest -k never_count_a_whole_council"
+  }
+ ],
+ "verified": [
+  "18 producer tests",
+  "1935 flood/brief/conveyancing/cdc tests",
+  "dry runs 306/5/25/15 shapes"
+ ],
+ "gaps": [
+  "Coffs Harbour and Cessnock have no study-area outline yet (yes only)",
+  "Loads run only after this deploys"
+ ],
+ "post_merge": {
+  "action": "After deploy: run ingest_flood_studies.py for bellingen_fpa, bellingen_coverage, coffs_fpa, cessnock_1pct (inserts only; rollback = DELETE WHERE instrument_key LIKE 'PARTIAL_%')",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "/pipeline/flood-planning for a Bellingen study-area point says yes or no; outside says not known"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "SQL checked by live dry runs and the post-merge load check.",
+  "scripts/ingest_flood_studies.py": "Live dry runs against the 4 council services."
+ }
+}
