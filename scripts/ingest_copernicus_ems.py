@@ -224,7 +224,11 @@ def _read_observed_geometries(zip_bytes: bytes) -> list:
                 geom = shape(feat["geometry"])
                 if geom.is_empty:
                     raise ExtentRejected(f"{Path(name).name}: a flood feature has an empty geometry")
-                geoms.append(geom if geom.is_valid else geom.buffer(0))
+                if not geom.is_valid:
+                    geom = geom.buffer(0)
+                    if geom.is_empty:
+                        raise ExtentRejected(f"{Path(name).name}: a flood feature repaired to nothing")
+                geoms.append(geom)
     return geoms
 
 

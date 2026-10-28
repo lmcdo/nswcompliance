@@ -175,3 +175,13 @@ def test_a_source_that_loads_nothing_rolls_back_its_clear(monkeypatch):
     ems.main()
     first_commit = log.index(("commit",))
     assert ("rollback",) in log[:first_commit]
+
+
+def test_a_feature_that_repairs_to_nothing_stops_the_read():
+    flat = {"type": "Polygon", "coordinates": [[[153.0, -28.0], [153.1, -28.0], [153.2, -28.0], [153.0, -28.0]]]}
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(f"{PREFIX}observedEventA_r1_v1.json", json.dumps({"type": "FeatureCollection",
+                    "features": [{"type": "Feature", "properties": {}, "geometry": flat}]}))
+    with pytest.raises(ems.ExtentRejected, match="repaired to nothing"):
+        ems._read_observed_geometries(buf.getvalue())
