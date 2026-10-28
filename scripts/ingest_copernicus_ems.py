@@ -227,29 +227,43 @@ def _read_observed_geometries(zip_bytes: bytes) -> list:
 
 
 def _fetch_s3_zip_geometries(zip_url: str) -> Optional[list]:
-    """Observed flood polygons from one ZIP; None when the ZIP is not there."""
-    try:
-        r = requests.get(zip_url, timeout=60)
-        if r.status_code in (403, 404):
-            return None
-        r.raise_for_status()
-    except Exception as e:
-        log.debug(f"  Skip {zip_url.split('/')[-1]}: {e}")
+    """Observed flood polygons from one ZIP; None when the ZIP is not there.
+
+    S3 answers 403 or 404 for a key that does not exist. Any other failure
+    (timeout, 5xx) raises: a silently skipped AOI would serve "no flood" for
+    every address in it.
+    """
+    r = requests.get(zip_url, timeout=60)
+    if r.status_code in (403, 404):
         return None
+    r.raise_for_status()
     return _read_observed_geometries(r.content)
+
+
+# AOIs with no DEL vector ZIP on S3 under either RTP name (checked 2026-10-28).
+# Any other AOI coming back empty means the download is incomplete.
+# prior-art-checked: guard flagged pip internals only; this edits the existing ingest in place.
+EMSR567_AOIS_WITHOUT_DEL = {5, 11, 12}
 
 
 def build_emsr567_extent(source: FloodSource):
     """Download every AOI, keep observed flood polygons only, union, check."""
     all_geoms = []
-    for candidates in _list_emsr567_vector_zips(source.url):
+    missing = []
+    for aoi, candidates in enumerate(_list_emsr567_vector_zips(source.url), 1):
         for url in candidates:
             geoms = _fetch_s3_zip_geometries(url)
-            if geoms is None:
-                continue
-            log.info(f"  {Path(url).name}: {len(geoms)} observed-flood polygons")
-            all_geoms.extend(geoms)
-            break
+            if geoms:
+                log.info(f"  {Path(url).name}: {len(geoms)} observed-flood polygons")
+                all_geoms.extend(geoms)
+                break
+        else:
+            if aoi not in EMSR567_AOIS_WITHOUT_DEL:
+                missing.append(aoi)
+    if missing:
+        raise ExtentRejected(
+            f"{source.source_id}: no observed flood polygons for AOI {missing} -- "
+            "download incomplete; nothing written")
     log.info(f"EMSR567: unioning {len(all_geoms)} polygons ...")
     merged = unary_union(all_geoms) if all_geoms else None
     if merged is not None and merged.geom_type == "Polygon":

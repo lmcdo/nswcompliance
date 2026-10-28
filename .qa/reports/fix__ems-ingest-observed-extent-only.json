@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
- "commit_hash": "7330c742",
+ "commit_hash": "83a034d2",
  "files": [
   "scripts/ingest_copernicus_ems.py",
   "tests/test_ingest_copernicus_ems_guard.py"

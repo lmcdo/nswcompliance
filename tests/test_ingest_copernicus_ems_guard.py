@@ -108,3 +108,36 @@ def test_refused_extent_writes_nothing(monkeypatch):
     with pytest.raises(ems.ExtentRejected):
         ems.ingest_emsr567(ems.SOURCE_MAP["EMSR567"], conn=object())
     assert called == []
+
+
+def _aoi(url: str) -> int:
+    return int(url.split("_AOI")[1][:2])
+
+
+def test_a_missing_aoi_stops_the_load(monkeypatch):
+    """AOI07 failing to come back must not quietly drop it from the extent."""
+    monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
+                        lambda url: None if _aoi(url) in (5, 7, 11, 12) else [FLOOD])
+    called = []
+    monkeypatch.setattr(ems, "_insert_row", lambda *a: called.append(a))
+    with pytest.raises(ems.ExtentRejected, match=r"AOI \[7\]"):
+        ems.ingest_emsr567(ems.SOURCE_MAP["EMSR567"], conn=object())
+    assert called == []
+
+
+def test_the_known_absent_aois_are_allowed(monkeypatch):
+    monkeypatch.setattr(ems, "_fetch_s3_zip_geometries",
+                        lambda url: None if _aoi(url) in ems.EMSR567_AOIS_WITHOUT_DEL else [FLOOD])
+    assert ems.build_emsr567_extent(ems.SOURCE_MAP["EMSR567"]).area > 0
+
+
+def test_a_server_error_raises_rather_than_skipping(monkeypatch):
+    class Resp:
+        status_code = 500
+
+        def raise_for_status(self):
+            raise RuntimeError("500 Server Error")
+
+    monkeypatch.setattr(ems.requests, "get", lambda *a, **k: Resp())
+    with pytest.raises(RuntimeError, match="500"):
+        ems._fetch_s3_zip_geometries("https://example/EMSR567_AOI07_x.zip")
