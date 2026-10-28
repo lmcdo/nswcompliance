@@ -1,13 +1,23 @@
 {
  "tier": "standard",
  "justification": "Paid conveyancing PDF flood row, summary and CDC flood input. Not Critical: only removes over-claims (PMF/non-flood rows) and a false 'no' for unheld councils. Not Minor: printed report wording changes.",
- "commit_hash": "df41a1e9",
+ "commit_hash": "5055e5af",
  "files": [
   "scripts/generate_conveyancing_report.py",
+  "scripts/page_integrity/producer_baseline.json",
   "services/cdc_screen.py",
   "services/conveyancing.py",
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "services/intelligence_brief.py",
+  "tests/test_brief_failclosed.py",
+  "tests/test_brief_slice2_distances.py",
   "tests/test_cdc_screen.py",
-  "tests/test_conveyancing_flood_planning.py"
+  "tests/test_conveyancing_flood_planning.py",
+  "tests/test_flood_planning.py",
+  "tests/test_flood_queries.py",
+  "tests/test_flood_truth.py",
+  "tests/test_intelligence_brief_orchestrator.py"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_cdc_screen.py tests/test_conveyancing_flood_planning.py -q",
@@ -84,6 +94,8 @@
  "real_layer_exempt": {
   "scripts/generate_conveyancing_report.py": "Helper calls the producer exercised against the live DB in PR #1539.",
   "services/conveyancing.py": "Passes the helper's result only.",
-  "services/cdc_screen.py": "Pure input mapping."
+  "services/cdc_screen.py": "Pure input mapping.",
+  "services/flood_planning.py": "Exercised against the real database and Spatial Services on all 310 saved points before commit; DB test checks every stored value.",
+  "services/flood_truth.py": "The changed lookup now calls flood_planning_status, whose real-DB test (tests/test_flood_planning.py, PYTEST_REAL_DB) and the 310-point live run exercise the query; flood_truth no longer runs its own flood query."
  }
 }
