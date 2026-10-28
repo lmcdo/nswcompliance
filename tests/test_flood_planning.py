@@ -295,3 +295,11 @@ def test_the_flood_check_hands_the_lot_to_the_one_answer(monkeypatch):
     monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
     ft._query_ses_flood_study(-32.80, 151.51, LOT)
     assert seen["lot_wkt"] == LOT
+
+
+def test_partial_council_near_check_counts_only_that_councils_lines():
+    c = conn_with([], [("CESSNOCK",)], [("BALLINA",)], [(False,)], [(5.9,)])
+    fp.flood_planning_status(-32.80, 151.51, c)
+    cur = c.cursor.return_value
+    i = next(n for n, q in enumerate(cur.sql) if "ST_Distance" in q)
+    assert "lga_name = %s" in cur.sql[i] and cur.params[i][-2:] == ("CESSNOCK", "CESSNOCK")
