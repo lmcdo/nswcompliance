@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the served flood planning answer in the flood tool and the site brief (102 of 310 saved checks change). Not Critical: only moves a false 'no' to 'not known' and drops extreme-only lines; one raise is a real planning-area hit. Not Minor: served answers change.",
- "commit_hash": "6478c305",
+ "commit_hash": "5db53bad",
  "files": [
   "scripts/page_integrity/producer_baseline.json",
   "services/flood_planning.py",
@@ -89,6 +89,7 @@
   "manual_verify": "A Richmond Valley address shows not known, not outside"
  },
  "real_layer_exempt": {
-  "services/flood_planning.py": "Exercised against the real database and Spatial Services on all 310 saved points before commit; DB test checks every stored value."
+  "services/flood_planning.py": "Exercised against the real database and Spatial Services on all 310 saved points before commit; DB test checks every stored value.",
+  "services/flood_truth.py": "The changed lookup now calls flood_planning_status, whose real-DB test (tests/test_flood_planning.py, PYTEST_REAL_DB) and the 310-point live run exercise the query; flood_truth no longer runs its own flood query."
  }
 }

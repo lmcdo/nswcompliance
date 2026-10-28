@@ -97,7 +97,7 @@ def _covered_councils(cur) -> Optional[set]:
     feature count exactly (2026-10-28); the rest came from council sources.
     """
     now = time.time()
-    if _covered_cache.get("councils") is not None and now - _covered_cache.get("at", 0.0) < _COVERED_TTL_S:
+    if _covered_cache.get("councils") is not None and now - (_covered_cache.get("at") or 0.0) < _COVERED_TTL_S:
         return _covered_cache.get("councils")
     cur.execute(
         "SELECT DISTINCT lga_name FROM spatial_overlays "
