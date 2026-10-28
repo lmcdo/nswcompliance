@@ -1,0 +1,84 @@
+{
+ "tier": "standard",
+ "justification": "New CI workflow that deploys the Railway API service after merges to main. Not Critical: it only starts the deploy Railway should have started; no code path served to users changes. Not Minor: it triggers production deploys.",
+ "commit_hash": "083f05a1",
+ "files": [
+  ".github/workflows/deploy-api.yml",
+  "scripts/railway_deploy_api.py",
+  "tests/test_railway_deploy_api.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_railway_deploy_api.py -q",
+  "fails_when": "Fails if an existing deployment is duplicated, a missing one is not started, a failed deploy passes, or a missing token passes.",
+  "external_authority": "Railway API on 2026-10-29: no deployments for #1545/#1548 commits; serviceInstanceDeployV2 deployed d3350f17 (982940fc, SUCCESS).",
+  "observed_red": "The live gap (two merged PRs undeployed) is the observed failure; the tests pin each path."
+ },
+ "pre_impl": {
+  "existing_data": "Railway trigger: branch main, watch services/**, checkSuites false; other 8 services deployed the same commits.",
+  "assumption_mismatch": "Settings looked correct yet no deployment was created for the API service.",
+  "new_vs_existing": "Existing scripts only read Railway state; this is the first that triggers a deploy.",
+  "external_source_error": "Railway API error raises; the job fails red."
+ },
+ "functions": [
+  {
+   "name": "main",
+   "file_line": "scripts/railway_deploy_api.py",
+   "what": "Watch or start the API deployment for this commit and wait.",
+   "input": "RAILWAY_TOKEN and GITHUB_SHA environment variables",
+   "output": "exit 0 on deployed, 1 otherwise",
+   "if_none": "Missing token or sha exits 1, never 0.",
+   "edge_cases": "a SKIPPED deployment for the sha is ignored and a new one started",
+   "failure_mode": "Red job"
+  },
+  {
+   "name": "existing_deployment",
+   "file_line": "scripts/railway_deploy_api.py",
+   "what": "Finds Railway's own deployment for this commit.",
+   "input": "token and the commit sha string",
+   "output": "the deployment node or None",
+   "if_none": "No match returns None so one is started.",
+   "edge_cases": "REMOVED/SKIPPED ignored",
+   "failure_mode": "At worst one extra build"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Railway auto-deploy works again for this service",
+   "what_happens": "The job only watches Railway's own deployment",
+   "mitigated": true,
+   "how": "existing_deployment check first",
+   "repro": "pytest -k watched_not_duplicated"
+  },
+  {
+   "scenario": "Railway auto-deploy stays broken for this service",
+   "what_happens": "The job starts the deployment itself",
+   "mitigated": true,
+   "how": "serviceInstanceDeployV2",
+   "repro": "pytest -k missing_deployment"
+  },
+  {
+   "scenario": "The build or start fails on Railway",
+   "what_happens": "The GitHub job goes red",
+   "mitigated": true,
+   "how": "BAD statuses exit 1",
+   "repro": "pytest -k failed_deploy"
+  }
+ ],
+ "verified": [
+  "4 tests",
+  "Live run on d3350f17: found the existing deployment, exit 0, nothing started"
+ ],
+ "gaps": [
+  "Root cause on Railway's side unknown; this works around it and makes it visible"
+ ],
+ "post_merge": {
+  "action": "Watch the first deploy-api run on the next merge that touches services/",
+  "db_reset": "None",
+  "secrets": "Uses existing RAILWAY_TOKEN secret",
+  "other_repo": "None",
+  "manual_verify": "Actions tab: deploy-api green and the live endpoint reflects the merge"
+ },
+ "real_layer_exempt": {
+  "scripts/railway_deploy_api.py": "Exercised live against the Railway API on 2026-10-29 (exit 0, no new deployment)."
+ }
+}
