@@ -448,18 +448,19 @@ export function buildLeadAlert(f: LeadAlertFields): { subject: string; text: str
     ? Object.entries(f.qualification).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join(', ')
     : '';
   const text = [
-    `Type:      ${f.interestType ?? 'granny-flat'}`,
+    `Type:      ${f.interestType ?? '(not stated)'}`,
     `From:      ${f.firstName ? `${f.firstName} ` : ''}<${f.email}>${f.phone ? `  ${f.phone}` : ''}`,
     `Address:   ${f.address ?? '(none)'}`,
     f.lgaName ? `Council:   ${f.lgaName}` : null,
     f.eligible !== null ? `Eligible:  ${f.eligible ? 'yes' : 'no'}` : null,
     answers ? `Answers:   ${answers}` : null,
     `Their email sent: ${f.emailSent ? 'yes' : 'NO - reply by hand'}`,
-    f.consentWording ? `They agreed to: "${f.consentWording}"` : 'No consent wording recorded.',
+    // Sent by the form, not proof of a tick: check the form before passing details on.
+    f.consentWording ? `Wording on the form: "${f.consentWording}"` : 'No consent wording recorded.',
     '',
     `Lead id ${f.id ?? '(unknown)'}. Reply to this email to reach them.`,
   ].filter((line) => line !== null).join('\n');
-  return { subject: `Lead: ${f.interestType ?? 'granny-flat'} - ${f.address ?? f.email}`, text };
+  return { subject: `Lead: ${f.interestType ?? '(not stated)'} - ${f.address ?? f.email}`, text };
 }
 
 // Never throws and never fails the request: the lead is already stored.

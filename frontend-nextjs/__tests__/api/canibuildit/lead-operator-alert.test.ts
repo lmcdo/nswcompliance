@@ -23,8 +23,14 @@ it('carries what is needed to act on the lead', () => {
   expect(text).toContain('Sam <owner@example.com>');
   expect(text).toContain('Council:   Goulburn Mulwaree');
   expect(text).toContain('Answers:   timeline=1-3m, ownership=owner');
-  expect(text).toContain('They agreed to: "Share my name with a granny flat builder."');
+  expect(text).toContain('Wording on the form: "Share my name with a granny flat builder."');
   expect(text).toContain('Lead id 7.');
+});
+
+it('does not guess a product when none was stated', () => {
+  const { subject, text } = buildLeadAlert({ ...BASE, interestType: null });
+  expect(subject).toMatch(/^Lead: \(not stated\)/);
+  expect(text).toContain('Type:      (not stated)');
 });
 
 it('flags a confirmation email that did not go', () => {
