@@ -107,9 +107,9 @@ describe('combineFloodAnswers', () => {
     expect(combineFloodAnswers({ floodProne: true, note: 'on' }, { value: false }).floodProne).toBe(true);
   });
 
-  it('a store no is worded as a point answer, not a whole-lot one', () => {
+  it('a store no (point only) never makes a No on this page: stays not known, explained', () => {
     const got = combineFloodAnswers(unknownState, { value: false });
-    expect(got.floodProne).toBe(false);
+    expect(got.floodProne).toBeNull();
     expect(got.note).toMatch(/address point/);
     expect(got.note).toMatch(/whole lot was not checked/);
   });

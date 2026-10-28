@@ -186,12 +186,14 @@ async function fetchStoreStatus(lon: number, lat: number): Promise<StoreFloodSta
 const STORE_NOT_ON_MAP = "The address point is not on the council's flood planning map and is more than 200 m from it. The whole lot was not checked.";
 
 /** Combine the state layer (whole-lot capable) with our store. Yes from either is Yes; a whole-lot
- *  No from layer 230 stands; a store No is a point answer, worded as one; otherwise not known. */
+ *  No from layer 230 stands; a store No (point only) never makes a No here; otherwise not known. */
 export function combineFloodAnswers(state: FloodMapStatus, store: StoreFloodStatus | null): FloodMapStatus {
   if (state.floodProne === true) return state;
   if (store?.value === true) return { floodProne: true, note: ON_MAP };
   if (state.floodProne === false) return state;
-  if (store?.value === false) return { floodProne: false, note: STORE_NOT_ON_MAP };
+  // A store "no" is a point answer; this page says "No" only when the whole lot was tested
+  // (Sol, 2026-10-20 and 2026-10-28), so it stays not known, with the point result in the note.
+  if (store?.value === false) return { ...state, note: `${state.note} ${STORE_NOT_ON_MAP}` };
   // Neither can say: keep the state layer's explanation (and its "did not answer" flag), adding
   // our store's reason so the page says why our own maps could not answer either.
   if (!store?.reason) return state;
