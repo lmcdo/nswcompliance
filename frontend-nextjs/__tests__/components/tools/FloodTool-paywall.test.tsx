@@ -193,10 +193,10 @@ describe('FloodTool — FloodLockedPreviewCard (elevated signal)', () => {
     expect(screen.getByText(/14\.4m/)).toBeInTheDocument();
   });
 
-  it('shows EMS event count (blurred)', async () => {
+  it('shows the mapped 2022 flood count (blurred)', async () => {
     await runFloodCheck();
-    expect(screen.getByText('Historical inundation events')).toBeInTheDocument();
-    expect(screen.getByText(/2 events since 2000/)).toBeInTheDocument();
+    expect(screen.getByText('Mapped 2022 floods covering this point')).toBeInTheDocument();
+    expect(screen.getByText(/2 of 3 maps/)).toBeInTheDocument();
   });
 
   it('shows JRC water occurrence (blurred)', async () => {
@@ -216,9 +216,10 @@ describe('FloodTool — FloodLockedPreviewCard (elevated signal)', () => {
     expect(screen.getByText(/Elevated flood signal/i)).toBeInTheDocument();
   });
 
-  it('shows alarm headline about lender for elevated signal', async () => {
+  it('carries no lender, valuer or underwriter alarm copy', async () => {
     await runFloodCheck();
-    expect(screen.getByText(/multiple independent flood sources/i)).toBeInTheDocument();
+    expect(screen.queryByText(/lender|valuer|underwriter|conveyancer will ask/i)).toBeNull();
+    expect(screen.queryByText(/In paid report/i)).toBeNull();
   });
 });
 
@@ -232,14 +233,21 @@ describe('FloodTool — FloodLockedPreviewCard (no flood signal)', () => {
     expect(screen.getByText('Your flood data')).toBeInTheDocument();
   });
 
-  it('shows "No flood indicators" headline for no-signal result', async () => {
+  it('says what was checked, never "safe", for a no-signal result', async () => {
     await runFloodCheck(NONE_RESULT);
-    expect(screen.getByText(/No flood indicators detected across checked sources/i)).toBeInTheDocument();
+    expect(screen.getByText('No mapped flood risk found')).toBeInTheDocument();
+    expect(screen.getByText(/cannot rule flooding out/i)).toBeInTheDocument();
+    expect(screen.queryByText(/\bsafe\b/i)).toBeNull();
   });
 
-  it('shows 0 events for no EMS activations', async () => {
+  it('shows 0 of 3 maps when the point is in no mapped 2022 flood', async () => {
     await runFloodCheck(NONE_RESULT);
-    expect(screen.getByText(/0 events since 2000/)).toBeInTheDocument();
+    expect(screen.getByText(/0 of 3 maps/)).toBeInTheDocument();
+  });
+
+  it('shows "no record", never a dash, for missing figures', async () => {
+    await runFloodCheck(NONE_RESULT);
+    expect(screen.queryAllByText('—')).toHaveLength(0);
   });
 });
 

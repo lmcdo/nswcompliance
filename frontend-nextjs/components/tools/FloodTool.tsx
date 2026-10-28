@@ -93,33 +93,35 @@ interface FloodResult {
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
 const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge: string; bar: string }> = {
+  // One plain verdict per flood_signal. "none" never reads as "no risk": it
+  // says what was checked, because the sources cover NSW unevenly.
   none:     {
-    label:    'No flood indicators detected',
-    sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records',
+    label:    'No mapped flood risk found',
+    sublabel: 'None of the sources we checked map flooding at this point: the NSW planning flood overlay, council flood studies where we hold them, the mapped 2022 flood extents, and satellite water history. This is not a flood certificate, and a source that does not cover this area cannot rule flooding out.',
     badge:    'bg-green-100 text-green-800',
     bar:      'bg-green-500',
   },
   low:      {
     label:    'Low flood signal',
-    sublabel: 'Property is within a statutory flood zone — no observed inundation events on record',
+    sublabel: 'One source shows flooding here: a planning flood zone, or a mapped 2022 flood. No other source we checked agrees.',
     badge:    'bg-yellow-100 text-yellow-800',
     bar:      'bg-yellow-400',
   },
   moderate: {
     label:    'Moderate flood signal',
-    sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing',
+    sublabel: 'One strong source, or two weaker ones, show flooding at this point.',
     badge:    'bg-orange-100 text-orange-800',
     bar:      'bg-orange-500',
   },
   elevated: {
     label:    'Elevated flood signal',
-    sublabel: 'Multiple independent sources confirm flood exposure — professional flood study recommended',
+    sublabel: 'Several separate sources show flooding at this point.',
     badge:    'bg-red-100 text-red-800',
     bar:      'bg-red-500',
   },
   unavailable: {
-    label:    'Flood study coverage not available for this address',
-    sublabel: 'Absence of data is not clearance — contact the local council directly to confirm flood status',
+    label:    'Not enough flood data for this address',
+    sublabel: 'The planning flood overlay does not cover this area and we hold no council flood study for it. No result here is not a clear result. Ask the council for its flood information.',
     badge:    'bg-gray-100 text-gray-600',
     bar:      'bg-gray-400',
   },
@@ -268,21 +270,6 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          <FreePaidComparison
-            free={[
-              'Government flood overlay (EPI)',
-              'Council flood study extent',
-              'Satellite water history (DEA WOfS)',
-            ]}
-            paid={[
-              '1-in-100 year flood depth (AHD)',
-              'BOM river gauge — last major flood',
-              'Copernicus EMS historical events',
-              'SAR radar flood detection',
-              '40-year water occurrence (JRC)',
-              'Full PDF report with source citations',
-            ]}
-          />
           {result.report_id ? (
             paidReportId ? (
               <FloodPaidDownloadCTA reportId={paidReportId} />
@@ -301,40 +288,11 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
 // FloodLockedPreviewCard — blur-to-reveal with real data from API response
 // ---------------------------------------------------------------------------
 
-function formatFloodDate(iso?: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
-}
+const NO_RECORD = 'no record';
 
-function FreePaidComparison({ free, paid }: { free: string[]; paid: string[] }) {
-  return (
-    <div className="mt-4 bg-white rounded-xl border border-gray-200 p-5">
-      <div className="grid grid-cols-2 gap-6">
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Included free</p>
-          <ul className="space-y-2">
-            {free.map((item) => (
-              <li key={item} className="flex items-start gap-2 text-xs text-gray-700">
-                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold">✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">In paid report</p>
-          <ul className="space-y-2">
-            {paid.map((item) => (
-              <li key={item} className="flex items-start gap-2 text-xs text-gray-500">
-                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-[10px]">🔒</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
+function formatFloodDate(iso?: string | null): string {
+  if (!iso) return NO_RECORD;
+  return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
 }
 
 function FloodLockedPreviewCard({
@@ -349,55 +307,39 @@ function FloodLockedPreviewCard({
   const [unlocked, setUnlocked] = useState(false);
 
   const alarmHeadline = signal === 'unavailable'
-    ? 'No automated flood data for this address — this is the riskiest result'
-    : signal === 'elevated'
-    ? 'This property flagged on multiple independent flood sources — your lender has already seen this'
-    : signal === 'moderate'
-    ? 'Flood exposure detected — your conveyancer will ask for the depths below before settlement'
-    : signal === 'low'
-    ? 'In a statutory flood zone — insurers price premiums against the depth numbers below'
-    : o.epi_flood_class && o.epi_flood_class !== 'none'
-    ? 'In a flood planning area — get the depths in writing before exchange'
-    : 'No flood indicators detected across checked sources — see limitations below';
+    ? 'Not enough flood data for this address'
+    : 'The numbers behind this result';
 
   const alarmDetail = signal === 'unavailable'
-    ? 'Absence of data is not clearance. If no flood study covers this area, flood status has not been formally assessed. The full report documents exactly what was checked and what was not — giving your solicitor a paper trail.'
-    : signal === 'elevated'
-    ? 'Banks, mortgage insurers, and conveyancers run the same government flood datasets before settlement. If they find flood risk you haven\'t disclosed, contracts fall over. The 1-in-100 year depth — the number they ask for — is in your report below.'
-    : signal === 'moderate'
-    ? 'One or more sources show flood exposure. Your lender\'s valuer and your insurer\'s underwriter will both want ARI depths before they commit. Those numbers are below — blurred.'
-    : signal === 'low'
-    ? 'Being in a flood zone doesn\'t kill a deal, but not knowing your depths does. Insurance underwriters price flood loading directly against the 1-in-100 year level. Your number is below.'
-    : 'The full report gives your conveyancer source citations across 6 independent datasets. For properties that come back clean, this replaces a $300+ council certificate.';
+    ? 'No result here is not a clear result. The figures below are what we could find; ask the council for its flood information.'
+    : 'River gauge, satellite and mapped-flood figures for this point, with where each one comes from.';
 
-  const emsCount = o.ems_activations?.length ?? 0;
+  // ems_activations: null = the mapped-flood lookup did not answer; [] = it
+  // answered and this point is in none of them.
+  const emsCount = Array.isArray(o.ems_activations) ? o.ems_activations.length : null;
 
   const rows = [
     {
       label: 'BOM last major flood',
-      preview: o.bom_last_major_flood_date ? formatFloodDate(o.bom_last_major_flood_date) : '—',
+      preview: formatFloodDate(o.bom_last_major_flood_date),
     },
     {
       label: 'Peak river height',
-      preview: o.bom_last_major_flood_peak_m != null ? `${o.bom_last_major_flood_peak_m}m above minor flood` : '—',
+      preview: o.bom_last_major_flood_peak_m != null ? `${o.bom_last_major_flood_peak_m}m above minor flood` : NO_RECORD,
     },
     {
-      label: 'Historical inundation events',
-      preview: `${emsCount} event${emsCount !== 1 ? 's' : ''} since 2000`,
+      label: 'Mapped 2022 floods covering this point',
+      preview: emsCount == null ? NO_RECORD : `${emsCount} of 3 maps (Feb–Mar, July, October 2022)`,
     },
     {
       label: '40-year water occurrence',
-      preview: o.jrc_water_occurrence_pct != null ? `${o.jrc_water_occurrence_pct}% of satellite observations` : '—',
+      preview: o.jrc_water_occurrence_pct != null ? `${o.jrc_water_occurrence_pct}% of satellite observations` : NO_RECORD,
     },
     {
       label: 'Nearest BOM gauge',
       preview: o.bom_gauge_name && o.bom_gauge_distance_km != null
         ? `${o.bom_gauge_name} · ${o.bom_gauge_distance_km}km`
-        : '—',
-    },
-    {
-      label: 'Copernicus EMS — historical flood activations',
-      preview: `${emsCount} recorded event${emsCount !== 1 ? 's' : ''} at this location`,
+        : NO_RECORD,
     },
   ];
 
@@ -592,14 +534,14 @@ function FloodCard({ result }: { result: FloodResult }) {
     findings.push({
       label: 'Government flood overlay',
       value: 'Not mapped as flood-prone',
-      detail: 'This property is not in a gazetted flood zone under the NSW planning instruments. Lenders and insurers typically don\'t flag properties outside this overlay.',
+      detail: 'This property is not in a gazetted flood zone under the NSW planning instruments. The overlay does not cover every council, so this alone does not rule flooding out.',
       severity: 'green',
     });
   } else {
     findings.push({
       label: 'Government flood overlay',
       value: epiMeta.label,
-      detail: 'This property is inside a gazetted flood zone. Your lender\'s valuer will note this, and insurers will price flood loading into your premium.',
+      detail: 'This property is inside a gazetted flood zone under the NSW planning instruments.',
       severity: 'red',
     });
   }
@@ -610,7 +552,7 @@ function FloodCard({ result }: { result: FloodResult }) {
     findings.push({
       label: 'Council flood study',
       value: studyLabel,
-      detail: `Council\'s own flood modelling places this property inside the flood extent. This is the data conveyancers reference in Section 10.7 certificates.`,
+      detail: `Council\'s own flood modelling places this property inside the flood extent.`,
       severity: 'red',
     });
   } else if (o.ses_in_flood_planning_area === false) {
@@ -625,11 +567,20 @@ function FloodCard({ result }: { result: FloodResult }) {
   // Satellite water history
   if (o.dea_wofs_frequency_pct != null) {
     const pct = o.dea_wofs_frequency_pct;
+    // Under 0.05% prints as "0.0%" and reads as a contradiction next to an
+    // amber dot; it is a handful of wet passes in 37 years.
     if (pct === 0) {
       findings.push({
         label: 'Satellite water history',
-        value: 'No water detected since 1987',
-        detail: 'Across 37 years of Landsat satellite passes, no surface water has been observed at this location.',
+        value: 'No water seen since 1987',
+        detail: 'Across 37 years of Landsat satellite passes, no surface water has been seen at this point.',
+        severity: 'green',
+      });
+    } else if (pct < 0.05) {
+      findings.push({
+        label: 'Satellite water history',
+        value: 'Water seen in under 0.1% of satellite passes',
+        detail: 'Satellites have seen surface water here only a handful of times since 1987.',
         severity: 'green',
       });
     } else if (pct < 5) {

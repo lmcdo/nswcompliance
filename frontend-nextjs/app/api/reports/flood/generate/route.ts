@@ -57,6 +57,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
+    // Rows saved before 2026-10-29 hold the raw inputs only, with no flood
+    // level (0 of 368 had one), and `?? null` below then printed "none" on the
+    // PDF. Refuse instead: a missing level is not "no flood". Re-running the
+    // check stores a row that carries it.
+    const storedSignal = (row.outputs as Record<string, unknown> | null)?.flood_signal;
+    if (typeof storedSignal !== 'string') {
+      return NextResponse.json(
+        { error: 'This saved check has no flood level recorded. Run the flood check again to get a report.' },
+        { status: 409 },
+      );
+    }
+
     raw = {
       address: row.address,
       lat: row.lat,
