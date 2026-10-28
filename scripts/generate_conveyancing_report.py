@@ -1465,6 +1465,26 @@ def get_flood_planning_status(lat: float, lng: float) -> dict:
         return {"value": None, "reason": "flood planning map could not be checked"}
 
 
+def apply_lot_flood_hit(flood_plan: dict, unique_overlays: Optional[list]) -> dict:
+    """A flood planning hit on the LOT OUTLINE (get_unique_overlays tests the lot
+    polygon when it has one) always wins over the point-based answer: a large lot
+    can be partly on the map while its address point is not (cross-review)."""
+    try:
+        from flood_planning import category_of
+    except ImportError:
+        _services_dir = str(project_root / "services")
+        if _services_dir not in sys.path:
+            sys.path.insert(0, _services_dir)
+        from flood_planning import category_of
+    lot_hit = any(o.get("layer_type") == "flood"
+                  and category_of(o.get("value")) in ("planning", "frequent")
+                  for o in (unique_overlays or []))
+    if lot_hit and (flood_plan or {}).get("value") is not True:
+        return {**(flood_plan or {}), "value": True,
+                "reason": "on the council's flood planning map (the lot outline touches it)"}
+    return flood_plan or {"value": None, "reason": "flood planning map could not be checked"}
+
+
 def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str], dict[str, float]]:
     """
     Query PostGIS for overlays not (or unreliably) returned by the portal:
@@ -3803,7 +3823,8 @@ def generate_pdf(
     # (heritage is portal-sourced; PostGIS heritage row unlikely but guard against it)
     # Flood counts only when the flood planning check says yes: a PMF or
     # non-flood row in the 'flood' layer is not the planning map.
-    _flood_plan = flood_plan if flood_plan is not None else get_flood_planning_status(lat, lng)
+    _flood_plan = apply_lot_flood_hit(
+        flood_plan if flood_plan is not None else get_flood_planning_status(lat, lng), unique_overlays)
     _constraint_layer_types = {o["layer_type"] for o in unique_overlays
                                 if o["layer_type"] in ("biodiversity", "riparian", "wetlands",
                                    "landslide", "bushfire", "anef")}
@@ -5816,7 +5837,7 @@ def main():
     # CDC screen (#820): verdict from the backend engine + verified Codes SEPP
     # standards; None renders "Not assessed" — never a zone-list guess.
     from services.cdc_screen import run_cdc_screen_for_report
-    _flood_plan = get_flood_planning_status(lat, lng)
+    _flood_plan = apply_lot_flood_hit(get_flood_planning_status(lat, lng), unique_overlays)
     _cdc_result = run_cdc_screen_for_report(
         os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
         controls.get("heritage_items"), controls.get("heritage_hca"),

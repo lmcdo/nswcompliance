@@ -33,3 +33,19 @@ def test_the_report_reads_the_one_producer(monkeypatch):
     monkeypatch.setattr(gcr.psycopg2, "connect", lambda *a, **k: type("C", (), {"close": lambda self: None})())
     assert gcr.get_flood_planning_status(-28.86, 153.56)["value"] is False
     assert seen, "the report did not call services/flood_planning.py"
+
+
+def test_a_lot_outline_hit_wins_over_a_point_no():
+    """A big lot partly on the map, address point off it: the report must say yes."""
+    got = gcr.apply_lot_flood_hit({"value": False, "reason": "not on the council's flood planning map"},
+                                  [{"layer_type": "flood", "value": "Flood Planning Area"}])
+    assert got["value"] is True and "lot outline" in got["reason"]
+
+
+def test_an_extreme_only_lot_row_does_not_make_a_yes():
+    got = gcr.apply_lot_flood_hit({"value": False, "reason": "r"}, [{"layer_type": "flood", "value": "PMF"}])
+    assert got["value"] is False
+
+
+def test_no_lot_rows_keeps_the_point_answer():
+    assert gcr.apply_lot_flood_hit({"value": None, "reason": "r"}, [])["value"] is None
