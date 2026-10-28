@@ -323,3 +323,15 @@ describe('FloodTool — when a source or the request fails', () => {
     expect(screen.queryByText(/not valid JSON|Unexpected token/i)).toBeNull();
   });
 });
+
+describe('FloodTool — a "none" without the overlay', () => {
+  it('is shown as not enough data, never as no mapped flood risk', async () => {
+    const partial = {
+      ...NONE_RESULT,
+      outputs: { ...NONE_RESULT.outputs, epi_flood_class: null, data_currency: 'query_failed' },
+    };
+    await runFloodCheck(partial as unknown as typeof ELEVATED_RESULT);
+    expect(screen.queryByText('No mapped flood risk found')).toBeNull();
+    expect(screen.getByText('Not enough flood data for this address')).toBeInTheDocument();
+  });
+});

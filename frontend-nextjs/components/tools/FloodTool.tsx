@@ -461,8 +461,12 @@ function FloodCard({ result }: { result: FloodResult }) {
   // through to a green "Not mapped as flood-prone" under an "unavailable"
   // badge that blamed coverage.
   const epiFailed  = o.data_currency === 'query_failed' || o.epi_flood_class == null;
-  const baseMeta   = FLOOD_SIGNAL_META[signal] ?? FLOOD_SIGNAL_META.none;
-  const signalMeta = signal === 'unavailable' && epiFailed
+  // A "none" without the overlay is not a clear result: shown as unavailable
+  // (the backend already returns unavailable for query_failed; this guards a
+  // mismatched or partial response).
+  const shownSignal = signal === 'none' && epiFailed ? 'unavailable' : signal;
+  const baseMeta   = FLOOD_SIGNAL_META[shownSignal] ?? FLOOD_SIGNAL_META.none;
+  const signalMeta = shownSignal === 'unavailable' && epiFailed
     ? { ...baseMeta, sublabel: 'The NSW planning flood overlay did not answer on this check, so we cannot give a level. Please run the check again later. No result here is not a clear result.' }
     : baseMeta;
   const epiClass   = o.epi_flood_class ?? 'none';

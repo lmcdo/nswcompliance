@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[flood] pipeline call failed:', msg);
-    return NextResponse.json({ error: 'The flood check did not finish in time. Please try again in a minute.' }, { status: 504 });
+    return NextResponse.json({ error: 'The flood check did not finish. Please try again in a minute.' }, { status: 504 });
   }
 
   if (!pythonResp.ok) {
