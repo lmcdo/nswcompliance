@@ -1,0 +1,50 @@
+# Make every merge to main reach the Railway API service (nswcompliance).
+#
+# On 2026-10-28/29 Railway stopped creating deployments for this one service
+# while the project's other eight services deployed the same commits; two
+# merged PRs sat undeployed for hours with nothing red anywhere. This job asks
+# Railway to deploy the merged commit when Railway has not, waits for it, and
+# goes red if the deploy fails or never finishes. When Railway's own trigger
+# works it only watches that deployment, so nothing is built twice.
+#
+# Paths mirror the service's Railway watch patterns (read from the Railway API
+# 2026-10-29); keep them in step if those change.
+name: deploy-api
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.python"
+      - "railway.toml"
+      - "services/**"
+      - "scripts/brief_contract_drift.py"
+      - "scripts/conveyancing_db.py"
+      - "scripts/download_hawkesbury_rasters.py"
+      - "scripts/download_narclim_rasters.py"
+      - "scripts/download_redbank_rasters.py"
+      - "scripts/download_tweed_wollongong_rasters.py"
+      - "scripts/generate_conveyancing_report.py"
+      - "scripts/run_brief_drift_check.py"
+      - "scripts/run_monitors.py"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Deploy the merged commit to the API service and wait
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: python scripts/railway_deploy_api.py
