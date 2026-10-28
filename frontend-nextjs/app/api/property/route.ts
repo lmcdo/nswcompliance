@@ -7,6 +7,7 @@ import { railOrBusyRoadConstraints } from '@/lib/rail-busy-road';
 import { classifiedRoadConstraints } from '@/lib/classified-road';
 import { withLookupBudget, withinLookupBudget, LOOKUP_OUT_OF_TIME } from '@/lib/fetch-timeout';
 import { SPATIAL_OVERLAYS_SQL, LOT_FOUND_MARKER } from '@/lib/spatial-overlays-sql';
+import { floodLevels } from '@/lib/flood/flood-levels';
 import { LOOKUP_BUDGET_MS, type LookupCheck } from '@/lib/lookup-not-checked';
 import { ADDRESS_SEARCH_UNAVAILABLE, VALUATION_UNAVAILABLE, LOCATION_NOT_FOUND } from '@/lib/nsw-planning-portal';
 
@@ -138,7 +139,7 @@ export async function GET(req: NextRequest) {
    if (dcpFloodRows.length > 0) {
      propertyData.constraints.dcpFloodMap = {
        inFloodArea: true,
-       classification: dcpFloodRows[0].value,
+       classification: floodLevels(dcpFloodRows.map(r => r.value as string)),
      };
    }
 
