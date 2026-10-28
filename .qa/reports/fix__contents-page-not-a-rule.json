@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which council rows the nightly quote check may mark proven: contents pages become not_a_control. 38 live rows (17 shown) were already hidden by a backed-up write on 2026-10-28.",
-  "commit_hash": "acd151d4",
+  "commit_hash": "ba68cd17",
   "files": [
     "scripts/council_quote.py",
     "tests/test_council_quote.py"
