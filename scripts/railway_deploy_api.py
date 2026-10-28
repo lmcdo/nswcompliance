@@ -31,6 +31,7 @@ ENVIRONMENT = "8bde9fcd-b5f0-4cd8-8ca2-e405995f112f"  # production
 DONE = {"SUCCESS"}
 BAD = {"FAILED", "CRASHED", "REMOVED"}
 TIMEOUT_S = 25 * 60
+GRACE_S = 60
 
 
 def gql(token: str, query: str, variables: dict | None = None) -> dict:
@@ -51,7 +52,8 @@ def existing_deployment(token: str, sha: str) -> dict | None:
     for edge in (data.get("deployments") or {}).get("edges") or []:
         node = edge.get("node") or {}
         meta = node.get("meta") or {}
-        if meta.get("commitHash") == sha and node.get("status") not in ("SKIPPED", "REMOVED"):
+        # A failed/crashed/skipped/removed attempt is not "already deploying": a re-run retries.
+        if meta.get("commitHash") == sha and node.get("status") not in ("SKIPPED", "REMOVED", "FAILED", "CRASHED"):
             return node
     return None
 
@@ -67,6 +69,9 @@ def main() -> int:
     if not token or not sha:
         print("DEPLOY-API: RAILWAY_TOKEN and GITHUB_SHA are required")
         return 1
+    # Give Railway's own trigger a minute to record its deployment first, so
+    # the lookup below does not race it into a second build.
+    time.sleep(GRACE_S)
     found = existing_deployment(token, sha)
     if found:
         dep_id = found.get("id")

@@ -57,3 +57,15 @@ def test_no_token_fails_rather_than_passing(monkeypatch):
     monkeypatch.delenv("RAILWAY_TOKEN", raising=False)
     monkeypatch.setenv("GITHUB_SHA", SHA)
     assert rd.main() == 1
+
+
+def test_a_failed_earlier_attempt_is_retried_not_reported(monkeypatch):
+    code, calls = _run(monkeypatch, [{"id": "d0", "status": "FAILED", "meta": {"commitHash": SHA}}],
+                       ["SUCCESS"])
+    assert code == 0
+    assert any("serviceInstanceDeployV2" in q for q in calls)
+
+
+def test_the_workflow_only_deploys_main():
+    wf = (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "deploy-api.yml").read_text()
+    assert "if: github.ref == 'refs/heads/main'" in wf
