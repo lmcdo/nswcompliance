@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Changes which rules the nightly council_quote --apply --unchecked sweep judges: unproven shown rules are re-judged once they are 7 days old. Measured 2026-10-29: 412 extra rules on the first night (10,977 vs 10,565 NULL already selected), ~115 a night after.",
+  "commit_hash": "166f3d0e",
+  "files": [
+    "scripts/council_quote_db.py",
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q -o addopts= -k nightly",
+    "expected": "passes",
+    "fails_when": "UNCHECKED_SQL stops selecting unproven shown rules, or starts re-judging proven ones",
+    "observed_red": "2026-10-29: after #1528, #1533 and #1542 merged, 794 shown rules stayed unconfirmed (Penrith 27, unchanged) because --unchecked selected quote_status IS NULL only."
+  },
+  "pre_impl": {
+    "existing_data": "794 shown unconfirmed rules across 14 councils on 2026-10-29; last quote check 2026-10-28.",
+    "assumption_mismatch": "The sweep assumed a verdict never changes unless the PDF or text changes; checker fixes change it too.",
+    "new_vs_existing": "Widens the existing --unchecked selection; no new flag, table or column."
+  },
+  "functions": [
+    {
+      "name": "fetch",
+      "file_line": "scripts/council_quote_db.py",
+      "input": "council, ids, chapter and the unchecked flag from the command line",
+      "output": "rules to judge: never judged, or unproven, shown and older than RECHECK_DAYS",
+      "if_none": "an empty list judges nothing and writes nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "quote_checked_at",
+      "read_at": "scripts/council_quote_db.py UNCHECKED_SQL",
+      "if_missing": "NULL quote_checked_at counts as due, so the rule is re-checked"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "pick the rules the nightly sweep judges",
+      "file_line": "scripts/council_quote_db.py:20 UNCHECKED_SQL",
+      "where_clause": "id = ANY(%s) AND is_current AND (quote_status IS NULL OR (quote_status = 'unconfirmed' AND v2_is_actionable AND (quote_checked_at IS NULL OR quote_checked_at < now() - interval '7 days')))"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Hundreds of picture-page rules re-run OCR every night.",
+      "what_happens": "The nightly job runs far longer than before.",
+      "mitigated": true,
+      "how": "Each unproven rule returns once a week, so about a seventh of them run on any night.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k nightly"
+    },
+    {
+      "scenario": "A proven rule gets re-judged and loses its proof.",
+      "what_happens": "Council words disappear from a page that showed them.",
+      "mitigated": true,
+      "how": "Only quote_status NULL or 'unconfirmed' are selected; the test asserts exact/recovered are not.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k nightly"
+    },
+    {
+      "scenario": "A rule hidden from visitors is re-judged every week.",
+      "what_happens": "Nightly time is wasted on rules nobody sees.",
+      "mitigated": true,
+      "how": "The unproven branch requires v2_is_actionable.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k nightly"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Takes effect at the next nightly run.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: next morning, count shown unconfirmed rules with quote_checked_at older than 7 days; it should fall."
+  }
+}
