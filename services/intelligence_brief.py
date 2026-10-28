@@ -3215,6 +3215,7 @@ def _build_environmental(
                 _fconn.close()
         except Exception as e:  # noqa: BLE001 -- no answer is None, never "no"
             logger.warning(f"flood_planning_status failed in brief: {e}")
+            flood_status = {"value": None, "reason": "flood planning map could not be checked"}
     from flood_planning import category_of as _flood_category
     overlay_flood_yes = any(
         o.get("layer_type") in ("flood", "flood_planning")
