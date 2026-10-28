@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the served flood planning answer in the flood tool and the site brief (102 of 310 saved checks change). Not Critical: only moves a false 'no' to 'not known' and drops extreme-only lines; one raise is a real planning-area hit. Not Minor: served answers change.",
- "commit_hash": "5db53bad",
+ "commit_hash": "df41a1e9",
  "files": [
   "scripts/page_integrity/producer_baseline.json",
   "services/flood_planning.py",

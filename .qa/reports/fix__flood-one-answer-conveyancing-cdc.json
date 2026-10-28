@@ -1,0 +1,89 @@
+{
+ "tier": "standard",
+ "justification": "Paid conveyancing PDF flood row, summary and CDC flood input. Not Critical: only removes over-claims (PMF/non-flood rows) and a false 'no' for unheld councils. Not Minor: printed report wording changes.",
+ "commit_hash": "df41a1e9",
+ "files": [
+  "scripts/generate_conveyancing_report.py",
+  "services/cdc_screen.py",
+  "services/conveyancing.py",
+  "tests/test_cdc_screen.py",
+  "tests/test_conveyancing_flood_planning.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_cdc_screen.py tests/test_conveyancing_flood_planning.py -q",
+  "fails_when": "Fails if the CDC flood input ignores the supplied answer, or a failed flood lookup in the report becomes a no.",
+  "external_authority": "Producer measured on 310 saved points (PR #1539); spatial_overlays_coverage lists 12 of 72 flood councils (live query 2026-10-28).",
+  "observed_red": "New tests assert behaviour absent before: the CDC function had no flood_status input."
+ },
+ "pre_impl": {
+  "existing_data": "generate_pdf receives lat/lng; unique_by_type keyed any 'flood' row as a hit.",
+  "assumption_mismatch": "Coverage table understated flood (12 vs 72 councils).",
+  "new_vs_existing": "One helper calling the existing producer; no new flood logic.",
+  "external_source_error": "DB failure gives value None: row omitted, summary does not name flood."
+ },
+ "functions": [
+  {
+   "name": "get_flood_planning_status",
+   "file_line": "scripts/generate_conveyancing_report.py",
+   "what": "Calls services/flood_planning.py for the report.",
+   "input": "latitude and longitude of the property",
+   "output": "dict with value True, False or None and a reason",
+   "if_none": "Any failure returns value None with a reason.",
+   "edge_cases": "services/ not on path in CLI context",
+   "failure_mode": "Row omitted; never a printed no"
+  },
+  {
+   "name": "build_cdc_inputs",
+   "file_line": "services/cdc_screen.py",
+   "what": "Optional flood_status overrides the raw overlay reading.",
+   "input": "report-shaped data plus optional flood answer",
+   "output": "CdcScreenInputs with flood_prone True, False or None",
+   "if_none": "No flood_status keeps the old overlay rule unchanged.",
+   "edge_cases": "PMF row with answer False",
+   "failure_mode": "None -> CDC flood unchecked"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address only inside a PMF extreme flood line",
+   "what_happens": "Report does not count flood and CDC reads not flood prone",
+   "mitigated": true,
+   "how": "producer category split",
+   "repro": "pytest tests/test_cdc_screen.py -k overrides"
+  },
+  {
+   "scenario": "Council whose flood map we do not hold",
+   "what_happens": "Flood row omitted and the summary does not name flood",
+   "mitigated": true,
+   "how": "value None path",
+   "repro": "pytest tests/test_conveyancing_flood_planning.py"
+  },
+  {
+   "scenario": "Database down during the PDF build",
+   "what_happens": "Flood answer is not known, never a clean no",
+   "mitigated": true,
+   "how": "helper catches and returns None",
+   "repro": "pytest -k failed_lookup"
+  }
+ ],
+ "verified": [
+  "1926 conveyancing/cdc/flood/brief tests pass",
+  "Producer lint OK"
+ ],
+ "gaps": [
+  "No end-to-end PDF render test of the new wording (renders need live services)",
+  "Verify app and canibuildit check still on their own flood readers (next PR)"
+ ],
+ "post_merge": {
+  "action": "Generate one conveyancing PDF for an unheld-council address and one held-council 'no'; read the flood row and summary",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Flood row reads 'Not on the council's flood planning map' only for a held council"
+ },
+ "real_layer_exempt": {
+  "scripts/generate_conveyancing_report.py": "Helper calls the producer exercised against the live DB in PR #1539.",
+  "services/conveyancing.py": "Passes the helper's result only.",
+  "services/cdc_screen.py": "Pure input mapping."
+ }
+}
