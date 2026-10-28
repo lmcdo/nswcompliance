@@ -2133,6 +2133,35 @@ class FloodRefusedResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+class FloodPlanningRequest(BaseModel):
+    lat: float
+    lng: float
+
+
+@router.post("/flood-planning")
+def flood_planning(req: FloodPlanningRequest) -> dict:
+    """The one flood planning answer for the website (verify app, consumer check).
+
+    Thin wrapper: services/flood_planning.py decides; nothing here re-derives it.
+    Never raises -- a failure is value None with its reason.
+    """
+    from flood_planning import flood_planning_status
+    conn = None
+    try:
+        conn = _get_conn()
+        out = flood_planning_status(req.lat, req.lng, conn)
+    except Exception as e:  # noqa: BLE001 -- unknown, never "no"
+        logger.warning(f"/pipeline/flood-planning failed: {e}")
+        out = {"value": None, "reason": "flood planning map could not be checked"}
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
+                pass
+    return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m")}
+
+
 @router.post("/flood", response_model=Union[FloodResponse, FloodRefusedResponse])
 def run_flood(req: FloodRequest):
     """

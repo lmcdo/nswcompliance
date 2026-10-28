@@ -167,3 +167,21 @@ def test_every_stored_flood_value_is_classified():
         cur.execute("SELECT DISTINCT value FROM spatial_overlays WHERE layer_type = 'flood'")
         unclassified = [v for (v,) in cur.fetchall() if fp.category_of(v) == "unclassified"]
     assert unclassified == []
+
+
+def test_the_endpoint_returns_the_producer_answer(monkeypatch):
+    import services.flood_truth as ft
+    monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn: {
+        "value": None, "reason": "we do not hold this council's flood planning map",
+        "council": "NEWCASTLE", "category": None, "nearest_m": None, "hits": [1]})
+    monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
+    out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
+    assert out == {"value": None, "reason": "we do not hold this council's flood planning map",
+                   "council": "NEWCASTLE", "category": None, "nearest_m": None}
+
+
+def test_the_endpoint_never_raises(monkeypatch):
+    import services.flood_truth as ft
+    monkeypatch.setattr(ft, "_get_conn", lambda: (_ for _ in ()).throw(RuntimeError("down")))
+    out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
+    assert out["value"] is None

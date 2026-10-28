@@ -85,3 +85,43 @@ describe('floodMapStatus over a mocked map service', () => {
     expect((await floodMapStatus(150.75298, -34.05807, plan, boundary)).floodProne).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// combineFloodAnswers — state layer 230 + our council map store (2026-10-28)
+// ---------------------------------------------------------------------------
+import { combineFloodAnswers } from '@/lib/flood/flood-map';
+
+describe('combineFloodAnswers', () => {
+  const unknownState = { floodProne: null, note: 'No published map.' };
+
+  it('a store yes turns an unknown state answer into yes (the 47 addresses layer 230 missed)', () => {
+    expect(combineFloodAnswers(unknownState, { value: true }).floodProne).toBe(true);
+  });
+
+  it('a whole-lot state no stands even when the store cannot say', () => {
+    const no = { floodProne: false, note: 'No part of this lot…' };
+    expect(combineFloodAnswers(no, { value: null, reason: 'x' })).toEqual(no);
+  });
+
+  it('a state yes is never overturned by a store no', () => {
+    expect(combineFloodAnswers({ floodProne: true, note: 'on' }, { value: false }).floodProne).toBe(true);
+  });
+
+  it('a store no (point only) never makes a No on this page: stays not known, explained', () => {
+    const got = combineFloodAnswers(unknownState, { value: false });
+    expect(got.floodProne).toBeNull();
+    expect(got.note).toMatch(/address point/);
+    expect(got.note).toMatch(/whole lot was not checked/);
+  });
+
+  it('neither can say: still unknown, with our reason added, never false', () => {
+    const got = combineFloodAnswers(unknownState, { value: null, reason: "we do not hold this council's flood planning map" });
+    expect(got.floodProne).toBeNull();
+    expect(got.note).toMatch(/do not hold/);
+  });
+
+  it('a backend failure leaves the state answer untouched', () => {
+    const failed = { floodProne: null, note: 'unreachable', mapDidNotAnswer: true as const };
+    expect(combineFloodAnswers(failed, null)).toEqual(failed);
+  });
+});

@@ -103,3 +103,21 @@ describe('page source — shadow section removed (2026-10-22)', () => {
     expect(PAGE_SRC).not.toMatch(/\bADG\b/);
   });
 });
+
+describe('withdrawn satellite sections (owner decision 2026-10-28)', () => {
+  it('drops flood, bushfire and solar satellite sections before anything renders them', () => {
+    expect(PAGE_SRC).toContain(
+      "const WITHDRAWN_SATELLITE_SECTIONS = new Set(['satellite.flood', 'satellite.bushfire', 'satellite.solar'])",
+    );
+    expect(PAGE_SRC).toContain('.filter((p) => !WITHDRAWN_SATELLITE_SECTIONS.has(p.data.section))');
+    // the expected-section lists (timeline, "not run" card) no longer name them
+    const expected = PAGE_SRC.slice(PAGE_SRC.indexOf('const EXPECTED_SECTIONS_SAT'));
+    const list = expected.slice(0, expected.indexOf('];'));
+    expect(list).not.toMatch(/satellite\.(flood|bushfire|solar)/);
+  });
+
+  it('keeps the environmental-constraints section, which carries the planning-overlay flood row', () => {
+    expect(PAGE_SRC).toContain("'environmental_constraints'");
+    expect(PAGE_SRC).not.toMatch(/WITHDRAWN_SATELLITE_SECTIONS = new Set\([^)]*environmental/);
+  });
+});
