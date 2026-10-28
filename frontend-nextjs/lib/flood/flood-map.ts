@@ -177,7 +177,7 @@ async function fetchStoreStatus(lon: number, lat: number): Promise<StoreFloodSta
     });
     if (!r.ok) return null;
     const d = await r.json();
-    return d && (d.value === true || d.value === false || d.value === null) ? d : null;
+    return d && (d.value === true || d.value === false || d.value == null) ? d : null;
   } catch {
     return null; // unknown, never "no"
   }
