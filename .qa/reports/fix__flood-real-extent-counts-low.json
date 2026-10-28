@@ -1,0 +1,74 @@
+{
+ "tier": "standard",
+ "justification": "Changes the served flood signal rule (EMS alone -> low) and the flood cache read. Not Critical: measured RAISED 0 on all 308 saved checks. Not Minor: changes served levels for future addresses.",
+ "commit_hash": "e1a434ac",
+ "files": [
+  "services/flood_truth.py",
+  "tests/test_flood_truth.py",
+  "tests/fixtures/flood_known_answers.json"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_truth.py tests/test_flood_signal_known_answers.py -q",
+  "fails_when": "Fails if EMS alone gives anything but low, if an EMS miss lifts unavailable, if the cache cutoff is removed, or if any known no-signal case becomes positive.",
+  "external_authority": "Live PostGIS ST_Intersects of all 308 saved check points against copernicus_flood_events: 7 hits (NSW-202207 4, NSW-202210 3, EMSR567 1).",
+  "observed_red": "test_signal_ems_detected_alone_returns_low and the 6 EMS-alone known-answer cases failed before the fixture refresh (stale 86,349 km2 hits)."
+ },
+ "pre_impl": {
+  "existing_data": "property_reports cache: 90-day window, keyed on address + 50 m; copies keep original run_date.",
+  "assumption_mismatch": "The plan assumed the rule alone decides served answers; the cache re-serves stored outputs for 90 days, so 222 stale EMS hits would have stayed live.",
+  "new_vs_existing": "No new file; rule and cache read edited in place.",
+  "external_source_error": "EMS query failure still returns ems_flood_detected None, which lifts nothing."
+ },
+ "functions": [
+  {
+   "name": "_compute_flood_signal",
+   "file_line": "services/flood_truth.py",
+   "what": "EMS alone returns low and escapes unavailable.",
+   "input": "internal flood outputs dict for one address",
+   "output": "one of unavailable, none, low, moderate, elevated",
+   "if_none": "ems_flood_detected None is treated as no hit",
+   "edge_cases": "EMS miss outside EPI coverage stays unavailable",
+   "failure_mode": "At worst one level of over-warning for a real mapped hit"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A stale saved check with the 86,349 km2 hit is re-served",
+   "what_happens": "The cache query excludes it, so the address is recomputed fresh",
+   "mitigated": true,
+   "how": "FLOOD_CACHE_MIN_RUN_DATE in the cache query",
+   "repro": "python -m pytest tests/test_flood_truth.py -k cache_never"
+  },
+  {
+   "scenario": "EMS miss outside EPI coverage",
+   "what_happens": "The answer stays unavailable, never none or low",
+   "mitigated": true,
+   "how": "Only ems_detected True escapes",
+   "repro": "python -m pytest tests/test_flood_truth.py -k ems_miss"
+  },
+  {
+   "scenario": "The EMS table is empty or the query fails",
+   "what_happens": "ems_flood_detected is None, nothing lifted, level decided by other sources",
+   "mitigated": true,
+   "how": "Rule checks is True, not truthiness of a list",
+   "repro": "python -m pytest tests/test_flood_truth.py -k signal"
+  }
+ ],
+ "verified": [
+  "218 flood tests pass",
+  "Gate: RAISED 0 of 308; 7 real-extent hits all already positive"
+ ],
+ "gaps": [
+  "Cached rows from 2026-10-28 computed after the reload are also recomputed once (harmless)"
+ ],
+ "post_merge": {
+  "action": "None; takes effect on Railway deploy",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Re-check a previously checked EMSR567 address: cache_hit false, no EMSR567 activation"
+ },
+ "real_layer_exempt": {
+  "services/flood_truth.py": "The cache query change adds one bound parameter; it was exercised by the step-2 gate reading the live property_reports and copernicus_flood_events (308 rows, ST_Intersects per point). A DB-writing test would add rows to the served cache."
+ }
+}
