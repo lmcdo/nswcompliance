@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "One published count in coverage.ts, 16 -> 17, after Penrith setback rows were re-checked against the 1 Oct 2026 edition and released (backup data/db_rollback_backups/penrith_setbacks_release_pre_2026-10-28T161027.json).",
+  "commit_hash": "2c01efbf",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts"
+  ],
+  "falsifiable_check": {
+    "command": "the dcpSetbackTripleCouncils query in the coverage.ts header comment",
+    "expected": "17",
+    "fails_when": "the live query prints a number other than 17",
+    "observed_red": "2026-10-28: the same query printed 16 before the Penrith release."
+  },
+  "break_it": [
+    {
+      "scenario": "A released Penrith row is later held again by the monitor.",
+      "what_happens": "The page would claim 17 while the live count is 16.",
+      "mitigated": false,
+      "how": "Same exposure as every hand-kept count in coverage.ts; the header query is the check.",
+      "repro": "run the dcpSetbackTripleCouncils query in the coverage.ts header"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The data change was made before this PR, with a backup.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}

@@ -136,7 +136,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 25,
-  dcpSetbackTripleCouncils: 16,   // 2026-10-26: penrith held back (chapter_pdf_changed, 1 Oct edition)
+  dcpSetbackTripleCouncils: 17,   // 2026-10-28: penrith back -- 16 rows re-checked against the 1 Oct edition
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -158,7 +158,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '25',
-  dcpSetbackTripleCouncils: '16',
+  dcpSetbackTripleCouncils: '17',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',
