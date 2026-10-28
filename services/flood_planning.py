@@ -35,9 +35,12 @@ import requests
 logger = logging.getLogger(__name__)
 
 # How far a point-only miss must be from a planning line before it is "no".
-# A lot is ~15-30 m wide; within this distance the lot itself may touch the
-# line, so the honest answer is "not known" until the whole lot is tested.
-NEAR_EDGE_M = 50.0
+# Rural lots can be hundreds of metres wide, so within this distance the lot
+# itself may touch the line and the honest answer is "not known" until the
+# whole lot is tested. 200 m, not 50: of the 22 covered point-misses measured
+# on 2026-10-28, 19 were further than 200 m, so the wider margin costs 2 "no"
+# answers and removes the wide-rural-lot false "no" (cross-review).
+NEAR_EDGE_M = 200.0
 
 # Every value stored under spatial_overlays with layer_type flood (33 on
 # 2026-10-28), sorted into what it means. A value not listed here is
@@ -179,11 +182,11 @@ def flood_planning_status(lat: float, lng: float, conn) -> dict:
             cur.execute(
                 "SELECT min(ST_Distance(geom::geography, "
                 "ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)) FROM spatial_overlays "
-                # Index-friendly pre-filter in degrees (0.001 deg >= 90 m in NSW), then
+                # Index-friendly pre-filter in degrees (0.003 deg >= 270 m in NSW), then
                 # the exact metres on the few rows left. A bare geography DWithin
                 # cannot use the geom index and timed out at 5 s.
                 "WHERE layer_type = 'flood' AND value = ANY(%s) "
-                "AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.001) "
+                "AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.003) "
                 "AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)",
                 (lng, lat, sorted(_YES), lng, lat, lng, lat, NEAR_EDGE_M),
             )
@@ -191,7 +194,7 @@ def flood_planning_status(lat: float, lng: float, conn) -> dict:
             d = _cols(got, "min")[0] if got else None
             if d is not None:
                 out.update(nearest_m=round(float(d), 1),
-                           reason="within 50 m of the council's flood planning map; the whole lot was not checked")
+                           reason="within 200 m of the council's flood planning map; the whole lot was not checked")
                 return out
             out.update(value=False, category="extreme_only" if extreme_only else None,
                        reason=("not on the council's flood planning map; inside a rarer (extreme) flood extent"
