@@ -441,3 +441,49 @@ def test_words_not_printed_stay_unconfirmed_with_labels_skipped():
     stored = "Height Sites with the following maximum building heights must not exceed four storeys anywhere."
     out = cq.judge_twice(row(stored, page=5), [stream(HORNSBY)], [stream(HORNSBY, skip_labels=True)])
     assert out["status"] == "unconfirmed"
+
+
+def test_contents_page_is_not_a_rule():
+    # Hornsby Part 3 page 2, as stored and wrongly proven (row 248138)
+    hornsby = ("RESIDENTIAL .......................................... 3-2\n3.1 Dwelling Houses and Dual Occupancies | 3-5\n"
+               "3.1.1   Scale | 3-5\n3.1.2   Setbacks | 3-9\n3.1.3   Landscaping | 3-12\n3.1.4   Open Space | 3-13")
+    assert cq.contents_kind(hornsby) == "contents_page"
+    # titles only, no page numbers (row 248327)
+    titles = "3.4.1   Desired Future Character\n3.4.2   Design Quality\n3.4.3   Site Requirements\n3.4.4   Height\n3.4.5   Setbacks"
+    assert cq.contents_kind(titles) == "contents_page"
+    # a heading in the list may say "to be"; page numbers still make it contents (Marrickville 2.21)
+    leaders = ("2.21.1 Introduction ........ 2\n2.21.1.1 Objectives ........ 2\n2.21.2 Waste facilities ........ 3\n"
+               "2.21.2.2 Waste related information to be submitted with a\ndevelopment application ........ 3")
+    assert cq.contents_kind(leaders) == "contents_page"
+
+
+def test_rules_that_look_like_lists_stay_rules():
+    # Woollahra B3.2 side setback table: dotted numbers, but numbers not titles
+    table = ("Side setback table for dwelling houses.\nA. Site width | B. Side setback in metres\n< 9.0 | 0.9\n"
+             "9.0 - < 11.0 | 1.1\n11.0 - < 13.0 | 1.3\n13.0 - < 15.0 | 1.5\n15.0 - < 17.0 | 1.9")
+    assert cq.contents_kind(table) is None
+    # numbered controls with rule wording
+    rules = "3.1 Buildings must not exceed 9m.\n3.2 Setbacks\n3.3 Height\n3.4 Parking\n3.5 Landscaping"
+    assert cq.contents_kind(rules) is None
+    # a street list (Woollahra contributory items)
+    streets = "8 Manion Avenue | Inter-War flat building\n9 Manion Avenue | Toronto\n10 Manion Avenue | Greystanes\n11 Manion Avenue | flat\n12 Manion Avenue | flat"
+    assert cq.contents_kind(streets) is None
+    assert cq.contents_kind("3.1 Scale\n3.2 Setbacks") is None    # too short to judge
+
+
+def test_standards_and_values_are_not_contents():
+    # cross-review 2026-10-28: a standards schedule with dot leaders, and numbered lines carrying values
+    schedule = "Maximum building height .... 9\nMinimum lot area .... 500\nMinimum frontage .... 15\nMaximum FSR .... 1\nMinimum setback .... 6"
+    assert cq.contents_kind(schedule) is None
+    values = ("3.1 Building height 9 metres\n3.2 Front setback 6 metres\n3.3 Site coverage 50 percent\n"
+              "3.4 Landscaped area 30 percent\n3.5 Parking two spaces")
+    assert cq.contents_kind(values) is None
+
+
+def test_numbered_commands_are_not_contents():
+    commands = ("3.1 Locate car parking behind the front building line where possible\n"
+                "3.2 Provide deep soil planting along the rear boundary of the site\n"
+                "3.3 Retain existing trees that are prominent streetscape features of the area\n"
+                "3.4 Screen plant equipment and services from the street and neighbours\n"
+                "3.5 Orient living areas and private open space towards the north")
+    assert cq.contents_kind(commands) is None
