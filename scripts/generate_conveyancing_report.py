@@ -3604,9 +3604,6 @@ def generate_pdf(
     # clean absence. None (older callers) = nothing reported failed.
     db_fetch_failed: Optional[dict] = None,
     proximity_m: Optional[dict] = None,
-    # The flood planning answer the caller already used (e.g. for the CDC
-    # screen), so one document never holds two different flood answers.
-    flood_plan: Optional[dict] = None,
     bushfire_live: Optional[dict] = None,
     anef_live: Optional[dict] = None,
     contributions: Optional[dict] = None,
@@ -3620,6 +3617,9 @@ def generate_pdf(
     contaminated: Optional[dict] = None,
     servicing: Optional[dict] = None,
     coastal: Optional[dict] = None,
+    # The flood planning answer the caller already used (e.g. for the CDC
+    # screen), so one document never holds two different flood answers.
+    flood_plan: Optional[dict] = None,
 ):
     _check_reportlab()
 
