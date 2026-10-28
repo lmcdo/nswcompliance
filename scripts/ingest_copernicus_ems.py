@@ -216,7 +216,7 @@ def _read_observed_geometries(zip_bytes: bytes) -> list:
         for name in zf.namelist():
             if not is_observed_layer(name):
                 continue
-            for feat in json.loads(zf.read(name)).get("features", []):
+            for feat in json.loads(zf.read(name)).get("features") or []:
                 if not feat.get("geometry"):
                     continue
                 geom = shape(feat["geometry"])
@@ -247,7 +247,7 @@ def build_emsr567_extent(source: FloodSource):
             geoms = _fetch_s3_zip_geometries(url)
             if geoms is None:
                 continue
-            log.info(f"  {url.split('/')[-1]}: {len(geoms)} observed-flood polygons")
+            log.info(f"  {Path(url).name}: {len(geoms)} observed-flood polygons")
             all_geoms.extend(geoms)
             break
     log.info(f"EMSR567: unioning {len(all_geoms)} polygons ...")
