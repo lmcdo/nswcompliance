@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the one-time Copernicus ingest and re-loads one production row (EMSR567). Not Critical: one row, backed up, guarded by an area cap that refuses before any write. Not Minor: it changes which addresses get an EMS hit in the served flood check.",
- "commit_hash": "0a90c5b9",
+ "commit_hash": "73a18eac",
  "files": [
   "scripts/ingest_copernicus_ems.py",
   "tests/test_ingest_copernicus_ems_guard.py"
@@ -95,5 +95,8 @@
   "secrets": "None: no new secrets or env vars",
   "other_repo": "None: no other repository affected",
   "manual_verify": "SELECT activation_id, ST_Area(geometry::geography)/1e6 FROM copernicus_flood_events -> EMSR567 333.5, none over 5,000"
+ },
+ "real_layer_exempt": {
+  "scripts/ingest_copernicus_ems.py": "One-time ingest. The real HTTP and DB layers were exercised for real on 2026-10-28: 13 Copernicus S3 ZIPs downloaded, row written to production, then read back with PostGIS ST_Area (333.5 km2, 3,259 polygons). A test that writes copernicus_flood_events would change the served flood check."
  }
 }
