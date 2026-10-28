@@ -377,14 +377,7 @@ export default function TreeChangeChecklistPage() {
             the lot.
           </p>
           <p className="text-slate-700 leading-relaxed">
-            <strong>How to check:</strong> Use PlotDetect&apos;s{' '}
-            <Link
-              href="/reports/bushfire"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              free bushfire check
-            </Link>{' '}
-            or read our detailed guide on{' '}
+            <strong>How to check:</strong> Read our detailed guide on{' '}
             <Link
               href="/blog/bushfire-attack-level-bal-property-buyers"
               className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
@@ -420,14 +413,7 @@ export default function TreeChangeChecklistPage() {
             insurance quote before you buy, not after.
           </p>
           <p className="text-slate-700 leading-relaxed">
-            <strong>How to check:</strong> Run a{' '}
-            <Link
-              href="/reports/flood"
-              className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-            >
-              free flood risk check
-            </Link>{' '}
-            on PlotDetect, and read our explainer on{' '}
+            <strong>How to check:</strong> Read our explainer on{' '}
             <Link
               href="/blog/is-my-house-in-a-flood-zone-nsw"
               className="text-teal-600 hover:text-teal-700 underline underline-offset-2"

@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
-import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
@@ -578,36 +576,10 @@ export default function BushfireBALPropertyBuyersPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                2. Run a bushfire risk check
-              </h3>
-              <p className="text-slate-700 leading-relaxed">
-                PlotDetect&apos;s{' '}
-                <Link
-                  href="/reports/bushfire"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  Bushfire Risk Report
-                </Link>{' '}
-                cross-references the RFS BFPL map with satellite vegetation
-                data to provide an indicative BAL risk band before you pay for a
-                formal assessment. It is not a substitute for a certified BAL
-                assessment, but it tells you what to expect. For a combined view
-                of bushfire, flood, coastal, and heat exposure, see the{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk score
-                </Link>
-                .
-              </p>
-            </div>
 
             <div className="rounded-2xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                3. Order a Section 10.7 planning certificate
+                2. Order a Section 10.7 planning certificate
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 The{' '}
@@ -624,7 +596,7 @@ export default function BushfireBALPropertyBuyersPage() {
 
             <div className="rounded-2xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                4. Commission a formal BAL assessment if needed
+                3. Commission a formal BAL assessment if needed
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 If the property is on BFPL and you plan to build, you will need
@@ -702,47 +674,13 @@ export default function BushfireBALPropertyBuyersPage() {
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 For a Development Application or Construction Certificate, the
-                assessment must be done by an accredited practitioner. For your
-                own pre-purchase due diligence, you can use indicative tools
-                like the{' '}
-                <Link
-                  href="/reports/bushfire"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  PlotDetect Bushfire Risk Report
-                </Link>{' '}
-                to understand the likely BAL band before commissioning a formal
-                assessment.
+                assessment must be done by an accredited practitioner.
               </p>
             </div>
           </div>
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-orange-200 bg-orange-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check bushfire risk before you buy
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s Bushfire Risk Report shows whether a property is
-              on Bush Fire Prone Land, the vegetation density around it, and an
-              indicative BAL risk band &mdash; before you pay $500+ for a formal
-              assessment.
-            </p>
-            <TrackedLink
-              href="/reports/bushfire"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white text-sm font-medium rounded-xl hover:bg-orange-500 transition-colors"
-              page="bushfire-attack-level-bal-property-buyers"
-              cta="check_bushfire"
-            >
-              Check bushfire risk
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

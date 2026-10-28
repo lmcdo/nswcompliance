@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { heritageAnswer, yesNo } from '@/lib/fact-answer';
 import {
-  Droplets, Flame, Sun, Radio, Home, FileSearch,
+  Droplets, Radio, Home, FileSearch,
   MapPin, Ruler, Building2, Shield, ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
@@ -47,24 +47,6 @@ interface ToolItem {
 
 const BUYING_TOOLS: ToolItem[] = [
   {
-    key: 'flood',
-    title: 'Flood Screening',
-    detail: 'Statutory flood zone, council flood study depths, satellite water history.',
-    href: '/reports/flood',
-    badge: 'Free + $49 report',
-    icon: Droplets,
-    iconColor: 'text-blue-600 bg-blue-50',
-  },
-  {
-    key: 'bushfire',
-    title: 'Bushfire Pre-Screen',
-    detail: 'RFS Bush Fire Prone Land status and BAL band estimate.',
-    href: '/reports/bushfire',
-    badge: 'Free',
-    icon: Flame,
-    iconColor: 'text-orange-600 bg-orange-50',
-  },
-  {
     key: 'pre-da',
     title: 'Pre-DA Site History',
     detail: '8 years of satellite change detection + DA records + heritage.',
@@ -97,15 +79,6 @@ const BUILDING_TOOLS: ToolItem[] = [
 ];
 
 const YIELD_TOOLS: ToolItem[] = [
-  {
-    key: 'solar',
-    title: 'Solar Yield',
-    detail: 'Roof geometry, orientation, and estimated annual kWh.',
-    href: '/reports/solar-yield',
-    badge: '$19 report',
-    icon: Sun,
-    iconColor: 'text-amber-600 bg-amber-50',
-  },
   {
     key: 'granny-flat-yield',
     title: 'Granny Flat Checker',
@@ -231,7 +204,7 @@ export function PropertyProfile() {
           <div className="space-y-10">
             <ToolGroup
               title="Buying a property?"
-              subtitle="Your conveyancer will ask for flood and bushfire status. Get the data before they do."
+              subtitle="See what was built on the site before you buy."
               tools={BUYING_TOOLS}
               address={data.address}
             />

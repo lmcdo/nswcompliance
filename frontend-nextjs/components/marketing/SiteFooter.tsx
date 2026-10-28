@@ -3,11 +3,8 @@
 import Link from 'next/link';
 
 const TOOL_LINKS = [
-  { label: 'Flood Screening', href: '/reports/flood' },
-  { label: 'Bushfire Pre-Screen', href: '/reports/bushfire' },
   { label: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
   { label: 'Granny Flat Yield', href: '/reports/granny-flat' },
-  { label: 'Solar Yield', href: '/reports/solar-yield' },
   { label: 'Threat Radar', href: '/reports/threat-radar' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history' },
 ];
@@ -23,7 +20,6 @@ const PLATFORM_LINKS = [
   { label: 'Site Controls', href: '/assessment' },
   { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
   { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
-  { label: 'Climate Risk', href: '/climate-risk' },
   { label: 'Browse Councils', href: '/browse' },
   { label: 'Planning Glossary', href: '/glossary' },
   { label: 'SEPP Housing Standards', href: '/planning-standards' },

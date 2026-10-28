@@ -1449,24 +1449,12 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
       href: `/reports/threat-radar?address=${encoded}`,
       label: 'Check nearby DAs →',
     },
-    {
-      title: 'Flood Screening',
-      body: 'Verify flood risk before you build — required by certifiers for any new structure.',
-      href: `/reports/flood?address=${encoded}`,
-      label: 'Check flood risk →',
-    },
   ];
 
   // Reason-specific fail cards — show the most relevant tool first
-  let failCards;
+  let failCards: { title: string; body: string; href: string; label: string }[];
   if (reason.includes('flood')) {
     failCards = [
-      {
-        title: 'Flood Screening Report',
-        body: 'Your lot is in a flood control area. Get the full flood study overlay, BOM gauge history, and satellite water extent data — required for any DA on a flood-affected lot.',
-        href: `/reports/flood?address=${encoded}`,
-        label: 'Get flood report →',
-      },
       {
         title: 'Development Monitoring',
         body: 'Monitor nearby DAs — a flood study amendment or rezoning could change your eligibility.',
@@ -1482,12 +1470,6 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
         href: `/reports/threat-radar?address=${encoded}`,
         label: 'Check nearby approvals →',
       },
-      {
-        title: 'Rooftop Solar Potential',
-        body: 'Heritage restrictions limit new structures — but solar on an existing roof may still be viable. Check your annual kWh yield.',
-        href: `/reports/solar-yield?address=${encoded}`,
-        label: 'Check solar potential →',
-      },
     ];
   } else if (reason.includes('zone') || reason.includes('zoning')) {
     failCards = [
@@ -1499,14 +1481,7 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
       },
     ];
   } else if (reason.includes('existing') || reason.includes('secondary dwelling') || reason.includes('granny flat')) {
-    failCards = [
-      {
-        title: 'Rooftop Solar Potential',
-        body: 'You already have a secondary dwelling — optimise what you have. Check solar yield on your existing structures.',
-        href: `/reports/solar-yield?address=${encoded}`,
-        label: 'Check solar potential →',
-      },
-    ];
+    failCards = [];
   } else {
     // Default ineligible (lot size, other) — DA may still be viable
     failCards = [
@@ -1516,16 +1491,11 @@ function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: b
         href: `/reports/threat-radar?address=${encoded}`,
         label: 'Check nearby approvals →',
       },
-      {
-        title: 'Flood Screening',
-        body: 'Verify flood risk before pursuing a DA — flood overlay is required in any development application.',
-        href: `/reports/flood?address=${encoded}`,
-        label: 'Check flood risk →',
-      },
     ];
   }
 
   const cards = buildable ? passCards : failCards;
+  if (cards.length === 0) return null;
 
   return (
     <div className="space-y-3">

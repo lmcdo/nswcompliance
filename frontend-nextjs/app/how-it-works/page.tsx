@@ -42,32 +42,6 @@ const TOOLS = [
     limitations: 'Structures already on the lot are identified by you from the aerial image, not found automatically. An automated scan was measured in August 2026 against human review of 56 lots across four councils: it located 14 of the 38 secondary structures a person could see, and reported a further 15 that were not there. It is not used to decide eligibility. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
   },
   {
-    name: 'Flood Screening',
-    href: '/reports/flood',
-    sources: [
-      { name: 'NSW SEED EPI Flood Planning overlay', use: 'Statutory flood zone classification from the state-wide EPI hazard layer (ArcGIS REST)' },
-      { name: 'Council flood studies', use: 'Flood planning area extents and AEP tier classifications from council-published studies' },
-      { name: 'Flood study rasters', use: 'Design flood depths and water levels at specific AEP events (1-in-5 through PMF)' },
-      { name: 'Copernicus EMS flood activations', use: 'Satellite-confirmed historical flood event records' },
-      { name: 'JRC Global Surface Water', use: '40-year surface water occurrence from Landsat imagery (1984–present)' },
-      { name: 'DEA Water Observations (WOfS)', use: 'Australian surface water frequency from Landsat (1987–present, 25 m resolution)' },
-      { name: 'BOM Water Data Online', use: 'Nearest river gauge, last major flood event, and flood event history' },
-      { name: 'NSW 5 m DEM (SIX Maps)', use: 'Ground elevation to compute flood depth from water level surfaces' },
-    ],
-    cadence: 'EPI overlay and BOM gauge data are queried live. Council flood studies are updated when new studies are published (typically every 3–5 years per LGA). JRC and DEA datasets use multi-year composites.',
-    limitations: 'EPI flood overlay coverage is limited to LGAs that have uploaded polygon data to the state portal (~11 LGAs). Council flood study rasters are available for 3 study areas (expanding). Where no data is available, the result shows "unavailable" — absence of data is not clearance.',
-  },
-  {
-    name: 'Solar Potential',
-    href: '/reports/solar-yield',
-    sources: [
-      { name: 'Google Solar API', use: 'Roof geometry, panel layout, segment orientation, and annual energy yield estimate' },
-      { name: 'NSW Heritage Register', use: 'Heritage listing check — heritage properties may face additional approval requirements for solar installations' },
-    ],
-    cadence: 'Google Solar API data is queried live. Heritage and height data are queried live from spatial overlays.',
-    limitations: 'Yield estimates are based on Google Solar API modelling and assume standard panel configurations. Heavily shaded roofs, unusual orientations, or multi-storey buildings may produce less accurate estimates. Results are indicative — a CEC-accredited solar installer assessment is required for system sizing.',
-  },
-  {
     name: 'Pre-DA Site History',
     href: '/reports/pre-da-history',
     sources: [
@@ -91,16 +65,6 @@ const TOOLS = [
     limitations: 'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.',
   },
   {
-    name: 'Bushfire Pre-Screen',
-    href: '/reports/bushfire',
-    sources: [
-      { name: 'NSW Rural Fire Service (BFPL Map)', use: 'Bush Fire Prone Land classification — Category 1, 2, 3 and vegetation buffer zones (ArcGIS REST)' },
-      { name: 'NSW Government spatial overlays', use: 'Flood, heritage, and zone overlay cross-checks for the property' },
-    ],
-    cadence: 'RFS BFPL dataset is updated annually. Spatial overlay data is queried live.',
-    limitations: 'BAL band estimation is indicative and based on vegetation proximity, not a formal AS 3959 assessment. A certified BAL report from an accredited practitioner is required for DA lodgement in bushfire-prone areas.',
-  },
-  {
     name: 'Conveyancing Planning Disclosure',
     href: '/reports/conveyancing',
     sources: [
@@ -111,19 +75,6 @@ const TOOLS = [
     ],
     cadence: 'Planning Portal data is queried live. DCP provisions are updated when new LGAs are onboarded or instruments are amended.',
     limitations: `DCP setback controls are available for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.`,
-  },
-  {
-    name: 'Climate Risk Score',
-    href: '/climate-risk',
-    sources: [
-      { name: 'NARCliM 2.0', use: 'Regional climate projections — temperature and precipitation change to 2099 under SSP2.45 and SSP3.70 scenarios' },
-      { name: 'NSW Rural Fire Service', use: 'Bush Fire Prone Land classification' },
-      { name: 'NSW Planning Portal', use: 'EPI flood overlay data' },
-      { name: 'SEPP (Resilience and Hazards) 2021', use: 'Coastal management zone mapping' },
-      { name: 'NPWS fire history dataset', use: 'Historical fire scar polygons' },
-    ],
-    cadence: 'NARCliM projections are static (model outputs do not change). RFS and flood data are queried live. Fire history is updated when NPWS publishes new data.',
-    limitations: 'The composite score is deterministic and based on publicly available hazard datasets. It does not account for property-level factors (construction type, elevation within lot, vegetation management). The Climate Risk Report (with full NARCliM trajectories) is not yet available — pending incorporation and professional indemnity insurance.',
   },
 ];
 
@@ -137,7 +88,7 @@ export default function HowItWorksPage() {
         description="PlotDetect queries live NSW government data sources and satellite imagery to check zoning, flood risk, bushfire status, heritage overlays, and development controls for any NSW property address."
         steps={[
           { name: 'Enter a NSW property address', text: 'Type any NSW address into the search bar. PlotDetect resolves it to precise lot coordinates using the NSW Planning Portal geocoder.' },
-          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, flood risk, bushfire pre-screen, planning controls, solar potential, or development monitoring.' },
+          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, planning controls, or development monitoring.' },
           { name: 'Review live government data', text: 'Results are queried live from NSW Planning Portal, Rural Fire Service, spatial overlays, and council DCPs. Every data source is cited.' },
           { name: 'Check spatial overlays', text: 'Heritage items, flood planning areas, bushfire-prone land, biodiversity, acid sulfate soils, and coastal zones are checked against 27 spatial layers.' },
           { name: 'Read the limitations', text: 'Every result includes data source citations, update cadence, and limitations. Results are indicative — always verify with a qualified professional.' },

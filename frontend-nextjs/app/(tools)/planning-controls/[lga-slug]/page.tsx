@@ -298,8 +298,6 @@ export default async function PlanningControlsLgaPage(
           Full SEPP, LEP, and DCP controls for any {lga.name} address — setbacks, parking, height,
           floor space ratio, landscaping, and heritage with clause citations. Free. Also check{' '}
           <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
-          {' '}and{' '}
-          <Link href={`/flood-risk/${lga.slug}`} className="text-blue-600 hover:underline">flood risk</Link>
           {' '}for any {lga.name} address.
         </p>
       </div>
@@ -451,30 +449,12 @@ export default async function PlanningControlsLgaPage(
             </div>
           </a>
           <a
-            href={`/flood-risk/${lga.slug}`}
-            className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Flood risk</p>
-              <p className="text-xs text-gray-400 mt-0.5">Statutory + satellite flood data</p>
-            </div>
-          </a>
-          <a
             href={`/threat-radar/${lga.slug}`}
             className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
           >
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Threat radar</p>
               <p className="text-xs text-gray-400 mt-0.5">Nearby DAs and CDCs</p>
-            </div>
-          </a>
-          <a
-            href={`/bushfire/${lga.slug}`}
-            className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Bushfire pre-screen</p>
-              <p className="text-xs text-gray-400 mt-0.5">BFPL status and BAL estimate</p>
             </div>
           </a>
         </div>

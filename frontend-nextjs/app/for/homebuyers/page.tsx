@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Droplets, Flame, FileCheck, Building2, Home, Scissors, Sun, Radar,
+  FileCheck, Building2, Home, Scissors, Radar,
   Satellite, ArrowRight, ShieldCheck,
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
@@ -23,20 +23,6 @@ const SECTIONS = [
     heading: 'Before you buy',
     subtitle: 'What are you actually buying — and what could stop your plans?',
     tools: [
-      {
-        icon: Droplets, iconColor: 'text-blue-600', iconBg: 'bg-blue-500/10',
-        title: 'Flood Screening', badge: 'Free + $49',
-        question: 'Does it flood — and how deep?',
-        answer: 'Flood status plus modelled depth at different return periods, cross-referenced from council flood studies and satellite records — not just a "flood zone" yes/no.',
-        href: '/reports/flood',
-      },
-      {
-        icon: Flame, iconColor: 'text-orange-600', iconBg: 'bg-orange-500/10',
-        title: 'Bushfire Pre-Screen', badge: 'Free',
-        question: 'Is it bushfire-prone, and what does that mean for building?',
-        answer: 'Bush Fire Prone Land category, an estimated BAL band, and whether a formal bushfire (BAL) assessment from an accredited practitioner will be needed before you can build.',
-        href: '/reports/bushfire',
-      },
       {
         icon: FileCheck, iconColor: 'text-emerald-600', iconBg: 'bg-emerald-500/10',
         title: 'Planning Disclosure', badge: 'Free + $49',
@@ -84,13 +70,6 @@ const SECTIONS = [
     heading: "What's it worth pursuing?",
     subtitle: 'Whether the plan stacks up before you spend on a consultant.',
     tools: [
-      {
-        icon: Sun, iconColor: 'text-amber-500', iconBg: 'bg-amber-500/10',
-        title: 'Solar Potential', badge: '$39',
-        question: 'How much solar could this roof generate?',
-        answer: 'Roof geometry and orientation from satellite imagery combined with Bureau of Meteorology irradiance to estimate annual generation.',
-        href: '/reports/solar-yield',
-      },
       {
         icon: Radar, iconColor: 'text-violet-600', iconBg: 'bg-violet-500/10',
         title: 'Development Monitoring', badge: 'Free + $9/mo',

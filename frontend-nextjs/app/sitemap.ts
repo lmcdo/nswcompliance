@@ -10,6 +10,7 @@ import { CONVEYANCING_LGAS } from '@/lib/lga-data/conveyancing-lgas'
 import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
 import { ARTICLES } from '@/lib/blog-articles'
 import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary'
+import { isHiddenPath } from '@/lib/hidden-products'
 
 /**
  * Topic-clustered sitemaps for GEO (Generative Engine Optimization).
@@ -20,9 +21,9 @@ export async function generateSitemaps() {
   return [
     { id: 0 },  // core — static pages + tools
     { id: 1 },  // granny-flat — LGA pages
-    { id: 2 },  // flood — LGA pages
-    { id: 3 },  // solar — LGA pages
-    { id: 4 },  // hazards — bushfire LGA pages
+    { id: 2 },  // flood — LGA pages (empty while withdrawn: lib/hidden-products.ts)
+    { id: 3 },  // solar — LGA pages (empty while withdrawn)
+    { id: 4 },  // hazards — bushfire LGA pages (empty while withdrawn)
     { id: 5 },  // monitoring — threat-radar + pre-da-history LGA pages
     { id: 6 },  // compliance — planning-controls + conveyancing LGA pages
     { id: 7 },  // blog — articles + council granny flat guides
@@ -30,6 +31,11 @@ export async function generateSitemaps() {
 }
 
 export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
+  // Withdrawn products never reach a sitemap, whichever chunk lists them.
+  return buildSitemap(id).filter((entry) => !isHiddenPath(entry.url))
+}
+
+function buildSitemap(id: number): MetadataRoute.Sitemap {
   // The app's canonical consumer domain (Option B). plotdetect.com.au is the
   // separate info-site project and 404s for app routes — advertising it here
   // sent search engines to dead URLs. APEX, not www: the edge 307s every www

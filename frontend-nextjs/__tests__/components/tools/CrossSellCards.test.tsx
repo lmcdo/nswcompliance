@@ -104,12 +104,12 @@ describe('CrossSellCards — ineligible (fail) result', () => {
     expect(screen.getByText('Development Monitoring')).toBeInTheDocument();
   });
 
-  it('shows flood card on default ineligible result (consumer title, no internal codename — #703)', async () => {
+  it('does not show a flood card on default ineligible result (flood product withdrawn)', async () => {
     mockIneligibleDetect();
     render(<GrannyFlatPage />);
     await runDetect();
     await screen.findByText('Not eligible');
-    expect(screen.getByText('Flood Screening')).toBeInTheDocument();
+    expect(screen.queryByText('Flood Screening')).not.toBeInTheDocument();
   });
 
   it('Threat Radar link points to /reports/threat-radar with encoded address', async () => {

@@ -688,15 +688,7 @@ export default function QldSellerDisclosureComparisonPage() {
                 Professional obligations are evolving. Failing to advise a
                 client about material flood or bushfire exposure creates
                 professional liability risk, particularly where the
-                information was readily available. PlotDetect&apos;s{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk assessment
-                </Link>{' '}
-                checks five government-mapped hazard layers at the property
-                level and takes under a minute to run.
+                information was readily available.
               </p>
             </div>
 

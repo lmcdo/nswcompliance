@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
-import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
@@ -568,15 +566,7 @@ export default function CCNHSEPPPage() {
                 for hazard-affected properties. Properties that currently show
                 no flood or hazard notation may receive new notations under the
                 standardised framework. Building this into due diligence
-                processes early is prudent. PlotDetect&apos;s{' '}
-                <Link
-                  href="/reports/flood"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  flood risk reports
-                </Link>{' '}
-                already incorporate multiple data sources beyond the s10.7
-                certificate.
+                processes early is prudent.
               </p>
             </div>
           </div>
@@ -665,30 +655,6 @@ export default function CCNHSEPPPage() {
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check hazard exposure for any NSW property
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s climate risk assessment checks five
-              government-mapped hazard layers &mdash; flood, bushfire, coastal,
-              heat, and subsidence &mdash; for any NSW address. See what the
-              CC&NH SEPP framework will assess.
-            </p>
-            <TrackedLink
-              href="/climate-risk"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-500 transition-colors"
-              page="ccnh-sepp-nsw-development-changes"
-              cta="climate_check"
-            >
-              Check climate risk
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

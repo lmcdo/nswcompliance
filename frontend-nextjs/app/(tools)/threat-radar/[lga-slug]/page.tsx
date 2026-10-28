@@ -125,28 +125,6 @@ export default function ThreatRadarLgaPage(
               </div>
             </a>
           )}
-          {lga.hasFloodPage && (
-            <a
-              href={`/flood-risk/${lga.slug}`}
-              className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-            >
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Flood risk</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Statutory flood overlay and ARI flood data
-                </p>
-              </div>
-            </a>
-          )}
-          <a
-            href={`/solar-potential/${lga.slug}`}
-            className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Solar potential</p>
-              <p className="text-xs text-gray-400 mt-0.5">Roof yield estimate for any address</p>
-            </div>
-          </a>
         </div>
       </div>
 

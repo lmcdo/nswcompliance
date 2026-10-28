@@ -84,14 +84,6 @@ export default function RootLayout({
        '@type': 'WebSite',
        name: 'PlotDetect',
        url: 'https://plotdetect.com.au',
-       potentialAction: {
-         '@type': 'SearchAction',
-         target: {
-           '@type': 'EntryPoint',
-           urlTemplate: 'https://verify.plotdetect.com.au/reports/flood?address={search_term_string}',
-         },
-         'query-input': 'required name=search_term_string',
-       },
      }),
    }}
  />

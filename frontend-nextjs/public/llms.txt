@@ -3,7 +3,7 @@
 > Description: Structured planning compliance data, zoning analysis, and property feasibility tools for New South Wales, Australia.
 
 ## What PlotDetect Does
-PlotDetect provides structured, machine-readable NSW planning data including zoning controls (FSR, height, lot size), development permissibility, DCP provisions, SEPP requirements, overlay constraints, and satellite property intelligence (flood risk, bushfire, solar yield).
+PlotDetect provides structured, machine-readable NSW planning data including zoning controls (FSR, height, lot size), development permissibility, DCP provisions, SEPP requirements, overlay constraints.
 
 ## Primary Topics
 - NSW zoning rules and permissible land uses
@@ -14,8 +14,7 @@ PlotDetect provides structured, machine-readable NSW planning data including zon
 - SEPP (State Environmental Planning Policy) requirements
 - Overlay constraints: heritage, flood, bushfire, biodiversity, coastal
 - Subdivision feasibility
-- Climate risk assessment (flood, bushfire, coastal)
-- Satellite property intelligence (solar yield, development monitoring)
+- Development monitoring
 
 ## Coverage
 - All 128 NSW Local Government Areas (councils)
@@ -32,18 +31,6 @@ Structured LEP and DCP provisions for each NSW council. Councils with deep DCP e
 ### Granny Flat Eligibility (per council)
 https://canibuildit.com.au/granny-flat/{council-slug}
 CDC eligibility, lot size thresholds, setback rules, and approval statistics.
-
-### Flood Risk Assessment (per council)
-https://canibuildit.com.au/flood-risk/{council-slug}
-Flood overlay data, planning constraints, and risk screening.
-
-### Bushfire Assessment (per council)
-https://canibuildit.com.au/bushfire/{council-slug}
-BAL assessment, bushfire-prone land mapping, and planning implications.
-
-### Solar Potential Analysis (per council)
-https://canibuildit.com.au/solar-potential/{council-slug}
-Solar yield estimates and roof assessment.
 
 ### Development Monitoring (per council)
 https://canibuildit.com.au/threat-radar/{council-slug}

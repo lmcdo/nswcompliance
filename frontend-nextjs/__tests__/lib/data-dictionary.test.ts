@@ -23,7 +23,7 @@ describe('data dictionary content integrity', () => {
       expect(f.attribution.trim()).not.toBe('');
       expect(f.currency.trim()).not.toBe('');
       expect(f.caveats.length).toBeGreaterThan(0);
-      expect(f.related.length).toBeGreaterThan(0);
+      expect(Array.isArray(f.related)).toBe(true);
     }
   });
 

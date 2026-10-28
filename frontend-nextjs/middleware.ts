@@ -8,6 +8,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { identifyAiCrawler } from '@/lib/ai-crawlers';
+import { isHiddenPath } from '@/lib/hidden-products';
 
 /**
  * API Authentication, Rate Limiting & CORS Middleware
@@ -150,6 +151,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     // Refresh session — must call getUser() not getSession() to avoid stale JWTs
     await supabase.auth.getUser();
 
+    if (isHiddenPath(pathname)) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     return response;
   }
 
@@ -202,7 +204,10 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
   // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {
-    return NextResponse.next();
+    const pageResponse = NextResponse.next();
+    // Withdrawn products (lib/hidden-products.ts): reachable, never indexed.
+    if (isHiddenPath(pathname)) pageResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return pageResponse;
   }
 
   const origin = request.headers.get('origin');

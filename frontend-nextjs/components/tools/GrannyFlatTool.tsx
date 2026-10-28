@@ -750,8 +750,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
                     { href: '/reports/threat-radar', label: 'Nearby development activity', detail: 'See DAs and CDCs lodged within 200m' },
-                    { href: '/reports/solar-yield', label: 'Rooftop solar potential', detail: 'Estimate annual kWh yield from aerial imagery' },
-                    { href: '/reports/flood', label: 'Flood history', detail: 'SAR satellite flood detection + NSW statutory overlays' },
                   ].map(({ href, label, detail }) => (
                     <a key={href} href={href} className="group flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors">
                       <div className="flex-1">

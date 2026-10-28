@@ -23,12 +23,9 @@ export const metadata: Metadata = {
 
 const NAV_ITEMS = [
   { href: '/reports/intelligence-brief', label: 'Site Report' },
-  { href: '/reports/solar-yield', label: 'Solar Yield' },
   { href: '/reports/threat-radar', label: 'Development Monitoring' },
-  { href: '/reports/flood', label: 'Flood Screening' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
   { href: '/reports/pre-da-history', label: 'Site History' },
-  { href: '/reports/bushfire', label: 'Bushfire' },
   { href: '/reports/conveyancing', label: 'Conveyancing' },
 ];
 

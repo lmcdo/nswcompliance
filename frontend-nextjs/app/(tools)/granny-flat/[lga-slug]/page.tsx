@@ -51,11 +51,9 @@ export default function GrannyFlatLgaPage(
           heritage exclusions
           {lga.heritageCount > 0 && ` (${lga.heritageCount.toLocaleString()} items in ${lga.name})`},
           {lga.hasFloodData
-            ? <>{' '}<Link href={`/flood-risk/${lga.slug}`} className="text-blue-600 hover:underline">flood control lots</Link>,</>
+            ? <>{' '}flood control lots,</>
             : ''}
-          {' '}biodiversity values, and acid sulfate soils. Free. Also check{' '}
-          <Link href={`/solar-potential/${lga.slug}`} className="text-amber-600 hover:underline">solar yield</Link>
-          {' '}for any {lga.name} address.
+          {' '}biodiversity values, and acid sulfate soils. Free.
         </p>
       </div>
 
@@ -120,35 +118,6 @@ export default function GrannyFlatLgaPage(
           })),
         }}
       />
-
-      {/* Cross-link CTA */}
-      <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
-        <h3 className="font-semibold text-gray-900">Check other property risks in {lga.name}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-          {lga.hasFloodData && (
-            <a
-              href={`/flood-risk/${lga.slug}`}
-              className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-            >
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Flood risk</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {lga.hasAriData ? 'ARI flood data available' : 'Flood planning area check'}
-                </p>
-              </div>
-            </a>
-          )}
-          <a
-            href={`/solar-potential/${lga.slug}`}
-            className="flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
-          >
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Solar potential</p>
-              <p className="text-xs text-gray-400 mt-0.5">Roof yield estimate for any address</p>
-            </div>
-          </a>
-        </div>
-      </div>
 
       {/* Related areas */}
       {lga.relatedSlugs.length > 0 && (

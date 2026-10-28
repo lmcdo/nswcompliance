@@ -155,10 +155,7 @@ export const DATA_DICTIONARY_FIELDS: DataDictionaryField[] = [
       'An overlay flag is a screening fact, not a flood study. It reports intersection with a published map, not depth, frequency, or hazard category for the lot.',
       'Coverage differs by council: absence of a mapped overlay is not the same as absence of flood risk, and some councils hold flood information outside the published layers.',
     ],
-    related: [
-      { href: '/flood-risk', label: 'Flood risk pages' },
-      { href: '/reports/flood', label: 'Flood screening report' },
-    ],
+    related: [],
   },
   {
     slug: 'bushfire-prone-land',
@@ -179,10 +176,7 @@ export const DATA_DICTIONARY_FIELDS: DataDictionaryField[] = [
       'The map flag is not a Bushfire Attack Level (BAL). A BAL is assessed for a specific building footprint against vegetation, slope, and distance.',
       'Mapped categories differ in the controls they trigger; the category, where reported, comes from the published layer.',
     ],
-    related: [
-      { href: '/bushfire', label: 'Bushfire pages' },
-      { href: '/reports/bushfire', label: 'Bushfire screening report' },
-    ],
+    related: [],
   },
   {
     slug: 'heritage',

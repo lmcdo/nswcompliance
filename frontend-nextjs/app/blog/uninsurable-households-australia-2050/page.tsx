@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
-import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
@@ -619,16 +617,7 @@ export default function UninsurableHouseholds2050Page() {
               <p className="text-slate-700 leading-relaxed">
                 A suburb-level view is not enough. Two properties 200 metres
                 apart can have completely different flood, bushfire, and heat
-                exposure. PlotDetect&apos;s{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk assessment
-                </Link>{' '}
-                checks five government-mapped hazard layers at the property
-                level. It shows which hazards overlap your address &mdash; it
-                does not predict whether damage will occur.
+                exposure.
               </p>
             </div>
 
@@ -651,16 +640,7 @@ export default function UninsurableHouseholds2050Page() {
               </h3>
               <p className="text-slate-700 leading-relaxed">
                 Flood is responsible for the largest share of the
-                affordability crisis. PlotDetect&apos;s{' '}
-                <Link
-                  href="/reports/flood"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  Flood Screening
-                </Link>{' '}
-                cross-references LEP overlays, flood study modelling, and
-                state data to show depth and frequency information that
-                planning certificates do not include.
+                affordability crisis.
               </p>
             </div>
 
@@ -694,39 +674,6 @@ export default function UninsurableHouseholds2050Page() {
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check your property&apos;s climate risk trajectory
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect provides free, instant climate risk assessment for any
-              NSW address &mdash; flood, bushfire, coastal, and heat exposure
-              from government data sources. See which hazards overlap your
-              property before you buy.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <TrackedLink
-                href="/climate-risk"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-                page="uninsurable-households-australia-2050"
-                cta="climate_check"
-              >
-                Check climate risk
-                <ArrowRight className="w-4 h-4" />
-              </TrackedLink>
-              <Link
-                href="/reports/flood"
-                className="inline-flex items-center gap-2 px-6 py-3 text-slate-700 text-sm font-medium rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
-              >
-                Check flood risk
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
-import { ArrowRight } from 'lucide-react';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
@@ -525,45 +523,13 @@ export default function AABS2MandatoryClimateReportingPage() {
               <p className="text-slate-700 leading-relaxed">
                 Government sources include NSW bushfire prone land maps, SES
                 flood data, coastal hazard assessments, and NARCliM climate
-                projections. PlotDetect&apos;s{' '}
-                <Link
-                  href="/climate-risk"
-                  className="text-teal-600 hover:text-teal-700 underline underline-offset-2"
-                >
-                  climate risk assessment
-                </Link>{' '}
-                consolidates multiple government hazard layers at the
-                property level.
+                projections.
               </p>
             </div>
           </div>
         </section>
 
         <BlogDisclaimer />
-
-        {/* CTA */}
-        <section className="mt-4 space-y-6">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Assess climate risk across your property portfolio
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect&apos;s climate risk assessment checks five government-
-              mapped hazard layers for any NSW address. See which physical risks
-              overlap your properties &mdash; flood, bushfire, coastal erosion,
-              heat, and subsidence.
-            </p>
-            <TrackedLink
-              href="/climate-risk"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-              page="aasb-s2-mandatory-climate-reporting-property"
-              cta="climate_check"
-            >
-              Check climate risk
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-        </section>
 
         {/* Back link */}
         <div className="pt-8 border-t border-slate-100">

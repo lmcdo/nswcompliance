@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { BlogDisclaimer } from '@/components/blog/BlogDisclaimer';
-import { ArrowRight } from 'lucide-react';
 import { BlogPostingJsonLd } from '@/lib/json-ld';
 
 export const metadata: Metadata = {
@@ -273,26 +271,6 @@ export default function ApraCpg229Page() {
 
         {/* CTA */}
         <section className="mt-12 space-y-6">
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-3">
-              Check the climate risk profile for any NSW property
-            </h2>
-            <p className="text-slate-600 mb-4 leading-relaxed">
-              PlotDetect provides free, deterministic climate risk assessment for any NSW address.
-              Flood depth at ARI return periods, bushfire BAL estimation, heat stress projections
-              (NARCliM 2.0), and statutory planning overlays — all from authoritative government sources.
-            </p>
-            <TrackedLink
-              href="/climate-risk"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
-              page="apra-cpg-229-property-assessment"
-              cta="climate_check"
-            >
-              Try the free climate risk check
-              <ArrowRight className="w-4 h-4" />
-            </TrackedLink>
-          </div>
-
           <div className="rounded-2xl border border-slate-200 p-8 text-center">
             <h3 className="text-lg font-semibold text-slate-900 mb-2">
               Request the CPG 229 property climate data guide
