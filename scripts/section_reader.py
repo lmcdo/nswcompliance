@@ -102,7 +102,14 @@ def contents_pages(lines: list[tuple[int, str]]) -> set[int]:
     by: dict[int, list[str]] = {}
     for p, t in lines:
         by.setdefault(p, []).append(t)
-    return {p for p, ts in by.items() if cq.contents_kind("\n".join(ts))}
+    # The WHOLE page must be contents, not merely read as such: a page with a few contents lines and a rule below them
+    # is read (cross-review). 60%+ of its lines end in a page number, or 80%+ are numbered titles.
+    def whole(ts: list[str]) -> bool:
+        low = [t.strip().lower() for t in ts if t.strip()]
+        paged = sum(1 for t in low if cq._CONTENTS_PAGE.search(t) or cq._CONTENTS_PIPE.match(t))
+        numbered = sum(1 for t in low if cq._CONTENTS_NUM.match(t))
+        return bool(low) and (paged / len(low) >= 0.6 or numbered / len(low) >= 0.8)
+    return {p for p, ts in by.items() if cq.contents_kind("\n".join(ts)) and whole(ts)}
 
 
 def chapter_lines(pdf_path: str) -> list[tuple[int, str]]:
