@@ -143,22 +143,30 @@ def council_at(lat: float, lng: float, cur) -> Optional[str]:
 
 
 def _trusted_lot(cur, lot_wkt: Optional[str], lat: float, lng: float) -> Optional[str]:
-    """The lot outline, only if it is a valid polygon at the address. A stale or
-    neighbouring boundary is ignored, so it can never hide a flooded address
-    point (same rule as lib/flood/flood-map.ts, Sol 2026-10-20)."""
+    """The lot outline, only if it is a valid polygon that CONTAINS the address
+    point. A stale or neighbouring boundary is ignored, so it can never give a
+    whole-lot answer for the wrong parcel (same rule as lib/flood/flood-map.ts)."""
     if not lot_wkt:
         return None
+    # A savepoint: a malformed outline must not abort the transaction and take
+    # the point answer down with it (cross-review).
     try:
+        cur.execute("SAVEPOINT flood_lot_check")
         cur.execute(
             "SELECT ST_IsValid(g) AND GeometryType(g) IN ('POLYGON','MULTIPOLYGON') "
-            "AND ST_DWithin(g, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.0005) "
+            "AND ST_Covers(g, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
             "FROM (SELECT ST_GeomFromText(%s, 4326) AS g) t",
             (lng, lat, lot_wkt),
         )
         row = cur.fetchone()
         ok = _cols(row, "ok")[0] if row else False
+        cur.execute("RELEASE SAVEPOINT flood_lot_check")
         return lot_wkt if ok else None
     except Exception:  # noqa: BLE001 -- an unreadable outline is simply not used
+        try:
+            cur.execute("ROLLBACK TO SAVEPOINT flood_lot_check")
+        except Exception:  # noqa: BLE001
+            pass
         return None
 
 

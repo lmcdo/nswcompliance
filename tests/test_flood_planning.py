@@ -33,7 +33,7 @@ class Cur:
     def execute(self, sql, params=None):
         self.sql.append(sql)
         self.params = getattr(self, "params", []) + [params]
-        if sql.startswith("SET LOCAL"):
+        if sql.startswith(("SET LOCAL", "SAVEPOINT", "RELEASE SAVEPOINT", "ROLLBACK TO SAVEPOINT")):
             return
         self.current = self.answers.pop(0)
 
