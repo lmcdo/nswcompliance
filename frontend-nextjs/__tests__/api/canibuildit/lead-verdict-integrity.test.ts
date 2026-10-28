@@ -278,7 +278,9 @@ describe('POST /api/canibuildit/lead — duplex-result ignores the client eligib
       eligible: true, // the spoofed claim
       interest_type: 'duplex-result',
     }));
-    expect(emailSendMock).toHaveBeenCalledTimes(1);
+    // One confirmation to the person; the second send is the operator alert.
+    expect(emailSendMock).toHaveBeenCalledTimes(2);
+    expect(emailSendMock.mock.calls[1][0].subject).toMatch(/^Lead: /);
     const html = emailSendMock.mock.calls[0][0].html;
     expect(html).toMatch(/does not meet/i);
     expect(html).not.toMatch(/can apply to build/i);
