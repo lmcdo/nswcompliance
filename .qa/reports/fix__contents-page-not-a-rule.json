@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rows the nightly quote check may mark proven: contents pages become not_a_control. 38 live rows (17 shown) were already hidden by a backed-up write on 2026-10-28.",
+  "commit_hash": "4142bc83",
+  "files": [
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q -o addopts=",
+    "expected": "all pass; test_contents_page_is_not_a_rule fails if contents_kind returns None",
+    "fails_when": "contents_kind returns None for the Hornsby contents text, or flags the Woollahra setback table",
+    "observed_red": "2026-10-28: with contents_kind forced to return None, test_contents_page_is_not_a_rule FAILED (1 failed); restored, it passes."
+  },
+  "pre_impl": {
+    "existing_data": "2026-10-28 live: 38 current council rows are contents pages (dot leaders / section-number title lists); 16 were proven exact/recovered and 17 shown. Checked over all 68,944 current council rows; 0 real rules flagged (Woollahra B3.2 setback table and street lists stay rules).",
+    "assumption_mismatch": "The proof assumed text found in the PDF is a rule. A contents page is found in the PDF word for word.",
+    "new_vs_existing": "Extends the existing not_a_control path in judge (map labels, figure captions) with one more kind; no new table, column or status."
+  },
+  "functions": [
+    {
+      "name": "contents_kind",
+      "file_line": "scripts/council_quote.py",
+      "input": "the body text of one stored council rule, heading line removed",
+      "output": "'contents_page' when 5+ lines and 3+ (40%+) end in page numbers, or 60%+ start with a dotted section number and no line has rule wording; else None",
+      "if_none": "an empty or None body gives no lines, so it returns None and the rule is judged as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "rule body (rule_page_locator.rule_body)",
+      "read_at": "scripts/council_quote.py judge",
+      "if_missing": "empty body gives None, so judging continues as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A numbers table with dotted values ('9.0 - < 11.0 | 1.1') read as a contents list.",
+      "what_happens": "A real setback table would be hidden.",
+      "mitigated": true,
+      "how": "A section number must be followed by a word, not a number; test covers Woollahra B3.2.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k contents"
+    },
+    {
+      "scenario": "A list of numbered controls with no page numbers.",
+      "what_happens": "Real numbered rules would be hidden from visitors.",
+      "mitigated": true,
+      "how": "Any rule wording (must, shall, to be, maximum...) blocks the title-list path; test covers it.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k contents"
+    },
+    {
+      "scenario": "A real contents page lists headings that contain rule words ('to be submitted').",
+      "what_happens": "It would stay a rule and be proven again.",
+      "mitigated": true,
+      "how": "Three or more lines ending in page numbers decide it before rule words are checked; test uses Marrickville 2.21.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k contents"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. The 38 live rows were already set not_a_control and withheld (backup data/db_rollback_backups/contents_page_rows_pre_2026-10-28T143948.json).",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}

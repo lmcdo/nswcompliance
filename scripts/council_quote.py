@@ -17,7 +17,7 @@ recovered      the quote is not printed whole, but its opening and closing words
                close together: the council's text between them is copied. Or only
                the opening is printed, at a label ("(b)", "C3", "2.1"): copied from
                that label to the next label of the same kind.
-not_a_control  map labels or a figure caption, not a rule.
+not_a_control  map labels, a figure caption or a contents page, not a rule.
 unconfirmed    none of the above; `reason` says why. Numbers from these are never used.
 
 Matching runs on the cached lowercase lines (citation_proof cache) in both reading
@@ -111,6 +111,12 @@ def list_label_lines(text: list[str]) -> set[int]:
     return out
 _LEGEND = re.compile(r"legend\s*[:.\-–—]?")
 _RULE_WORDS = re.compile(r"\b(?:must|shall|should|are to|is to|to be|maximum|minimum|min\.|max\.)\b")
+# A contents page: section numbers with a dot ("3.2.1", "D5.4.6") before a title, or titles ending in page numbers
+# after dot leaders or a pipe ("Setbacks ....... 46", "3.1.2 Setbacks | 3-9"). Hornsby Part 3 page 2 was stored as
+# rules and proven, because its words ARE in the PDF (2026-10-28: 38 such rows, 17 shown).
+_CONTENTS_NUM = re.compile(r"^(?:[a-z]{0,2}\d+(?:\.\d+)+\.?|part \d+|appendix \d+|schedule \d+)(?:\s*\|)?\s+[a-z(]")
+_CONTENTS_PAGE = re.compile(r"(?:\.{4,}|…{2,}|�{3,})\s*[a-z]?[\d-]+\s*$")
+_CONTENTS_PIPE = re.compile(r"^[a-z]{0,2}\d+(?:\.\d+)+\s.*\|\s*\d+-\d+\s*$")
 #: A label at a line start, by kind. Kinds must match for a label to end a copy.
 _LABELS = (
     ("paren_alpha", re.compile(r"^\(([a-z])\)")),
@@ -322,6 +328,24 @@ def figure_kind(body: str) -> str | None:
     return "figure_caption" if len(_WORD.findall(body.lower())) <= 25 else None
 
 
+def contents_kind(body: str) -> str | None:
+    """A contents page is not a rule, though every word of it is in the PDF. Five or more lines, and either three or
+    more (and 40%+) end in a page number, or 60%+ start with a dotted section number and none reads as a rule. A table
+    of numbers ("9.0 - < 11.0 | 1.1") is not a title, so a setback table stays a rule."""
+    lines = [ln.strip().lower() for ln in (body or "").splitlines() if ln.strip()]
+    if lines and lines[0] in ("contents", "table of contents"):
+        lines = lines[1:]
+    if len(lines) < 5:
+        return None
+    paged = sum(1 for ln in lines if _CONTENTS_PAGE.search(ln) or _CONTENTS_PIPE.match(ln))
+    if paged >= 3 and paged / len(lines) >= 0.4:
+        return "contents_page"
+    numbered = sum(1 for ln in lines if _CONTENTS_NUM.match(ln))
+    if numbered / len(lines) >= 0.6 and not any(_RULE_WORDS.search(ln) for ln in lines):
+        return "contents_page"
+    return None
+
+
 def are_labels(body: str) -> bool:
     """A drawing's labels, by their shape: two or more lines, each of LABEL_WORDS words or fewer,
     and no rule wording or sign of a sentence anywhere. Hornsby Figure 3.1-f, as read:
@@ -386,6 +410,8 @@ def judge(row: dict, streams: list[Stream]) -> dict:
     q = norm(body)
     out = {"id": row["id"], "council": row["source_council"], "stored_page": row["pdf_page"],
            "page_check": row["page_check"], "needs_split": len(body) > OVERSIZED}
+    if contents_kind(body):
+        return {**out, "status": "not_a_control", "reason": "contents_page"}
     if is_map_labels(body) or figure_kind(body):
         return {**out, "status": "not_a_control", "reason": "map_labels" if is_map_labels(body) else figure_kind(body)}
     # A drawing's labels, coded as the figure they sit in ("Figure 3.2", "Map 1"), with no rule
