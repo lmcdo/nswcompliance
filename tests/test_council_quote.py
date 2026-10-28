@@ -519,3 +519,12 @@ def test_an_unpunctuated_labelled_line_before_the_last_is_still_refused():
     st = stream({1: [lead, "i. eaves to main roofs", "ii. chimneys and antennas"]})
     out = cq.judge(row(f"{lead}\ni. eaves to main roofs\nii. chimneys and antennas"), [st])
     assert out["reason"] != "pieces"
+
+
+def test_a_relaxed_item_from_a_later_list_is_not_joined_to_the_lead_in():
+    lead = "7. Encroachments - consideration may be given to minor encroachments to the envelope for:"
+    item = "ii. preserve clusters of established trees as corridors"
+    st = stream({1: [lead, "i. eaves to main roofs", "8. For sites within significant landscapes:",
+                     "i. retain the existing ground levels", item]})
+    out = cq.judge(row(f"{lead}\n{item}"), [st])
+    assert out["reason"] != "pieces"

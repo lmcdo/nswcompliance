@@ -411,6 +411,10 @@ def prove_pieces(body: str, streams: list[Stream], cqt, page: int | None = None)
                 e = k + len(q) - 1
                 if st.page(e) - p0 > PIECE_PAGES or st.casing_unread(k, e):
                     break
+                # a relaxed line must stay in its own list: no other lead-in ("...:") printed between it and the
+                # line before (cross-review 2026-10-28: "ii. chimneys and antennas" of a LATER list on the page)
+                if out and (short_ok or open_ok) and end + 1 < k and re.search(r":\s*$", st.copy(end + 1, k - 1), re.M):
+                    break
                 out.append(st.copy(k, e))
                 end = e
             else:
