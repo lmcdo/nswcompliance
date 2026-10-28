@@ -1,0 +1,1380 @@
+[
+ {
+  "case_id": "bd4954fb6135",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "epi_overlay",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": null,
+   "bom_gauge_name": null,
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2022-08-12",
+   "dea_wofs_frequency_pct": 100.0,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202210",
+     "event_date": "2022-10-01",
+     "event_name": "NSW Floods October 2022",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_study_date": null,
+   "flood_study_name": "Forbes Local Environmental Plan 2013",
+   "ground_elevation_m_ahd": null,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "FORBES",
+   "ses_study_name": "Forbes Local Environmental Plan 2013",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_history"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "cd21b9925b4f",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "epi_overlay",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 7.4,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2022-12-16",
+   "dea_wofs_frequency_pct": 0.04,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": "State Environmental Planning Policy (Precincts—Central River City) 2021",
+   "ground_elevation_m_ahd": 14.3,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Prone Land",
+    "Probable Maximum Flood",
+    "1000AEP",
+    "2000AEP",
+    "5000AEP",
+    "500AEP"
+   ],
+   "ses_flood_class": "Flood Prone Land",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "UNKNOWN",
+   "ses_study_name": "EPI_STATEWIDE_0_FLOOD_PRONE_AND_MAJOR_CREEKS_LAND",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "d99fb35e9685",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "epi_overlay",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 32.9,
+   "bom_gauge_name": "Clarence River at Grafton",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2019-05-03",
+   "dea_wofs_frequency_pct": 0.4,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": "Clarence Valley Local Environmental Plan 2011",
+   "ground_elevation_m_ahd": null,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "CLARENCE VALLEY",
+   "ses_study_name": "Clarence Valley Local Environmental Plan 2011",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "0841d5872200",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "epi_overlay",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 19.9,
+   "bom_gauge_name": "Clarence River at Grafton",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": "Conservation Area - General",
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2019-05-03",
+   "dea_wofs_frequency_pct": 93.91,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": "Clarence Valley Local Environmental Plan 2011",
+   "ground_elevation_m_ahd": 4.96,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "CLARENCE VALLEY",
+   "ses_study_name": "Clarence Valley Local Environmental Plan 2011",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_history"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "bd4954fb6135",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "council_fpa",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": null,
+   "bom_gauge_name": null,
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2022-08-12",
+   "dea_wofs_frequency_pct": 100.0,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202210",
+     "event_date": "2022-10-01",
+     "event_name": "NSW Floods October 2022",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_study_date": null,
+   "flood_study_name": "Forbes Local Environmental Plan 2013",
+   "ground_elevation_m_ahd": null,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "FORBES",
+   "ses_study_name": "Forbes Local Environmental Plan 2013",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_history"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "9b15027e04d3",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "council_fpa",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 28.8,
+   "bom_gauge_name": "Tweed River at Murwillumbah",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.07,
+   "ems_activations": [],
+   "ems_flood_detected": false,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 5.54,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "BYRON",
+   "ses_study_name": "BYRON_FPA_flood_planning_area",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "council_fpa",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "9a0e825887bf",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "hawkesbury_1pct",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 3.1,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.11,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202207",
+     "event_date": "2022-07-01",
+     "event_name": "NSW Floods July 2022",
+     "flood_type": "observed"
+    },
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [
+    {
+     "design": {
+      "0_2pct": {
+       "depth_m": null,
+       "level_m_ahd": 20.15
+      },
+      "0_5pct": {
+       "depth_m": null,
+       "level_m_ahd": 18.53
+      },
+      "10pct": {
+       "depth_m": null,
+       "level_m_ahd": 11.63
+      },
+      "1pct": {
+       "depth_m": null,
+       "level_m_ahd": 17.34
+      },
+      "2pct": {
+       "depth_m": null,
+       "level_m_ahd": 15.93
+      },
+      "5pct": {
+       "depth_m": null,
+       "level_m_ahd": 13.76
+      },
+      "pmf": {
+       "depth_m": null,
+       "level_m_ahd": 30.55
+      }
+     },
+     "historical": {},
+     "source": "NSW Reconstruction Authority",
+     "study_key": "hawkesbury",
+     "study_name": "Hawkesbury FRMSP 2025"
+    }
+   ],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 10.85,
+   "hawkesbury_flood_level_100aep": 17.34,
+   "hawkesbury_flood_level_10aep": 11.63,
+   "hawkesbury_flood_level_200aep": 18.53,
+   "hawkesbury_flood_level_20aep": 13.76,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": 20.15,
+   "hawkesbury_flood_level_50aep": 15.93,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": 30.55,
+   "hawkesbury_flood_study": "Hawkesbury FRMSP 2025",
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood",
+    "1000AEP",
+    "100AEP",
+    "10AEP",
+    "2000AEP",
+    "200AEP",
+    "20AEP",
+    "5000AEP",
+    "500AEP",
+    "50AEP"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "HAWKESBURY",
+   "ses_study_name": "HFRMS_2025_flood_planning_area",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "council_fpa",
+   "flood_study_1pct",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "2d0b314ae3ec",
+  "correct_at_build": true,
+  "expect": "positive",
+  "group": "hawkesbury_1pct",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 2.1,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.18,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [
+    {
+     "design": {
+      "0_2pct": {
+       "depth_m": null,
+       "level_m_ahd": 20.16
+      },
+      "0_5pct": {
+       "depth_m": null,
+       "level_m_ahd": 18.54
+      },
+      "1pct": {
+       "depth_m": null,
+       "level_m_ahd": 17.35
+      },
+      "2pct": {
+       "depth_m": null,
+       "level_m_ahd": 15.95
+      },
+      "pmf": {
+       "depth_m": null,
+       "level_m_ahd": 30.55
+      }
+     },
+     "historical": {},
+     "source": "NSW Reconstruction Authority",
+     "study_key": "hawkesbury",
+     "study_name": "Hawkesbury FRMSP 2025"
+    }
+   ],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 15.87,
+   "hawkesbury_flood_level_100aep": 17.35,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": 18.54,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": 20.16,
+   "hawkesbury_flood_level_50aep": 15.95,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": 30.55,
+   "hawkesbury_flood_study": "Hawkesbury FRMSP 2025",
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood",
+    "1000AEP",
+    "100AEP",
+    "2000AEP",
+    "200AEP",
+    "5000AEP",
+    "500AEP",
+    "50AEP"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "HAWKESBURY",
+   "ses_study_name": "HFRMS_2025_flood_planning_area",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "council_fpa",
+   "flood_study_1pct",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "bb73bef3c474",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_ridge_over_80m",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 25.6,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.07,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 386.71,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "d51482fc7529",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_ridge_over_80m",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 16.8,
+   "bom_gauge_name": "Georges River at Liverpool",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.27,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 80.17,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "ba76e08abc93",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_ridge_over_80m",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 20.9,
+   "bom_gauge_name": "Georges River at Liverpool",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": "Conservation Area - General",
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.18,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 115.52,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "af2e015a4203",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_ridge_over_80m",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 18.6,
+   "bom_gauge_name": "Georges River at Liverpool",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.08,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 96.46,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "8cf4608a94c3",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_any",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 60.4,
+   "bom_gauge_name": "Hunter River at Singleton",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.08,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 3.48,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "bc772a11d93e",
+  "correct_at_build": false,
+  "expect": "no_signal",
+  "group": "ems_alone_any",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 26.5,
+   "bom_gauge_name": "Georges River at Liverpool",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.38,
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": null,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [],
+   "ses_flood_class": null,
+   "ses_in_flood_planning_area": false,
+   "ses_study_lga": null,
+   "ses_study_name": null,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "moderate"
+ },
+ {
+  "case_id": "8c4bdb960556",
+  "correct_at_build": true,
+  "expect": "no_signal",
+  "group": "ems_alone_any",
+  "inputs": {
+   "bom_gauge_distance_km": 21.0,
+   "bom_gauge_name": "Georges River at Liverpool",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "data_currency": "query_failed",
+   "ems_activations": [
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": null,
+   "epi_flood_label": null,
+   "flood_event_count": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "ems"
+  ],
+  "signal_at_build": "unavailable"
+ },
+ {
+  "case_id": "af9cecd1a34f",
+  "correct_at_build": true,
+  "expect": "no_signal",
+  "group": "no_evidence",
+  "inputs": {
+   "data_currency": "query_failed",
+   "epi_flood_class": null,
+   "epi_flood_label": null,
+   "flood_event_count": null,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. Flood detection for 2022 La Niña season uses Sentinel-1A only (reduced coverage).",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "wet_seasons_checked": 0
+  },
+  "positives": [],
+  "signal_at_build": "unavailable"
+ },
+ {
+  "case_id": "bd4954fb6135",
+  "correct_at_build": null,
+  "expect": null,
+  "group": "nsw_2022_real_extent",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": null,
+   "bom_gauge_name": null,
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "2022-08-12",
+   "dea_wofs_frequency_pct": 100.0,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202210",
+     "event_date": "2022-10-01",
+     "event_name": "NSW Floods October 2022",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "flood_planning_area",
+   "epi_flood_label": "Flood Planning Area",
+   "flood_event_count": null,
+   "flood_studies": [],
+   "flood_study_date": null,
+   "flood_study_name": "Forbes Local Environmental Plan 2013",
+   "ground_elevation_m_ahd": null,
+   "hawkesbury_flood_level_100aep": null,
+   "hawkesbury_flood_level_10aep": null,
+   "hawkesbury_flood_level_200aep": null,
+   "hawkesbury_flood_level_20aep": null,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": null,
+   "hawkesbury_flood_level_50aep": null,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": null,
+   "hawkesbury_flood_study": null,
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "FORBES",
+   "ses_study_name": "Forbes Local Environmental Plan 2013",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "epi_overlay",
+   "council_fpa",
+   "ems",
+   "water_history"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "9a0e825887bf",
+  "correct_at_build": null,
+  "expect": null,
+  "group": "nsw_2022_real_extent",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 3.1,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.11,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202207",
+     "event_date": "2022-07-01",
+     "event_name": "NSW Floods July 2022",
+     "flood_type": "observed"
+    },
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [
+    {
+     "design": {
+      "0_2pct": {
+       "depth_m": null,
+       "level_m_ahd": 20.15
+      },
+      "0_5pct": {
+       "depth_m": null,
+       "level_m_ahd": 18.53
+      },
+      "10pct": {
+       "depth_m": null,
+       "level_m_ahd": 11.63
+      },
+      "1pct": {
+       "depth_m": null,
+       "level_m_ahd": 17.34
+      },
+      "2pct": {
+       "depth_m": null,
+       "level_m_ahd": 15.93
+      },
+      "5pct": {
+       "depth_m": null,
+       "level_m_ahd": 13.76
+      },
+      "pmf": {
+       "depth_m": null,
+       "level_m_ahd": 30.55
+      }
+     },
+     "historical": {},
+     "source": "NSW Reconstruction Authority",
+     "study_key": "hawkesbury",
+     "study_name": "Hawkesbury FRMSP 2025"
+    }
+   ],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 10.85,
+   "hawkesbury_flood_level_100aep": 17.34,
+   "hawkesbury_flood_level_10aep": 11.63,
+   "hawkesbury_flood_level_200aep": 18.53,
+   "hawkesbury_flood_level_20aep": 13.76,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": 20.15,
+   "hawkesbury_flood_level_50aep": 15.93,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": 30.55,
+   "hawkesbury_flood_study": "Hawkesbury FRMSP 2025",
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood",
+    "1000AEP",
+    "100AEP",
+    "10AEP",
+    "2000AEP",
+    "200AEP",
+    "20AEP",
+    "5000AEP",
+    "500AEP",
+    "50AEP"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "HAWKESBURY",
+   "ses_study_name": "HFRMS_2025_flood_planning_area",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "council_fpa",
+   "flood_study_1pct",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ },
+ {
+  "case_id": "740121fa5fc5",
+  "correct_at_build": null,
+  "expect": null,
+  "group": "nsw_2022_real_extent",
+  "inputs": {
+   "bom_flood_history": [],
+   "bom_gauge_distance_km": 1.1,
+   "bom_gauge_name": "Hawkesbury River at Windsor",
+   "bom_last_major_flood_date": null,
+   "bom_last_major_flood_peak_m": null,
+   "compound_heritage": null,
+   "compound_landslide": null,
+   "compound_riparian": null,
+   "compound_wetlands": null,
+   "data_currency": "unknown",
+   "dea_wofs_frequency_pct": 0.35,
+   "ems_activations": [
+    {
+     "activation_id": "NSW-202207",
+     "event_date": "2022-07-01",
+     "event_name": "NSW Floods July 2022",
+     "flood_type": "observed"
+    },
+    {
+     "activation_id": "EMSR567",
+     "event_date": "2022-02-26",
+     "event_name": "NSW/QLD Floods Feb–Mar 2022 — La Niña (Copernicus EMSR567)",
+     "flood_type": "observed"
+    }
+   ],
+   "ems_flood_detected": true,
+   "epi_flood_class": "none",
+   "epi_flood_label": "No EPI Flood Overlay",
+   "flood_event_count": null,
+   "flood_studies": [
+    {
+     "design": {
+      "0_2pct": {
+       "depth_m": null,
+       "level_m_ahd": 20.15
+      },
+      "0_5pct": {
+       "depth_m": null,
+       "level_m_ahd": 18.53
+      },
+      "10pct": {
+       "depth_m": null,
+       "level_m_ahd": 11.66
+      },
+      "1pct": {
+       "depth_m": null,
+       "level_m_ahd": 17.34
+      },
+      "2pct": {
+       "depth_m": null,
+       "level_m_ahd": 15.93
+      },
+      "5pct": {
+       "depth_m": null,
+       "level_m_ahd": 13.77
+      },
+      "pmf": {
+       "depth_m": null,
+       "level_m_ahd": 30.55
+      }
+     },
+     "historical": {},
+     "source": "NSW Reconstruction Authority",
+     "study_key": "hawkesbury",
+     "study_name": "Hawkesbury FRMSP 2025"
+    }
+   ],
+   "flood_studies_absent": [],
+   "flood_study_date": null,
+   "flood_study_name": null,
+   "ground_elevation_m_ahd": 11.92,
+   "hawkesbury_flood_level_100aep": 17.34,
+   "hawkesbury_flood_level_10aep": 11.66,
+   "hawkesbury_flood_level_200aep": 18.53,
+   "hawkesbury_flood_level_20aep": 13.77,
+   "hawkesbury_flood_level_2aep": null,
+   "hawkesbury_flood_level_500aep": 20.15,
+   "hawkesbury_flood_level_50aep": 15.93,
+   "hawkesbury_flood_level_5aep": null,
+   "hawkesbury_flood_level_pmf": 30.55,
+   "hawkesbury_flood_study": "Hawkesbury FRMSP 2025",
+   "jrc_data_year": 2021,
+   "jrc_water_occurrence_pct": 0.0,
+   "s1_gap_warning": "Sentinel-1B was non-operational Dec 2021 – Mar 2025. 2022 La Niña flood events sourced from Copernicus EMS activation data.",
+   "sar_analysis_date": null,
+   "sar_confidence": null,
+   "sar_flood_detected": null,
+   "sentinel1b_gap_affected": true,
+   "ses_aep_tiers": [
+    "Flood Planning Area",
+    "Probable Maximum Flood",
+    "1000AEP",
+    "100AEP",
+    "2000AEP",
+    "200AEP",
+    "20AEP",
+    "5000AEP",
+    "500AEP",
+    "50AEP"
+   ],
+   "ses_flood_class": "Flood Planning Area",
+   "ses_in_flood_planning_area": true,
+   "ses_study_lga": "HAWKESBURY",
+   "ses_study_name": "HFRMS_2025_flood_planning_area",
+   "wet_seasons_checked": 0
+  },
+  "positives": [
+   "council_fpa",
+   "flood_study_1pct",
+   "ems",
+   "water_trace"
+  ],
+  "signal_at_build": "elevated"
+ }
+]
