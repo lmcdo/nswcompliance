@@ -377,6 +377,20 @@ class TestBuildCdcInputs:
         inputs = build_cdc_inputs("R2", 500.0, [], [], [{"layer_type": "flood", "value": "x"}], set())
         assert inputs.flood_prone is True
 
+    def test_flood_planning_answer_overrides_the_raw_overlay(self):
+        """When the caller supplies the one flood planning answer
+        (services/flood_planning.py) it decides: a PMF/'Other' row in the flood
+        layer is not flood prone, and an unheld council is unknown."""
+        from services.cdc_screen import build_cdc_inputs
+        pmf_row = [{"layer_type": "flood", "value": "PMF"}]
+        # A map "no" is not "not a flood control lot": stays unchecked.
+        assert build_cdc_inputs("R2", 500.0, [], [], pmf_row, {"flood"},
+                                {"value": False}).flood_prone is None
+        assert build_cdc_inputs("R2", 500.0, [], [], [], {"flood"},
+                                {"value": None}).flood_prone is None
+        assert build_cdc_inputs("R2", 500.0, [], [], [], set(),
+                                {"value": True}).flood_prone is True
+
     def test_zone_token_extracted_and_uppercased(self):
         from services.cdc_screen import build_cdc_inputs
         assert build_cdc_inputs("r2 Low Density Residential", None, None, None, [], set()).zone_code == "R2"

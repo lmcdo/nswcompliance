@@ -465,6 +465,7 @@ def build_cdc_inputs(
     heritage_hca,
     unique_overlays: Optional[list],
     covered_layers,
+    flood_status: Optional[dict] = None,
 ) -> CdcScreenInputs:
     """Map conveyancing-report data (controls/overlays shapes) to CdcScreenInputs.
 
@@ -500,7 +501,15 @@ def build_cdc_inputs(
         lot_area_m2=lot_area_m2,
         heritage_item=None if heritage_items is None else bool(heritage_items),
         heritage_conservation_area=None if heritage_hca is None else bool(heritage_hca),
-        flood_prone=_overlay_state("flood"),
+        # The one flood planning answer (services/flood_planning.py) when the
+        # caller has it: a PMF or non-flood row is not "flood prone", and a
+        # council whose map we do not hold is unknown, not clear.
+        # Only a YES from the map counts here. "Not on the map" is not "not a
+        # flood control lot": for CDC that is settled by the council's s10.7
+        # certificate and flood levels, so a map "no" stays unchecked (None)
+        # and can never make a lot look more CDC-eligible (cross-review).
+        flood_prone=((True if flood_status.get("value") is True else None)
+                     if flood_status is not None else _overlay_state("flood")),
         bushfire_prone=_overlay_state("bushfire"),
         acid_sulfate_class=acid_class,
     )
@@ -514,6 +523,7 @@ def run_cdc_screen_for_report(
     heritage_hca,
     unique_overlays: Optional[list],
     covered_layers,
+    flood_status: Optional[dict] = None,
 ) -> Optional[CdcScreenResult]:
     """One-call convenience for the conveyancing report paths: load verified
     standards, build inputs from report-shaped data, run the screen. Returns
@@ -526,7 +536,7 @@ def run_cdc_screen_for_report(
             return None
         return run_cdc_screen(standards, build_cdc_inputs(
             zone, lot_area_m2, heritage_items, heritage_hca,
-            unique_overlays, covered_layers,
+            unique_overlays, covered_layers, flood_status,
         ))
     except Exception as e:
         logger.warning("CDC screen failed — caller renders 'Not assessed': %s", e)
