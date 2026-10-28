@@ -417,26 +417,28 @@ for i, (act, aoi, lat, lng, council) in enumerate(pts, 1):
         # the product supplied no flood indicator, so it is not a hit. Counting
         # it as one is exactly the absence-as-answer error being hunted.
         served_hit = (sig in ("low", "moderate", "elevated")) or (z is True) or (ses is True)
-        # INDEPENDENT SCORE (2026-10-28). Every point is drawn from inside
-        # EMSR567, and EMSR567 is itself a source of the product: since a real
-        # extent hit alone gives "low" (#1531), the served answer scores ~1.0
-        # by construction. The published 0.946 was already partly circular
-        # (11 of its 35 hits came only from "moderate"). `hit` is therefore
-        # re-scored with the EMSR567 activation removed -- do the OTHER
-        # sources flag a place that really flooded? The served answer is kept
-        # beside it as served_hit.
-        acts_ex = [a for a in (o.get("ems_activations") or []) if a.get("activation_id") != "EMSR567"]
-        o_ex = {**o, "ems_activations": acts_ex,
-                "ems_flood_detected": (None if o.get("ems_flood_detected") is None else bool(acts_ex))}
+        # INDEPENDENT SCORE (2026-10-28). Every point is drawn from a mapped
+        # 2022 flood extent (Copernicus EMSR567/570/586), and the product's EMS
+        # source holds mapped 2022 extents too (EMSR567 and NSW's own July and
+        # October 2022 maps, which cover the same floods as EMSR586/570). Since
+        # a hit in any of them alone gives "low" (#1531), the served answer
+        # partly scores the reference against itself. `hit` is therefore
+        # re-scored with EVERY mapped-extent activation removed -- do the
+        # OTHER sources (planning overlay, council study, water history, BOM)
+        # flag a place that really flooded? The served answer is kept beside
+        # it as served_hit. The published 0.946 counted 11 of its 35 hits
+        # lifted by the 86,349 km2 EMSR567 shape.
+        o_ex = {**o, "ems_activations": [],
+                "ems_flood_detected": (None if o.get("ems_flood_detected") is None else False)}
         sig_ex = _compute_flood_signal(o_ex)
         hit = (sig_ex in ("low", "moderate", "elevated")) or (z is True) or (ses is True)
         executed += 1
         said_something += 1 if hit else 0
         results.append({"act": act, "aoi": aoi, "council": council,
                         "lat": lat, "lng": lng,
-                        "flood_signal": sig, "flood_signal_without_emsr567": sig_ex,
+                        "flood_signal": sig, "flood_signal_without_mapped_extents": sig_ex,
                         "in_100yr": z, "ses": ses, "served_hit": served_hit, "hit": hit})
-        print(f"[{i}/{len(pts)}] {act}/{aoi} {lat:.4f},{lng:.4f} signal={sig} without_emsr567={sig_ex} 1pct={z} ses={ses} -> {'HIT' if hit else 'MISS'}", flush=True)
+        print(f"[{i}/{len(pts)}] {act}/{aoi} {lat:.4f},{lng:.4f} signal={sig} without_mapped_extents={sig_ex} 1pct={z} ses={ses} -> {'HIT' if hit else 'MISS'}", flush=True)
     except Exception as e:
         msg = str(e)
         # EVERY exception here is a failure to answer, scored as a miss.
@@ -576,8 +578,8 @@ verdict = ("PASS" if cluster_lo >= 0.90 else
 contradictions = sum(1 for r in results if r.get("scope_contradiction"))
 oos = 0
 print(f"scope contradictions (lookup said in, run_flood said out): {contradictions}", flush=True)
-print(f"RECALL (without EMSR567, the source the points are drawn from): {recall:.3f}", flush=True)
-print(f"  as served (EMSR567 included, circular): {sum(1 for r in results if r.get('served_hit'))}/{len(scored)}", flush=True)
+print(f"RECALL (without the mapped 2022 extents the points are drawn from): {recall:.3f}", flush=True)
+print(f"  as served (mapped extents included, circular): {sum(1 for r in results if r.get('served_hit'))}/{len(scored)}", flush=True)
 print(f"  Wilson 95% CI      : {lo:.3f} - {hi:.3f}  (assumes 37 independent trials — they are not)", flush=True)
 print(f"  CLUSTER 95% CI     : {cluster_lo:.3f} - {cluster_hi:.3f}  ({n_clusters} council clusters; THIS governs)", flush=True)
 print(f"PASS MARK            : 0.90, committed before the run", flush=True)
@@ -587,7 +589,7 @@ Path(WT / "docs/qa/flood-calibration-2022-result.json").write_text(
     json.dumps({"n_raw_draws": n_raw_draws, "n_in_scope": len(pts),
                 "n_out_of_scope_at_scope_test": n_out_of_scope,
                 "n_scope_unresolved": n_scope_unknown,
-                "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something, "recall_basis": "without_emsr567", "served_hits": sum(1 for r in results if r.get("served_hit")),
+                "n_sampled": len(pts), "n_scored": len(scored), "hits": said_something, "recall_basis": "without_mapped_2022_extents", "served_hits": sum(1 for r in results if r.get("served_hit")),
                 "n_executed": executed, "n_errored": n_errored,
                 "dropped_groups": DROPPED_GROUPS,
                 "recall": recall, "wilson_lo": lo, "wilson_hi": hi,

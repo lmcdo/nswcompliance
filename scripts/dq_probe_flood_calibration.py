@@ -35,8 +35,8 @@ live network calls to maps.six.nsw.gov.au and www.bom.gov.au are not stable
 run-to-run):
 recall 0.946 over 37 in-scope points in 7 clusters, cluster 95% CI
 0.727-1.000, mark 0.90 committed before the first run. Re-measured 2026-10-28
-counting only sources other than EMSR567 (the map the points are drawn from):
-recall 0.784, 29 of 37, cluster 95% CI 0.308-0.963. The interval straddles
+counting only sources other than the mapped 2022 extents the points are drawn
+from: recall 0.649, 24 of 37, cluster 95% CI 0.083-0.902. The interval straddles
 the mark, so the row is OPEN and this exits non-zero.
 
 It closes when cluster_lo >= pass_mark: at that point the floor of the honest

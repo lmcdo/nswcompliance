@@ -6,21 +6,24 @@
 
 ## Verdict
 
-> **RECALL 0.784 — 29 of 37 scored points, counting only sources other than EMSR567. Cluster 95% CI 0.308 – 0.963 across 7 councils, which is the interval that governs. Wilson 95% CI 0.628 – 0.886 if the points are treated as independent, which they are not. Pass mark 0.90.**
+> **RECALL 0.649 — 24 of 37 scored points, counting only sources other than the mapped 2022 flood extents. Cluster 95% CI 0.083 – 0.902 across 7 councils, which is the interval that governs. Wilson 95% CI 0.488 – 0.782 if the points are treated as independent, which they are not. Pass mark 0.90.**
 > **VERDICT: INDISTINGUISHABLE FROM THE MARK. Not a pass, and not a fail.**
 
-> **⚠ RE-MEASURED 2026-10-28. The number went DOWN, from 0.946 to 0.784, and the old one was partly circular.**
+> **⚠ RE-MEASURED 2026-10-28. The number went DOWN, from 0.946 to 0.649, and the old one was partly circular.**
 >
-> Every test point is drawn from inside the Copernicus EMSR567 flood map, and EMSR567 is also one
-> of the product's own sources. Until 2026-10-28 that map was stored as one 86,349 km² shape (every
-> layer of the download merged, including the satellite photo outline), so it "covered" almost
-> every point, and 11 of the old 35 hits came from it lifting another weak source to "moderate".
-> The map is now the real flooded land (#1529), and a hit inside it alone gives "low" (#1531), so
-> the as-served answer would score close to 1.0 by construction. The headline therefore re-scores
-> every point **with EMSR567 removed**: do the OTHER sources flag a place that really flooded?
-> As served, with EMSR567, the run found 31 of the 37 (the 6 others are 2 Richmond Valley points
-> outside the stored map and 4 Canterbury-Bankstown points in area AOI12, which the loader skipped;
-> the 2026-10-28 loader fix adds AOI12).
+> Every test point is drawn from a Copernicus mapped 2022 flood extent (EMSR567 Feb–Mar, EMSR570,
+> EMSR586 July), and the product's own mapped-flood source holds the same floods: EMSR567 and NSW's
+> July and October 2022 maps. Until 2026-10-28 EMSR567 was stored as one 86,349 km² shape (every
+> layer of the download merged, including the satellite photo outline), and 11 of the old 35 hits
+> came from it lifting another weak source to "moderate". The map is now the real flooded land
+> (#1529), and a hit inside any mapped extent alone gives "low" (#1531), so the as-served answer
+> partly scores the reference against itself. The headline therefore re-scores every point **with
+> every mapped-extent source removed**: do the OTHER sources (planning overlay, council study, water
+> history, BOM) flag a place that really flooded? As served, the run found 31 of the 37.
+>
+> A first pass that removed only EMSR567 gave 0.784; cross-review pointed out that the July points
+> (EMSR586) were still being matched by NSW's own July 2022 map of the same flood, and it was right:
+> Camden's four "hits" there were exactly that. 0.784 is superseded by 0.649.
 >
 > The four council flood-study grids (Hawkesbury, Redbank, Tweed, Wollongong) were not readable on
 > the machine that ran this. That did not move the figure: no miss is in one of those councils,
@@ -63,7 +66,8 @@ published as a pass.
 | fourth | 0.857 (6/7) | Wilson 0.487–0.974 | an intermediate run. Its denominator excluded all but 7 points as outside council coverage; the committed runner, with a working `lookup_lga`, scopes IN 38 of 38. Not reproducible — superseded |
 | fifth | 0.895 (34/38) | Wilson 0.759–0.958 | reproducible, but the reference counted holes as flooded: interior rings were discarded, so points on ground Copernicus did not map as inundated entered a positive-only reference and were scored as misses |
 | 2026-08 final | 0.946 (35/37) | **Wilson 0.823–0.985** | holes respected, and the archive set read from the committed manifest rather than a directory glob. Seed 20220228 unchanged. `flood_signal='unavailable'` is still correctly NOT counted as a flood indicator |
-| **2026-10-28** | **0.784 (29/37)** | **Wilson 0.628–0.886; cluster 0.308–0.963** | re-scored without EMSR567, the source the points are drawn from; the stored EMSR567 shape had been 86,349 km² and is now the observed extent only |
+| 2026-10-28 first pass | 0.784 (29/37) | Wilson 0.628–0.886; cluster 0.308–0.963 | removed EMSR567 only; NSW's own July 2022 map still matched the July reference points |
+| **2026-10-28** | **0.649 (24/37)** | **Wilson 0.488–0.782; cluster 0.083–0.902** | every mapped 2022 extent removed from the scored answer; the stored EMSR567 shape had been 86,349 km² and is now the observed extent only |
 
 Every one of those corrections came from the cross-review, not from me.
 
@@ -96,34 +100,39 @@ inside the instrument measuring it.
 download — and the file was re-fetched before the run that produced this number. An AOI silently
 missing from the sample can only flatter the result.
 
-## The eight misses of 2026-10-28
+## The thirteen misses of 2026-10-28
 
-Scored without EMSR567. All eight are council-shaped, as before: no point here is a scattered miss.
+Scored without any mapped 2022 extent. Every one is council-shaped: no scattered misses.
 
 ```
-RICHMOND VALLEY       AOI01  -29.0424, 153.2542   served=none  without EMSR567=none
-RICHMOND VALLEY       AOI01  -29.0660, 153.3032   served=none  without EMSR567=none
-CANTERBURY-BANKSTOWN  AOI12  -33.9406, 150.9695   served=none  without EMSR567=none
-CANTERBURY-BANKSTOWN  AOI12  -33.9324, 150.9738   served=none  without EMSR567=none
-CANTERBURY-BANKSTOWN  AOI12  -33.9370, 150.9699   served=none  without EMSR567=none
-CANTERBURY-BANKSTOWN  AOI12  -33.9390, 150.9703   served=none  without EMSR567=none
-CAMDEN                AOI16  -34.0815, 150.7039   served=low   without EMSR567=none
-CAMPBELLTOWN          AOI16  -34.1095, 150.7451   served=low   without EMSR567=none
+RICHMOND VALLEY       EMSR570  -29.0424, 153.2542   served=none  without mapped extents=none
+RICHMOND VALLEY       EMSR570  -29.0660, 153.3032   served=none  without mapped extents=none
+CANTERBURY-BANKSTOWN  EMSR567  -33.9406, 150.9695   served=none  without mapped extents=none
+CANTERBURY-BANKSTOWN  EMSR567  -33.9324, 150.9738   served=none  without mapped extents=none
+CANTERBURY-BANKSTOWN  EMSR567  -33.9370, 150.9699   served=none  without mapped extents=none
+CANTERBURY-BANKSTOWN  EMSR567  -33.9390, 150.9703   served=none  without mapped extents=none
+CAMDEN                EMSR567  -34.0815, 150.7039   served=low   without mapped extents=none
+CAMDEN                EMSR567  -34.0917, 150.7100   served=low   without mapped extents=none
+CAMDEN                EMSR586  -34.0435, 150.7065   served=low   without mapped extents=none
+CAMDEN                EMSR586  -34.0485, 150.7086   served=low   without mapped extents=none
+CAMDEN                EMSR586  -34.0448, 150.6751   served=low   without mapped extents=none
+CAMPBELLTOWN          EMSR567  -34.1095, 150.7451   served=low   without mapped extents=none
+HAWKESBURY            EMSR586  -33.4287, 150.8118   served=low   without mapped extents=none
 ```
 
 - **Richmond Valley (2):** the same two points as August. The product holds no flood overlay for
-  this council, so nothing but EMS can fire there.
-- **Canterbury-Bankstown (4):** in August all four were hits, but only because the 86,349 km²
-  shape covered them and lifted a weak source. Without it no source flags them: no planning
-  overlay, no council study and no water history at those points. AOI12 was not in the stored map
-  at all; once re-loaded these four are served "low" from the map alone.
-- **Camden and Campbelltown (1 each):** served "low" from the real EMSR567 extent, with nothing
-  else agreeing.
+  this council.
+- **Canterbury-Bankstown (4):** hits in August only because the 86,349 km² shape covered them. No
+  other source flags them. AOI12 was missing from the stored map; once re-loaded they are served
+  "low" from the map alone.
+- **Camden (5), Campbelltown (1), Hawkesbury (1):** served "low" from a mapped 2022 extent, with
+  no planning overlay, council study or water history agreeing.
 
-By council, without EMSR567: Ballina 8/8, Hawkesbury 15/15, The Hills 2/2, Camden 4/5,
-Campbelltown 0/1, Canterbury-Bankstown 0/4, Richmond Valley 0/2. The pattern from August holds
-and is sharper: the screen finds flooding where a council's flood data is loaded and says nothing
-where it is not.
+By council, without mapped extents: Ballina 8/8, Hawkesbury 14/15, The Hills 2/2, Camden 0/5,
+Campbelltown 0/1, Canterbury-Bankstown 0/4, Richmond Valley 0/2. The screen's own sources find
+flooding where a council's flood planning map is loaded (Ballina, Hawkesbury, The Hills) and say
+nothing where it is not. The mapped 2022 extents fill some of that gap, but only for places that
+flooded in 2022.
 
 ## The two misses of 2026-08 — and they are one finding, not two
 
@@ -190,8 +199,8 @@ entirely explained by a coverage gap rather than spread thinly across the sample
 ## What this licenses
 
 **Licensed:** *"checked against the Copernicus EMS observed extents of the 2022 NSW floods, and
-counting only sources other than that map, the screen returned a flood indicator at 29 of 37 points
-inside our council coverage (cluster 95% CI 0.308–0.963; Wilson 0.628–0.886). At N=37 this does not
+counting only sources other than the mapped 2022 extents, the screen returned a flood indicator at 24 of 37 points
+inside our council coverage (cluster 95% CI 0.083–0.902; Wilson 0.488–0.782). At N=37 this does not
 establish whether the product meets the 0.90 mark committed before the run."*
 
 > This wording is the one sentence intended for external quotation, so it is pinned by
@@ -203,8 +212,8 @@ establish whether the product meets the 0.90 mark committed before the run."*
 **Not licensed:**
 
 - **Not "validated".** Nowhere near it.
-- **Not a pass.** The point estimate (0.784) is below the 0.90 mark and the governing interval
-  (0.308–0.963) contains it. 37 points from 7 councils cannot decide it either way.
+- **Not a pass.** The point estimate (0.649) is below the 0.90 mark and the governing interval
+  (0.083–0.902) only just contains it. 37 points from 7 councils cannot decide it either way.
 - **Nothing about the 1% AEP verdict** — deliberately excluded. 2022 exceeded the 1% design event in
   several catchments (Lismore peaked 14.4 m, a record by ~2 m), so comparing them measures construct
   mismatch, not product error. Visible in the raw output: hits carry `in_100yr = False` on ground
