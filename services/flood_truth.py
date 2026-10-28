@@ -2359,6 +2359,10 @@ def run_flood(req: FloodRequest):
             "data_gaps": _build_data_gap_reasons(internal_outputs),
         }
 
+    # The stored row carries the level it was served with. It used to hold only
+    # the raw inputs, so the paid PDF (route.ts path A reads the stored row)
+    # found no flood_signal in 0 of 368 saved checks and printed "none".
+    internal_outputs["flood_signal"] = _normalise_outputs(internal_outputs)["flood_signal"]
     try:
         write_report(
             req.report_id, req.address, req.lat, req.lng,

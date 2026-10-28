@@ -703,15 +703,15 @@ class TestFloodSignal:
         result = _normalise_outputs(raw)
         assert result["flood_signal"] == "unavailable"
 
-    def test_signal_none_for_ems_only(self):
-        """EMS alone never decides a level (EMSR567 is a whole mapped region)."""
+    def test_signal_low_for_ems_only(self):
+        """A real mapped 2022 flood extent alone is "low", never more (#1529, #1531)."""
         raw = _minimal_raw(
             epi_flood_class="none",
             ems_flood_detected=True,
             ses_in_flood_planning_area=False,
         )
         result = _normalise_outputs(raw)
-        assert result["flood_signal"] == "none"
+        assert result["flood_signal"] == "low"
 
 
 # ===========================================================================
