@@ -44,9 +44,6 @@ ALLOWED: dict[str, str] = {
     "open-data/page.tsx":
         "'Inner West has ~4,600 provisions; other councils have fewer' — a per-council "
         "depth illustration, explicitly uneven and deliberately approximate.",
-    "how-it-works/page.tsx":
-        "'~11 LGAs' is which councils uploaded flood polygons to the STATE portal. "
-        "That is the portal's coverage, not ours.",
     "reports/granny-flat/page.tsx":
         "⚠ UNVERIFIED, NOT EXEMPT: 'Spatial data: 12 LGAs covered' for flood-control-lot "
         "data, in a served report. Nothing in the repo verifies 12. Tracked in the plan "
