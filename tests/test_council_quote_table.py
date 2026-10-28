@@ -84,3 +84,8 @@ def test_a_cell_running_into_the_next_row_is_refused():
     """Cross-review 2026-10-13: 'Gymnasium Bulky goods premises' spans two printed rows of the first column."""
     out = cq.judge(row("Gymnasium Bulky goods premises | 1 space per 45sq.m GFA"), [table_stream(PARKING)])
     assert out["status"] != "exact"
+
+
+def test_a_plain_line_between_two_rows_is_never_copied():
+    lines = ["Setback | Minimum", "a stray half row", "Front | 10m"]
+    assert cqt.prove_rows("\n".join(lines), [], 1, cq.norm) is None
