@@ -854,7 +854,7 @@ def _stub_all_sources(monkeypatch, overrides=None):
             defaults[k].update(v)
 
     for func_name, return_val in defaults.items():
-        monkeypatch.setattr(ft, func_name, lambda lat, lng, rv=return_val: rv)
+        monkeypatch.setattr(ft, func_name, lambda lat, lng, *_a, rv=return_val, **_k: rv)
 
     return defaults
 
@@ -996,7 +996,7 @@ def test_run_flood_db_failure_falls_through_to_live_queries(monkeypatch):
     called_sources = []
 
     def make_tracker(name, default_return):
-        def tracker(lat, lng):
+        def tracker(lat, lng, *_a, **_k):
             called_sources.append(name)
             return default_return
         return tracker
@@ -1120,7 +1120,7 @@ def test_run_flood_passes_correct_coords_to_sources(monkeypatch):
     captured_coords = {}
 
     def make_coord_capture(name, default_return):
-        def capture(lat, lng):
+        def capture(lat, lng, *_a, **_k):
             captured_coords[name] = (lat, lng)
             return default_return
         return capture

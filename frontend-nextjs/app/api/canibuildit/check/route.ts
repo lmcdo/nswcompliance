@@ -1,3 +1,4 @@
+import { lotRingsToWgs84Wkt } from '@/lib/geo-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import {
@@ -177,6 +178,7 @@ export async function POST(req: NextRequest) {
   let centroidLat: number | null = null;
   let centroidLng: number | null = null;
   let lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null = null;
+  let lotWkt: string | null = null;
   let lotWidthM: number | null = null;
   let lotDepthM: number | null = null;
 
@@ -186,6 +188,8 @@ export async function POST(req: NextRequest) {
       // NSW lot API returns an array of lot objects
       const lotData = Array.isArray(lotRaw) ? lotRaw[0] : lotRaw;
       const rings = lotData?.geometry?.rings;
+      const sr = lotData?.geometry?.spatialReference;
+      lotWkt = lotRingsToWgs84Wkt(rings, sr?.latestWkid ?? sr?.wkid ?? 3857);
       if (rings?.[0]?.length >= 3) {
         const ring: [number, number][] = rings[0];
         // Shoelace area in EPSG:3857
@@ -301,7 +305,7 @@ export async function POST(req: NextRequest) {
       const fr = await fetch(`${process.env.PYTHON_API_URL || 'http://localhost:8000'}/pipeline/flood-planning`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: centroidLat, lng: centroidLng }),
+        body: JSON.stringify({ lat: centroidLat, lng: centroidLng, lot_wkt: lotWkt }),
         signal: AbortSignal.timeout(8000),
         cache: 'no-store',
       });

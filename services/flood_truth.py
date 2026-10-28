@@ -946,7 +946,7 @@ def _query_address_council(lat: float, lng: float) -> str | None:
             conn.close()
 
 
-def _query_ses_flood_study(lat: float, lng: float) -> dict:
+def _query_ses_flood_study(lat: float, lng: float, lot_wkt: Optional[str] = None) -> dict:
     """
     Point-in-polygon against spatial_overlays for flood layer type.
     Returns all matching AEP tiers for the point (not just the first).
@@ -978,7 +978,7 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
         # TABLE held any flood row, so 102 of 310 checked addresses in councils
         # we hold no map for read "outside the mapped extent" (2026-10-28).
         from flood_planning import flood_planning_status, category_of
-        status = flood_planning_status(lat, lng, conn)
+        status = flood_planning_status(lat, lng, conn, lot_wkt=lot_wkt)
         # The rows it matched (one query, not a second copy here): one per
         # value, non-flood rows ('Other', 'Transitional Land') dropped.
         seen = set()
@@ -1925,7 +1925,7 @@ _CACHE_SENTINEL_KEYS = ("epi_flood_class", "flood_signal")
 # Bump this whenever a flood input table or the signal rule changes.
 # 2026-10-30: the flood planning map answer moved to services/flood_planning.py
 # (102 of 310 saved checks change). Older rows are recomputed, not re-served.
-FLOOD_CACHE_MIN_RUN_DATE = date(2026, 10, 30)
+FLOOD_CACHE_MIN_RUN_DATE = date(2026, 10, 31)
 
 
 def _first_valid_cached_row(rows):
@@ -2038,6 +2038,11 @@ class FloodRequest(BaseModel):
     #: exactly what a customer would have been served. A flag that changed the
     #: computation would make the calibration measure something else.
     persist: bool = True
+    #: Optional WGS84 POLYGON WKT of the lot, so the flood planning map is tested
+    #: on the whole lot (services/flood_planning.py ignores an outline that does
+    #: not contain the address point). Heddon Greta 2026-10-28: 44.7 m2 of the
+    #: lot on Cessnock's 1% AEP map, point 6 m off it, answer was "none".
+    lot_wkt: Optional[str] = None
 
 
 class FloodBatchRequest(BaseModel):
@@ -2304,7 +2309,8 @@ def run_flood(req: FloodRequest):
         f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
         f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
         f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
-        f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
+        # getattr like `persist`: a duck-typed request may not carry the field.
+        f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng, getattr(req, "lot_wkt", None))
         f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
         f_studies = pool.submit(_query_flood_study_rasters, req.lat, req.lng)
         f_council = pool.submit(_query_address_council, req.lat, req.lng)

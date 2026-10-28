@@ -6,7 +6,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
-import { esriRingsToGeoJSON } from '@/lib/geo-utils';
+import { esriRingsToGeoJSON, lotRingsToWgs84Wkt } from '@/lib/geo-utils';
 
 export const dynamic = 'force-dynamic';
 // Flood pipeline (EPI WFS + EMS + JRC + BOM + SAR) can take up to ~50s
@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
   const lot_polygon = propData.lotGeometry?.rings?.length
     ? esriRingsToGeoJSON(propData.lotGeometry.rings)
     : null;
+  // Same rings as lot_polygon (Web Mercator, as esriRingsToGeoJSON assumes), so the flood
+  // check tests the whole lot and not only the address point.
+  const lot_wkt = lotRingsToWgs84Wkt(propData.lotGeometry?.rings,
+    propData.lotGeometry?.spatialReference?.latestWkid ?? propData.lotGeometry?.spatialReference?.wkid ?? 3857);
 
   const report_id = crypto.randomUUID();
 
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
     pythonResp = await fetch(`${PYTHON_API}/pipeline/flood`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, prop_id, lat, lng, report_id }),
+      body: JSON.stringify({ address, prop_id, lat, lng, report_id, lot_wkt }),
       signal: AbortSignal.timeout(Math.max(5_000, deadline - Date.now())),
     });
   } catch (err) {
