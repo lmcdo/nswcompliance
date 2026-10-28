@@ -1,0 +1,35 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rules the nightly quote check may mark proven from picture OCR, and proven rules are served as the council's own words. No schema change; the change lands at the next council_quote run.",
+  "commit_hash": "36e9852e",
+  "files": ["scripts/council_quote_picture.py", "tests/test_council_quote_picture.py"],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote_picture.py -q -o addopts=",
+    "fails_when": "glued OCR text proves a rule with an added space inside a word ('no tin' for 'not in'), a rule word cut out of a longer OCR word, a changed number, or '12' for '1/2'; or a spaceless OCR line of the real rule is not proven",
+    "observed_red": "On origin/main test_ocr_that_dropped_the_spaces_still_proves_the_rule fails (prove returns None). Hornsby residential dry run (chapter_314.json, cached PDF): before 0 of 67 picture rules proven, after 32 of 67; text-layer rules proven on picture pages 0 of 808."
+  },
+  "pre_impl": {
+    "existing_data": "Hornsby part 3 residential dry run 2026-10-27: 147 not_found. 80 were reader inventions from the contents page (page 2), 67 sat on precinct diagram pages where RapidOCR returns text with spaces dropped.",
+    "assumption_mismatch": "The matcher assumed OCR keeps word spaces. RapidOCR merges whole lines into one token on these diagrams.",
+    "new_vs_existing": "Adds one helper used as a second test inside the existing prove(); the original exact-order match is unchanged and runs first."
+  },
+  "functions": [
+    {"name": "_glued_match", "file_line": "scripts/council_quote_picture.py:70", "input": "the normalised rule text and the normalised OCR text of one picture", "output": "True when the rule tokens appear in order with OCR spaces possibly missing, no OCR space inside a rule token, and the stretch starts and ends on OCR token edges", "if_none": "empty rule text returns False, so nothing is proven"},
+    {"name": "prove", "file_line": "scripts/council_quote_picture.py:96", "input": "rule body, PDF path, stored page number, optional OCR function", "output": "quote and quote_page when the rule is printed in one picture on the page or either side", "if_none": "returns None and the rule stays unconfirmed and hidden"}
+  ],
+  "values": [
+    {"value": "OCR text of one picture (picture_texts)", "read_at": "scripts/council_quote_picture.py:96", "if_missing": "no picture or no OCR engine gives None, so the rule stays unconfirmed"}
+  ],
+  "queries": [],
+  "break_it": [
+    {"scenario": "Glued OCR joins two words so a different rule reads the same letters ('no tin' / 'not in').", "what_happens": "A rule would be served as council words that the council did not print.", "mitigated": true, "how": "Any OCR space inside the matched stretch must fall on a rule word boundary; test_a_space_added_inside_a_rule_word_is_still_not_proven.", "repro": "python -m pytest tests/test_council_quote_picture.py -q -o addopts="},
+    {"scenario": "The rule's first word is the tail of a longer OCR word ('Noparking...' proving 'parking...').", "what_happens": "A negation dropped from the start would flip the meaning of a served rule.", "mitigated": true, "how": "The stretch must start and end on OCR token edges; test_glued_text_must_not_cut_a_rule_word_out_of_a_longer_word.", "repro": "python -m pytest tests/test_council_quote_picture.py -q -o addopts="},
+    {"scenario": "Text-layer rules of the chapter get proven by chance against diagram OCR.", "what_happens": "Rules would be proven on the wrong page with a wrong page link.", "mitigated": true, "how": "Measured on Hornsby residential: 0 of 808 text-layer rules proven on any picture page.", "repro": "dry run script: prove(rule, cached Hornsby PDF, page) for every text-layer rule and every picture page"}
+  ],
+  "post_merge": {
+    "db_reset": "No. Takes effect at the next council_quote run; nothing is written by this PR.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: next Hornsby residential re-read, confirm not_found falls from 147 by about 32 and spot-read 5 newly proven rules against their diagram."
+  }
+}
