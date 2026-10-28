@@ -232,3 +232,18 @@ def test_coastal_overlay_failure_is_still_a_gap():
     ch = env.coastal_hazards
     assert ch.confidence == ConfidenceLevel.NOT_AVAILABLE
     assert ch.reason is not None
+
+
+def test_a_flood_planning_yes_survives_when_both_other_sources_fail(monkeypatch):
+    """The flood planning check is its own source: its yes is not discarded
+    because the overlay fetch and the portal both failed (cross-review)."""
+    import flood_planning
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+        "value": True, "reason": "on the council's flood planning map", "council": "BALLINA",
+        "hits": [], "category": "planning", "nearest_m": None})
+    import services.intelligence_brief as ib
+    monkeypatch.setattr(ib, "_get_db_conn", lambda: type("C", (), {"close": lambda self: None})())
+    env = _build_environmental({}, _OVERLAYS, None, lat=-28.86, lng=153.56,
+                               overlays_failed=True, controls_failed=True)
+    assert env.flood_epi.value is True
+    assert env.flood_epi.confidence == AUTH

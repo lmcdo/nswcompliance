@@ -3283,11 +3283,13 @@ def _build_environmental(
 
     return EnvironmentalConstraints(
         flood_epi=DataField(
-            value=None if both_failed else flood_epi,
-            confidence=na if (both_failed or flood_epi is None) else auth,
+            # The flood planning check is its own source: if it answered, keep
+            # its answer even when the overlay fetch and portal both failed.
+            value=None if (both_failed and flood_status is None) else flood_epi,
+            confidence=na if ((both_failed and flood_status is None) or flood_epi is None) else auth,
             source="postgis_overlays", as_at=today,
-            reason=("Flood overlay and portal controls both unavailable" if both_failed
-                    else (flood_status or {}).get("reason") if flood_epi is not True else None),
+            reason=("Flood overlay and portal controls both unavailable"
+                    if (both_failed and flood_status is None) else (flood_status or {}).get("reason") if flood_epi is not True else None),
         ),
         overlays=DataField(value=env_overlays, confidence=overlay_auth, source="postgis_overlays", as_at=today),
         overlay_coverage=DataField(value=covered, confidence=overlay_auth, source="postgis_overlays", as_at=today),
