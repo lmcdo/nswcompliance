@@ -2326,4 +2326,7 @@ def test_cache_never_serves_a_check_from_before_the_emsr567_reload():
     assert ft.FLOOD_CACHE_MIN_RUN_DATE >= date(2026, 10, 29)
     src = inspect.getsource(ft)
     assert "AND run_date >= %s" in src
-    assert "req.lng, FLOOD_CACHE_MIN_RUN_DATE)" in src
+    assert "req.lng, FLOOD_CACHE_MIN_RUN_DATE," in src
+    # and a request that sends the lot never gets a point-only row back
+    assert "(inputs->>'lot_given')::boolean IS TRUE" in src
+    assert '"lot_given": bool(getattr(req, "lot_wkt", None))' in src

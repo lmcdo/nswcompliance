@@ -2239,8 +2239,13 @@ def run_flood(req: FloodRequest):
                 "  AND abs(lat - %s) < 0.0005 AND abs(lng - %s) < 0.0005 "
                 "  AND run_date > CURRENT_DATE - INTERVAL '90 days' "
                 "  AND run_date >= %s "
+                # A request that sends the lot never gets a point-only answer
+                # back: the lot can be on the flood map when the point is not
+                # (Heddon Greta, 2026-10-28; cross-review).
+                "  AND (%s = false OR (inputs->>'lot_given')::boolean IS TRUE) "
                 "ORDER BY run_date DESC LIMIT 5",
-                (req.address, req.lat, req.lng, FLOOD_CACHE_MIN_RUN_DATE)
+                (req.address, req.lat, req.lng, FLOOD_CACHE_MIN_RUN_DATE,
+                 bool(getattr(req, "lot_wkt", None)))
             )
             # #762 (prior-art-checked: same cache read hardened in place, no
             # new source): skip poisoned rows — another product's outputs
@@ -2389,7 +2394,8 @@ def run_flood(req: FloodRequest):
         parcel_identity={"prop_id": req.prop_id},
     )
 
-    inputs = {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: manifest}
+    inputs = {"lat": req.lat, "lng": req.lng, MANIFEST_KEY: manifest,
+              "lot_given": bool(getattr(req, "lot_wkt", None))}
 
     # --- Minimum viable screening: refuse if too few sources responded ---
     available_count = _count_available_sources(internal_outputs)
