@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Changes which pages the section reader sends to the AI: contents pages are dropped. Sample of 41 active chapters (40 random + Hornsby residential, 2026-10-28): 19 pages skipped in 10 chapters, all contents / list of tables / list of figures, read one by one; Hornsby page 2 among them.",
-  "commit_hash": "c43943a2",
+  "justification": "Changes which pages the section reader sends to the AI: pages that are wholly a contents list are dropped. 41-chapter sample (2026-10-28): 13 pages skipped in 5 chapters (Burwood, Hornsby p2, Penrith, Blacktown), all contents/list of tables/figures; Marrickville contents pages (numbers on separate lines) are still read.",
+  "commit_hash": "d7c5b716",
   "files": [
     "scripts/section_reader.py",
     "tests/test_section_reader.py"
@@ -39,7 +39,7 @@
       "scenario": "A page of numbered controls is mistaken for contents.",
       "what_happens": "Real rules on that page would never be read.",
       "mitigated": true,
-      "how": "contents_kind refuses lines with rule wording or values, and needs 5+ lines; 41-chapter sample skipped 0 rule pages; the coverage/loss guard still flags lost rule lines.",
+      "how": "A page is skipped only when contents_kind matches AND 60%+ of its lines end in a page number or 80%+ are numbered titles; a mixed page is read. Sample skipped 0 rule pages.",
       "repro": "python -m pytest tests/test_section_reader.py -q -o addopts="
     },
     {
