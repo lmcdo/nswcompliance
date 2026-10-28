@@ -57,6 +57,8 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--dry-run", action="store_true")
     g.add_argument("--apply", action="store_true")
+    ap.add_argument("--allow-shrink", action="store_true",
+                    help="allow the reload to remove more than 20%% of existing rows")
     a = ap.parse_args()
     rows = rows_from(json.loads(Path(a.file).read_text(encoding="utf-8")))
     filled = sum(1 for r in rows if any(r[1:9]) or r[9] != "[]")
@@ -72,15 +74,27 @@ def main() -> int:
     from dq_db import main_checkout  # a worktree has no .env of its own (DQ-54)
     load_dotenv(main_checkout() / ".env")
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    if not rows:
+        print("REFUSED: the file has no councils; nothing written")
+        return 1
     try:
-        _write(conn, rows)
+        _write(conn, rows, a.allow_shrink)
     finally:
         conn.close()
     return 0
 
 
-def _write(conn, rows: list[tuple]) -> None:
+def _write(conn, rows: list[tuple], allow_shrink: bool = False) -> None:
     with conn, conn.cursor() as cur:
+        # An empty or truncated file must not wipe the table (cross-review).
+        cur.execute("SELECT count(*) FROM council_flood_context WHERE NOT (lga_name = ANY(%s))",
+                    ([r[0] for r in rows],))
+        would_remove = cur.fetchone()[0]
+        cur.execute("SELECT count(*) FROM council_flood_context")
+        existing = cur.fetchone()[0]
+        if existing and would_remove > existing * 0.2 and not allow_shrink:
+            raise SystemExit(f"REFUSED: would remove {would_remove} of {existing} rows; "
+                             "check the file, or pass --allow-shrink")
         cur.executemany(
             """INSERT INTO council_flood_context
                  (lga_name, viewer_label, viewer_url, certificate_label, certificate_url, certificate_fee,
