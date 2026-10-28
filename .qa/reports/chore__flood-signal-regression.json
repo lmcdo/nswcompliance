@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: adds a measurement and tests for a live customer-facing verdict; changes no behaviour. Not Critical: read-only, no served output changes.",
-  "commit_hash": "74971e52",
+  "commit_hash": "fad66f63",
   "files": [
     "scripts/flood_signal_regression.py",
     "tests/test_flood_signal_known_answers.py",
