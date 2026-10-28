@@ -2155,7 +2155,10 @@ def flood_planning(req: FloodPlanningRequest) -> dict:
         out = {"value": None, "reason": "flood planning map could not be checked"}
     finally:
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
+                pass
     return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m")}
 
 
