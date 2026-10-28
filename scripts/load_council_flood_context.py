@@ -71,6 +71,14 @@ def main() -> int:
     from dq_db import main_checkout  # a worktree has no .env of its own (DQ-54)
     load_dotenv(main_checkout() / ".env")
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        _write(conn, rows)
+    finally:
+        conn.close()
+    return 0
+
+
+def _write(conn, rows: list[tuple]) -> None:
     with conn, conn.cursor() as cur:
         cur.executemany(
             """INSERT INTO council_flood_context
@@ -87,7 +95,6 @@ def main() -> int:
         )
         cur.execute("SELECT count(*) FROM council_flood_context")
         print("rows now in council_flood_context:", cur.fetchone()[0])
-    return 0
 
 
 if __name__ == "__main__":
