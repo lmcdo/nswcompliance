@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: adds a second outbound email on a customer-facing route. Not Critical: no regulatory data, no schema change.",
-  "commit_hash": "daf1da03",
+  "commit_hash": "f2a75ac2",
   "files": [
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
     "frontend-nextjs/__tests__/api/canibuildit/lead-operator-alert.test.ts",
