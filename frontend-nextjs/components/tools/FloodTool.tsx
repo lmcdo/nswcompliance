@@ -156,7 +156,10 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: addr }),
       });
-      const json = await res.json();
+      // A timeout or gateway error comes back as an HTML page, and res.json()
+      // then threw "Unexpected token '<' ... is not valid JSON" onto the screen.
+      const json = await res.json().catch(() => null);
+      if (!json) throw new Error('The flood check did not finish. Please try again in a minute.');
       if (!res.ok) throw new Error(json.error || 'Flood analysis failed');
       setResult(json);
       setState('complete');
@@ -453,7 +456,15 @@ function FloodPaidDownloadCTA({ reportId }: { reportId: string }) {
 function FloodCard({ result }: { result: FloodResult }) {
   const o = result.outputs;
   const signal     = o.flood_signal ?? 'none';
-  const signalMeta = FLOOD_SIGNAL_META[signal] ?? FLOOD_SIGNAL_META.none;
+  // The planning overlay can fail to answer (data_currency 'query_failed',
+  // epi_flood_class null). That is not "not in the overlay": it used to fall
+  // through to a green "Not mapped as flood-prone" under an "unavailable"
+  // badge that blamed coverage.
+  const epiFailed  = o.data_currency === 'query_failed' || o.epi_flood_class == null;
+  const baseMeta   = FLOOD_SIGNAL_META[signal] ?? FLOOD_SIGNAL_META.none;
+  const signalMeta = signal === 'unavailable' && epiFailed
+    ? { ...baseMeta, sublabel: 'The NSW planning flood overlay did not answer on this check, so we cannot give a level. Please run the check again later. No result here is not a clear result.' }
+    : baseMeta;
   const epiClass   = o.epi_flood_class ?? 'none';
   const epiMeta    = EPI_CLASS_META[epiClass] ?? { label: epiClass, color: 'bg-gray-50 text-gray-700' };
 
@@ -523,7 +534,18 @@ function FloodCard({ result }: { result: FloodResult }) {
   }
 
   // Government flood overlay
-  if (epiClass === 'none' && (signal === 'moderate' || signal === 'elevated')) {
+  if (epiFailed) {
+    // Say it once: the 1% AEP row above already names the overlay as not
+    // reached when the backend listed it as unconsulted.
+    if (!aepUnconsulted?.some((n) => n.includes('EPI'))) {
+      findings.push({
+        label: 'Government flood overlay',
+        value: 'Not checked',
+        detail: 'The NSW planning flood overlay did not answer on this check. This is not a result either way.',
+        severity: 'amber',
+      });
+    }
+  } else if (epiClass === 'none' && (signal === 'moderate' || signal === 'elevated')) {
     findings.push({
       label: 'Government flood overlay',
       value: 'Not in statutory flood overlay',
@@ -708,9 +730,10 @@ function FloodCard({ result }: { result: FloodResult }) {
       </div>
 
       {/* Warnings — compact */}
-      {(o.s1_gap_warning || (result.warnings && result.warnings.length > 0)) && (
+      {/* s1_gap_warning is not shown: it is about Sentinel-1, which the flood
+          check does not use (services/CLAUDE.md). */}
+      {result.warnings && result.warnings.length > 0 && (
         <div className="px-5 py-3 bg-amber-50 border-t border-amber-100">
-          {o.s1_gap_warning && <p className="text-xs text-amber-700">{o.s1_gap_warning}</p>}
           {result.warnings?.map((w, i) => (
             <p key={i} className="text-xs text-amber-700">{w}</p>
           ))}

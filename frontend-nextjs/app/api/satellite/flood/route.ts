@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  // One budget for the whole request. maxDuration is 60 s, but the address
+  // lookup (25 s) plus the pipeline (55 s) could take 80, so Vercel cut the
+  // function off and the browser got an HTML error page instead of JSON.
+  const deadline = Date.now() + 57_000;
   const address = body.address?.trim();
   if (!address || address.length < 5) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
@@ -101,17 +105,19 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ address, prop_id, lat, lng, report_id }),
-      signal: AbortSignal.timeout(55_000),
+      signal: AbortSignal.timeout(Math.max(5_000, deadline - Date.now())),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Flood pipeline failed: ${msg}` }, { status: 502 });
+    console.error('[flood] pipeline call failed:', msg);
+    return NextResponse.json({ error: 'The flood check did not finish in time. Please try again in a minute.' }, { status: 504 });
   }
 
   if (!pythonResp.ok) {
     const text = await pythonResp.text().catch(() => '');
+    console.error(`[flood] pipeline returned ${pythonResp.status}:`, text.slice(0, 500));
     return NextResponse.json(
-      { error: `Flood pipeline error (${pythonResp.status}): ${text}` },
+      { error: 'The flood check hit an error. Please try again in a minute.' },
       { status: 502 },
     );
   }
