@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Tightens the PreToolUse merge guard: a merge run from inside a double-quoted commit message is now gated, and a ?sha= query in a merge URL no longer counts as a head pin.",
+  "commit_hash": "ec1f72be",
+  "files": [
+    ".claude/hooks/pr-merge-guard.py",
+    "tests/test_pr_merge_guard.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts=",
+    "expected": "52 passed",
+    "fails_when": "git commit -m \"$(gh pr merge 902)\" is not reported as a merge, or a ?sha= URL counts as a pin",
+    "observed_red": "2026-10-29: on origin/main the new tests gave 2 failed (substitution merge not found; ?sha= accepted as pin)."
+  },
+  "pre_impl": {
+    "existing_data": "Sol notes on merged code, listed in ce-NEXT-PROMPT-2026-10-28 'Open review notes'.",
+    "assumption_mismatch": "Message stripping assumed nothing inside a quoted message runs; the pin regex assumed any sha= is a request field.",
+    "new_vs_existing": "Edits two regexes and the stripping step in the existing hook."
+  },
+  "functions": [
+    {
+      "name": "_keep_substitutions",
+      "file_line": ".claude/hooks/pr-merge-guard.py",
+      "input": "one quoted message argument matched in the shell command",
+      "output": "the commands inside $( ) or backticks of a double-quoted message as separate segments, else a blank",
+      "if_none": "no substitution gives a blank, as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "the Bash/PowerShell command text",
+      "read_at": ".claude/hooks/pr-merge-guard.py parse_merges",
+      "if_missing": "an empty command yields no merges"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A message merely mentions gh pr merge as text.",
+      "what_happens": "An ordinary commit would be blocked.",
+      "mitigated": true,
+      "how": "Only $( ) and backtick parts are kept; plain text and single-quoted messages stay data; tests added.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts="
+    },
+    {
+      "scenario": "A merge pinned with ?sha= in the URL.",
+      "what_happens": "An unpinned merge passes as pinned.",
+      "mitigated": true,
+      "how": "Only -f/--field sha= or a JSON \"sha\" body count; test added.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts="
+    },
+    {
+      "scenario": "A pin sent as a JSON body through curl -d.",
+      "what_happens": "A correctly pinned merge would be refused.",
+      "mitigated": true,
+      "how": "The JSON \"sha\": form is matched; test added.",
+      "repro": "python -m pytest tests/test_pr_merge_guard.py -q -o addopts="
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
