@@ -337,10 +337,13 @@ def contents_kind(body: str) -> str | None:
         lines = lines[1:]
     if len(lines) < 5:
         return None
-    paged = sum(1 for ln in lines if _CONTENTS_PAGE.search(ln) or _CONTENTS_PIPE.match(ln))
+    # A line with rule wording ("Maximum height .... 9") is a standard, not a title, whatever its dots
+    paged = sum(1 for ln in lines if (_CONTENTS_PAGE.search(ln) or _CONTENTS_PIPE.match(ln))
+                and not _RULE_WORDS.search(ln))
     if paged >= 3 and paged / len(lines) >= 0.4:
         return "contents_page"
-    numbered = sum(1 for ln in lines if _CONTENTS_NUM.match(ln))
+    # A title carries no value: "3.1 Building height 9 metres" is a control, "3.1.2 Setbacks" a title
+    numbered = sum(1 for ln in lines if _CONTENTS_NUM.match(ln) and not re.search(r"\d", _CONTENTS_NUM.sub("", ln)))
     if numbered / len(lines) >= 0.6 and not any(_RULE_WORDS.search(ln) for ln in lines):
         return "contents_page"
     return None

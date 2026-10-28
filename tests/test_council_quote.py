@@ -469,3 +469,12 @@ def test_rules_that_look_like_lists_stay_rules():
     streets = "8 Manion Avenue | Inter-War flat building\n9 Manion Avenue | Toronto\n10 Manion Avenue | Greystanes\n11 Manion Avenue | flat\n12 Manion Avenue | flat"
     assert cq.contents_kind(streets) is None
     assert cq.contents_kind("3.1 Scale\n3.2 Setbacks") is None    # too short to judge
+
+
+def test_standards_and_values_are_not_contents():
+    # cross-review 2026-10-28: a standards schedule with dot leaders, and numbered lines carrying values
+    schedule = "Maximum building height .... 9\nMinimum lot area .... 500\nMinimum frontage .... 15\nMaximum FSR .... 1\nMinimum setback .... 6"
+    assert cq.contents_kind(schedule) is None
+    values = ("3.1 Building height 9 metres\n3.2 Front setback 6 metres\n3.3 Site coverage 50 percent\n"
+              "3.4 Landscaped area 30 percent\n3.5 Parking two spaces")
+    assert cq.contents_kind(values) is None
