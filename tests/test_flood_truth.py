@@ -143,9 +143,10 @@ def test_signal_epi_medium_flood_risk_returns_low():
 # _compute_flood_signal — moderate
 # ---------------------------------------------------------------------------
 
-def test_signal_ems_detected_alone_returns_moderate():
+def test_signal_ems_detected_alone_returns_none():
+    """EMS alone never decides a level (EMSR567 is a whole mapped region)."""
     out = _outputs(ems_flood_detected=True)
-    assert _compute_flood_signal(out) == "moderate"
+    assert _compute_flood_signal(out) == "none"
 
 
 def test_signal_epi_plus_jrc_low_returns_moderate():

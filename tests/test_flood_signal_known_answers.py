@@ -5,12 +5,9 @@ The fixture (tests/fixtures/flood_known_answers.json) is built by
 real address and its real saved inputs, chosen by query, never typed.
 
 'positive' must give low or above; 'no_signal' must give none or unavailable.
-Cases the rule got wrong when the fixture was built are xfail(strict=True):
-the 6 where Copernicus EMSR567 alone decides the level (an 86,349 km2 shape
-that holds the activation's whole mapped area, not its flood extent). strict
-means the fix must make them pass, and the marker must then be removed --
-a fix that leaves them failing, or a regression that brings the old rule back,
-both turn this file red.
+The 6 EMS-alone cases were wrong under the old rule (Copernicus EMSR567, an
+86,349 km2 whole-region shape, decided the level alone) and were strict xfail
+until the rule fix; every case must now pass outright.
 """
 from __future__ import annotations
 
@@ -25,12 +22,6 @@ FIXTURE = Path(__file__).parent / "fixtures" / "flood_known_answers.json"
 CASES = json.loads(FIXTURE.read_text(encoding="utf-8"))
 LEVEL = {"unavailable": 0, "none": 0, "low": 1, "moderate": 2, "elevated": 3}
 
-_EMS_ALONE = pytest.mark.xfail(
-    strict=True,
-    reason="EMSR567 alone gives moderate/elevated; fixed by the flood-signal rule PR",
-)
-
-
 # Only these groups may be expected-wrong. Any other case wrong at build time is
 # a bad fixture (or a broken rule), never an expected failure.
 EXPECTED_WRONG_GROUPS = {"ems_alone_ridge_over_80m", "ems_alone_any"}
@@ -43,8 +34,8 @@ def _params(expected_classes: set):
             continue
         # strict xfail only where the case really is wrong today; a case in the
         # same group that is already right must keep passing.
-        wrong = c["group"] in EXPECTED_WRONG_GROUPS and c["correct_at_build"] is False
-        marks = [_EMS_ALONE] if wrong else []
+        # The EMS-alone rule is fixed: every case must now pass outright.
+        marks = []
         out.append(pytest.param(c, id=f"{c['group']}:{c['case_id']}", marks=marks))
     return out
 

@@ -703,14 +703,15 @@ class TestFloodSignal:
         result = _normalise_outputs(raw)
         assert result["flood_signal"] == "unavailable"
 
-    def test_signal_moderate_for_ems_only(self):
+    def test_signal_none_for_ems_only(self):
+        """EMS alone never decides a level (EMSR567 is a whole mapped region)."""
         raw = _minimal_raw(
             epi_flood_class="none",
             ems_flood_detected=True,
             ses_in_flood_planning_area=False,
         )
         result = _normalise_outputs(raw)
-        assert result["flood_signal"] == "moderate"
+        assert result["flood_signal"] == "none"
 
 
 # ===========================================================================
