@@ -385,3 +385,13 @@ def test_a_part_code_after_a_single_space_is_recognised():
     m = sr._HEADER_PART.match(" 194-214 Oxford Street, 2 Nelson Street and Osmund Lane E6 ")
     assert m and m.group("b") == "E6"
     assert sr._HEADER_PART.match("Bondi Junction Centre") is None
+
+
+def test_contents_pages_are_not_read():
+    import section_reader as sr
+    lines = [(2, "RESIDENTIAL .......................................... 3-2"), (2, "3.1 Dwelling Houses | 3-5"),
+             (2, "3.1.1   Scale | 3-5"), (2, "3.1.2   Setbacks | 3-9"), (2, "3.1.3   Landscaping | 3-12"),
+             (2, "3.1.4   Open Space | 3-13"),
+             (3, "3.1.1 Scale"), (3, "a. Dwellings must not exceed 2 storeys."), (3, "b. Floor area must be ..."),
+             (3, "c. A basement must not ..."), (3, "d. Garages must be set back 1m.")]
+    assert sr.contents_pages(lines) == {2}

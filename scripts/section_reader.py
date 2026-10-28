@@ -95,6 +95,16 @@ def docling_lines(pdf_path: str) -> list[tuple[int, str]]:
     return out
 
 
+def contents_pages(lines: list[tuple[int, str]]) -> set[int]:
+    """Pages that are a contents list (council_quote.contents_kind on the page's own lines). The reader is never shown
+    them: Hornsby Part 3 page 2 gave 80 invented rules ("minimum 800 square metres", 2026-10-27). Pure."""
+    import council_quote as cq
+    by: dict[int, list[str]] = {}
+    for p, t in lines:
+        by.setdefault(p, []).append(t)
+    return {p for p, ts in by.items() if cq.contents_kind("\n".join(ts))}
+
+
 def chapter_lines(pdf_path: str) -> list[tuple[int, str]]:
     """(page, text) for every printed line in reading order, as council_quote proves against; running heads and bare
     page numbers left out."""
@@ -670,6 +680,10 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
     lines = [(p + offset, t) for p, t in reader(path)]
     if pages:
         lines = [x for x in lines if pages[0] <= x[0] <= pages[1]]
+    skip = contents_pages(lines)
+    if skip:
+        print(f"    [section-reader] contents page(s) not read: {sorted(skip)}", flush=True)
+        lines = [x for x in lines if x[0] not in skip]
     ps = pieces(lines)
     from concurrent.futures import as_completed
     got: dict[int, dict] = {}
@@ -690,7 +704,7 @@ def read_chapter(pdf_path: str, pages: tuple[int, int] | None = None) -> dict:
         import fitz
         with fitz.open(pdf_path) as doc:
             span = list(range(1, doc.page_count + 1))      # a scanned page gives no text lines but can hold rules
-    pics = sorted(set(picture_pages(pdf_path, [p for p in span if p >= 1])) | set(scrambled_pages(lines)))
+    pics = sorted((set(picture_pages(pdf_path, [p for p in span if p >= 1])) | set(scrambled_pages(lines))) - skip)
     if pics:
         if not os.environ.get("MISTRAL_API_KEY"):
             raise RuntimeError(f"section_reader: {len(pics)} picture/jumbled page(s) {pics[:10]} need the vision reader "
