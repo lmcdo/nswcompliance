@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Changes which pages the section reader sends to the AI: pages that are wholly a contents list are dropped. 41-chapter sample (2026-10-28): 13 pages skipped in 5 chapters (Burwood, Hornsby p2, Penrith, Blacktown), all contents/list of tables/figures; Marrickville contents pages (numbers on separate lines) are still read.",
+  "commit_hash": "d7c5b716",
+  "files": [
+    "scripts/section_reader.py",
+    "tests/test_section_reader.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_section_reader.py -q -o addopts=",
+    "expected": "all pass",
+    "fails_when": "a contents page is passed to the reader, or a rule page is skipped",
+    "observed_red": "2026-10-28: before the change contents_pages did not exist and Hornsby page 2 was read, giving 80 not_found rules in the review run."
+  },
+  "pre_impl": {
+    "existing_data": "Hornsby re-read 2026-10-27/28: 80 rules invented from the contents page (page 2), e.g. 'minimum 800 square metres' not in the PDF.",
+    "assumption_mismatch": "The reader assumed every page holds content worth reading.",
+    "new_vs_existing": "Reuses council_quote.contents_kind (merged #1530) per page; no new detector."
+  },
+  "functions": [
+    {
+      "name": "contents_pages",
+      "file_line": "scripts/section_reader.py",
+      "input": "the chapter's (page, line text) pairs in reading order",
+      "output": "set of pages whose lines read as a contents list",
+      "if_none": "no lines gives an empty set, so nothing is skipped"
+    }
+  ],
+  "values": [
+    {
+      "value": "page lines from chapter_lines/docling",
+      "read_at": "scripts/section_reader.py read_chapter",
+      "if_missing": "an empty page is never a contents page and is read as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A page of numbered controls is mistaken for contents.",
+      "what_happens": "Real rules on that page would never be read.",
+      "mitigated": true,
+      "how": "A page is skipped only when contents_kind matches AND 60%+ of its lines end in a page number or 80%+ are numbered titles; a mixed page is read. Sample skipped 0 rule pages.",
+      "repro": "python -m pytest tests/test_section_reader.py -q -o addopts="
+    },
+    {
+      "scenario": "A contents page is also flagged as a picture page.",
+      "what_happens": "The vision reader could still invent rules from it.",
+      "mitigated": true,
+      "how": "Skipped pages are removed from the picture-page list too.",
+      "repro": "python -m pytest tests/test_section_reader.py -q -o addopts="
+    },
+    {
+      "scenario": "A contents page uses a layout the detector does not know.",
+      "what_happens": "The reader still reads it and may invent rules, as before.",
+      "mitigated": true,
+      "how": "No worse than today; council_quote then marks contents text not_a_control (#1530) so it is never served.",
+      "repro": "python -m pytest tests/test_section_reader.py -q -o addopts="
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. Applies to the next re-read of any chapter.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
