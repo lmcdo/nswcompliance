@@ -29,7 +29,7 @@ def test_the_report_reads_the_one_producer(monkeypatch):
     import flood_planning
     seen = {}
     monkeypatch.setattr(flood_planning, "flood_planning_status",
-                        lambda lat, lng, conn: seen.setdefault("v", {"value": False, "reason": "r"}))
+                        lambda lat, lng, conn, **kw: seen.setdefault("v", {"value": False, "reason": "r"}))
     monkeypatch.setattr(gcr.psycopg2, "connect", lambda *a, **k: type("C", (), {"close": lambda self: None})())
     assert gcr.get_flood_planning_status(-28.86, 153.56)["value"] is False
     assert seen, "the report did not call services/flood_planning.py"

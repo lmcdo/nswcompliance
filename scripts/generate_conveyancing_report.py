@@ -1434,7 +1434,7 @@ def _drop_jurisdictional_overlays(results: list[dict]) -> list[dict]:
     ]
 
 
-def get_flood_planning_status(lat: float, lng: float) -> dict:
+def get_flood_planning_status(lat: float, lng: float, lot_wkt: Optional[str] = None) -> dict:
     """The ONE answer to "is this lot on the council's flood planning map"
     (services/flood_planning.py). True / False / None with a reason; never
     raises. Replaces this report's own reading of the flood rows, which
@@ -1457,7 +1457,7 @@ def get_flood_planning_status(lat: float, lng: float) -> dict:
             from flood_planning import flood_planning_status
         conn = psycopg2.connect(db_url)
         try:
-            return flood_planning_status(lat, lng, conn)
+            return flood_planning_status(lat, lng, conn, lot_wkt=lot_wkt)
         finally:
             conn.close()
     except Exception as e:  # noqa: BLE001 -- unknown, never "no"
@@ -5837,7 +5837,7 @@ def main():
     # CDC screen (#820): verdict from the backend engine + verified Codes SEPP
     # standards; None renders "Not assessed" — never a zone-list guess.
     from services.cdc_screen import run_cdc_screen_for_report
-    _flood_plan = apply_lot_flood_hit(get_flood_planning_status(lat, lng), unique_overlays)
+    _flood_plan = apply_lot_flood_hit(get_flood_planning_status(lat, lng, lot_wkt), unique_overlays)
     _cdc_result = run_cdc_screen_for_report(
         os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
         controls.get("heritage_items"), controls.get("heritage_hca"),
