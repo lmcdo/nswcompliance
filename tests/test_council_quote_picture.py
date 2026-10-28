@@ -92,3 +92,27 @@ def test_word_boundaries_and_slashes_count(tmp_path):
     cqp._cache.clear()
     assert cqp.prove("Limit the height to 1/2 of the wall length", pdf(tmp_path), 1,
                      ocr("Limit the height to 12 of the wall length")) is None
+
+
+def test_ocr_that_dropped_the_spaces_still_proves_the_rule(tmp_path):
+    """Hornsby p33 2026-10-28: OCR read the precinct note with no spaces between words."""
+    out = cqp.prove("On properties that adjoin the railway: refer all development applications to RailCorp",
+                    pdf(tmp_path), 1, ocr("Strategy Onpropertiesthatadjointherailway: referalldevelopmentapplicationstoRailCorp toconfirm"))
+    assert out and out["quote_page"] == 1
+
+
+def test_a_space_added_inside_a_rule_word_is_still_not_proven(tmp_path):
+    assert cqp.prove("Fences are not in front of the building", pdf(tmp_path), 1,
+                     ocr("Fencesare no tinfrontofthebuilding")) is None
+
+
+def test_glued_text_must_not_cut_a_rule_word_out_of_a_longer_word(tmp_path):
+    assert cqp.prove("parking areas are permitted beside residential buildings", pdf(tmp_path), 1,
+                     ocr("Noparkingareasarepermittedbesideresidentialbuildings")) is None
+
+
+def test_glued_text_still_needs_every_number_and_symbol(tmp_path):
+    assert cqp.prove("Rear setback of at least 9m applies", pdf(tmp_path), 1, ocr("Rearsetbackofatleast8mapplies")) is None
+    cqp._cache.clear()
+    assert cqp.prove("Limit the height to 1/2 of the wall length", pdf(tmp_path), 1,
+                     ocr("Limittheheightto12ofthewalllength")) is None
