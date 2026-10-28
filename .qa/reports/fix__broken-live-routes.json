@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "Three live API routes: /api/health always 503 (write test on read-only Vercel disk) -> read-only check; /api/versions?action=statistics (500, no caller) and /api/setbacks/calculate (throws, callers only in unmounted components) deleted.",
+  "commit_hash": "b15c5631",
+  "files": [
+    "frontend-nextjs/app/api/health/route.ts",
+    "frontend-nextjs/app/api/versions/route.ts",
+    "frontend-nextjs/app/api/setbacks/calculate/route.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -c \"import urllib.request; print(urllib.request.urlopen('https://verify.plotdetect.com.au/api/health').status)\"",
+    "expected": "200 after deploy",
+    "fails_when": "/api/health still returns 503 on a healthy deploy",
+    "observed_red": "2026-10-28 plan notes: /api/health always 503 on Vercel; checkFileSystem wrote .health-check into process.cwd()."
+  },
+  "pre_impl": {
+    "existing_data": "Callers traced 2026-10-28: /api/health used by Dockerfile liveness and scripts/smoke_test.sh; action=statistics has no caller; /api/setbacks/calculate called only by useSetbackCalculation/useSetbacks, whose components (PreciseSetbackCalculator, EnhancedSetbackVerification) are not mounted (docs/page_integrity/PRODUCER_MAP.md:439).",
+    "assumption_mismatch": "The health check assumed a writable working directory.",
+    "new_vs_existing": "Edits existing routes; deletes one route file and one action."
+  },
+  "functions": [
+    {
+      "name": "checkFileSystem",
+      "file_line": "frontend-nextjs/app/api/health/route.ts:270",
+      "input": "no arguments; it reads the process working directory",
+      "output": "pass when the working directory is readable, else fail with the error message",
+      "if_none": "a missing directory fails the check with its error, visibly"
+    }
+  ],
+  "values": [
+    {
+      "value": "process.cwd()",
+      "read_at": "frontend-nextjs/app/api/health/route.ts checkFileSystem",
+      "if_missing": "fs.access throws and the check reports fail"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An unmounted component is later mounted and calls /api/setbacks/calculate.",
+      "what_happens": "It gets a 404 instead of the previous crash.",
+      "mitigated": false,
+      "how": "The route already threw on every call; a 404 is no worse. Re-add it fixed if the calculator is revived.",
+      "repro": "curl -X POST https://verify.plotdetect.com.au/api/setbacks/calculate"
+    },
+    {
+      "scenario": "An outside caller requests the versions statistics action.",
+      "what_happens": "It gets a 400 listing valid actions instead of a 500.",
+      "mitigated": true,
+      "how": "No caller found in app, components, hooks, lib, workflows or scripts.",
+      "repro": "curl 'https://verify.plotdetect.com.au/api/versions?action=statistics'"
+    },
+    {
+      "scenario": "The deployed working directory becomes unreadable at runtime.",
+      "what_happens": "The health route must report the file system as failing.",
+      "mitigated": true,
+      "how": "fs.access with R_OK throws and the check fails.",
+      "repro": "curl -s -o /dev/null -w '%{http_code}' https://verify.plotdetect.com.au/api/health"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: after deploy, curl /api/health returns 200."
+  }
+}

@@ -6,8 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
-import { VersionClient } from '@/lib/database/specialized/version-client';
-import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/migration-flags';
 
 
 export const dynamic = 'force-dynamic';
@@ -26,15 +24,12 @@ export async function GET(request: NextRequest) {
  case 'atDate':
  return await getVersionAtDate(documentType!, documentIdentifier!, targetDate!);
 
- case 'statistics':
- return await getVersionStatistics(request);
-
  case 'comparison':
  return await getVersionComparison(documentType!, documentIdentifier!);
 
  default:
  return NextResponse.json(
- { error: 'Invalid action. Use: current, atDate, statistics, comparison' },
+ { error: 'Invalid action. Use: current, atDate, comparison' },
  { status: 400 }
  );
  }
@@ -66,42 +61,6 @@ async function getVersionAtDate(documentType: string, documentIdentifier: string
  ]);
 
  return NextResponse.json(result);
-}
-
-async function getVersionStatistics(request: NextRequest) {
-  const startTime = Date.now();
-  const requestId = request.headers.get('x-request-id') || `req_${Date.now()}`;
-
-  // Feature flag: Use PostgreSQL or Python subprocess
-  const usePostgreSQL = shouldUsePostgreSQL('versions', requestId);
-
-  let result: any;
-  let implementation: 'postgresql' | 'subprocess';
-
-  if (usePostgreSQL) {
-    console.log('[PostgreSQL Migration] Using direct PostgreSQL client for version statistics');
-    implementation = 'postgresql';
-
-    const versionClient = new VersionClient();
-    result = await versionClient.getSystemVersions();
-    await versionClient.close();
-  } else {
-    console.log('[PostgreSQL Migration] Using legacy Python subprocess for version statistics');
-    implementation = 'subprocess';
-    result = await callVersionManager(['get_statistics']);
-  }
-
-  const processingTime = Date.now() - startTime;
-  logMigrationMetrics('versions', implementation, processingTime, true);
-
-  return NextResponse.json({
-    ...result,
-    meta: {
-      implementation,
-      response_time_ms: processingTime,
-      migration_status: usePostgreSQL ? 'using_postgresql' : 'using_subprocess'
-    }
-  });
 }
 
 async function getVersionComparison(documentType: string, documentIdentifier: string) {
