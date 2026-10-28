@@ -38,7 +38,7 @@
  * COMMENTS STRIPPED — the paragraph above names '9.5m', '0.6:1' and 'R2', and
  * would satisfy an unstripped scan on its own.
  */
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { lotGeometryAreaM2, ringAreaM2, scaleFactorForRing } from '@/lib/geometry/mercator';
 
@@ -195,50 +195,11 @@ const readStripped = (...parts: string[]) =>
     .replace(/(^|[^:])\/\/.*$/gm, '$1 ') //         // line, and trailing
     .replace(/\s+/g, ' ');
 
-describe('the setbacks endpoint states no figure it did not derive', () => {
-  const src = readStripped('app', 'api', 'setbacks', 'calculate', 'route.ts');
-
-  it('reads the file at all, so the assertions below are not vacuous', () => {
-    expect(src.length).toBeGreaterThan(2000);
-    expect(src).toContain('buildable_area_analysis');
-  });
-
-  it.each([
-    ["the zone-defaulted lot area", /\?\s*500\s*:\s*400/],
-    ['the 60% buildable ratio', /\*\s*0\.6/],
-    ['the 40% lost ratio', /\*\s*0\.4/],
-    ['a hardcoded buildable percentage', /buildable_percentage:\s*\d/],
-    ['a hardcoded lot area', /total_lot_area:\s*\d/],
-    ['the old local variable', /estimatedLotArea/],
-  ])('does not contain %s', (_label, pattern) => {
-    expect(src).not.toMatch(pattern);
-  });
-
-  it('routes every buildable-area response through the one helper', () => {
-    // `buildableAreaNotDerived(` matches its own declaration too, so the
-    // declaration is excluded — counting it as a call is what made the first
-    // version of this assertion read 6 against 5 and fail on correct code.
-    const calls = (src.match(/buildableAreaNotDerived\(/g) ?? []).length
-      - (src.match(/function buildableAreaNotDerived\(/g) ?? []).length;
-    const blocks = (src.match(/buildable_area_analysis:/g) ?? []).length;
-
-    expect(blocks).toBeGreaterThanOrEqual(5);
-    // Every response block is a call to the helper and nothing else. A new block
-    // written as a literal object raises `blocks` without raising `calls`.
-    expect(calls).toBe(blocks);
-  });
-
-  it('states why a figure is absent', () => {
-    expect(src).toMatch(/unavailable_reason/);
-  });
-
-  it('gives a reason that is true even when the caller sent a boundary', () => {
-    // Cross-review finding, 2026-10-06: the first wording said buildable area
-    // "needs the lot boundary", which is false for a caller that supplied
-    // lot_geometry -- the boundary was there and this route does not offset
-    // against it. A wrong explanation inside a change about wrong numbers.
-    expect(src).not.toMatch(/needs the lot boundary/);
-    expect(src).toMatch(/does not offset them against a lot boundary/);
+describe('the setbacks endpoint is gone', () => {
+  // app/api/setbacks/calculate threw on every call and only unmounted components called it: deleted 2026-10-28.
+  // If it comes back, it must come back with the no-invented-figure checks this block used to hold.
+  it('has no route file', () => {
+    expect(existsSync(join(__dirname, '..', '..', 'app', 'api', 'setbacks', 'calculate', 'route.ts'))).toBe(false);
   });
 });
 
