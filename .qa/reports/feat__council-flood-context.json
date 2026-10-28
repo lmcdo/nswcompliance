@@ -1,0 +1,96 @@
+{
+ "tier": "standard",
+ "justification": "Adds a production table of confirmed per-council flood information and shows it with not-known flood answers. Not Critical: only adds sourced pointers to user-facing text; never changes a yes/no. Not Minor: new production table and served wording.",
+ "commit_hash": "1509829b",
+ "files": [
+  "data/council_flood_context/verified_2026-10-29.json",
+  "frontend-nextjs/lib/flood/flood-map.ts",
+  "migrations/118_council_flood_context.sql",
+  "scripts/generate_conveyancing_report.py",
+  "scripts/load_council_flood_context.py",
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "services/intelligence_brief.py",
+  "tests/test_flood_planning.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if the sentence uses anything but held facts, or the answer stops carrying council info.",
+  "external_authority": "Each stored fact was re-fetched from its cited council page on 2026-10-29 and kept only if the page contains it (verified_2026-10-29.json).",
+  "observed_red": "New tests cover behaviour absent before (no council info existed)."
+ },
+ "pre_impl": {
+  "existing_data": "No per-council flood information table existed; flood-lgas.ts held unsourced marketing copy (24 of 32 counts wrong).",
+  "assumption_mismatch": "Research helpers reported more facts than pages confirm (viewer 2/10, certificate 8/19, FPL 0 after paraphrases dropped).",
+  "new_vs_existing": "New table (migration 118, approved) and loader; producer wrapper.",
+  "external_source_error": "Lookup failure returns no council info; the flood answer is unchanged."
+ },
+ "functions": [
+  {
+   "name": "council_info_sentence",
+   "file_line": "services/flood_planning.py",
+   "what": "Plain sentence of where to get the council's flood information.",
+   "input": "the council_flood_context row as a dict",
+   "output": "one sentence, or None when nothing is held",
+   "if_none": "A None input returns None, so no sentence.",
+   "edge_cases": "only a flood-study link held",
+   "failure_mode": "No sentence"
+  },
+  {
+   "name": "_council_info",
+   "file_line": "services/flood_planning.py",
+   "what": "Reads the confirmed facts for a council.",
+   "input": "open connection and council name",
+   "output": "dict of confirmed facts or None",
+   "if_none": "No row or lookup failure returns None.",
+   "edge_cases": "council name casing",
+   "failure_mode": "No council info; answer unchanged"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Research gave a paraphrased flood planning level",
+   "what_happens": "It is not stored, so it is never shown as the council's wording",
+   "mitigated": true,
+   "how": "loader drops search-summary and elided quotes",
+   "repro": "python scripts/load_council_flood_context.py --file ... --dry-run"
+  },
+  {
+   "scenario": "The council_flood_context lookup fails at query time",
+   "what_happens": "No council sentence; the flood answer is unchanged",
+   "mitigated": true,
+   "how": "try/except returns None and rolls back",
+   "repro": "pytest tests/test_flood_planning.py"
+  },
+  {
+   "scenario": "Council has only a flood-study listing",
+   "what_happens": "Sentence points to the flood study listing",
+   "mitigated": true,
+   "how": "fallback branch",
+   "repro": "pytest -k flood_study_link"
+  }
+ ],
+ "verified": [
+  "24 producer tests; 1942 Python tests; 45 flood jest",
+  "Live: Newcastle, Central Coast, Albury show council sentences",
+  "Table: 57 rows, cert 8, viewer 2, data 43, fpl 0"
+ ],
+ "gaps": [
+  "Labels are research-authored and wordy (follow-up tidy)",
+  "71 councils with maps have no context row yet"
+ ],
+ "post_merge": {
+  "action": "After deploy: check a Newcastle address in the brief shows the certificate link",
+  "db_reset": "None (migration 118 and rows already applied)",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "SELECT count(*) FROM council_flood_context = 57"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "Exercised live against the production table before commit (3 addresses).",
+  "services/flood_truth.py": "Exercised live against the production table before commit (3 addresses).",
+  "services/intelligence_brief.py": "Exercised live against the production table before commit (3 addresses).",
+  "scripts/generate_conveyancing_report.py": "Exercised live against the production table before commit (3 addresses).",
+  "scripts/load_council_flood_context.py": "Exercised live against the production table before commit (3 addresses)."
+ }
+}
