@@ -1,0 +1,86 @@
+{
+  "tier": "standard",
+  "justification": "Standard: adds a measurement and tests for a live customer-facing verdict; changes no behaviour. Not Critical: read-only, no served output changes.",
+  "commit_hash": "74971e52",
+  "files": [
+    "scripts/flood_signal_regression.py",
+    "tests/test_flood_signal_known_answers.py",
+    "tests/fixtures/flood_known_answers.json",
+    "tests/test_flood_signal_regression_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "property_reports product=flood: 308 latest rows per address (0.01s). copernicus_flood_events: EMSR567 one row of 86,349 km2 (5 polygons) vs NSW-202207 410 km2 and NSW-202210 842 km2.",
+    "assumption_mismatch": "EMSR567 was assumed to be a flood extent; the ingest merged every shapefile in each ZIP, including area-of-interest layers. run_date is DATE, so latest-per-address needs an id tiebreak.",
+    "new_vs_existing": "scripts/run_flood_calibration_2022.py measures recall on freshly sampled points; this re-scores saved customer inputs. Reuses its worktree .env resolution.",
+    "external_source_error": "Read-only; a DB connection failure raises and prints nothing, never a partial count.",
+    "frontend_type": "N/A: no served output changes.",
+    "user_failure_mode": "N/A: test and measurement only."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_flood_signal_known_answers.py -q",
+    "fails_when": "The rule is fixed but the strict xfail markers are left, or the EMS-alone rule is reintroduced after the fix",
+    "observed_red": "With strict xfail, the 7 EMS-alone cases currently fail as expected (7 xfailed); making them pass without removing the marker turns the run red (XPASS strict)."
+  },
+  "functions": [
+    {
+      "name": "positive_sources",
+      "file_line": "scripts/flood_signal_regression.py",
+      "input": "saved flood outputs dict for one address",
+      "output": "list of named sources that indicate flooding",
+      "if_none": "missing keys count as not positive"
+    },
+    {
+      "name": "build_fixture",
+      "file_line": "scripts/flood_signal_regression.py",
+      "input": "database rows chosen by fixed queries per group",
+      "output": "fixture JSON with inputs and expected class per case",
+      "if_none": "a group with fewer rows is printed as k/n and the coverage test fails"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "latest saved flood inputs per address",
+      "file_line": "scripts/flood_signal_regression.py LATEST_SQL",
+      "where_clause": "product='flood' AND outputs ? 'epi_flood_class' AND address NOT ILIKE 'calibration %'",
+      "if_zero": "TOTAL=0 is printed; the fixture coverage test fails",
+      "if_wrong": "same-day ties broken by id so the chosen row is stable"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The fixture loses a group when rebuilt",
+      "what_happens": "Tests pass on a smaller, easier set",
+      "mitigated": true,
+      "how": "test_fixture_covers_every_group requires all 7 groups and at least 21 cases",
+      "repro": "delete one group from the fixture and run pytest"
+    },
+    {
+      "scenario": "Someone fixes the rule but forgets the xfail markers",
+      "what_happens": "Fixed cases are silently treated as expected failures",
+      "mitigated": true,
+      "how": "xfail strict=True turns an unexpected pass into a failure",
+      "repro": "make the 7 cases pass and run pytest"
+    },
+    {
+      "scenario": "Synthetic calibration rows skew the regression counts",
+      "what_happens": "Counts would include points that are not customers",
+      "mitigated": true,
+      "how": "LATEST_SQL excludes addresses starting with calibration",
+      "repro": "grep LATEST_SQL"
+    },
+    {
+      "scenario": "The latest saved flood inputs per address query picks a different row on each run",
+      "what_happens": "Baseline and after-fix runs compare different inputs and report false changes",
+      "mitigated": true,
+      "how": "ORDER BY address, run_date DESC, id DESC makes the latest-per-address choice stable",
+      "repro": "run the script twice and compare snapshots"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
