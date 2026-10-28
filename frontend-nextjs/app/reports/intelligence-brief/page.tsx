@@ -2329,9 +2329,12 @@ const EXPECTED_SECTIONS_BASE = [
   'economics', 'strata', 'environmental_constraints', 'planning_controls',
 ];
 const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood', 'market_context'];
+// Withdrawn until checked (owner decision 2026-10-28; lib/hidden-products.ts).
+// Dropped from every satellite list; the solar card is never mounted, so its fetch never fires.
+const WITHDRAWN_SATELLITE_SECTIONS = new Set(['satellite.flood', 'satellite.bushfire', 'satellite.solar']);
 const EXPECTED_SECTIONS_SAT = [
-  'satellite.bushfire', 'satellite.flood', 'satellite.climate_disclosure',
-  'satellite.granny_flat', 'satellite.terrain', 'satellite.solar',
+  'satellite.climate_disclosure',
+  'satellite.granny_flat', 'satellite.terrain',
   // 'satellite.pre_da_history' soft-dropped — see the sectionEvents filter below.
 ];
 
@@ -2678,7 +2681,8 @@ function IntelligenceBriefInner() {
     // (torch/Tessera) the web container can't host, so it always errored. Hide the card
     // until it's decoupled to a worker. Backend code retained — re-enable by removing
     // this filter, restoring the toggle, and re-adding it to EXPECTED_SECTIONS_SAT.
-    .filter((p) => p.data.section !== 'satellite.pre_da_history');
+    .filter((p) => p.data.section !== 'satellite.pre_da_history')
+    .filter((p) => !WITHDRAWN_SATELLITE_SECTIONS.has(p.data.section));
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
 
@@ -2702,7 +2706,7 @@ function IntelligenceBriefInner() {
   // bushfire-prone" (value present, category null) must not also surface as a
   // "returned no data" gap — the card already shows the answer, so a gap line
   // reads as a direct contradiction. A genuine failure (value absent) still gaps.
-  const hiddenGapFields = new Set<string>(['satellite.pre_da_history']);
+  const hiddenGapFields = new Set<string>(['satellite.pre_da_history', ...WITHDRAWN_SATELLITE_SECTIONS]);
   const bfEvent = sectionEvents.find((p) => p.data.section === 'satellite.bushfire');
   const bfData = bfEvent?.data.data as { value?: { category?: unknown } } | null | undefined;
   if (bfData?.value && typeof bfData.value === 'object' && bfData.value.category == null) {
@@ -3010,7 +3014,7 @@ function IntelligenceBriefInner() {
                   className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 Include satellite analysis
-                <span className="font-normal text-muted-foreground">bushfire · flood · climate</span>
+                <span className="font-normal text-muted-foreground">climate · terrain</span>
               </label>
             </div>
           }
@@ -3055,7 +3059,7 @@ function IntelligenceBriefInner() {
               onChange={(e) => setIncludeSatellite(e.target.checked)}
               className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
             />
-            Include satellite analysis (bushfire, flood, climate)
+            Include satellite analysis (climate, terrain)
           </label>
 
           <button

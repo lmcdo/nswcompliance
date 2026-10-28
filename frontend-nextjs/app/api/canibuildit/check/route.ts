@@ -313,7 +313,6 @@ export async function POST(req: NextRequest) {
       // floodOnMap stays null — flood reads 'unknown' (safe)
     }
   }
-  }
 
   // 5b. ePlanning Phase 1: Dual occupancy prohibition (layer 452)
   let dualOccProhibited = false;
