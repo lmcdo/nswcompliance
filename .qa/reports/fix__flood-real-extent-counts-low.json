@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes the served flood signal rule (EMS alone -> low) and the flood cache read. Not Critical: measured RAISED 0 on all 308 saved checks. Not Minor: changes served levels for future addresses.",
- "commit_hash": "0014e7dd",
+ "commit_hash": "332730cb",
  "files": [
   "services/flood_truth.py",
   "tests/test_flood_truth.py",
@@ -60,7 +60,8 @@
  "verified": [
   "867 flood tests pass (pytest -k flood)",
   "Gate: RAISED 0 of 308; 7 real-extent hits all already positive",
-  "Stored row now carries flood_signal equal to the served one (test)"
+  "Stored row now carries flood_signal equal to the served one (test)",
+  "Calibration re-measured without EMSR567: recall 0.784 (29/37), cluster CI 0.308-0.963; 13 artifact-agreement tests pass"
  ],
  "gaps": [
   "Cached rows from 2026-10-28 computed after the reload are also recomputed once (harmless)"
