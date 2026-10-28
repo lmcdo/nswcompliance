@@ -78,8 +78,9 @@ def test_an_extreme_flood_only_hit_is_not_the_planning_map():
 
 
 def test_a_council_we_hold_no_map_for_is_unknown_never_no():
+    # ... study area (no); nearest planning line (none within 200 m)
     s = fp.flood_planning_status(-29.04, 153.25, conn_with(
-        [], [("RICHMOND VALLEY",)], [("BALLINA",), ("TWEED",)], [(False,)]))
+        [], [("RICHMOND VALLEY",)], [("BALLINA",), ("TWEED",)], [(False,)], [(None,)]))
     assert s["value"] is None
     assert s["reason"] == "we do not hold this council's flood planning map for this area"
 
@@ -92,7 +93,7 @@ def test_a_partial_council_map_gives_no_only_inside_its_study_area():
     assert inside["value"] is False
     fp._covered_cache.update(councils=None, at=0.0)  # each call reads the covered list afresh
     outside = fp.flood_planning_status(-30.45, 152.9, conn_with(
-        [], [("BELLINGEN",)], [("BALLINA",)], [(False,)]))
+        [], [("BELLINGEN",)], [("BALLINA",)], [(False,)], [(None,)]))
     assert outside["value"] is None and "for this area" in outside["reason"]
 
 
@@ -252,3 +253,53 @@ def test_the_answer_carries_council_info(monkeypatch):
     s = fp.flood_planning_status(-32.93, 151.78, conn_with(
         [], [("NEWCASTLE",)], [("BALLINA",)], [(False,)]))
     assert s["value"] is None and s["council_info_text"].startswith("For this council")
+
+
+# -- Heddon Greta, 2026-10-28: 44.7 m2 of the lot on Cessnock's PARTIAL 1% AEP
+# map, the address point 6 m off it. Every surface sent the point only.
+
+def test_a_point_beside_a_partial_council_line_says_near_never_not_held():
+    """Point only, outside the study area, a planning line 5.9 m away: 'near',
+    not 'we do not hold this council's map' (we hold it right there)."""
+    s = fp.flood_planning_status(-32.80, 151.51, conn_with(
+        [], [("CESSNOCK",)], [("BALLINA",)], [(False,)], [(5.9,)]))
+    assert s["value"] is None and s["nearest_m"] == 5.9
+    assert "whole lot was not checked" in s["reason"]
+
+
+def test_the_lot_on_a_partial_council_line_is_yes():
+    s = fp.flood_planning_status(-32.80, 151.51, conn_with(
+        [(True,)], [("1%AEP", "PARTIAL_CESSNOCK_1PCT_1pctAEP", "CESSNOCK")]), lot_wkt=LOT)
+    assert s["value"] is True and s["whole_lot"] is True
+
+
+def test_a_whole_lot_clear_outside_a_partial_study_area_stays_not_known():
+    """The lot was tested and touches nothing, but the council map covers only
+    its study areas: still not known, never 'no', and no distance query."""
+    c = conn_with([(True,)], [], [("CESSNOCK",)], [("BALLINA",)], [(False,)])
+    s = fp.flood_planning_status(-32.80, 151.51, c, lot_wkt=LOT)
+    assert s["value"] is None and "for this area" in s["reason"]
+
+
+def test_the_flood_check_hands_the_lot_to_the_one_answer(monkeypatch):
+    """/pipeline/flood used to call the one answer with the point only."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import services.flood_truth as ft
+    seen = {}
+
+    def fake(lat, lng, conn, lot_wkt=None):
+        seen["lot_wkt"] = lot_wkt
+        return {"value": True, "hits": [], "council": "CESSNOCK"}
+
+    monkeypatch.setattr(fp, "flood_planning_status", fake)
+    monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
+    ft._query_ses_flood_study(-32.80, 151.51, LOT)
+    assert seen["lot_wkt"] == LOT
+
+
+def test_partial_council_near_check_counts_only_that_councils_lines():
+    c = conn_with([], [("CESSNOCK",)], [("BALLINA",)], [(False,)], [(5.9,)])
+    fp.flood_planning_status(-32.80, 151.51, c)
+    cur = c.cursor.return_value
+    i = next(n for n, q in enumerate(cur.sql) if "ST_Distance" in q)
+    assert "lga_name = %s" in cur.sql[i] and cur.params[i][-2:] == ("CESSNOCK", "CESSNOCK")

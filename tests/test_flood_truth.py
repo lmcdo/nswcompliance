@@ -854,7 +854,7 @@ def _stub_all_sources(monkeypatch, overrides=None):
             defaults[k].update(v)
 
     for func_name, return_val in defaults.items():
-        monkeypatch.setattr(ft, func_name, lambda lat, lng, rv=return_val: rv)
+        monkeypatch.setattr(ft, func_name, lambda lat, lng, *_a, rv=return_val, **_k: rv)
 
     return defaults
 
@@ -996,7 +996,7 @@ def test_run_flood_db_failure_falls_through_to_live_queries(monkeypatch):
     called_sources = []
 
     def make_tracker(name, default_return):
-        def tracker(lat, lng):
+        def tracker(lat, lng, *_a, **_k):
             called_sources.append(name)
             return default_return
         return tracker
@@ -1120,7 +1120,7 @@ def test_run_flood_passes_correct_coords_to_sources(monkeypatch):
     captured_coords = {}
 
     def make_coord_capture(name, default_return):
-        def capture(lat, lng):
+        def capture(lat, lng, *_a, **_k):
             captured_coords[name] = (lat, lng)
             return default_return
         return capture
@@ -2326,4 +2326,7 @@ def test_cache_never_serves_a_check_from_before_the_emsr567_reload():
     assert ft.FLOOD_CACHE_MIN_RUN_DATE >= date(2026, 10, 29)
     src = inspect.getsource(ft)
     assert "AND run_date >= %s" in src
-    assert "req.lng, FLOOD_CACHE_MIN_RUN_DATE)" in src
+    assert "req.lng, FLOOD_CACHE_MIN_RUN_DATE," in src
+    # and a request that sends the lot never gets a point-only row back
+    assert "(inputs->>'lot_given')::boolean IS TRUE" in src
+    assert '"lot_given": bool(getattr(req, "lot_wkt", None))' in src

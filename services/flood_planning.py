@@ -186,6 +186,32 @@ def _trusted_lot(cur, lot_wkt: Optional[str], lat: float, lng: float) -> Optiona
         return None
 
 
+def _nearest_yes_m(cur, lat: float, lng: float, council: Optional[str] = None) -> Optional[float]:
+    """Metres to the nearest planning-map polygon within NEAR_EDGE_M, else None.
+    With council, only that council's rows count (a neighbour's line is not
+    "the council's flood planning map" for this lot).
+
+    prior-art-checked: the existing near-edge query below, moved into a function
+    so the partial-council path can use it too; no new source.
+    """
+    cur.execute("SET LOCAL statement_timeout = '5000'")
+    cur.execute(
+        "SELECT min(ST_Distance(geom::geography, "
+        "ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)) FROM spatial_overlays "
+        # Index-friendly pre-filter in degrees (0.003 deg >= 270 m in NSW), then
+        # the exact metres on the few rows left. A bare geography DWithin
+        # cannot use the geom index and timed out at 5 s.
+        "WHERE layer_type = 'flood' AND value = ANY(%s) "
+        "AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.003) "
+        "AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s) "
+        "AND (%s::text IS NULL OR lga_name = %s)",
+        (lng, lat, sorted(_YES), lng, lat, lng, lat, NEAR_EDGE_M, council, council),
+    )
+    got = cur.fetchone()
+    d = _cols(got, "min")[0] if got else None
+    return round(float(d), 1) if d is not None else None
+
+
 def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
     """The one answer. Never raises; a failure is value None with its reason.
 
@@ -233,6 +259,15 @@ def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = 
                 return out
             covered = _covered_councils(cur)
             if council not in covered and not _inside_study_area(cur, lat, lng, council):
+                # A partial council map (study areas only) can still hold a
+                # planning line right next to this point. Say so, rather than
+                # "we do not hold this council's map": Heddon Greta 2026-10-28,
+                # point 6 m from Cessnock's 1% AEP extent, 44.7 m2 of the lot on it.
+                d = None if lot is not None else _nearest_yes_m(cur, lat, lng, council)
+                if d is not None:
+                    out.update(nearest_m=d, reason=(
+                        f"within {d:.0f} m of the council's flood planning map; the whole lot was not checked"))
+                    return out
                 out["reason"] = "we do not hold this council's flood planning map for this area"
                 return out
             if lot is not None:
@@ -241,22 +276,9 @@ def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = 
                                    "it is inside a rarer (extreme) flood extent" if extreme_only
                                    else "no part of the lot is on the council's flood planning map"))
                 return out
-            cur.execute("SET LOCAL statement_timeout = '5000'")
-            cur.execute(
-                "SELECT min(ST_Distance(geom::geography, "
-                "ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)) FROM spatial_overlays "
-                # Index-friendly pre-filter in degrees (0.003 deg >= 270 m in NSW), then
-                # the exact metres on the few rows left. A bare geography DWithin
-                # cannot use the geom index and timed out at 5 s.
-                "WHERE layer_type = 'flood' AND value = ANY(%s) "
-                "AND ST_DWithin(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.003) "
-                "AND ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)",
-                (lng, lat, sorted(_YES), lng, lat, lng, lat, NEAR_EDGE_M),
-            )
-            got = cur.fetchone()
-            d = _cols(got, "min")[0] if got else None
+            d = _nearest_yes_m(cur, lat, lng)
             if d is not None:
-                out.update(nearest_m=round(float(d), 1),
+                out.update(nearest_m=d,
                            reason=f"within {NEAR_EDGE_M:.0f} m of the council's flood planning map; the whole lot was not checked")
                 return out
             out.update(value=False, category="extreme_only" if extreme_only else None,

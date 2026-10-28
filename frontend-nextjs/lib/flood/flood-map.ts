@@ -18,6 +18,7 @@
  * report. This queries the registered layer (same service and id as
  * EPLANNING_LAYERS.floodPlanningMap; not imported, to keep nsw-planning-portal free of a cycle).
  */
+import { lotRingsToWgs84Wkt } from '@/lib/geo-utils';
 import { fetchWithTimeout } from '../fetch-timeout';
 
 const LAYER_URL =
@@ -167,14 +168,16 @@ export interface StoreFloodStatus {
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
-async function fetchStoreStatus(lon: number, lat: number): Promise<StoreFloodStatus | null> {
+async function fetchStoreStatus(lon: number, lat: number, lotWkt: string | null = null): Promise<StoreFloodStatus | null> {
   try {
     // fetchWithTimeout, not a bare timer: it obeys the property lookup's overall budget, so a
     // stalled backend can never hold the page past it.
     const r = await fetchWithTimeout(`${PYTHON_API}/pipeline/flood-planning`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lng: lon }),
+      // The lot outline too, so a lot whose address point is just outside the flood area is
+      // still found (the backend ignores an outline that does not contain the point).
+      body: JSON.stringify({ lat, lng: lon, lot_wkt: lotWkt }),
       cache: 'no-store',
     });
     if (!r.ok) return null;
@@ -210,7 +213,9 @@ export async function floodMapStatus(
   boundary?: LotBoundary | null,
 ): Promise<FloodMapStatus> {
   const [hit, plansWithMap, store] = await Promise.all([
-    queryLot(lon, lat, boundary), plansWithAFloodMap(), fetchStoreStatus(lon, lat),
+    queryLot(lon, lat, boundary), plansWithAFloodMap(),
+    fetchStoreStatus(lon, lat, lotRingsToWgs84Wkt(validRings(boundary?.rings),
+      boundary?.spatialReference?.latestWkid ?? boundary?.spatialReference?.wkid ?? null)),
   ]);
   return combineFloodAnswers(decideFloodMap(hit, lotPlans, plansWithMap), store);
 }
