@@ -1434,6 +1434,37 @@ def _drop_jurisdictional_overlays(results: list[dict]) -> list[dict]:
     ]
 
 
+def get_flood_planning_status(lat: float, lng: float) -> dict:
+    """The ONE answer to "is this lot on the council's flood planning map"
+    (services/flood_planning.py). True / False / None with a reason; never
+    raises. Replaces this report's own reading of the flood rows, which
+    counted extreme-flood (PMF) and non-flood rows as a hit and relied on a
+    coverage table that listed 12 of the 72 councils we hold (2026-10-28)."""
+    db_url = os.getenv("DATABASE_URL") or (
+        f"host={os.getenv('DB_HOST','localhost')} "
+        f"dbname={os.getenv('DB_NAME','postgres')} "
+        f"user={os.getenv('DB_USER','postgres')} "
+        f"password={os.getenv('DB_PASSWORD','')} "
+        f"port={os.getenv('DB_PORT','5432')}"
+    )
+    try:
+        try:
+            from flood_planning import flood_planning_status
+        except ImportError:
+            _services_dir = str(project_root / "services")
+            if _services_dir not in sys.path:
+                sys.path.insert(0, _services_dir)
+            from flood_planning import flood_planning_status
+        conn = psycopg2.connect(db_url)
+        try:
+            return flood_planning_status(lat, lng, conn)
+        finally:
+            conn.close()
+    except Exception as e:  # noqa: BLE001 -- unknown, never "no"
+        print(f"  [warn] Flood planning check unavailable: {e}")
+        return {"value": None, "reason": "flood planning map could not be checked"}
+
+
 def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str], dict[str, float]]:
     """
     Query PostGIS for overlays not (or unreliably) returned by the portal:
@@ -3767,9 +3798,14 @@ def generate_pdf(
     )
     # Count unique constraint types — use layer_type set to avoid double-counting
     # (heritage is portal-sourced; PostGIS heritage row unlikely but guard against it)
+    # Flood counts only when the flood planning check says yes: a PMF or
+    # non-flood row in the 'flood' layer is not the planning map.
+    _flood_plan = get_flood_planning_status(lat, lng)
     _constraint_layer_types = {o["layer_type"] for o in unique_overlays
                                 if o["layer_type"] in ("biodiversity", "riparian", "wetlands",
-                                   "landslide", "flood", "bushfire", "anef")}
+                                   "landslide", "bushfire", "anef")}
+    if _flood_plan.get("value") is True:
+        _constraint_layer_types.add("flood")
     _n_constraints = len(_constraint_layer_types)
     if controls.get("heritage_items"):
         _n_constraints += 1
@@ -3937,6 +3973,11 @@ def generate_pdf(
     _anef_note_dynamic: str | None = None
     if "anef" in unique_by_type:
         _anef_note_dynamic = build_anef_note(anef_live)
+
+    if _flood_plan.get("value") is not True:
+        unique_by_type.pop("flood", None)
+    elif "flood" not in unique_by_type:
+        unique_by_type["flood"] = {"layer_type": "flood", "value": "Flood Planning Area"}
 
     DELTA_CHECKS = [
         ("Biodiversity Values Map (BDAR trigger)", "biodiversity"),
@@ -4155,6 +4196,12 @@ def generate_pdf(
     _leg_url = controls.get("legislation_url") or ""
 
     def flag(layer_type: str, label: str, present_style: str = "alert"):
+        # Flood: the one flood planning answer decides; "no" is worded as what
+        # it is, and "not known" omits the row (the coverage note owns the gap).
+        if layer_type == "flood" and _flood_plan.get("value") is not True:
+            if _flood_plan.get("value") is False:
+                return [label, Paragraph("Not on the council's flood planning map", ss["ok"]), "PostGIS"]
+            return None
         # 1. PostGIS hit (detailed spatial data)
         if layer_type in unique_by_type:
             base_label = _HIT_LABELS.get(layer_type, "Present")
@@ -4925,8 +4972,11 @@ def generate_pdf(
     if no_constraints:
         # Bushfire is deliberately not claimed here — its status (including a
         # failed live check) is reported in the Section 1 risk row.
+        # Flood is named only when the flood planning check gave a real "no";
+        # for a council whose map we do not hold it is not a finding.
+        _flood_word = "flood, " if _flood_plan.get("value") is False else ""
         story.append(Paragraph(
-            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, flood, "
+            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, " + _flood_word +
             "aircraft noise, coastal hazard, or fire history overlays identified at this location. "
             "Bushfire-prone status is reported in Section 1 (live NSW RFS check).",
             ss["body"]
@@ -5761,7 +5811,7 @@ def main():
     _cdc_result = run_cdc_screen_for_report(
         os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
         controls.get("heritage_items"), controls.get("heritage_hca"),
-        unique_overlays, covered_layers,
+        unique_overlays, covered_layers, get_flood_planning_status(lat, lng),
     )
     if _cdc_result is None:
         print("  [warn] CDC screen unavailable — CDC row renders 'Not assessed'")

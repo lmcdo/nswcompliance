@@ -73,6 +73,7 @@ from generate_conveyancing_report import (  # noqa: E402
     get_raw_controls,
     parse_controls,
     get_valuation,
+    get_flood_planning_status,
     get_unique_overlays,
     calc_feasibility,
     calc_development_headroom,
@@ -415,7 +416,7 @@ def run_conveyancing(req: ConveyancingRequest):
     cdc_result = run_cdc_screen_for_report(
         os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
         controls.get("heritage_items"), controls.get("heritage_hca"),
-        unique_overlays, covered_layers,
+        unique_overlays, covered_layers, get_flood_planning_status(lat, lng),
     )
     feasibility = calc_feasibility(
         controls, valuation, unique_overlays,
@@ -611,8 +612,8 @@ def generate_conveyancing_pdf(req: ConveyancingPdfRequest):
         sepp_standards, tax_config = _load_regulatory_configs()
         cdc_result = run_cdc_screen_for_report(
             os.getenv("DATABASE_URL"), controls.get("zone"), valuation.get("lot_area_m2"),
-            controls.get("heritage_items"), controls.get("heritage_hca"),
-            unique_overlays, covered_layers,
+                controls.get("heritage_items"), controls.get("heritage_hca"),
+            unique_overlays, covered_layers, get_flood_planning_status(lat, lng),
         )
         feasibility = calc_feasibility(
             controls, valuation, unique_overlays,
