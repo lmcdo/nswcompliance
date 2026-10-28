@@ -62,7 +62,8 @@ export async function POST(req: NextRequest) {
     // PDF. Refuse instead: a missing level is not "no flood". Re-running the
     // check stores a row that carries it.
     const storedSignal = (row.outputs as Record<string, unknown> | null)?.flood_signal;
-    if (typeof storedSignal !== 'string') {
+    if (typeof storedSignal !== 'string'
+        || !['none', 'low', 'moderate', 'elevated', 'unavailable'].includes(storedSignal)) {
       return NextResponse.json(
         { error: 'This saved check has no flood level recorded. Run the flood check again to get a report.' },
         { status: 409 },
