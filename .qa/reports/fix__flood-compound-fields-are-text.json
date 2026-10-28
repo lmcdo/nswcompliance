@@ -1,0 +1,73 @@
+{
+ "tier": "standard",
+ "justification": "Served flood API response model. Not Critical: widens a type, no logic. Not Minor: 10% of checked addresses got a 500.",
+ "commit_hash": "6081cad0",
+ "files": [
+  "services/flood_truth.py",
+  "tests/test_flood_response_compound_text.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_response_compound_text.py -q",
+  "fails_when": "Fails if any compound_* field rejects a label string, True or None.",
+  "external_authority": "Railway production log 2026-10-28: fastapi ResponseValidationError bool_parsing on outputs.compound_riparian 'Riparian Area'. property_reports: 31 of 308 addresses carry a string compound value.",
+  "observed_red": "11 of 13 tests fail with the old Optional[bool] types (checked by reverting)."
+ },
+ "pre_impl": {
+  "existing_data": "compound_* values in property_reports: heritage 29, riparian 14, landslide 12, wetlands 1 strings.",
+  "assumption_mismatch": "The model assumed a bool; the query returns the label.",
+  "new_vs_existing": "No new code; the existing type is widened in place.",
+  "external_source_error": "Unchanged."
+ },
+ "functions": [
+  {
+   "name": "FloodOutputs",
+   "file_line": "services/flood_truth.py",
+   "what": "compound_* accept a label, True or None.",
+   "input": "normalised flood outputs for one address",
+   "output": "validated response body sent to the website",
+   "if_none": "A field with no layer stays None in the response.",
+   "edge_cases": "True stays a bool, not the string 'True'",
+   "failure_mode": "None: widening only"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address on mapped riparian land with label Riparian Area",
+   "what_happens": "Response validates and the user gets a result",
+   "mitigated": true,
+   "how": "Union[bool, str]",
+   "repro": "pytest -k rejected"
+  },
+  {
+   "scenario": "Compound layer row with an empty label returns True",
+   "what_happens": "Stays a boolean True after validation",
+   "mitigated": true,
+   "how": "bool listed first in the Union",
+   "repro": "pytest -k label_true_or_none"
+  },
+  {
+   "scenario": "No compound layer at this point at all",
+   "what_happens": "Field stays None in the response",
+   "mitigated": true,
+   "how": "Optional default None",
+   "repro": "pytest -k label_true_or_none"
+  }
+ ],
+ "verified": [
+  "13 new tests; 11 fail on the old types",
+  "882 flood tests pass"
+ ],
+ "gaps": [
+  "Live re-check of a riparian address after deploy"
+ ],
+ "post_merge": {
+  "action": "Re-run the Cecil Park browser check after Railway deploys",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "POST /pipeline/flood for a riparian address returns 200"
+ },
+ "real_layer_exempt": {
+  "services/flood_truth.py": "Response model type only; no query or HTTP change."
+ }
+}

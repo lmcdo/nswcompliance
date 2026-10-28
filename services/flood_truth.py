@@ -2078,10 +2078,15 @@ class FloodOutputs(BaseModel):
     # 'what we tried' half of the no-result standard, silently deleted.
     in_100yr_flood_zone_unconsulted: list = []
     flood_studies: list = []
-    compound_heritage: Optional[bool] = None
-    compound_riparian: Optional[bool] = None
-    compound_wetlands: Optional[bool] = None
-    compound_landslide: Optional[bool] = None
+    # The layer's own label ("Riparian Area"), or True when the row has no
+    # label (_query_compound_risk_layers: `row["value"] or True`). Typed bool
+    # only, every address on heritage/riparian/wetland/landslide land failed
+    # response validation AFTER its report was saved: 31 of 308 checked
+    # addresses got a 500 instead of a result (measured 2026-10-28).
+    compound_heritage: Optional[Union[bool, str]] = None
+    compound_riparian: Optional[Union[bool, str]] = None
+    compound_wetlands: Optional[Union[bool, str]] = None
+    compound_landslide: Optional[Union[bool, str]] = None
     compound_risk_layers: list = []
     compound_risk_notes: list = []
 
