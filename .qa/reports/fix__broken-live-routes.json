@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Three live API routes: /api/health always 503 (write test on read-only Vercel disk) -> read-only check; /api/versions?action=statistics (500, no caller) and /api/setbacks/calculate (throws, callers only in unmounted components) deleted.",
-  "commit_hash": "0a49660f",
+  "commit_hash": "b15c5631",
   "files": [
     "frontend-nextjs/app/api/health/route.ts",
     "frontend-nextjs/app/api/versions/route.ts",
