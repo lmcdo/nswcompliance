@@ -934,7 +934,7 @@ class TestQuerySesFloodStudy:
         import flood_planning
         conn = self._make_conn(count=5, rows=[])
         monkeypatch.setattr(ft, "_get_conn", lambda: conn)
-        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c: {
+        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c, **kw: {
             "value": None, "reason": "we do not hold this council's flood planning map",
             "council": "RICHMOND VALLEY", "hits": [], "category": None, "nearest_m": None})
         result = ft._query_ses_flood_study(-29.04, 153.25)
@@ -946,7 +946,7 @@ class TestQuerySesFloodStudy:
         import flood_planning
         conn = self._make_conn(count=5, rows=[])
         monkeypatch.setattr(ft, "_get_conn", lambda: conn)
-        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c: {
+        monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, c, **kw: {
             "value": False, "reason": "not on the council's flood planning map",
             "council": "BALLINA", "hits": [], "category": None, "nearest_m": None})
         result = ft._query_ses_flood_study(-28.86, 153.56)

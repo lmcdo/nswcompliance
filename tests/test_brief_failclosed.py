@@ -89,7 +89,7 @@ def test_overlays_failed_blanks_overlay_fields_not_authoritative():
 
 def _flood_no(monkeypatch):
     import flood_planning
-    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": False, "reason": "not on the council's flood planning map", "council": "BALLINA",
         "hits": [], "category": None, "nearest_m": None})
     import services.intelligence_brief as ib
@@ -238,7 +238,7 @@ def test_a_flood_planning_yes_survives_when_both_other_sources_fail(monkeypatch)
     """The flood planning check is its own source: its yes is not discarded
     because the overlay fetch and the portal both failed (cross-review)."""
     import flood_planning
-    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": True, "reason": "on the council's flood planning map", "council": "BALLINA",
         "hits": [], "category": "planning", "nearest_m": None})
     import services.intelligence_brief as ib

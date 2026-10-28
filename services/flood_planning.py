@@ -142,18 +142,46 @@ def council_at(lat: float, lng: float, cur) -> Optional[str]:
         return None
 
 
-def flood_planning_status(lat: float, lng: float, conn) -> dict:
-    """The one answer. Never raises; a failure is value None with its reason."""
+def _trusted_lot(cur, lot_wkt: Optional[str], lat: float, lng: float) -> Optional[str]:
+    """The lot outline, only if it is a valid polygon at the address. A stale or
+    neighbouring boundary is ignored, so it can never hide a flooded address
+    point (same rule as lib/flood/flood-map.ts, Sol 2026-10-20)."""
+    if not lot_wkt:
+        return None
+    try:
+        cur.execute(
+            "SELECT ST_IsValid(g) AND GeometryType(g) IN ('POLYGON','MULTIPOLYGON') "
+            "AND ST_DWithin(g, ST_SetSRID(ST_MakePoint(%s, %s), 4326), 0.0005) "
+            "FROM (SELECT ST_GeomFromText(%s, 4326) AS g) t",
+            (lng, lat, lot_wkt),
+        )
+        row = cur.fetchone()
+        ok = _cols(row, "ok")[0] if row else False
+        return lot_wkt if ok else None
+    except Exception:  # noqa: BLE001 -- an unreadable outline is simply not used
+        return None
+
+
+def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
+    """The one answer. Never raises; a failure is value None with its reason.
+
+    With lot_wkt (a WGS84 POLYGON WKT the caller already holds), the WHOLE lot is
+    tested: a hit anywhere on it is yes, and a covered council with nothing on
+    it is a real "no" -- no point-distance guess.
+    """
     out = {"value": None, "category": None, "council": None, "reason": None,
-           "hits": [], "nearest_m": None}
+           "hits": [], "nearest_m": None, "whole_lot": False}
     try:
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = '5000'")
+            lot = _trusted_lot(cur, lot_wkt, lat, lng)
+            out["whole_lot"] = lot is not None
             cur.execute(
                 "SELECT DISTINCT value, instrument_key, lga_name FROM spatial_overlays "
                 "WHERE layer_type = 'flood' "
-                "AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))",
-                (lng, lat),
+                "AND (ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
+                "OR (%s::text IS NOT NULL AND ST_Intersects(geom, ST_GeomFromText(%s, 4326))))",
+                (lng, lat, lot, lot),
             )
             hits = [{"value": v, "instrument_key": k, "lga_name": l, "category": category_of(v)}
                     for v, k, l in (_cols(r, "value", "instrument_key", "lga_name")
@@ -182,6 +210,12 @@ def flood_planning_status(lat: float, lng: float, conn) -> dict:
             covered = _covered_councils(cur)
             if council not in covered:
                 out["reason"] = "we do not hold this council's flood planning map"
+                return out
+            if lot is not None:
+                out.update(value=False, category="extreme_only" if extreme_only else None,
+                           reason=("no part of the lot is on the council's flood planning map; "
+                                   "it is inside a rarer (extreme) flood extent" if extreme_only
+                                   else "no part of the lot is on the council's flood planning map"))
                 return out
             cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(

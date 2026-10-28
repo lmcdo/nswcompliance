@@ -3079,6 +3079,7 @@ def _build_environmental(
     mine_failed: bool = False,
     contam_failed: bool = False,
     drinking_failed: bool = False,
+    lot_wkt: Optional[str] = None,
 ) -> EnvironmentalConstraints:
     """Map overlays + heritage to EnvironmentalConstraints.
 
@@ -3210,7 +3211,7 @@ def _build_environmental(
             from flood_planning import flood_planning_status
             _fconn = _get_db_conn()
             try:
-                flood_status = flood_planning_status(lat, lng, _fconn)
+                flood_status = flood_planning_status(lat, lng, _fconn, lot_wkt=lot_wkt)
             finally:
                 _fconn.close()
         except Exception as e:  # noqa: BLE001 -- no answer is None, never "no"
@@ -4005,7 +4006,7 @@ def _generate_brief_sse(
             contaminated_land_raw=contaminated_land_raw,
             drinking_water_raw=drinking_water_raw,
             servicing_raw=servicing_raw,
-            lat=lat, lng=lng,
+            lat=lat, lng=lng, lot_wkt=lot_wkt,
             overlays_failed=overlays_failed, controls_failed=controls_failed,
             mine_failed=mine_failed, contam_failed=contam_failed,
             drinking_failed=drinking_failed,

@@ -2136,6 +2136,9 @@ class FloodRefusedResponse(BaseModel):
 class FloodPlanningRequest(BaseModel):
     lat: float
     lng: float
+    # Optional WGS84 POLYGON WKT of the lot: when given (and at the address),
+    # the whole lot is tested instead of the point.
+    lot_wkt: Optional[str] = None
 
 
 @router.post("/flood-planning")
@@ -2149,7 +2152,7 @@ def flood_planning(req: FloodPlanningRequest) -> dict:
     conn = None
     try:
         conn = _get_conn()
-        out = flood_planning_status(req.lat, req.lng, conn)
+        out = flood_planning_status(req.lat, req.lng, conn, lot_wkt=req.lot_wkt)
     except Exception as e:  # noqa: BLE001 -- unknown, never "no"
         logger.warning(f"/pipeline/flood-planning failed: {e}")
         out = {"value": None, "reason": "flood planning map could not be checked"}
@@ -2159,7 +2162,7 @@ def flood_planning(req: FloodPlanningRequest) -> dict:
                 conn.close()
             except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
                 pass
-    return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m")}
+    return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m", "whole_lot")}
 
 
 @router.post("/flood", response_model=Union[FloodResponse, FloodRefusedResponse])

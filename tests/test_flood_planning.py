@@ -171,13 +171,13 @@ def test_every_stored_flood_value_is_classified():
 
 def test_the_endpoint_returns_the_producer_answer(monkeypatch):
     import services.flood_truth as ft
-    monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn: {
+    monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": None, "reason": "we do not hold this council's flood planning map",
         "council": "NEWCASTLE", "category": None, "nearest_m": None, "hits": [1]})
     monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out == {"value": None, "reason": "we do not hold this council's flood planning map",
-                   "council": "NEWCASTLE", "category": None, "nearest_m": None}
+                   "council": "NEWCASTLE", "category": None, "nearest_m": None, "whole_lot": None}
 
 
 def test_the_endpoint_never_raises(monkeypatch):
@@ -185,3 +185,28 @@ def test_the_endpoint_never_raises(monkeypatch):
     monkeypatch.setattr(ft, "_get_conn", lambda: (_ for _ in ()).throw(RuntimeError("down")))
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out["value"] is None
+
+
+LOT = "POLYGON((153.5 -28.9,153.6 -28.9,153.6 -28.8,153.5 -28.8,153.5 -28.9))"
+
+
+def test_whole_lot_clear_in_a_held_council_is_a_real_no():
+    # trusted-lot check; hits (none on lot or point); council; covered
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [], [("BALLINA",)], [("BALLINA",)]), lot_wkt=LOT)
+    assert s["value"] is False and s["whole_lot"] is True
+    assert s["reason"].startswith("no part of the lot")
+
+
+def test_a_hit_anywhere_on_the_lot_is_yes():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA")]), lot_wkt=LOT)
+    assert s["value"] is True
+
+
+def test_an_untrusted_lot_outline_falls_back_to_the_point_rule():
+    """A stale or neighbouring outline is ignored, never used for a 'no'."""
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(False,)], [], [("BALLINA",)], [("BALLINA",)], [(120.0,)]), lot_wkt=LOT)
+    assert s["whole_lot"] is False
+    assert s["value"] is None and s["nearest_m"] == 120.0

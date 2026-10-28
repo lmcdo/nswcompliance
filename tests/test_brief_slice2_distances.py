@@ -51,7 +51,7 @@ def _env(**kwargs):
 
 def test_measured_distance_surfaces_on_the_no_row_map(monkeypatch):
     import flood_planning
-    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn: {
+    monkeypatch.setattr(flood_planning, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": False, "reason": "not on the council's flood planning map", "council": "X",
         "hits": [], "category": None, "nearest_m": None})
     monkeypatch.setattr(ib, "_get_db_conn", lambda: type("C", (), {"close": lambda self: None})())
