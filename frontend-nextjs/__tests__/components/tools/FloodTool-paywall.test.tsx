@@ -233,7 +233,7 @@ describe('FloodTool — FloodLockedPreviewCard (no flood signal)', () => {
     expect(screen.getByText('Your flood data')).toBeInTheDocument();
   });
 
-  it('says what was checked, never "safe", for a no-signal result', async () => {
+  it('says what was checked and its limits for a no-signal result', async () => {
     await runFloodCheck(NONE_RESULT);
     expect(screen.getByText('No mapped flood risk found')).toBeInTheDocument();
     expect(screen.getByText(/cannot rule flooding out/i)).toBeInTheDocument();
