@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what the served flood planning answer tests (point -> whole lot) on three live surfaces. Not Critical: the lot outline is only used when it contains the point, and it can only add a yes or keep not-known. Not Minor: changes served flood answers.",
- "commit_hash": "9663836c",
+ "commit_hash": "ca08c66d",
  "files": [
   "services/flood_planning.py",
   "services/flood_truth.py",
@@ -88,6 +88,7 @@
   "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
  },
  "real_layer_exempt": {
-  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function."
+  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function.",
+  "services/flood_truth.py": "Only an extra argument passed through to flood_planning_status; no new query. The real database path was run for the fixture lot via flood_planning_status."
  }
 }
