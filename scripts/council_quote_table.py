@@ -48,7 +48,8 @@ def prove_rows(body: str, streams, page: int | None, norm) -> dict | None:
             for ln in lines:
                 if len(_cells(ln)) < MIN_CELLS:
                     q = norm(ln)
-                    k = next((k for k in st.find_all(q, cap=200) if abs(st.page(k) - p) <= 1), None) if q else None
+                    k = next((k for k in st.find_all(q, cap=200) if abs(st.page(k) - p) <= 1
+                              and _whole_lines(st, k, k + len(q) - 1)), None) if q else None
                     if k is None:
                         break
                     out.append(st.copy(k, k + len(q) - 1))
@@ -62,7 +63,21 @@ def prove_rows(body: str, streams, page: int | None, norm) -> dict | None:
     return None
 
 
-def _wrapped_hits(q: str, st, page: int, norm) -> list[int]:
+def _has_neighbour(st, i: int) -> bool:
+    """Text printed beside line i in a column to its right: then line i starts a ROW of its own (a compact table's
+    next row, "Bulky goods premises | 1 space per 45sq.m"), not the second line of a wrapped cell (cross-review)."""
+    ln = st.lines[i]
+    return any(o.page == ln.page and o.x > ln.x + 2 and abs(o.y - ln.y) < 3 for o in st.lines)
+
+
+def _whole_lines(st, k: int, e: int) -> bool:
+    """The match [k, e] starts at the first character of its line and ends at the last of its line: a lead-in or
+    caption printed whole, not part of a longer printed line (cross-review)."""
+    i0, i1 = st.at[k][0], st.at[e][0]
+    return (k == 0 or st.at[k - 1][0] != i0) and (e + 1 >= len(st.at) or st.at[e + 1][0] != i1)
+
+
+def _wrapped_hits(q: str, st, page: int, norm) -> list[tuple[int, list[int]]]:
     """Lines where a cell printed over WRAP_MAX consecutive lines of one column starts ("For facades that" /
     "face a street", Hornsby 2026-10-28). The cell must cover those lines exactly -- from the start of the first to
     the end of the last -- and the lines must be one column: same left edge, each within WRAP_DY of the one above."""
@@ -76,7 +91,8 @@ def _wrapped_hits(q: str, st, page: int, norm) -> list[int]:
         for a in range(len(idx)):
             joined = ""
             for b in range(a, min(a + WRAP_MAX, len(idx))):
-                if b > a and not 0 < st.lines[idx[b]].y - st.lines[idx[b - 1]].y <= WRAP_DY:
+                if b > a and (not 0 < st.lines[idx[b]].y - st.lines[idx[b - 1]].y <= WRAP_DY
+                              or _has_neighbour(st, idx[b])):
                     break
                 joined += norm(st.text[idx[b]])
                 if b > a and joined == q:

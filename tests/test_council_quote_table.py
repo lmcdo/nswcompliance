@@ -113,3 +113,17 @@ def test_a_table_with_its_caption_is_proven():
     out = cq.judge(row("For facades that face a street | 6m | 8m\nAll other facades | 8m | 12m\n"
                        "Table 3.2.5-a: Facade Articulation"), [table_stream(FACADE)])
     assert out["reason"] == "table_rows" and out["quote"].endswith("Table 3.2.5-a: Facade Articulation")
+
+
+def test_two_compact_rows_are_never_joined_into_one_wrapped_cell():
+    compact = [(1, 100, 50, "Gymnasium"), (1, 112, 50, "Bulky goods premises"),
+               (1, 100, 300, "1 space per 25sq.m GFA"), (1, 112, 300, "1 space per 45sq.m GFA")]
+    out = cq.judge(row("Gymnasium Bulky goods premises | 1 space per 25sq.m GFA"), [table_stream(compact)])
+    assert out["reason"] != "table_rows"
+
+
+def test_a_caption_that_is_only_part_of_a_printed_line_is_refused():
+    longer = [(1, 60, 50, "Table 3.2.5-a: Facade Articulation requirements apply")] + FACADE[1:]
+    out = cq.judge(row("For facades that face a street | 6m | 8m\nAll other facades | 8m | 12m\n"
+                       "Table 3.2.5-a: Facade Articulation"), [table_stream(longer)])
+    assert out["reason"] != "table_rows"
