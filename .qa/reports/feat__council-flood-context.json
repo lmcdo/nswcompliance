@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds a production table of confirmed per-council flood information and shows it with not-known flood answers. Not Critical: only adds sourced pointers to user-facing text; never changes a yes/no. Not Minor: new production table and served wording.",
- "commit_hash": "30e9d9d6",
+ "commit_hash": "9597bc57",
  "files": [
   "data/council_flood_context/verified_2026-10-29.json",
   "frontend-nextjs/lib/flood/flood-map.ts",
