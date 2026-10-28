@@ -22,7 +22,8 @@ from pathlib import Path
 
 
 def _confirmed(x):
-    return x if isinstance(x, dict) and x.get("confirmed") else None
+    # Only a literal true counts: "false", 1 or "yes" are not a confirmation.
+    return x if isinstance(x, dict) and x.get("confirmed") is True else None
 
 
 def rows_from(records: list[dict]) -> list[tuple]:
@@ -37,7 +38,7 @@ def rows_from(records: list[dict]) -> list[tuple]:
         if f and any(t in (f.get("quote") or "").lower() for t in ("search summary", "...", "…", "paraphrase")):
             f = None
         data = [{"label": d.get("label"), "url": d.get("url"), "licence": d.get("licence")}
-                for d in (r.get("data") or []) if d.get("confirmed")]
+                for d in (r.get("data") or []) if d.get("confirmed") is True]
         rows.append((
             council,
             v and v.get("label"), v and v.get("url"),
