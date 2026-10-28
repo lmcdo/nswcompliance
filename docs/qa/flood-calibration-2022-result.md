@@ -26,8 +26,8 @@
 > Camden's four "hits" there were exactly that. 0.784 is superseded by 0.649.
 >
 > The four council flood-study grids (Hawkesbury, Redbank, Tweed, Wollongong) were not readable on
-> the machine that ran this. That did not move the figure: no miss is in one of those councils,
-> and Hawkesbury, the only one sampled, scored 15 of its 15 regardless.
+> the machine that ran this. One miss is in Hawkesbury (-33.4287, 150.8118), so with the grid it
+> could be 25 of 37 (0.676). No other miss is in one of those councils.
 
 > **⚠ CORRECTED TWICE. Read both, because the second correction moved the number UP.**
 >
