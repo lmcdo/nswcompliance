@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "Wording only: three --review texts said 'no DB writes' while --review enqueues to dcp_review_queue (enqueue_review_changes). No behaviour change.",
+  "commit_hash": "d8dca857",
+  "files": [
+    "scripts/dcp_extract_changed.py"
+  ],
+  "falsifiable_check": {
+    "command": "git grep -n 'no DB writes' -- scripts/dcp_extract_changed.py",
+    "expected": "only the --dry-run lines",
+    "fails_when": "a --review text still says no DB writes",
+    "observed_red": "2026-10-28: three --review texts said no DB writes (lines 16, 5886, 5934)."
+  },
+  "break_it": [
+    {
+      "scenario": "Someone relies on --review to write nothing.",
+      "what_happens": "Pending rows land in the review queue unexpectedly.",
+      "mitigated": true,
+      "how": "The help and the run banner now say it queues changes.",
+      "repro": "python scripts/dcp_extract_changed.py --help"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
