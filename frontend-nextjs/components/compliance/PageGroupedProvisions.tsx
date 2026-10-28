@@ -195,6 +195,7 @@ export interface Provision {
   page_check?: string | null;         // Whether pdf_page holds the rule (lib/page-citation.ts)
   quote_status?: string | null;       // migration 111: exact / recovered = provision_text is the council's words
   quote_page?: number | null;         // the page those words were copied from (lib/council-quote.ts)
+  section_page?: number | null;       // hidden rule: start page of its section, from a proven sibling (quoteColumns)
   source_council?: string | null;
   pdf_page_image_url?: string;
   layer?: string;

@@ -32,11 +32,18 @@ export interface PageFields {
   source_council?: string | null;
   quote_status?: string | null;
   quote_page?: number | null;
+  /** Hidden rule only: nearest page (within 12) holding a proven rule of its chapter and section (quoteColumns). */
+  section_page?: number | null;
 }
 
 /** The page the council's shown words were copied from, when the rule shows them. */
 function quotePage(p: PageFields): number | null {
   return showsCouncilWords(p) ? positive(p.quote_page) : null;
+}
+
+/** A hidden rule's nearby section page, proven by a sibling rule's copied words -- never the rule's own page. */
+export function sectionPage(p: PageFields): number | null {
+  return showsCouncilWords(p) ? null : positive(p.section_page);
 }
 
 const LOCATED = new Set(['on_page', 'moved', 'read_by_person']);  // read_by_person: migration 080
@@ -54,14 +61,18 @@ function positive(n: number | null | undefined): number | null {
 
 /** The #page= anchor to open, or null when there is no page we can stand behind. */
 export function pageAnchor(p: PageFields): number | null {
-  return quotePage(p) ?? (unlocated(p) ? null : positive(p.pdf_page));
+  return quotePage(p) ?? (unlocated(p) ? sectionPage(p) : positive(p.pdf_page));
 }
 
 /** The page reference to print beside a rule, or null when it has none at all. */
 export function pageLabel(p: PageFields): string | null {
   const qp = quotePage(p);
   if (qp !== null && qp !== positive(p.pdf_page)) return `PDF page ${qp}`;   // printed label is pdf_page's
-  if (qp === null && unlocated(p)) return positive(p.pdf_page) ? PAGE_NOT_LOCATED : null;
+  if (qp === null && unlocated(p)) {
+    const sp = sectionPage(p);
+    if (sp !== null) return `section near PDF page ${sp}`;
+    return positive(p.pdf_page) ? PAGE_NOT_LOCATED : null;
+  }
   const label = typeof p.printed_page_label === 'string' ? p.printed_page_label.trim() : '';
   if (label) return `page ${label}`;
   // Rows outside the page check keep the page they always cited.

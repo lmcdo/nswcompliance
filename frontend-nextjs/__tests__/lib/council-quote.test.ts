@@ -98,7 +98,7 @@ describe("a council DCP rule shows the council's own words when a program copied
     const unconfirmed = withCouncilWords({ ...row, council_quote: null, quote_status: 'unconfirmed', quote_page: null },
       (t) => (t ?? '').replace('junk header\n', '').trim());
     expect(unconfirmed.provision_text).toBe(QUOTE_NOTE_UNMATCHED);
-    expect(quoteColumns('p')).toBe('p.council_quote, p.quote_page, p.quote_status, p.source_chapter_key, p.citation_status');
+    expect(quoteColumns('p')).toMatch(/^p\.council_quote, p\.quote_page, p\.quote_status, p\.source_chapter_key, p\.citation_status,/);
   });
 
   it('leaves LEP and SEPP rules (no council) as they were', () => {
@@ -121,6 +121,21 @@ describe('the pointer shown for a withheld council rule names the page shown bes
     expect(shownText(p)).toBe("Wording not shown here — read it on PDF page 40 of the council's plan");
   });
 
+  it('names the nearby section page from a proven sibling when its own page was not located', () => {
+    const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found', section_page: 37 };
+    expect(shownText(p)).toBe("Wording not shown here — read it in its section, near PDF page 37 of the council's plan");
+  });
+
+  it("keeps the rule's own located page over its section page", () => {
+    const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'on_page', section_page: 37 };
+    expect(shownText(p)).toBe("Wording not shown here — read it on PDF page 40 of the council's plan");
+  });
+
+  it('ignores a section page that is zero or missing', () => {
+    const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found', section_page: 0 };
+    expect(shownText(p)).toBe(QUOTE_NOTE_UNMATCHED);
+  });
+
   it('names no page when the page was not located', () => {
     const p = { ...NB, provision_text: 'x', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found' };
     expect(shownText(p)).toBe(QUOTE_NOTE_UNMATCHED);
@@ -130,4 +145,21 @@ describe('the pointer shown for a withheld council rule names the page shown bes
     expect(QUOTE_NOTE_UNCHECKED).not.toMatch(/Not yet checked/);
     expect(QUOTE_NOTE_UNMATCHED).not.toMatch(/Not matched/);
   });
+});
+
+describe('section_page SQL takes the page only from a proven rule of the same chapter and section', () => {
+  const sql = quoteColumns('rp');
+  it.each([
+    "sib.quote_status IN ('exact', 'recovered')",
+    'sib.source_council = rp.source_council',
+    'sib.source_chapter_key = rp.source_chapter_key',
+    'sib.section_header = rp.section_header',
+    "COALESCE(BTRIM(rp.section_header), '') <> ''",
+    'sib.is_current',
+    'sib.quote_page > 0',
+    'abs(sib.quote_page - rp.pdf_page) <= 12',
+    'ORDER BY abs(sib.quote_page - rp.pdf_page)',
+    'rp.pdf_page > 0',
+    'AS section_page',
+  ])('requires %s', (frag) => expect(sql).toContain(frag));
 });
