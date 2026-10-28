@@ -1,0 +1,101 @@
+{
+ "tier": "standard",
+ "justification": "Website readers of the flood planning answer (verify app, DA intake, consumer check) and the brief's withdrawn sections. Not Critical: yes answers only widen (the 47 store-only addresses) and the consumer check can no longer pass from a map. Not Minor: served answers and page sections change.",
+ "commit_hash": "523d5e14",
+ "files": [
+  "frontend-nextjs/__tests__/app/brief-satellite-parity.test.tsx",
+  "frontend-nextjs/__tests__/lib/flood/flood-map.test.ts",
+  "frontend-nextjs/app/api/canibuildit/check/route.ts",
+  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+  "frontend-nextjs/lib/flood/flood-map.ts",
+  "scripts/page_integrity/producer_baseline.json",
+  "services/flood_planning.py",
+  "services/flood_truth.py",
+  "services/intelligence_brief.py",
+  "tests/test_brief_failclosed.py",
+  "tests/test_brief_slice2_distances.py",
+  "tests/test_flood_planning.py",
+  "tests/test_flood_queries.py",
+  "tests/test_flood_truth.py",
+  "tests/test_intelligence_brief_orchestrator.py"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/flood __tests__/app/brief-satellite-parity.test.tsx",
+  "fails_when": "Fails if a store no overturns a state yes, a not-known becomes no, a backend failure changes the state answer, or the brief shows a withdrawn section.",
+  "external_authority": "310 saved addresses: store finds 47 on a map layer 230 does not (2026-10-28).",
+  "observed_red": "The lookup budget test went red with a bare timer on the new backend call and green with fetchWithTimeout."
+ },
+ "pre_impl": {
+  "existing_data": "floodMapStatus feeds verify profile, portal constraints and DA intake; layer 230 publishes ~10 plans.",
+  "assumption_mismatch": "canibuildit check passed any point outside a flood row in a council with any flood row.",
+  "new_vs_existing": "One endpoint over the existing producer; one TS combine function.",
+  "external_source_error": "Backend failure returns null and leaves the state answer unchanged."
+ },
+ "functions": [
+  {
+   "name": "combineFloodAnswers",
+   "file_line": "frontend-nextjs/lib/flood/flood-map.ts",
+   "what": "State layer 230 plus store answer into one yes/no/unknown.",
+   "input": "state FloodMapStatus and the store answer or null",
+   "output": "FloodMapStatus with floodProne and a plain note",
+   "if_none": "A null store answer leaves the state answer unchanged.",
+   "edge_cases": "store no worded as a point answer",
+   "failure_mode": "At worst unknown"
+  },
+  {
+   "name": "POST /pipeline/flood-planning",
+   "file_line": "services/flood_truth.py",
+   "what": "Returns the producer answer for the website.",
+   "input": "latitude and longitude in a JSON body",
+   "output": "value, reason, council, category, nearest_m",
+   "if_none": "Any failure returns value None with a reason.",
+   "edge_cases": "DB connection failure",
+   "failure_mode": "Never raises"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address on a council map that layer 230 does not hold",
+   "what_happens": "Verify now shows yes instead of not known",
+   "mitigated": true,
+   "how": "store yes in combineFloodAnswers",
+   "repro": "jest flood-map -t '47 addresses'"
+  },
+  {
+   "scenario": "Backend stalls during the property lookup",
+   "what_happens": "The page still replies inside the lookup budget",
+   "mitigated": true,
+   "how": "fetchWithTimeout obeys the budget",
+   "repro": "jest property-lookup-no-fillins"
+  },
+  {
+   "scenario": "Point outside every flood row in a council with flood rows",
+   "what_happens": "Consumer check reads unknown, never pass",
+   "mitigated": true,
+   "how": "fail only on a map yes",
+   "repro": "read canibuildit/check/route.ts flood line"
+  }
+ ],
+ "verified": [
+  "jest 2,480/2,480",
+  "tsc clean",
+  "producer lint net 0 (recorded)",
+  "python flood planning tests 16/16"
+ ],
+ "gaps": [
+  "canibuildit/check has no route-level jest test",
+  "Whole-lot test for the store answer needs lot geometry in the producer (follow-up)"
+ ],
+ "post_merge": {
+  "action": "After deploy: verify page for a store-only flood address shows Yes; brief shows no flood/bushfire/solar satellite cards",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Consumer check flood row reads unknown for a clear address"
+ },
+ "real_layer_exempt": {
+  "services/flood_truth.py": "Endpoint wraps the producer exercised live in PR #1539.",
+  "frontend-nextjs/lib/flood/flood-map.ts": "Network call mocked in jest; exercised by the post-merge live check.",
+  "frontend-nextjs/app/api/canibuildit/check/route.ts": "Same endpoint call; post-merge live check."
+ }
+}
