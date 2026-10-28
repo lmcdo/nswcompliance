@@ -16,7 +16,7 @@
  *   rows outside the check (no source_council: LEP/SEPP) -> unchanged
  */
 
-import { PAGE_NOT_LOCATED, pageLabel, type PageFields } from '@/lib/page-citation';
+import { PAGE_NOT_LOCATED, pageLabel, sectionPage, type PageFields } from '@/lib/page-citation';
 
 export interface QuoteFields extends PageFields {
   provision_text?: string | null;
@@ -51,6 +51,10 @@ function isStateLawRow(p: QuoteFields): boolean {
 /** The note for a rule whose words are not proven, naming the page shown beside it when there is one. */
 export function unprovenNote(p: QuoteFields): string {
   const label = pageLabel(p);
+  const sp = sectionPage(p);
+  if (sp !== null && label === `near PDF page ${sp}`) {
+    return `Wording not shown here — read it in the council's plan near PDF page ${sp}, which has rules under the same heading`;
+  }
   return label && label !== PAGE_NOT_LOCATED
     ? `Wording not shown here — read it on ${label} of the council's plan`
     : QUOTE_NOTE_UNMATCHED;
@@ -128,9 +132,28 @@ export function numbersUsable(p: QuoteFields): boolean {
   return !p.source_council || showsCouncilWords(p) || (isStateLawRow(p) && !isWithheld(p));
 }
 
-/** The quote columns every route serving council DCP rules selects, for a table alias. */
+/** The quote columns every route serving council DCP rules selects, for a table alias (a
+ *  regulatory_provisions row). section_page: for a rule whose words are not proven, the quote_page
+ *  of a PROVEN rule in the same document, council, chapter and section heading -- a page whose words were found
+ *  in the current PDF -- the one nearest the rule's own pdf_page, and only within one reader chunk
+ *  (12 pages): headings repeat across a chapter (Ashfield "DS4.1" is proven on 12 pages, 2026-10-28).
+ *  No heading, no pdf_page, or no proven rule that near -> NULL, and the rule links to the plan with
+ *  no page (a guessed page is worse than none). */
 export function quoteColumns(alias = 'rp'): string {
-  return `${alias}.council_quote, ${alias}.quote_page, ${alias}.quote_status, ${alias}.source_chapter_key, ${alias}.citation_status`;
+  const a = alias;
+  return `${a}.council_quote, ${a}.quote_page, ${a}.quote_status, ${a}.source_chapter_key, ${a}.citation_status,
+    CASE WHEN ${a}.source_council IS NOT NULL AND ${a}.source_chapter_key IS NOT NULL
+          AND COALESCE(BTRIM(${a}.section_header), '') <> ''
+          AND ${a}.pdf_page > 0
+          AND ${a}.quote_status IS DISTINCT FROM 'exact' AND ${a}.quote_status IS DISTINCT FROM 'recovered'
+      THEN (SELECT sib.quote_page FROM regulatory_provisions sib
+            WHERE sib.is_current AND sib.document_id = ${a}.document_id AND sib.source_council = ${a}.source_council
+              AND sib.source_chapter_key = ${a}.source_chapter_key AND sib.section_header = ${a}.section_header
+              AND sib.quote_status IN ('exact', 'recovered') AND sib.quote_page > 0
+              AND COALESCE(BTRIM(sib.council_quote), '') <> ''
+              AND abs(sib.quote_page - ${a}.pdf_page) <= 12
+            ORDER BY abs(sib.quote_page - ${a}.pdf_page), sib.quote_page LIMIT 1)
+    END AS section_page`;
 }
 
 /**

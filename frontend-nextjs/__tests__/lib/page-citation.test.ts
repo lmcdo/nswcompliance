@@ -98,3 +98,20 @@ describe("a rule showing the council's own words links the page they were copied
     expect(pageLabel(p)).toBe(PAGE_NOT_LOCATED);
   });
 });
+
+describe("a hidden rule links to its section's nearby proven page", () => {
+  const hidden = { source_council: 'hornsby', quote_status: 'unconfirmed', pdf_page: 40, page_check: 'not_found', section_page: 37 };
+  it('anchors and labels the section page', () => {
+    expect(pageAnchor(hidden)).toBe(37);
+    expect(pageLabel(hidden)).toBe('near PDF page 37');
+    expect(pageHref('https://x/c.pdf', hidden)).toBe('https://x/c.pdf#page=37');
+  });
+  it('never uses it for a proven rule', () => {
+    const shown = { ...hidden, quote_status: 'exact', quote_page: 41 };
+    expect(pageAnchor(shown)).toBe(41);
+  });
+  it('without a section page stays unlocated', () => {
+    expect(pageAnchor({ ...hidden, section_page: null })).toBeNull();
+    expect(pageLabel({ ...hidden, section_page: null })).toBe(PAGE_NOT_LOCATED);
+  });
+});
