@@ -1446,7 +1446,9 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
     ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
     no_local_study = not ses_queried and not study_in_overlay
-    if epi_no_coverage and no_local_study and not ems_detected and not bom_flood and effective_pct < 5:
+    # EMS is deliberately not a way out of "unavailable": alone it says nothing
+    # about this lot (see the moderate rule below).
+    if epi_no_coverage and no_local_study and not bom_flood and effective_pct < 5:
         return "unavailable"
 
     jrc_low      = 0 < effective_pct < 15
@@ -1459,8 +1461,14 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
             or (in_overlay and jrc_moderate and bom_flood):
         return "elevated"
 
-    # Moderate: one strong observed signal or two weaker ones
-    if ems_detected or (in_overlay and jrc_low) \
+    # Moderate: one strong observed signal or two weaker ones.
+    # Copernicus EMS corroborates, it never decides alone (2026-10-28): the
+    # stored EMSR567 shape is 86,349 km2 -- the activation's whole mapped
+    # region, not the flooded land -- and alone it put 144 of 308 saved checks
+    # on moderate or above with nothing else saying flood. It still lifts a
+    # level when another source agrees (the elevated rules above).
+    # Gate: scripts/flood_signal_regression.py, tests/test_flood_signal_known_answers.py.
+    if (in_overlay and jrc_low) \
             or (in_overlay and bom_flood) or jrc_moderate \
             or (jrc_low and bom_flood):
         return "moderate"
