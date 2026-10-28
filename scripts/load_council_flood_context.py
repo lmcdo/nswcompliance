@@ -93,6 +93,11 @@ def _write(conn, rows: list[tuple]) -> None:
                  checked_on=EXCLUDED.checked_on, updated_at=now()""",
             rows,
         )
+        # The file is the whole truth: a council dropped from a corrected file
+        # loses its row, so a withdrawn fact never stays live (cross-review).
+        cur.execute("DELETE FROM council_flood_context WHERE NOT (lga_name = ANY(%s))",
+                    ([r[0] for r in rows],))
+        print("rows removed (not in file):", cur.rowcount)
         cur.execute("SELECT count(*) FROM council_flood_context")
         print("rows now in council_flood_context:", cur.fetchone()[0])
 

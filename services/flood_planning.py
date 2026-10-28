@@ -318,7 +318,8 @@ def council_info_sentence(info: Optional[dict]) -> Optional[str]:
         parts.append(f"its flood studies are listed at {data[0].get('url')}")
     if not parts:
         return None
-    return "For this council, " + "; ".join(parts) + "."
+    when = f" (checked {info.get('checked_on')})" if info.get("checked_on") else ""
+    return "For this council, " + "; ".join(parts) + "." + when
 
 
 def flood_planning_status(lat: float, lng: float, conn, lot_wkt: Optional[str] = None) -> dict:
