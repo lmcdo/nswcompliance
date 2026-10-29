@@ -13,6 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+#: The nightly sweep's selection. NULL = never judged (a new or edited rule). An UNPROVEN rule is judged again once
+#: it is RECHECK_DAYS old: a checker fix (#1528, #1533, #1542) otherwise never reached the rules it was written for --
+#: 794 shown rules sat 'unconfirmed' after all three merged (2026-10-29). Roughly a seventh of them a night.
+RECHECK_DAYS = 7
+UNCHECKED_SQL = ("SELECT id FROM regulatory_provisions WHERE id = ANY(%s) AND is_current = TRUE "
+                 "AND (quote_status IS NULL OR (quote_status = 'unconfirmed' AND v2_is_actionable "
+                 f"AND (quote_checked_at IS NULL OR quote_checked_at < now() - interval '{RECHECK_DAYS} days')))")
+
+
 def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None,
           unchecked: bool = False) -> list[dict]:
     import psycopg2
@@ -21,11 +30,9 @@ def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None
     try:
         conn.cursor().execute("SET statement_timeout = 30000")
         rows = dpr.fetch(conn, council)
-        if unchecked:   # only rules with no verdict yet (quote_status IS NULL), e.g. after migration 112 nulled them
+        if unchecked:   # rules with no verdict yet, plus unproven rules not re-checked for RECHECK_DAYS
             cur = conn.cursor()
-            cur.execute("SELECT id FROM regulatory_provisions WHERE id = ANY(%s) AND is_current = TRUE "
-                        "AND quote_status IS NULL",
-                        ([r["id"] for r in rows],))
+            cur.execute(UNCHECKED_SQL, ([r["id"] for r in rows],))
             null_ids = {x[0] for x in cur.fetchall()}
             rows = [r for r in rows if r["id"] in null_ids]
     finally:
