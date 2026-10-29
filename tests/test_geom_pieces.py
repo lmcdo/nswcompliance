@@ -41,10 +41,40 @@ def test_a_mid_size_valid_shape_is_not_split():
     assert gp.explode_rows([row(3, circle.wkt)], 6, 7)[0][6] == 3
 
 
-def test_a_row_without_a_key_is_left_alone():
-    assert gp.explode_rows([row(None, BOWTIE)], 6, 7) == [row(None, BOWTIE)]
+def test_a_valid_row_without_a_key_is_left_alone():
+    assert gp.explode_rows([row(None, SQUARE)], 6, 7) == [row(None, SQUARE)]
 
 
 def test_the_split_is_the_same_every_run():
     a = gp.explode_rows([row(9, BOWTIE)], 6, 7)
     assert a == gp.explode_rows([row(9, BOWTIE)], 6, 7)
+
+
+def test_a_broken_shape_without_a_key_fails_loudly():
+    with pytest.raises(ValueError, match="no feature number"):
+        gp.explode_rows([row(None, BOWTIE)], 6, 7)
+
+
+def test_a_shape_with_no_polygon_left_fails_loudly():
+    with pytest.raises(ValueError, match="no polygon left"):
+        gp.explode_rows([row(5, "POLYGON((0 0, 1 0, 2 0, 0 0))")], 6, 7)
+
+
+def test_delete_replaced_clears_the_original_and_its_piece_range():
+    class Cur:
+        rowcount = 0
+        def __init__(self):
+            self.calls = []
+        def execute(self, sql, args=None):
+            self.calls.append(sql)
+        def mogrify(self, t, a):
+            return repr(a).encode()
+        connection = None
+    seen = {}
+    gp._EXECUTE_VALUES = lambda cur, sql, argslist, **k: seen.update(sql=sql, args=list(argslist))
+    try:
+        gp.delete_replaced(Cur(), [row(7, SQUARE), row(7, BOWTIE), row(None, SQUARE)])
+    finally:
+        gp._EXECUTE_VALUES = None
+    assert seen["args"] == [("K", "flood", 7)]
+    assert "s.source_oid = v.o" in seen["sql"] and str(gp.PIECE_OID_BASE) in seen["sql"]

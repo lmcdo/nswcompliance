@@ -23,6 +23,7 @@ MAX_POINTS = 1000
 SPLIT_OVER_POINTS = 50000
 # Piece keys: PIECE_OID_BASE + original_oid * 100000 + piece_number (1-based).
 PIECE_OID_BASE = 10 ** 12
+_EXECUTE_VALUES = None  # tests swap in a recorder
 
 
 def _polys(g) -> list[Polygon]:
@@ -64,16 +65,36 @@ def explode_rows(rows: Iterable[tuple], oid_index: int, wkt_index: int, cap: int
     becomes one row per valid piece, keyed PIECE_OID_BASE + oid * 100000 + n."""
     out = []
     for row in rows:
-        if row[oid_index] is None:  # no key to number pieces from: leave the row as it was
-            out.append(tuple(row))
-            continue
         g = _wkt.loads(row[wkt_index])
         if g.is_valid and len(shapely.get_coordinates(g)) <= split_over:
             out.append(tuple(row))
             continue
-        for n, piece in enumerate(valid_pieces(g, cap), 1):
+        if row[oid_index] is None:
+            raise ValueError("a broken or huge shape has no feature number to key its pieces by")
+        ps = valid_pieces(g, cap)
+        if not ps:
+            raise ValueError(f"feature {row[oid_index]}: no polygon left after repair")
+        for n, piece in enumerate(ps, 1):
             r = list(row)
             r[oid_index] = PIECE_OID_BASE + int(row[oid_index]) * 100000 + n
             r[wkt_index] = piece.wkt
             out.append(tuple(r))
     return out
+
+
+def delete_replaced(cur, rows: Iterable[tuple], key_index: int = 0, layer_index: int = 2, oid_index: int = 6) -> int:
+    """Before upserting `rows` (the loader's rows BEFORE explode_rows), delete what an
+    earlier run stored for the same features: the whole original and every piece key in
+    its range. Otherwise a changed source leaves stale or surplus pieces queryable."""
+    keys = sorted({(r[key_index], r[layer_index], int(r[oid_index])) for r in rows if r[oid_index] is not None})
+    if not keys:
+        return 0
+    from psycopg2.extras import execute_values
+    _run = _EXECUTE_VALUES or execute_values
+    _run(cur, f"""
+        DELETE FROM spatial_overlays s USING (VALUES %s) AS v(k, l, o)
+        WHERE s.instrument_key = v.k AND s.layer_type = v.l
+          AND (s.source_oid = v.o OR s.source_oid BETWEEN {PIECE_OID_BASE} + v.o * 100000 + 1
+                                                  AND {PIECE_OID_BASE} + v.o * 100000 + 99999)""",
+                   keys, template="(%s, %s, %s::bigint)", page_size=1000)
+    return cur.rowcount

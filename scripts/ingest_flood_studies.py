@@ -65,6 +65,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 load_dotenv()
 
+from services.geom_pieces import delete_replaced, explode_rows  # noqa: E402
+
 CACHE_DIR = project_root / "data" / "flood_studies"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -1342,7 +1344,7 @@ def _ingest_epi_statewide(study: dict, shp_paths: list[Path], conn, dry_run: boo
         if not rows_to_insert:
             print(f"  [skip] no valid rows")
             continue
-        rows_to_insert = explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
+        source_rows, rows_to_insert = rows_to_insert, explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
 
         print(f"  Prepared {len(rows_to_insert)} features")
 
@@ -1351,6 +1353,7 @@ def _ingest_epi_statewide(study: dict, shp_paths: list[Path], conn, dry_run: boo
             total += len(rows_to_insert)
             continue
 
+        delete_replaced(cur, source_rows)  # drop what an earlier run stored for these features
         execute_values(
             cur,
             """
@@ -1458,7 +1461,7 @@ def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_
         if not rows_to_insert:
             print(f"  [skip] no valid rows")
             continue
-        rows_to_insert = explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
+        source_rows, rows_to_insert = rows_to_insert, explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
 
         print(f"  Prepared {len(rows_to_insert)} features")
 
@@ -1467,6 +1470,7 @@ def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_
             total += len(rows_to_insert)
             continue
 
+        delete_replaced(cur, source_rows)  # drop what an earlier run stored for these features
         execute_values(
             cur,
             """

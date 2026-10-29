@@ -25,7 +25,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 
-from services.geom_pieces import explode_rows
+from services.geom_pieces import delete_replaced, explode_rows
 from shapely.geometry import shape
 
 load_dotenv()
@@ -459,8 +459,9 @@ def ingest_council_layer(cur, layer_type: str, dry_run: bool = False) -> int:
                 wkt,
             ))
 
-        rows = explode_rows(rows, oid_index=6, wkt_index=7)  # valid pieces, stable keys
+        source_rows, rows = rows, explode_rows(rows, oid_index=6, wkt_index=7)  # valid pieces, stable keys
         if rows and not dry_run:
+            delete_replaced(cur, source_rows)  # drop what an earlier run stored for these features
             execute_values(
                 cur,
                 """
@@ -592,8 +593,9 @@ def ingest_layer(
                 wkt,
             ))
 
-        rows = explode_rows(rows, oid_index=6, wkt_index=7)  # valid pieces, stable keys
+        source_rows, rows = rows, explode_rows(rows, oid_index=6, wkt_index=7)  # valid pieces, stable keys
         if rows and not dry_run:
+            delete_replaced(cur, source_rows)  # drop what an earlier run stored for these features
             # Write in sub-batches to avoid Supabase statement-size limits
             # on layers with very large geometries (coastal wetlands, etc.)
             db_chunk = config.get("db_chunk", len(rows))
