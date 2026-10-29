@@ -7,7 +7,7 @@
 -- once, instead of in each reader: a current row that is not 'verbatim' cannot have
 -- needs_review = false.
 --
--- 1. Changing the quote, the page, the chapter or the source path wipes the proof
+-- 1. Changing the quote, the page, the council, the chapter or the source path wipes the proof
 --    (quote_status := NULL), even if the same statement writes a verdict: only
 --    scripts/dcp_quote_status.py proves, and it never edits those columns.
 -- 2. Any current row whose quote_status is not 'verbatim' is held: needs_review := true,
@@ -24,6 +24,7 @@ LANGUAGE plpgsql AS $$
 BEGIN
     IF TG_OP = 'UPDATE' AND (
            NEW.source_text          IS DISTINCT FROM OLD.source_text
+        OR NEW.lga                  IS DISTINCT FROM OLD.lga
         OR NEW.pdf_page             IS DISTINCT FROM OLD.pdf_page
         OR NEW.source_chapter_key   IS DISTINCT FROM OLD.source_chapter_key
         OR NEW.citation_source_path IS DISTINCT FROM OLD.citation_source_path) THEN

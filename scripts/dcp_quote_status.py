@@ -92,7 +92,8 @@ def changed(rows: list[tuple[int, str | None]], verdicts: dict[int, str]) -> lis
 
 
 ROWS_SQL = """
-SELECT s.id, s.lga, s.source_text, s.pdf_page, s.quote_status,
+SELECT s.id, s.lga, s.source_text, s.pdf_page, s.quote_status, s.source_chapter_key,
+       s.citation_source_path,
        COALESCE((SELECT r.r2_current_path FROM dcp_chapter_registry r
                  WHERE r.chapter_key = s.source_chapter_key AND r.council = s.lga
                    AND r.is_active LIMIT 1),
@@ -156,7 +157,7 @@ def _run(conn, a) -> int:
     s3, bucket = _r2()
     cache: dict[str, list[str] | None] = {}
     verdicts: dict[int, str] = {}
-    for n, (rid, _lga, quote, page, _old, path) in enumerate(rows, 1):
+    for n, (rid, _lga, quote, page, _old, _ck, _csp, path) in enumerate(rows, 1):
         if path and path not in cache:
             cache[path] = _page_texts(s3, bucket, path)
         verdicts[rid] = classify(quote, cache.get(path) if path else None, page)
@@ -176,8 +177,24 @@ def _run(conn, a) -> int:
     back.write_text(json.dumps([dict(id=r[0], quote_status=r[1], quote_checked_at=str(r[2]) if r[2] else None,
                                      needs_review=r[3], review_reason=r[4]) for r in cur.fetchall()]))
     print("backup", back)
-    cur.executemany("UPDATE dcp_setback_controls SET quote_status = %s, quote_checked_at = now() "
-                    "WHERE id = %s AND is_current", [(v, rid) for rid, v in todo])
+    # Write a verdict only onto the exact row that was checked: if the quote, page, council,
+    # chapter or source changed since it was read, nothing is written at all.
+    seen = {r[0]: r for r in rows}
+    n_written = 0
+    for rid, v in todo:
+        _, lga, quote, page, old, ck, csp, _path = seen[rid]
+        cur.execute(
+            "UPDATE dcp_setback_controls SET quote_status = %s, quote_checked_at = now() "
+            "WHERE id = %s AND is_current AND lga = %s AND source_text IS NOT DISTINCT FROM %s "
+            "AND pdf_page IS NOT DISTINCT FROM %s AND quote_status IS NOT DISTINCT FROM %s "
+            "AND source_chapter_key IS NOT DISTINCT FROM %s "
+            "AND citation_source_path IS NOT DISTINCT FROM %s",
+            (v, rid, lga, quote, page, old, ck, csp))
+        n_written += cur.rowcount
+    if n_written != len(todo):
+        conn.rollback()
+        print(f"ABORTED: {len(todo) - n_written} row(s) changed while checking; nothing written. Re-run.")
+        return 1
     conn.commit()
     cur.execute("SELECT count(*) FROM dcp_setback_controls WHERE is_current AND needs_review IS NOT TRUE")
     print(f"WROTE {len(todo)} verdicts; served now {cur.fetchone()[0]}")

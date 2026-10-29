@@ -177,3 +177,10 @@ def test_a_new_quote_cannot_carry_a_proof_in_the_same_statement(temp_table):
     temp_table.execute("UPDATE t_sb SET source_text = 'a summary', quote_status = 'verbatim', "
                        "needs_review = false WHERE id = 11")
     assert _held(temp_table, 11)[:2] == (True, None)
+
+
+@pytest.mark.database
+def test_moving_a_rule_to_another_council_wipes_the_proof(temp_table):
+    _put(temp_table, 12, "verbatim")
+    temp_table.execute("UPDATE t_sb SET lga = 'y' WHERE id = 12")
+    assert _held(temp_table, 12)[:2] == (True, None)
