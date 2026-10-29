@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how two loaders store spatial_overlays shapes: broken or >50k-point shapes become valid <=1000-point pieces. Standard: affects stored geometry on the next re-run, not served logic.",
- "commit_hash": "24c13728",
+ "commit_hash": "935c296a",
  "files": [
   "services/geom_pieces.py",
   "tests/test_geom_pieces.py",
@@ -11,7 +11,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_geom_pieces.py -q",
   "fails_when": "Fails if a broken shape is stored unsplit, a piece exceeds 1,000 points, area changes, a mid-size valid shape is split, or keys differ between runs.",
-  "external_authority": "Live DB 2026-10-29: the helper reproduces the stored piece counts for three repaired rows (Shoalhaven 1, Bellingen 3, Cumberland 48).",
+  "external_authority": "Live DB 2026-10-29: the helper reproduces the stored piece counts for three repaired rows (Shoalhaven 1, Bellingen 3, Cumberland 48). delete_replaced on Cessnock's 15 features, in a rolled-back transaction, removed exactly its 3,950 stored rows.",
   "observed_red": "Before: both loaders upsert by original feature number, so a re-run re-inserts the 269 repaired originals (one with 2.27M points) beside their pieces."
  },
  "pre_impl": {
@@ -30,6 +30,16 @@
    "if_none": "a row with no feature number is stored unchanged",
    "edge_cases": "mid-size valid shapes untouched; deterministic",
    "failure_mode": "shapely error raises in the loader before any write"
+  },
+  {
+   "name": "delete_replaced",
+   "file_line": "services/geom_pieces.py",
+   "what": "Before an upsert, delete the original and every piece key stored for the same features.",
+   "input": "loader row tuples before they are split",
+   "output": "number of stored rows it deleted",
+   "if_none": "rows without a feature number are skipped",
+   "edge_cases": "piece range is 10^12 + oid*1e5 + 1..99999",
+   "failure_mode": "a database error raises before the insert, so nothing half-written is committed"
   }
  ],
  "break_it": [
