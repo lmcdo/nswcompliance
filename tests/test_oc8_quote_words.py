@@ -105,3 +105,20 @@ def test_the_live_check_reaches_the_served_rules_and_their_pdfs():
     assert status in (occ.PASS, occ.FAIL), msg
     m = re.search(r": (\d+) of (\d+)", msg)
     assert m and int(m.group(2)) > 0, msg
+
+
+def test_two_active_pdfs_for_one_chapter_prove_nothing(monkeypatch):
+    class Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def execute(self, *a): pass
+        def fetchall(self): return [("woollahra", "b3", "a.pdf"), ("woollahra", "b3", "b.pdf")]
+    class Conn:
+        def cursor(self): return Cur()
+        def close(self): pass
+    import psycopg2
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: Conn())
+    monkeypatch.setattr(W.Q, "_r2", lambda: (None, None))
+    monkeypatch.setattr(W.Q, "_page_texts", lambda *a: PAGES)
+    monkeypatch.setenv("DATABASE_URL", "x")
+    assert W._registry_pages()("woollahra", "b3") is None

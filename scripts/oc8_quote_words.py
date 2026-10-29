@@ -49,7 +49,11 @@ def _registry_pages() -> PagesFor:
         with conn.cursor() as cur:
             cur.execute("SELECT council, chapter_key, r2_current_path FROM dcp_chapter_registry "
                         "WHERE is_active AND r2_current_path IS NOT NULL")
-            paths = {(c, k): p for c, k, p in cur.fetchall()}
+            paths: dict[tuple[str, str], str | None] = {}
+            for c, k, p in cur.fetchall():
+                # Two active PDFs for one council+chapter: the rule's source is ambiguous, so it is
+                # not proven by either (None -> no_source -> red). 0 such pairs on 2026-10-29.
+                paths[(c, k)] = p if (c, k) not in paths or paths[(c, k)] == p else None
     finally:
         conn.close()
     s3, bucket = Q._r2()
