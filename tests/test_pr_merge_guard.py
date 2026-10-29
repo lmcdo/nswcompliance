@@ -218,3 +218,22 @@ def test_hook_is_registered_for_bash_and_powershell():
     assert entries, "the guard exists but nothing runs it"
     matcher = entries[0]["matcher"].split("|")
     assert "Bash" in matcher and "PowerShell" in matcher
+
+
+def test_a_merge_inside_a_double_quoted_message_substitution_is_caught():
+    assert guard.find_merges('git commit -m "$(gh pr merge 902)"') == ["902"]
+    assert guard.find_merges('git commit -m "`gh pr merge 903`"') == ["903"]
+
+
+def test_a_merge_named_in_a_single_quoted_message_is_still_data():
+    assert guard.find_merges("git commit -m '$(gh pr merge 902)'") == []
+    assert guard.find_merges('git commit -m "run gh pr merge 902 next"') == []
+
+
+def test_a_sha_in_the_url_query_is_not_a_pin():
+    url_only = guard.parse_merges("gh api -X PUT 'repos/o/r/pulls/9/merge?sha=abc123'")
+    assert url_only and url_only[0].pin is None
+    field = guard.parse_merges("gh api -X PUT repos/o/r/pulls/9/merge -f sha=abc123")
+    assert field[0].pin == "abc123"
+    body = guard.parse_merges('curl -X PUT https://api.github.com/repos/o/r/pulls/9/merge -d \'{"sha":"abc123"}\'')
+    assert body[0].pin == "abc123"
