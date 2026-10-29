@@ -116,13 +116,14 @@ def test_the_two_council_figures_are_not_interchangeable():
     count, because a sentence saying "N councils" is a claim about councils.
     2026-10-22: 25 areas / 27 labels (was 26 / 28) -- Bayside's rows withheld
     ('chapter_pdf_changed') until its new DCP is read. 2026-10-29: 21 areas -- 641 number rules
-    withheld because their quote is not the council's words (job 1). Move this pin with coverage.ts;
+    withheld because their quote is not the council's words (job 1); 22 after
+    20 proven Bayside rules returned. Move this pin with coverage.ts;
     scripts/verify_coverage_stats.py is the live check.
     """
     ts = (ROOT / "frontend-nextjs" / "lib" / "coverage.ts").read_text(encoding="utf-8")
     m = re.search(r"dcpNumericCouncils:\s*(\d+)", ts)
     assert m, "dcpNumericCouncils not found in coverage.ts"
-    assert m.group(1) == "21", (
+    assert m.group(1) == "22", (
         f"dcpNumericCouncils is {m.group(1)}. If it is now 27 it has been set to the "
         f"LABEL count, which counts Inner West three times and claims two councils "
         f"that do not exist."
