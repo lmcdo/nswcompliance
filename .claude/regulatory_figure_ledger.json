@@ -455,7 +455,7 @@
   },
   {
    "file": "frontend-nextjs/lib/coverage.ts",
-   "text": "dcpSetbackTripleCouncils: 17",
+   "text": "dcpSetbackTripleCouncils: 16",
    "fate": "not_regulatory",
    "count": 1,
    "reason": "not a planning rule value (styling, example, internal tolerance or count); checked line by line 2026-10-24"
