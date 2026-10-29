@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "Adds a live check to outreach claim OC-8: every served number's sentence must be printed word for word on its cited PDF page. Before this, OC-8 passed on a page number, a sentence and a link -- 641 served numbers were summaries and OC-8 stayed green. No served output changes; this is a claim check.",
+  "files": [
+    "scripts/oc8_quote_words.py",
+    "scripts/outreach_claim_checks.py",
+    "tests/test_oc8_quote_words.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_oc8_quote_words.py -o addopts=",
+    "fails_when": "a planted fake quote, a changed number, the right words on the wrong page, or an unreadable PDF leaves OC-8 green",
+    "observed_red": "test_a_planted_fake_quote_goes_red: 'Minimum side setback 0.9m (DCP 3.2.3)' against a page holding the council's sentence -> FAIL not_found. Live run on prod after #1560: PASS, 0 of 167 served numbers."
+  },
+  "pre_impl": {
+    "existing_data": "OC-8 = every_served_number_is_cited + DQ-39 + public-link query; served rows via outreach_claim_checks.served_entries (the serve path). 235 served rows, 167 carry a number.",
+    "assumption_mismatch": "Expected 235 checked; the serve path yields 167 entries with a value (notes with no number are skipped, the same rule every_served_number_is_cited uses).",
+    "new_vs_existing": "Reuses dcp_quote_status.classify (the serve gate's own matcher) so the claim check and the gate cannot disagree; does not trust stored quote_status.",
+    "external_source_error": "R2 or pypdf failure -> page texts None -> classify no_source -> FAIL (never PASS). Registry unreadable -> UNKNOWN with the reason.",
+    "frontend_type": "No frontend change; check-only script.",
+    "user_failure_mode": "None for site users. For the team: a red OC-8 names up to four failing rules (council/type: verdict)."
+  },
+  "functions": [
+    {
+      "name": "mismatches",
+      "file_line": "scripts/oc8_quote_words.py:30",
+      "input": "served entries as (lga, entry dict, urls) plus a function giving page texts for a council and chapter",
+      "output": "count of numbers checked and a list of 'council/type: verdict' for every number that is not verbatim",
+      "if_none": "page texts None means the PDF could not be read, classified no_source and listed as a failure"
+    },
+    {
+      "name": "check",
+      "file_line": "scripts/oc8_quote_words.py:69",
+      "input": "nothing; reads served entries through the serve path and chapter PDFs from R2 via the registry",
+      "output": "OC result tuple of PASS, FAIL or UNKNOWN with a message naming the failing rules",
+      "if_none": "serve path or registry unreadable returns UNKNOWN with the reason, never PASS"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "chapter PDF per council and chapter",
+      "file_line": "scripts/oc8_quote_words.py:_registry_pages",
+      "where_clause": "dcp_chapter_registry WHERE is_active AND r2_current_path IS NOT NULL, keyed on (council, chapter_key)",
+      "if_zero": "every number is no_source, so OC-8 FAILS",
+      "if_wrong": "a wrong PDF can only fail a rule, never pass it, because the match is exact"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A served number's sentence is a summary, not the council's words.",
+      "what_happens": "Classified not_found and OC-8 turns red, naming the rule.",
+      "repro": "python -m pytest tests/test_oc8_quote_words.py -o addopts= -k planted",
+      "mitigated": true,
+      "how": "Exact normalised match via dcp_quote_status.classify."
+    },
+    {
+      "scenario": "One digit of the number differs from the PDF.",
+      "what_happens": "Classified not_found and OC-8 turns red, naming the rule.",
+      "repro": "python -m pytest tests/test_oc8_quote_words.py -o addopts= -k changed_number",
+      "mitigated": true,
+      "how": "No fuzzy matching anywhere in classify."
+    },
+    {
+      "scenario": "Right words, cited page two or more pages away.",
+      "what_happens": "Classified wrong_page and OC-8 turns red, naming the rule.",
+      "repro": "python -m pytest tests/test_oc8_quote_words.py -o addopts= -k wrong_page",
+      "mitigated": true,
+      "how": "Only the cited page and its page-break neighbours count."
+    },
+    {
+      "scenario": "The chapter PDF cannot be fetched or has no text layer.",
+      "what_happens": "Classified no_source and OC-8 turns red rather than green.",
+      "repro": "python -m pytest tests/test_oc8_quote_words.py -o addopts= -k unreadable",
+      "mitigated": true,
+      "how": "classify returns no_source for missing pages; only verbatim passes."
+    },
+    {
+      "scenario": "The serve path itself throws.",
+      "what_happens": "OC-8 word part returns UNKNOWN with the reason, which is not a pass.",
+      "repro": "python -m pytest tests/test_oc8_quote_words.py -o addopts= -k serve_path",
+      "mitigated": true,
+      "how": "served_entries None propagates as UNKNOWN."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "none; read-only check",
+    "secrets": "none added; uses existing DATABASE_URL and R2_* from .env",
+    "other_repo": "none",
+    "manual_verify": "python scripts/oc8_quote_words.py prints PASS 0 of N; python scripts/outreach_claim_checks.py OC-8 shows the new line."
+  },
+  "commit_hash": "836357a8"
+}
