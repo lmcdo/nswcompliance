@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which rules the nightly council_quote --apply --unchecked sweep judges: unproven shown rules are re-judged once they are 7 days old. Measured 2026-10-29: 412 extra rules on the first night (10,977 vs 10,565 NULL already selected), ~115 a night after.",
-  "commit_hash": "166f3d0e",
+  "commit_hash": "e19159d8",
   "files": [
     "scripts/council_quote_db.py",
     "scripts/council_quote.py",
