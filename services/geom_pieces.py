@@ -74,6 +74,8 @@ def explode_rows(rows: Iterable[tuple], oid_index: int, wkt_index: int, cap: int
         ps = valid_pieces(g, cap)
         if not ps:
             raise ValueError(f"feature {row[oid_index]}: no polygon left after repair")
+        if len(ps) > 99999:  # keys reserve 1..99999 pieces per feature
+            raise ValueError(f"feature {row[oid_index]}: {len(ps)} pieces exceed the 99,999 key range")
         for n, piece in enumerate(ps, 1):
             r = list(row)
             r[oid_index] = PIECE_OID_BASE + int(row[oid_index]) * 100000 + n
