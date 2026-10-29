@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which quotes count as proven; a dry-run tool, writes only with --apply and a backup. Not critical: the DB trigger still holds any unproven row.",
-  "commit_hash": "1d7a59c3",
+  "commit_hash": "54e85097",
   "files": [
     "scripts/dcp_quote_status.py",
     "tests/test_dcp_quote_status.py"
