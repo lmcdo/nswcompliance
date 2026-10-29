@@ -143,6 +143,13 @@ def main() -> int:
     logging.disable(logging.CRITICAL)  # pypdf warns on every odd font
     load_dotenv(ROOT / ".env")
     conn = psycopg2.connect(os.environ["DATABASE_URL"], options="-c statement_timeout=30000")
+    try:
+        return _run(conn, a)
+    finally:
+        conn.close()
+
+
+def _run(conn, a) -> int:
     cur = conn.cursor()
     cur.execute(ROWS_SQL, {"council": a.council})
     rows = cur.fetchall()

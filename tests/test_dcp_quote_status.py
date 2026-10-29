@@ -108,6 +108,7 @@ def _held(cur, rid):
     return cur.fetchone()
 
 
+@pytest.mark.database
 def test_an_unproven_row_is_not_served(temp_table):
     for rid, status in [(1, None), (2, "not_found"), (3, "wrong_page"), (4, "no_source")]:
         _put(temp_table, rid, status)
@@ -115,11 +116,13 @@ def test_an_unproven_row_is_not_served(temp_table):
         assert held is True and "not proven" in why
 
 
+@pytest.mark.database
 def test_a_proven_row_is_served(temp_table):
     _put(temp_table, 5, "verbatim")
     assert _held(temp_table, 5)[0] is False
 
 
+@pytest.mark.database
 def test_changing_the_quote_wipes_the_proof_and_hides_the_row(temp_table):
     _put(temp_table, 6, "verbatim")
     temp_table.execute("UPDATE t_sb SET source_text = 'a summary' WHERE id = 6")
@@ -127,24 +130,28 @@ def test_changing_the_quote_wipes_the_proof_and_hides_the_row(temp_table):
     assert (held, status) == (True, None)
 
 
+@pytest.mark.database
 def test_moving_the_page_wipes_the_proof(temp_table):
     _put(temp_table, 7, "verbatim")
     temp_table.execute("UPDATE t_sb SET pdf_page = 4 WHERE id = 7")
     assert _held(temp_table, 7)[:2] == (True, None)
 
 
+@pytest.mark.database
 def test_releasing_an_unproven_row_is_undone(temp_table):
     _put(temp_table, 8, "not_found", needs_review=True)
     temp_table.execute("UPDATE t_sb SET needs_review = false WHERE id = 8")
     assert _held(temp_table, 8)[0] is True
 
 
+@pytest.mark.database
 def test_proving_a_row_does_not_release_it(temp_table):
     _put(temp_table, 9, "not_found", needs_review=True)
     temp_table.execute("UPDATE t_sb SET quote_status = 'verbatim' WHERE id = 9")
     assert _held(temp_table, 9)[0] is True
 
 
+@pytest.mark.database
 def test_restating_an_old_proof_with_a_new_page_does_not_count(temp_table):
     # Writing the same 'verbatim' alongside a page move cannot be told apart from not
     # re-checking at all, so the row is held until dcp_quote_status.py proves the new page.
