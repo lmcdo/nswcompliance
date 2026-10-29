@@ -303,3 +303,29 @@ def test_partial_council_near_check_counts_only_that_councils_lines():
     cur = c.cursor.return_value
     i = next(n for n, q in enumerate(cur.sql) if "ST_Distance" in q)
     assert "lga_name = %s" in cur.sql[i] and cur.params[i][-2:] == ("CESSNOCK", "CESSNOCK")
+
+
+def test_a_lot_that_only_touches_the_line_is_not_yes():
+    """A shared edge or a sliver under 1 m2 is not 'on the map' -- and not a clean no."""
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", 0.3)]), lot_wkt=LOT)
+    assert s["value"] is None and s["nearest_m"] == 0.0
+    assert s["reason"].startswith("only the edge of the lot")
+
+
+def test_a_real_part_of_the_lot_on_the_line_is_yes():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", 44.7)]), lot_wkt=LOT)
+    assert s["value"] is True
+
+
+def test_the_address_point_on_the_line_is_yes_whatever_the_lot_overlap():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", None)]), lot_wkt=LOT)
+    assert s["value"] is True
+
+
+def test_an_edge_touch_of_an_extreme_line_alone_still_gives_the_real_no():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("PMF", "K", "BALLINA", 0.0)], [("BALLINA",)], [("BALLINA",)]), lot_wkt=LOT)
+    assert s["value"] is False

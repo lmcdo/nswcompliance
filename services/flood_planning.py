@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 # on 2026-10-28, 19 were further than 200 m, so the wider margin costs 2 "no"
 # answers and removes the wide-rural-lot false "no" (cross-review).
 NEAR_EDGE_M = 200.0
+MIN_LOT_OVERLAP_M2 = 1.0
 
 # Every value stored under spatial_overlays with layer_type flood (33 on
 # 2026-10-28), sorted into what it means. A value not listed here is
@@ -226,17 +227,32 @@ def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = 
             cur.execute("SET LOCAL statement_timeout = '5000'")
             lot = _trusted_lot(cur, lot_wkt, lat, lng)
             out["whole_lot"] = lot is not None
+            # lot_m2: how much of the lot is on the line, NULL when the address
+            # point itself is on it. A lot that only shares an edge with the line,
+            # or overlaps it by a sliver, is not "on the map" (2026-10-29: 22% of
+            # sampled point-misses touched by under 1 m2).
             cur.execute(
-                "SELECT DISTINCT value, instrument_key, lga_name FROM spatial_overlays "
-                "WHERE layer_type = 'flood' "
+                "SELECT value, instrument_key, lga_name, "
+                "CASE WHEN bool_or(ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))) THEN NULL "
+                "ELSE max(ST_Area(ST_Intersection(ST_MakeValid(geom), ST_GeomFromText(%s, 4326))::geography)) END "
+                "FROM spatial_overlays WHERE layer_type = 'flood' "
                 "AND (ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
-                "OR (%s::text IS NOT NULL AND ST_Intersects(geom, ST_GeomFromText(%s, 4326))))",
-                (lng, lat, lot, lot),
+                "OR (%s::text IS NOT NULL AND ST_Intersects(geom, ST_GeomFromText(%s, 4326)))) "
+                "GROUP BY 1, 2, 3",
+                (lng, lat, lot, lng, lat, lot, lot),
             )
-            hits = [{"value": v, "instrument_key": k, "lga_name": l, "category": category_of(v)}
-                    for v, k, l in (_cols(r, "value", "instrument_key", "lga_name")
-                                    for r in cur.fetchall())]
+            rows = [tuple(_cols(r, "value", "instrument_key", "lga_name", "lot_m2")) + (None,)
+                    for r in cur.fetchall()]
+            hits, edge = [], []
+            for v, k, l, m2, *_ in rows:
+                h = {"value": v, "instrument_key": k, "lga_name": l, "category": category_of(v)}
+                (edge if m2 is not None and m2 < MIN_LOT_OVERLAP_M2 else hits).append(h)
             out["hits"] = hits
+            if not hits and any(h.get("category") in ("planning", "frequent", "unclassified") for h in edge):
+                # Only a sliver of the lot touches the line: neither yes nor a clean no.
+                out.update(council=edge[0].get("lga_name"), nearest_m=0.0, reason=(
+                    "only the edge of the lot (under 1 m2) touches the council's flood planning map"))
+                return out
             for h in hits:
                 if h.get("category") == "unclassified":
                     logger.warning(f"flood value not classified: {h['value']!r}")
