@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how two loaders store spatial_overlays shapes: broken or >50k-point shapes become valid <=1000-point pieces. Standard: affects stored geometry on the next re-run, not served logic.",
- "commit_hash": "e2cdb258",
+ "commit_hash": "279cf13f",
  "files": [
   "services/geom_pieces.py",
   "tests/test_geom_pieces.py",
