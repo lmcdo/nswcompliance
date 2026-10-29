@@ -1,0 +1,32 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rows the quote check may prove: rows of 2,500-4,500 characters are now judged instead of refused as oversized. 43 shown-but-hidden rows prove (33 exact, 10 recovered).",
+  "commit_hash": "80057346",
+  "files": ["scripts/council_quote.py", "tests/test_council_quote.py"],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q -o addopts=",
+    "expected": "all pass",
+    "fails_when": "the cap is back at 2500 (long exact rule refused) or removed (oversized test passes as exact)",
+    "observed_red": "2026-10-29: OVERSIZED set back to 2500 -> test_a_long_rule_printed_word_for_word_under_the_cap_is_exact FAILED; restored, 72 pass."
+  },
+  "pre_impl": {
+    "existing_data": "2026-10-29 read-only: 88 shown rows unconfirmed as oversized. With no cap: 33 exact, 10 recovered (largest 4,071 chars), 45 still unproven (opening_found_no_bound 23, not_found 15, words/values cut 7). Woollahra rows of 5,800-39,660 chars stay refused.",
+    "assumption_mismatch": "2,500 chars was assumed to mean several controls that cannot be quoted; 43 such rows are printed in one place in the PDF.",
+    "new_vs_existing": "One constant changed; no new status or column. needs_split is read only by council_quote.py."
+  },
+  "functions": [{
+    "name": "judge",
+    "file_line": "scripts/council_quote.py",
+    "input": "one stored council rule row with its chapter reading streams",
+    "output": "status unconfirmed/oversized only when the rule body is over 4,500 characters; otherwise judged as before",
+    "if_none": "an empty body is short, so it is judged as before and refused as not found or too short"
+  }],
+  "values": [{"value": "OVERSIZED", "read_at": "scripts/council_quote.py judge", "if_missing": "module constant, always defined"}],
+  "queries": [],
+  "break_it": [
+    {"scenario": "A 3,000 char row made of several controls stitched from different places.", "what_happens": "It would show as one long quote.", "mitigated": true, "how": "It must still be found in one place in the PDF (exact) or by anchors (recovered); stitched text fails as words_cut.", "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k words_not_printed"},
+    {"scenario": "A huge Woollahra row (39,660 chars) printed word for word.", "what_happens": "A whole chapter would show as one rule.", "mitigated": true, "how": "Over 4,500 it is still refused; test covers a 6,000 char row.", "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k oversized"},
+    {"scenario": "A 3,000 char row printed word for word.", "what_happens": "Before this change it was hidden behind a plan link.", "mitigated": true, "how": "Now exact; test covers it.", "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k under_the_cap"}
+  ],
+  "post_merge": {"db_reset": "Yes: back up and re-check the 88 oversized rows with council_quote.py --apply --ids.", "secrets": "No.", "other_repo": "No.", "manual_verify": "No."}
+}
