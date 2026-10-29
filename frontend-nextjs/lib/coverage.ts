@@ -135,8 +135,8 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 25,
-  dcpSetbackTripleCouncils: 16,   // 2026-10-29: live 16 again after penrith's return; the council that lost a setback after #1535 is not traced (no monitor change, table keeps no history)
+  dcpNumericCouncils: 21,   // 2026-10-29: 25 -> 21 after 641 number rules whose quote is not the council's words were withheld (job 1, step 1.2)
+  dcpSetbackTripleCouncils: 10,   // 2026-10-29: 16 -> 10, same withholding; only councils whose front, side AND rear quotes are proven count
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -157,8 +157,8 @@ export const COVERAGE = {
 export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
-  dcpNumericCouncils: '25',
-  dcpSetbackTripleCouncils: '16',
+  dcpNumericCouncils: '21',
+  dcpSetbackTripleCouncils: '10',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

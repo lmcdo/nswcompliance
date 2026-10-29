@@ -1,0 +1,110 @@
+{
+  "tier": "critical",
+  "justification": "Changes what is served: a DCP number rule is shown only when its quote is proven word for word on its cited PDF page. Enforced by a database trigger (migration 120) because every reader of dcp_setback_controls that shows a number already hides needs_review rows (conveyancing_db.fetch_dcp_setbacks, granny_flat, dcp_controls_api, structured-controls, canibuildit/check, tod/parking-rates, parking-rate-selection). Also corrects two published counts that the 2026-10-29 withholding (641 rows) made overstated.",
+  "files": [
+    "migrations/119_setback_quote_status.sql",
+    "migrations/120_setback_serve_only_verbatim.sql",
+    "scripts/dcp_quote_status.py",
+    "tests/test_dcp_quote_status.py",
+    "frontend-nextjs/lib/coverage.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "falsifiable_check": {
+    "command": "PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_dcp_quote_status.py -o addopts=",
+    "fails_when": "an unproven row (quote_status NULL/not_found/wrong_page/no_source) keeps needs_review=false, a release without proof sticks, or editing the quote/page keeps an old proof",
+    "observed_red": "First trigger-test run inserted a row and the failing row already showed needs_review=t with the new reason (trigger fired); 22 passed after fixing the test row. Without migration 120 applied to the temp table, test_an_unproven_row_is_not_served asserts needs_review is True and would fail on the inserted False."
+  },
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls: 1,273 rows, 1,136 current, 235 served (2026-10-29). Existing trigger dcp_setback_controls_clear_citation_status (same pattern, other column). 67 current rows have no active registry chapter -> no_source.",
+    "assumption_mismatch": "citation_status was expected to be reusable; it records whether the CLAUSE NUMBER is printed, not the quote, so a new column was needed. 7 chapter_keys are shared across councils; the 2026-10-29 evidence script looked up by chapter_key alone, so the checker joins on chapter_key AND council (0 current rows mismatch).",
+    "new_vs_existing": "New column + checker + trigger; no reader changed. Matching identical to the the 2026-10-29 evidence script run that measured the 235.",
+    "external_source_error": "R2 fetch or pypdf failure -> page texts None -> classify returns no_source -> row held. A wrong or missing PDF can only lower a verdict, never produce 'verbatim'.",
+    "frontend_type": "No frontend type changes. Readers see the same row shape; held rows are already excluded by their needs_review filter. coverage.ts constants stay number/string literals.",
+    "user_failure_mode": "Fails closed and visibly: a rule that cannot be proven disappears from the page (fewer rules shown), never a summary shown as the council's words. Worst case (120 applied before stamping) = served count 0, caught by verify_coverage_stats and the served-count query."
+  },
+  "functions": [
+    {
+      "name": "classify",
+      "file_line": "scripts/dcp_quote_status.py:55",
+      "input": "quote text, list of raw page texts (or None), cited pdf_page",
+      "output": "one of four strings: verbatim (on the cited page or across its page break), wrong_page, not_found, no_source",
+      "if_none": "any of quote, pages or pdf_page missing or empty returns no_source, so the row stays held"
+    },
+    {
+      "name": "changed",
+      "file_line": "scripts/dcp_quote_status.py:82",
+      "input": "list of (row id, stored quote_status) pairs and a dict mapping row id to the new verdict",
+      "output": "list of (row id, new verdict) for only the rows whose verdict changed, so unchanged rows are not rewritten",
+      "if_none": "empty input -> []; unknown verdict -> ValueError"
+    }
+  ],
+  "values": [
+    {
+      "value": "COVERAGE.dcpNumericCouncils 25 -> 21, dcpSetbackTripleCouncils 16 -> 10",
+      "read_at": "frontend-nextjs/lib/coverage.ts consumers",
+      "nullable": "no",
+      "guard_at": "scripts/verify_coverage_stats.py",
+      "if_missing": "n/a"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "rows to check",
+      "file_line": "scripts/dcp_quote_status.py ROWS_SQL",
+      "where_clause": "is_current, optional lga; registry joined on chapter_key AND council AND is_active",
+      "if_zero": "prints 0 verdicts, writes nothing",
+      "if_wrong": "a wrong PDF can only lower a verdict (exact match required), never raise one"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Migration 120 applied before the checker stamps the 235.",
+      "what_happens": "Every served rule is hidden (fail closed, visible as served count 0). Documented at the top of 120; apply order is 119 -> checker --apply -> 120.",
+      "repro": "python scripts/run_migration.py migrations/120_setback_serve_only_verbatim.sql before the checker, then: select count(*) from dcp_setback_controls where is_current and needs_review is not true  -> 0",
+      "mitigated": true,
+      "how": "Apply order written at the top of migration 120 and in post_merge.db_reset; served count is checked after each step."
+    },
+    {
+      "scenario": "Someone fixes pdf_page and re-writes quote_status='verbatim' in the same UPDATE.",
+      "what_happens": "Proof wiped, row held until the checker re-proves the new page (test_restating_an_old_proof_with_a_new_page_does_not_count).",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_quote_status.py -o addopts= -k restating",
+      "mitigated": true,
+      "how": "Covered by test_restating_an_old_proof_with_a_new_page_does_not_count; the checker re-proves the new page."
+    },
+    {
+      "scenario": "A pipeline inserts a new row with needs_review=false.",
+      "what_happens": "Held with reason 'quote not proven ... (unchecked)' until the checker proves it and a person releases it.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_quote_status.py -o addopts= -k unproven",
+      "mitigated": true,
+      "how": "Trigger holds it on insert; covered by test_an_unproven_row_is_not_served (proof NULL case)."
+    },
+    {
+      "scenario": "A stored quote differs from the PDF by one digit (the May 2026 summaries).",
+      "what_happens": "Classified not_found and held, because only an exact normalised match is ever verbatim.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_quote_status.py -o addopts= -k one_changed_number",
+      "mitigated": true,
+      "how": "Exact normalised match only; covered by test_one_changed_number_is_not_found."
+    },
+    {
+      "scenario": "Someone releases a held row by hand (needs_review=false) without a proof.",
+      "what_happens": "Trigger sets needs_review back to true with the reason.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_quote_status.py -o addopts= -k releasing",
+      "mitigated": true,
+      "how": "Trigger re-holds it; covered by test_releasing_an_unproven_row_is_undone."
+    },
+    {
+      "scenario": "The quote is edited after it was proven.",
+      "what_happens": "The trigger wipes the proof to NULL and the row is held until re-proven.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_dcp_quote_status.py -o addopts= -k changing_the_quote",
+      "mitigated": true,
+      "how": "Trigger wipes the proof; covered by test_changing_the_quote_wipes_the_proof_and_hides_the_row."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Order on prod: run_migration 119 -> dcp_quote_status.py (dry run shows 235 verbatim) -> --apply (writes backup) -> run_migration 120 -> served count still 235. Undo 120: DROP TRIGGER dcp_setback_hold_unproven_quote ON dcp_setback_controls.",
+    "secrets": "none added; uses existing DATABASE_URL and R2_* from .env",
+    "other_repo": "none",
+    "manual_verify": "select count(*) from dcp_setback_controls where is_current and needs_review is not true -> 235 after 120; open one address page and see only proven rules."
+  },
+  "commit_hash": "95e001c7"
+}
