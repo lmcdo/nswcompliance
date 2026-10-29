@@ -88,5 +88,5 @@
     "other_repo": "none",
     "manual_verify": "python scripts/oc8_quote_words.py prints PASS 0 of N; python scripts/outreach_claim_checks.py OC-8 shows the new line."
   },
-  "commit_hash": "836357a8"
+  "commit_hash": "7b67fd2f"
 }
