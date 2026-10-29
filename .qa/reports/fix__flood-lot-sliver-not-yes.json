@@ -1,0 +1,77 @@
+{
+ "tier": "standard",
+ "justification": "Changes when a whole-lot flood check says yes: a lot that only shares an edge or a sliver under 1 m2 with the line is now not known, not yes. Standard: changes served flood answers on three surfaces.",
+ "commit_hash": "a0618e22",
+ "files": [
+  "services/flood_planning.py",
+  "tests/test_flood_planning.py",
+  ".claude/regulatory_figure_ledger.json"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if a sub-1 m2 lot overlap becomes yes or a clean no, if a real overlap stops being yes, or if a point hit is dropped.",
+  "external_authority": "Live DB 2026-10-29: two real Inner West lots touching the line by under 1 m2 now give 'only the edge of the lot'; the Cessnock fixture lot (44.7 m2 inside) stays yes.",
+  "observed_red": "Before the fix any touch of the lot gave yes; across 61 councils, 176 of 1,035 point-missed lots touched the line by under 1 m2."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays flood rows for 75 councils; Cessnock PARTIAL 1%AEP; _trusted_lot already requires the outline to contain the point.",
+  "assumption_mismatch": "#1555 counted any touch of the lot as on the map, including shared edges.",
+  "new_vs_existing": "No new source; adds an overlap area to the existing hit query.",
+  "external_source_error": "A malformed or non-containing outline is ignored (point rule); an unknown coordinate system gives null and the point rule."
+ },
+ "functions": [
+  {
+   "name": "_flood_planning_core",
+   "file_line": "services/flood_planning.py",
+   "what": "Counts a lot hit only when at least 1 m2 of the lot is on the line; a smaller touch is not known.",
+   "input": "point, database connection and optional lot",
+   "output": "the one flood planning answer with its reason",
+   "if_none": "no line within 200 m keeps the not-held reason",
+   "edge_cases": "point on line always counts; extreme-only edge touch still allows the real no",
+   "failure_mode": "Can only change one not-known reason to another not-known reason"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Lot point 6 m outside a partial council flood line",
+   "what_happens": "With the lot it is yes; point only it says near the map",
+   "mitigated": true,
+   "how": "lot_wkt passed by all callers; _nearest_yes_m on partial path",
+   "repro": "pytest tests/test_flood_planning.py -k partial"
+  },
+  {
+   "scenario": "Caller sends a neighbouring or stale lot outline",
+   "what_happens": "Outline ignored and only the point rule is applied",
+   "mitigated": true,
+   "how": "_trusted_lot ST_Covers check",
+   "repro": "pytest -k untrusted_lot"
+  },
+  {
+   "scenario": "Lot boundary in an unexpected coordinate system",
+   "what_happens": "Helper returns null and the point rule is used",
+   "mitigated": true,
+   "how": "wkid allow-list",
+   "repro": "jest lot-rings-to-wkt"
+  }
+ ],
+ "verified": [
+  "flood pytest 918/918",
+  "jest related 152/152 + 8 new",
+  "Live DB on the fixture lot: point not known (5.9 m), lot yes"
+ ],
+ "gaps": [
+  "Re-check the lead's address on production after deploy",
+  "Saved checks are not re-scored; old point-only rows stop being served at 2026-10-31"
+ ],
+ "post_merge": {
+  "action": "Re-run the flood check for the Heddon Greta lead address on production",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function.",
+  "services/flood_truth.py": "Only an extra argument passed through to flood_planning_status; no new query. The real database path was run for the fixture lot via flood_planning_status."
+ }
+}

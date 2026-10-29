@@ -303,3 +303,49 @@ def test_partial_council_near_check_counts_only_that_councils_lines():
     cur = c.cursor.return_value
     i = next(n for n, q in enumerate(cur.sql) if "ST_Distance" in q)
     assert "lga_name = %s" in cur.sql[i] and cur.params[i][-2:] == ("CESSNOCK", "CESSNOCK")
+
+
+def test_a_lot_that_only_touches_the_line_is_not_yes():
+    """A shared edge or a sliver under 1 m2 is not 'on the map' -- and not a clean no."""
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", 0.3)]), lot_wkt=LOT)
+    assert s["value"] is None and s["nearest_m"] == 0.0
+    assert s["reason"].startswith("only the edge of the lot")
+
+
+def test_a_real_part_of_the_lot_on_the_line_is_yes():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", 44.7)]), lot_wkt=LOT)
+    assert s["value"] is True
+
+
+def test_the_address_point_on_the_line_is_yes_whatever_the_lot_overlap():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("Flood Planning Area", "K", "BALLINA", None)]), lot_wkt=LOT)
+    assert s["value"] is True
+
+
+def test_an_edge_touch_of_an_extreme_line_alone_still_gives_the_real_no():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("PMF", "K", "BALLINA", 0.0)], [("BALLINA",)], [("BALLINA",)]), lot_wkt=LOT)
+    assert s["value"] is False
+
+
+def test_an_edge_touch_with_a_larger_extreme_overlap_is_not_a_clean_no():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [("PMF", "K", "BALLINA", 5.0), ("Flood Planning Area", "K", "BALLINA", 0.3)]), lot_wkt=LOT)
+    assert s["value"] is None and s["reason"].startswith("only the edge of the lot")
+
+
+def test_dict_rows_read_the_lot_overlap_by_name():
+    s = fp.flood_planning_status(-28.86, 153.56, conn_with(
+        [(True,)], [{"value": "Flood Planning Area", "instrument_key": "K", "lga_name": "BALLINA", "lot_m2": 0.3}]),
+        lot_wkt=LOT)
+    assert s["value"] is None and s["council"] == "BALLINA"
+
+
+def test_the_hit_query_names_the_overlap_and_unions_the_pieces():
+    c = conn_with([(True,)], [("Flood Planning Area", "K", "BALLINA", 3.0)])
+    fp.flood_planning_status(-28.86, 153.56, c, lot_wkt=LOT)
+    sql = " ".join(c.cursor.return_value.sql)
+    assert "AS lot_m2" in sql and "ST_UnaryUnion(ST_Collect" in sql
