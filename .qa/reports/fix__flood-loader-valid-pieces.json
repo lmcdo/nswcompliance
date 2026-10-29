@@ -1,0 +1,78 @@
+{
+ "tier": "standard",
+ "justification": "Changes how two loaders store spatial_overlays shapes: broken or >50k-point shapes become valid <=1000-point pieces. Standard: affects stored geometry on the next re-run, not served logic.",
+ "commit_hash": "f864ef3f",
+ "files": [
+  "services/geom_pieces.py",
+  "tests/test_geom_pieces.py",
+  "scripts/ingest_flood_studies.py",
+  "scripts/ingest_spatial_overlays.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_geom_pieces.py -q",
+  "fails_when": "Fails if a broken shape is stored unsplit, a piece exceeds 1,000 points, area changes, a mid-size valid shape is split, or keys differ between runs.",
+  "external_authority": "Live DB 2026-10-29: the helper reproduces the stored piece counts for three repaired rows (Shoalhaven 1, Bellingen 3, Cumberland 48).",
+  "observed_red": "Before: both loaders upsert by original feature number, so a re-run re-inserts the 269 repaired originals (one with 2.27M points) beside their pieces."
+ },
+ "pre_impl": {
+  "existing_data": "spatial_overlays unique (instrument_key, layer_type, source_oid); 13,455 repaired pieces keyed 10^12+oid*1e5+n.",
+  "assumption_mismatch": "Loaders assumed source shapes are valid and small.",
+  "new_vs_existing": "New shared helper; no new data source.",
+  "external_source_error": "A row with no feature number is stored unchanged."
+ },
+ "functions": [
+  {
+   "name": "explode_rows",
+   "file_line": "services/geom_pieces.py",
+   "what": "Split broken or huge shapes into valid pieces with stable keys.",
+   "input": "loader row tuples with feature number and WKT shape",
+   "output": "the same rows, with broken or huge shapes replaced by piece rows",
+   "if_none": "a row with no feature number is stored unchanged",
+   "edge_cases": "mid-size valid shapes untouched; deterministic",
+   "failure_mode": "shapely error raises in the loader before any write"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Lot point 6 m outside a partial council flood line",
+   "what_happens": "With the lot it is yes; point only it says near the map",
+   "mitigated": true,
+   "how": "lot_wkt passed by all callers; _nearest_yes_m on partial path",
+   "repro": "pytest tests/test_flood_planning.py -k partial"
+  },
+  {
+   "scenario": "Caller sends a neighbouring or stale lot outline",
+   "what_happens": "Outline ignored and only the point rule is applied",
+   "mitigated": true,
+   "how": "_trusted_lot ST_Covers check",
+   "repro": "pytest -k untrusted_lot"
+  },
+  {
+   "scenario": "Lot boundary in an unexpected coordinate system",
+   "what_happens": "Helper returns null and the point rule is used",
+   "mitigated": true,
+   "how": "wkid allow-list",
+   "repro": "jest lot-rings-to-wkt"
+  }
+ ],
+ "verified": [
+  "flood pytest 918/918",
+  "jest related 152/152 + 8 new",
+  "Live DB on the fixture lot: point not known (5.9 m), lot yes"
+ ],
+ "gaps": [
+  "Re-check the lead's address on production after deploy",
+  "Saved checks are not re-scored; old point-only rows stop being served at 2026-10-31"
+ ],
+ "post_merge": {
+  "action": "Re-run the flood check for the Heddon Greta lead address on production",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
+ },
+ "real_layer_exempt": {
+  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function.",
+  "services/flood_truth.py": "Only an extra argument passed through to flood_planning_status; no new query. The real database path was run for the fixture lot via flood_planning_status."
+ }
+}
