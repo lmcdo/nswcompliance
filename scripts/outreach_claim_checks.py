@@ -567,8 +567,11 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     # Added 2026-09-14: 15 active chapters' public links named an older copy than the one their rules were read
     # from, so Waverley DCP 2022's link opened a 490-page PDF while its rules cite the 448-page one. Compared
     # exactly, not with LIKE: an underscore in a path is a LIKE wildcard.
+    # 2026-10-29: having a page, a sentence and a link proved nothing about the words -- 641 served numbers
+    # were summaries. The words are now re-checked live against the cited page (scripts/oc8_quote_words.py).
     "OC-8": [
         every_served_number_is_cited,
+        lambda: __import__("oc8_quote_words").check(),
         lambda: probe("DQ-39"),
         lambda: sql_count("active chapters whose public PDF link is not their current copy",
                           "SELECT count(*) FROM dcp_chapter_registry WHERE is_active "

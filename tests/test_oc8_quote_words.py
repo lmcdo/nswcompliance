@@ -1,0 +1,140 @@
+"""OC-8 goes red when a served number's sentence is not the council's words on its cited page.
+
+prior-art-checked: new tests for scripts/oc8_quote_words.py; tests/test_outreach_claim_checks_ranges_and_citations.py
+covers OC-8's citation-presence part, which a planted fake quote passes.
+"""
+import sys
+
+import pytest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import oc8_quote_words as W  # noqa: E402
+import outreach_claim_checks as occ  # noqa: E402
+
+PAGE = "3.2.3 Side setbacks. The minimum side setback is 900mm for a single storey dwelling."
+PAGES = ["Contents", PAGE]
+
+
+def _entry(**kw):
+    e = dict(value_min=0.9, value_max=None, semantic_type="side_setback", source_chapter_key="b3",
+             pdf_page=2, source_text="The minimum side setback is 900mm for a single storey dwelling")
+    e.update(kw)
+    return e
+
+
+def _run(monkeypatch, *entries, pages=PAGES):
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
+    monkeypatch.setattr(occ, "served_entries", lambda: ([("woollahra", e, {}) for e in entries], ""))
+    monkeypatch.setattr(W, "_registry_pages", lambda: (lambda lga, ck: pages))
+    return W.check()
+
+
+def test_the_councils_words_on_the_cited_page_pass(monkeypatch):
+    status, msg = _run(monkeypatch, _entry())
+    assert status == occ.PASS and "0 of 1" in msg
+
+
+def test_a_planted_fake_quote_goes_red(monkeypatch):
+    # Has a page, a sentence and (elsewhere) a link -- everything the old OC-8 checked.
+    status, msg = _run(monkeypatch, _entry(source_text="Minimum side setback 0.9m (DCP 3.2.3)"))
+    assert status == occ.FAIL and "not_found" in msg
+
+
+def test_one_changed_number_goes_red(monkeypatch):
+    status, _ = _run(monkeypatch, _entry(source_text="The minimum side setback is 1500mm for a single storey dwelling"))
+    assert status == occ.FAIL
+
+
+def test_the_right_words_on_the_wrong_page_go_red(monkeypatch):
+    # Two pages away: a neighbouring page would count, because a sentence can run over a page break.
+    status, msg = _run(monkeypatch, _entry(pdf_page=1), pages=["Contents", "Objectives", PAGE])
+    assert status == occ.FAIL and "wrong_page" in msg
+
+
+def test_an_unreadable_pdf_goes_red_not_green(monkeypatch):
+    status, msg = _run(monkeypatch, _entry(), pages=None)
+    assert status == occ.FAIL and "no_source" in msg
+
+
+def test_a_note_with_no_number_is_not_counted(monkeypatch):
+    status, msg = _run(monkeypatch, _entry(), _entry(value_min=None, source_text="No maximum specified"))
+    assert status == occ.PASS and "0 of 1" in msg
+
+
+def test_checking_nothing_is_unknown_not_pass(monkeypatch):
+    status, msg = _run(monkeypatch)
+    assert status == occ.UNKNOWN and "nothing was checked" in msg
+
+
+def test_a_pdf_error_mid_run_is_unknown_not_a_crash(monkeypatch):
+    def boom(lga, ck):
+        raise OSError("R2 reset")
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
+    monkeypatch.setattr(occ, "served_entries", lambda: ([("woollahra", _entry(), {})], ""))
+    monkeypatch.setattr(W, "_registry_pages", lambda: boom)
+    assert W.check()[0] == occ.UNKNOWN
+
+
+def test_logging_elsewhere_is_left_on(monkeypatch):
+    import logging
+    _run(monkeypatch, _entry())
+    assert logging.root.manager.disable == 0 and logging.getLogger("pypdf").level != logging.CRITICAL + 1
+
+
+def test_a_serve_path_failure_is_unknown_not_pass(monkeypatch):
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
+    monkeypatch.setattr(occ, "served_entries", lambda: (None, "serve path failed (boom)"))
+    assert W.check()[0] == occ.UNKNOWN
+
+
+def test_oc8_runs_the_word_check():
+    names = [getattr(f, "__name__", "") for f in occ.CHECKS["OC-8"]] if hasattr(occ, "CHECKS") else []
+    src = (ROOT / "scripts" / "outreach_claim_checks.py").read_text(encoding="utf-8")
+    assert "oc8_quote_words" in src.split('"OC-8": [', 1)[1].split("],", 1)[0] or "oc8_quote_words" in names
+
+
+@pytest.mark.database
+def test_the_live_check_reaches_the_served_rules_and_their_pdfs():
+    """Read-only: the real serve path, registry and R2. A verdict, not UNKNOWN, over a non-zero count."""
+    import os
+    import re
+
+    if os.environ.get("PYTEST_REAL_DB") != "1" or not os.environ.get("DATABASE_URL") \
+            or not os.environ.get("R2_ACCESS_KEY_ID"):
+        pytest.skip("needs PYTEST_REAL_DB=1, DATABASE_URL and R2_* (read-only)")
+    status, msg = W.check()
+    assert status in (occ.PASS, occ.FAIL), msg
+    m = re.search(r": (\d+) of (\d+)", msg)
+    assert m and int(m.group(2)) > 0, msg
+
+
+def test_two_active_pdfs_for_one_chapter_prove_nothing(monkeypatch):
+    class Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def execute(self, *a): pass
+        def fetchall(self): return [("woollahra", "b3", "a.pdf"), ("woollahra", "b3", "b.pdf")]
+    class Conn:
+        def cursor(self): return Cur()
+        def close(self): pass
+    import psycopg2
+    monkeypatch.setattr(psycopg2, "connect", lambda *a, **k: Conn())
+    monkeypatch.setattr(W.Q, "_r2", lambda: (None, None))
+    monkeypatch.setattr(W.Q, "_page_texts", lambda *a: PAGES)
+    monkeypatch.setenv("DATABASE_URL", "x")
+    assert W._registry_pages()("woollahra", "b3") is None
+
+
+def test_without_the_pdf_store_it_checks_the_stored_verdicts_and_says_so(monkeypatch):
+    seen = {}
+
+    def fake_sql(label, sql, expect=0):
+        seen["sql"] = sql
+        return occ.PASS, label
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.setattr(occ, "sql_count", fake_sql)
+    status, msg = W.check()
+    assert status == occ.PASS and "not re-read live" in msg
+    assert occ.SERVED in seen["sql"] and "quote_status IS DISTINCT FROM 'verbatim'" in seen["sql"]
