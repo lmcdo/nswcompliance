@@ -52,6 +52,7 @@ MIN_OVERLAP = 0.6       # share of the stored quote's words the copied text must
 LABEL_LINES = 40        # a label-bounded copy stops after this many lines...
 LABEL_PAGES = 1         # ...or this many page breaks
 DOUBLED_MIN_CHARS = 20
+DOUBLED_MIN_PAIRS = 50   # a short or table-heavy chapter with one repeated sentence is not a doubled layer
 DOUBLED_SHARE = 0.15   # a chapter where this share of lines repeat the line before is a doubled text layer
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
 LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
@@ -205,7 +206,8 @@ def doubled_lines(lines) -> set[int]:
         if b and lines[i].page == lines[i - 1].page and a.endswith(b):
             out.add(i)
             long_doubled += len(b) >= DOUBLED_MIN_CHARS
-    return out if long_doubled >= DOUBLED_SHARE * max(1, long_lines) else set()
+    doubled = long_doubled >= DOUBLED_MIN_PAIRS and long_doubled >= DOUBLED_SHARE * long_lines
+    return out if doubled else set()
 
 
 class Stream:
