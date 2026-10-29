@@ -106,5 +106,5 @@
     "other_repo": "none",
     "manual_verify": "select count(*) from dcp_setback_controls where is_current and needs_review is not true -> 235 after 120; open one address page and see only proven rules."
   },
-  "commit_hash": "95e001c7"
+  "commit_hash": "097adac1"
 }
