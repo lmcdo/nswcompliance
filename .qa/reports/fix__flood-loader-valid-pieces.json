@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how two loaders store spatial_overlays shapes: broken or >50k-point shapes become valid <=1000-point pieces. Standard: affects stored geometry on the next re-run, not served logic.",
- "commit_hash": "f864ef3f",
+ "commit_hash": "24c13728",
  "files": [
   "services/geom_pieces.py",
   "tests/test_geom_pieces.py",
@@ -72,7 +72,7 @@
   "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
  },
  "real_layer_exempt": {
-  "services/flood_planning.py": "Exercised on the live database for the fixture lot (both paths); no new query text, the distance query was moved into a function.",
-  "services/flood_truth.py": "Only an extra argument passed through to flood_planning_status; no new query. The real database path was run for the fixture lot via flood_planning_status."
+  "scripts/ingest_flood_studies.py": "One added line transforms rows in memory before the existing upsert; no new query or HTTP call. The transform is tested in tests/test_geom_pieces.py and checked against live stored piece counts.",
+  "scripts/ingest_spatial_overlays.py": "One added line transforms rows in memory before the existing upsert; no new query or HTTP call. The transform is tested in tests/test_geom_pieces.py and checked against live stored piece counts."
  }
 }
