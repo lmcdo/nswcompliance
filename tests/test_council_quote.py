@@ -137,10 +137,16 @@ def test_label_kind_reads_roman_before_alpha_and_codes_by_prefix():
 
 
 def test_oversized_row_is_unconfirmed_even_when_printed_word_for_word():
-    text = " ".join(f"Control {n}: buildings are to be set back from the boundary." for n in range(60))
+    text = " ".join(f"Control {n}: buildings are to be set back from the boundary." for n in range(100))
     st = stream({1: [text]})
     out = cq.judge(row(text), [st])
     assert out["status"] == "unconfirmed" and out["reason"] == "oversized"
+
+
+def test_a_long_rule_printed_word_for_word_under_the_cap_is_exact():
+    lines = [f"Control {n}: buildings are to be set back from the boundary." for n in range(55)]
+    out = cq.judge(row(" ".join(lines)), [stream({1: lines})])
+    assert 2500 < len(" ".join(lines)) < cq.OVERSIZED and out["status"] == "exact"
 
 
 def test_line_without_its_printed_casing_is_never_passed_off_as_the_councils():
