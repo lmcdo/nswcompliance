@@ -1723,6 +1723,20 @@
    "text": "['R1', 'R3', 'R4'",
    "fate": "open",
    "reason": "found by the widened scan 2026-10-26 (min / bare comparison / zone list); serve from the database"
+  },
+  {
+   "file": "services/flood_planning.py",
+   "text": "MIN_LOT_OVERLAP_M2 = 1.0",
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "screening tolerance for a lot that only touches a flood map line (measured slivers 2026-10-29), not a planning figure"
+  },
+  {
+   "file": "services/flood_planning.py",
+   "text": "\"only the edge of the lot (under 1 m2) touches the council'",
+   "fate": "not_regulatory",
+   "count": 1,
+   "reason": "screening tolerance for a lot that only touches a flood map line (measured slivers 2026-10-29), not a planning figure"
   }
  ]
 }
