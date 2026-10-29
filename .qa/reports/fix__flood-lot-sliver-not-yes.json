@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when a whole-lot flood check says yes: a lot that only shares an edge or a sliver under 1 m2 with the line is now not known, not yes. Standard: changes served flood answers on three surfaces.",
- "commit_hash": "40481d36",
+ "commit_hash": "98e62f4a",
  "files": [
   "services/flood_planning.py",
   "tests/test_flood_planning.py"
