@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Tightens the PreToolUse merge guard: a merge run from inside a double-quoted commit message is now gated, and a ?sha= query in a merge URL no longer counts as a head pin.",
-  "commit_hash": "ec1f72be",
+  "commit_hash": "e7f1092f",
   "files": [
     ".claude/hooks/pr-merge-guard.py",
     "tests/test_pr_merge_guard.py"
