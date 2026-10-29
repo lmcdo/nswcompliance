@@ -234,7 +234,8 @@ def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = 
             cur.execute(
                 "SELECT value, instrument_key, lga_name, "
                 "CASE WHEN bool_or(ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))) THEN NULL "
-                "ELSE max(ST_Area(ST_Intersection(ST_MakeValid(geom), ST_GeomFromText(%s, 4326))::geography)) END "
+                "ELSE ST_Area(ST_Intersection(ST_UnaryUnion(ST_Collect(ST_MakeValid(geom))), "
+                "ST_GeomFromText(%s, 4326))::geography) END AS lot_m2 "
                 "FROM spatial_overlays WHERE layer_type = 'flood' "
                 "AND (ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)) "
                 "OR (%s::text IS NOT NULL AND ST_Intersects(geom, ST_GeomFromText(%s, 4326)))) "
@@ -248,9 +249,11 @@ def _flood_planning_core(lat: float, lng: float, conn, lot_wkt: Optional[str] = 
                 h = {"value": v, "instrument_key": k, "lga_name": l, "category": category_of(v)}
                 (edge if m2 is not None and m2 < MIN_LOT_OVERLAP_M2 else hits).append(h)
             out["hits"] = hits
-            if not hits and any(h.get("category") in ("planning", "frequent", "unclassified") for h in edge):
-                # Only a sliver of the lot touches the line: neither yes nor a clean no.
-                out.update(council=edge[0].get("lga_name"), nearest_m=0.0, reason=(
+            touch = next((h for h in edge if h.get("category") in ("planning", "frequent", "unclassified")), None)
+            if touch and not any(h.get("category") in ("planning", "frequent", "unclassified") for h in hits):
+                # Only a sliver of the lot touches the line: neither yes nor a clean
+                # no, even if a rarer (extreme) extent covers more of it.
+                out.update(council=touch.get("lga_name"), nearest_m=0.0, reason=(
                     "only the edge of the lot (under 1 m2) touches the council's flood planning map"))
                 return out
             for h in hits:
