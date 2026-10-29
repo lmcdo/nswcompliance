@@ -86,9 +86,14 @@ def temp_table():
     for col in ("quote_status text", "quote_checked_at timestamptz"):
         cur.execute(f"ALTER TABLE t_sb ADD COLUMN IF NOT EXISTS {col}")
     sql = (ROOT / "migrations" / "120_setback_serve_only_verbatim.sql").read_text(encoding="utf-8")
-    sql = re.sub(r"\bON dcp_setback_controls\b", "ON t_sb", sql)
-    assert "ON t_sb" in sql
-    cur.execute(sql)
+    body = "\n".join(line for line in sql.splitlines() if not line.lstrip().startswith("--"))
+    body = re.sub(r"\b(ON|UPDATE) dcp_setback_controls\b", r"\1 t_sb", body)
+    # Never let the migration reach the real table from a test.
+    assert "dcp_setback_controls " not in body.replace("dcp_setback_controls_", "") and "UPDATE t_sb" in body
+    # A row that is served and unproven BEFORE the migration runs (id 0).
+    cur.execute("INSERT INTO t_sb (id, lga, control_type, applicability, is_current, source_text, "
+                "pdf_page, needs_review) VALUES (0, 'x', 'front_setback', 'all', true, 'q', 3, false)")
+    cur.execute(body)
     try:
         yield cur
     finally:
@@ -158,3 +163,17 @@ def test_restating_an_old_proof_with_a_new_page_does_not_count(temp_table):
     _put(temp_table, 10, "verbatim")
     temp_table.execute("UPDATE t_sb SET pdf_page = 4, quote_status = 'verbatim' WHERE id = 10")
     assert _held(temp_table, 10)[:2] == (True, None)
+
+
+@pytest.mark.database
+def test_a_row_served_before_the_migration_is_held_by_it(temp_table):
+    held, _, why = _held(temp_table, 0)
+    assert held is True and "unchecked" in why
+
+
+@pytest.mark.database
+def test_a_new_quote_cannot_carry_a_proof_in_the_same_statement(temp_table):
+    _put(temp_table, 11, "not_found", needs_review=True)
+    temp_table.execute("UPDATE t_sb SET source_text = 'a summary', quote_status = 'verbatim', "
+                       "needs_review = false WHERE id = 11")
+    assert _held(temp_table, 11)[:2] == (True, None)
