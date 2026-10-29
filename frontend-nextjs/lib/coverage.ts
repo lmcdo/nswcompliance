@@ -135,8 +135,8 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 22,   // 25 -> 21 on 29 Oct 2026 after 641 number rules whose quote is not the council's words were withheld; 22 after 20 proven Bayside rules returned (new 21 Oct edition)
-  dcpSetbackTripleCouncils: 11,   // 16 -> 10 on 29 Oct 2026 (same withholding), 11 after Bayside returned; only councils whose front, side AND rear quotes are proven count
+  dcpNumericCouncils: 24,   // 25 -> 21 on 29 Oct 2026 after 641 number rules whose quote is not the council's words were withheld; 24 after 85 proven rules returned the same day
+  dcpSetbackTripleCouncils: 13,   // 16 -> 10 on 29 Oct 2026 (same withholding), 13 after 85 proven rules returned; only councils whose front, side AND rear quotes are proven count
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -157,8 +157,8 @@ export const COVERAGE = {
 export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
-  dcpNumericCouncils: '22',
-  dcpSetbackTripleCouncils: '11',
+  dcpNumericCouncils: '24',
+  dcpSetbackTripleCouncils: '13',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',

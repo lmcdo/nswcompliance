@@ -25,6 +25,7 @@ def _entry(**kw):
 
 
 def _run(monkeypatch, *entries, pages=PAGES):
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
     monkeypatch.setattr(occ, "served_entries", lambda: ([("woollahra", e, {}) for e in entries], ""))
     monkeypatch.setattr(W, "_registry_pages", lambda: (lambda lga, ck: pages))
     return W.check()
@@ -70,6 +71,7 @@ def test_checking_nothing_is_unknown_not_pass(monkeypatch):
 def test_a_pdf_error_mid_run_is_unknown_not_a_crash(monkeypatch):
     def boom(lga, ck):
         raise OSError("R2 reset")
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
     monkeypatch.setattr(occ, "served_entries", lambda: ([("woollahra", _entry(), {})], ""))
     monkeypatch.setattr(W, "_registry_pages", lambda: boom)
     assert W.check()[0] == occ.UNKNOWN
@@ -82,6 +84,7 @@ def test_logging_elsewhere_is_left_on(monkeypatch):
 
 
 def test_a_serve_path_failure_is_unknown_not_pass(monkeypatch):
+    monkeypatch.setenv("R2_ACCESS_KEY_ID", "test")
     monkeypatch.setattr(occ, "served_entries", lambda: (None, "serve path failed (boom)"))
     assert W.check()[0] == occ.UNKNOWN
 
@@ -122,3 +125,16 @@ def test_two_active_pdfs_for_one_chapter_prove_nothing(monkeypatch):
     monkeypatch.setattr(W.Q, "_page_texts", lambda *a: PAGES)
     monkeypatch.setenv("DATABASE_URL", "x")
     assert W._registry_pages()("woollahra", "b3") is None
+
+
+def test_without_the_pdf_store_it_checks_the_stored_verdicts_and_says_so(monkeypatch):
+    seen = {}
+
+    def fake_sql(label, sql, expect=0):
+        seen["sql"] = sql
+        return occ.PASS, label
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.setattr(occ, "sql_count", fake_sql)
+    status, msg = W.check()
+    assert status == occ.PASS and "not re-read live" in msg
+    assert occ.SERVED in seen["sql"] and "quote_status IS DISTINCT FROM 'verbatim'" in seen["sql"]
