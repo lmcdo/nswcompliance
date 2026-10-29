@@ -4,6 +4,8 @@ prior-art-checked: new tests for scripts/oc8_quote_words.py; tests/test_outreach
 covers OC-8's citation-presence part, which a planted fake quote passes.
 """
 import sys
+
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,3 +71,18 @@ def test_oc8_runs_the_word_check():
     names = [getattr(f, "__name__", "") for f in occ.CHECKS["OC-8"]] if hasattr(occ, "CHECKS") else []
     src = (ROOT / "scripts" / "outreach_claim_checks.py").read_text(encoding="utf-8")
     assert "oc8_quote_words" in src.split('"OC-8": [', 1)[1].split("],", 1)[0] or "oc8_quote_words" in names
+
+
+@pytest.mark.database
+def test_the_live_check_reaches_the_served_rules_and_their_pdfs():
+    """Read-only: the real serve path, registry and R2. A verdict, not UNKNOWN, over a non-zero count."""
+    import os
+    import re
+
+    if os.environ.get("PYTEST_REAL_DB") != "1" or not os.environ.get("DATABASE_URL") \
+            or not os.environ.get("R2_ACCESS_KEY_ID"):
+        pytest.skip("needs PYTEST_REAL_DB=1, DATABASE_URL and R2_* (read-only)")
+    status, msg = W.check()
+    assert status in (occ.PASS, occ.FAIL), msg
+    m = re.search(r": (\d+) of (\d+)", msg)
+    assert m and int(m.group(2)) > 0, msg
