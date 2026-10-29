@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "justification": "Changes the flood classification text shown on the property page: every flood level the lot is mapped in, most frequent first, instead of the first value in text order.",
+  "commit_hash": "68d02fa8",
+  "files": [
+    "frontend-nextjs/lib/flood/flood-levels.ts",
+    "frontend-nextjs/app/api/property/route.ts",
+    "frontend-nextjs/__tests__/lib/flood-levels.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/flood-levels.test.ts",
+    "expected": "5 passed",
+    "fails_when": "0.2% AEP is listed before 1% AEP, or a level the map gives is dropped",
+    "observed_red": "2026-10-29: route.ts used dcpFloodRows[0].value; the SQL sorts values as text, so '0.2%AEP' sorted before '1%AEP' (spatial_overlays flood values: 1%AEP, PMF, 20.0%AEP, 0.2%AEP, 0.5%AEP, 1.0%AEP, 5.0%AEP, 2.0%AEP)."
+  },
+  "pre_impl": {
+    "existing_data": "spatial_overlays layer flood holds AEP and PMF values; a lot can intersect several.",
+    "assumption_mismatch": "The route assumed rows[0] was the meaningful value; it is only the first by text.",
+    "new_vs_existing": "One helper used at the one place the classification is set; same field and type."
+  },
+  "functions": [
+    {
+      "name": "floodLevels",
+      "file_line": "frontend-nextjs/lib/flood/flood-levels.ts",
+      "input": "the flood overlay values for the address point and its lot",
+      "output": "distinct levels joined, AEP by frequency descending, then PMF, then others",
+      "if_none": "no values gives undefined and the badge shows Yes as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "spatial_overlays.value for layer_type flood",
+      "read_at": "frontend-nextjs/app/api/property/route.ts dcpFloodRows",
+      "if_missing": "an empty or null value is skipped"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A lot is in both the 1% and 0.2% AEP areas.",
+      "what_happens": "The badge must not show only the milder level.",
+      "mitigated": true,
+      "how": "Both are listed, 1% AEP first; test added.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-levels.test.ts"
+    },
+    {
+      "scenario": "A council stores the same level two ways (1%AEP, 1.0%AEP).",
+      "what_happens": "The badge would list one level twice.",
+      "mitigated": true,
+      "how": "Numeric key folds them; test added.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-levels.test.ts"
+    },
+    {
+      "scenario": "A flood value that is not an AEP or PMF.",
+      "what_happens": "It could be dropped or misordered.",
+      "mitigated": true,
+      "how": "Kept, after the known levels; test added.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/flood-levels.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
