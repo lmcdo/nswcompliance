@@ -58,8 +58,27 @@ def test_an_unreadable_pdf_goes_red_not_green(monkeypatch):
 
 
 def test_a_note_with_no_number_is_not_counted(monkeypatch):
-    status, msg = _run(monkeypatch, _entry(value_min=None, source_text="No maximum specified"))
-    assert status == occ.PASS and "0 of 0" in msg
+    status, msg = _run(monkeypatch, _entry(), _entry(value_min=None, source_text="No maximum specified"))
+    assert status == occ.PASS and "0 of 1" in msg
+
+
+def test_checking_nothing_is_unknown_not_pass(monkeypatch):
+    status, msg = _run(monkeypatch)
+    assert status == occ.UNKNOWN and "nothing was checked" in msg
+
+
+def test_a_pdf_error_mid_run_is_unknown_not_a_crash(monkeypatch):
+    def boom(lga, ck):
+        raise OSError("R2 reset")
+    monkeypatch.setattr(occ, "served_entries", lambda: ([("woollahra", _entry(), {})], ""))
+    monkeypatch.setattr(W, "_registry_pages", lambda: boom)
+    assert W.check()[0] == occ.UNKNOWN
+
+
+def test_logging_elsewhere_is_left_on(monkeypatch):
+    import logging
+    _run(monkeypatch, _entry())
+    assert logging.root.manager.disable == 0 and logging.getLogger("pypdf").level != logging.CRITICAL + 1
 
 
 def test_a_serve_path_failure_is_unknown_not_pass(monkeypatch):

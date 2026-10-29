@@ -75,12 +75,17 @@ def check():
     entries, why = occ.served_entries()
     if entries is None:
         return occ.UNKNOWN, f"served words: {why}"
-    logging.disable(logging.CRITICAL)  # pypdf warns on every odd font
+    pdf_log = logging.getLogger("pypdf")
+    level = pdf_log.level
+    pdf_log.setLevel(logging.CRITICAL + 1)  # pypdf warns on every odd font; nothing else is silenced
     try:
-        pages_for = _registry_pages()
+        numbers, bad = mismatches(entries, _registry_pages())
     except Exception as exc:  # noqa: BLE001 - a source that cannot be read proves nothing
         return occ.UNKNOWN, f"served words: chapter PDFs could not be read ({exc})"
-    numbers, bad = mismatches(entries, pages_for)
+    finally:
+        pdf_log.setLevel(level)
+    if numbers == 0:
+        return occ.UNKNOWN, "served words: the serve path returned no numbers, so nothing was checked"
     return ((occ.PASS if not bad else occ.FAIL),
             f"served numbers whose sentence is not word for word on its cited PDF page: "
             f"{len(bad)} of {numbers} {bad[:4]}")
