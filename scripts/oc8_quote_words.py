@@ -81,7 +81,7 @@ def check():
         # (it opened the PDFs); migration 120 already stops an unproven row being served. Said so in the message.
         return occ.sql_count("served numbers whose stored quote verdict is not verbatim (PDF store not reachable "
                              "here, so the stored verdicts were checked, not re-read live)",
-                             f"SELECT count(*) FROM dcp_setback_controls WHERE {occ.SERVED} "
+                             f"SELECT count(*) FROM dcp_setback_controls WHERE is_current AND {occ.SERVED} "
                              "AND quote_status IS DISTINCT FROM 'verbatim'")
     entries, why = occ.served_entries()
     if entries is None:
