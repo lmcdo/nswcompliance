@@ -1342,6 +1342,7 @@ def _ingest_epi_statewide(study: dict, shp_paths: list[Path], conn, dry_run: boo
         if not rows_to_insert:
             print(f"  [skip] no valid rows")
             continue
+        rows_to_insert = explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
 
         print(f"  Prepared {len(rows_to_insert)} features")
 
@@ -1457,6 +1458,7 @@ def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_
         if not rows_to_insert:
             print(f"  [skip] no valid rows")
             continue
+        rows_to_insert = explode_rows(rows_to_insert, oid_index=6, wkt_index=7)  # valid pieces, stable keys
 
         print(f"  Prepared {len(rows_to_insert)} features")
 
