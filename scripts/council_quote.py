@@ -56,7 +56,8 @@ DOUBLED_MIN_PAIRS = 50   # a short or table-heavy chapter with one repeated sent
 DOUBLED_SHARE = 0.15   # a chapter where this share of lines repeat the line before is a doubled text layer
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
 LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
-OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
+OVERSIZED = 4500        # a stored quote this long is several controls: flag for splitting. 2500 hid 43 rows
+# printed word for word or recovered, all under 4,100 chars (2026-10-29).
 PIECE_PAGES = 1         # a multi-line rule's lines (lead-in, item) lie within this many pages of the first
 KNOWN = (126292, 87150, 95878, 105200, 130236, 150954)
 
