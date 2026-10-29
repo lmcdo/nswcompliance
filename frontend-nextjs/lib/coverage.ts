@@ -135,8 +135,8 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 21,   // 2026-10-29: 25 -> 21 after 641 number rules whose quote is not the council's words were withheld (job 1, step 1.2)
-  dcpSetbackTripleCouncils: 10,   // 2026-10-29: 16 -> 10, same withholding; only councils whose front, side AND rear quotes are proven count
+  dcpNumericCouncils: 21,   // 25 -> 21 on 29 Oct 2026, after 641 number rules whose quote is not the council's words were withheld (job 1, step 1.2)
+  dcpSetbackTripleCouncils: 10,   // 16 -> 10 on 29 Oct 2026, same withholding; only councils whose front, side AND rear quotes are proven count
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
