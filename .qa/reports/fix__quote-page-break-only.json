@@ -1,0 +1,66 @@
+{
+  "tier": "standard",
+  "justification": "Changes which quotes count as proven; a dry-run tool, writes only with --apply and a backup. Not critical: the DB trigger still holds any unproven row.",
+  "commit_hash": "3dfc9386",
+  "files": [
+    "scripts/dcp_quote_status.py",
+    "tests/test_dcp_quote_status.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls.quote_status column, read and stamped by this checker",
+    "assumption_mismatch": "A quote wholly on the next page was marked verbatim; now wrong_page (24 rows in dry run)",
+    "new_vs_existing": "Existing rows only when the checker is re-run with --apply"
+  },
+  "functions": [
+    {
+      "name": "_spans",
+      "file_line": "scripts/dcp_quote_status.py:55",
+      "input": "normalised quote + two page texts",
+      "output": "True only if the match starts on page a and ends on page b",
+      "if_none": "callers pass strings only; empty quote returns no_source before this"
+    },
+    {
+      "name": "classify",
+      "file_line": "scripts/dcp_quote_status.py:66",
+      "input": "quote text, list of chapter page texts, cited pdf_page number",
+      "output": "one of verbatim, wrong_page, not_found, no_source",
+      "if_none": "returns no_source so the row stays held"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Quote wholly on the next page marked verbatim",
+      "what_happens": "a rule shown with the wrong page cited",
+      "mitigated": true,
+      "how": "scripts/dcp_quote_status.py _spans requires the match to cross the break",
+      "repro": "pytest tests/test_dcp_quote_status.py -k next_page"
+    },
+    {
+      "scenario": "Quote sitting entirely on the earlier page while pdf_page points one page later",
+      "what_happens": "the reader is sent one page past where the council text actually is",
+      "mitigated": true,
+      "how": "same _spans check for the i-1 pair",
+      "repro": "pytest tests/test_dcp_quote_status.py -k previous_page"
+    },
+    {
+      "scenario": "Genuine quote split over the break rejected",
+      "what_happens": "a correct council rule would be hidden from the page",
+      "mitigated": true,
+      "how": "_spans accepts a match starting in a and ending in b",
+      "repro": "pytest tests/test_dcp_quote_status.py -k split_over"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_quote_status.py -q",
+    "fails_when": "classify still returns verbatim for a quote wholly on pdf_page+1 or pdf_page-1",
+    "observed_red": "Before the fix, test_quote_wholly_on_the_next_page_is_wrong_page returned verbatim (red); dry run on live data flagged 24 rows"
+  }
+}
