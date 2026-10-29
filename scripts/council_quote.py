@@ -51,6 +51,9 @@ SPAN_MIN, SPAN_MAX = 0.5, 2.0   # copied span length vs stored quote length
 MIN_OVERLAP = 0.6       # share of the stored quote's words the copied text must hold
 LABEL_LINES = 40        # a label-bounded copy stops after this many lines...
 LABEL_PAGES = 1         # ...or this many page breaks
+DOUBLED_MIN_CHARS = 20
+DOUBLED_MIN_PAIRS = 50   # a short or table-heavy chapter with one repeated sentence is not a doubled layer
+DOUBLED_SHARE = 0.15   # a chapter where this share of lines repeat the line before is a doubled text layer
 REPEATED = 5           # a line printed on this many pages is a running header/footer at a copy's edge
 LABEL_WORDS = 4         # a drawing's label is a short line: "Rear boundary", "3 / 8m", ">400m²"
 OVERSIZED = 2500        # a stored quote this long is several controls: flag for splitting
@@ -188,17 +191,37 @@ def load_chapter(r2_path: str):
     return readings, cased_text(str(local))
 
 
+def doubled_lines(lines) -> set[int]:
+    """Indexes of lines that repeat the line just before them, when the whole chapter is printed that way.
+    Measured 2026-10-29 over every chapter with an unproven shown rule (lines of 20+ characters): the
+    doubled chapter 0.33, the next highest 0.04. Counting short lines too, a Wollongong plant table scored 0.23.
+    Campbelltown's text layer holds every line twice ("a)	The location of" then "The location of"), so
+    no rule could be matched in one piece (2026-10-29: 4 of 5 sampled Campbelltown refusals). A chapter
+    with only the odd repeat keeps it: there it may be the council's own wording."""
+    out, long_lines, long_doubled = set(), 0, 0
+    for i in range(1, len(lines)):
+        a, b = norm(lines[i - 1].text), norm(lines[i].text)
+        # Only sentence-length lines decide it: a table's short cells ("Y", "Y") repeat for real.
+        long_lines += len(b) >= DOUBLED_MIN_CHARS
+        if b and lines[i].page == lines[i - 1].page and a.endswith(b):
+            out.add(i)
+            long_doubled += len(b) >= DOUBLED_MIN_CHARS
+    doubled = long_doubled >= DOUBLED_MIN_PAIRS and long_doubled >= DOUBLED_SHARE * long_lines
+    return out if doubled else set()
+
+
 class Stream:
     """One reading as a normalized character stream; each character knows its line and offset."""
 
     def __init__(self, ch, cased: dict, skip_labels: bool = False):
-        self.lines = ch.lines
+        doubled = doubled_lines(ch.lines)
+        self.lines = [ln for i, ln in enumerate(ch.lines) if i not in doubled]
         self.text = [cased.get((ln.page, ln.y, ln.x, ln.text), ln.text).translate(LIGATURES)
-                     for ln in ch.lines]
-        self.cased_share = sum(1 for ln in ch.lines if (ln.page, ln.y, ln.x, ln.text) in cased) / max(1, len(ch.lines))
+                     for ln in self.lines]
+        self.cased_share = sum(1 for ln in self.lines if (ln.page, ln.y, ln.x, ln.text) in cased) / max(1, len(self.lines))
         # Lines whose printed casing was not re-read. A picture label named by OCR ("c3") has no
         # text layer and is short; anything longer must not be passed off as the council's text.
-        self.uncased = {i for i, ln in enumerate(ch.lines)
+        self.uncased = {i for i, ln in enumerate(self.lines)
                         if (ln.page, ln.y, ln.x, ln.text) not in cased and len(norm(ln.text)) > 4}
         buf, self.at = [], []
         skip = list_label_lines(self.text) if skip_labels else set()
@@ -216,7 +239,7 @@ class Stream:
         # A running header/footer/banner: the same line at the same spot on REPEATED+ pages.
         # Position matters: Leichhardt repeats real control wording per site, at varying heights.
         spot = collections.defaultdict(set)
-        for ln in ch.lines:
+        for ln in self.lines:
             spot[(ln.text, round(ln.y / 5), round(ln.x / 5))].add(ln.page)
         self.repeated = {k[0] for k, ps in spot.items()
                          if len(ps) >= REPEATED and not label_kind(k[0])}   # "(a)" sits at one spot too
@@ -228,7 +251,7 @@ class Stream:
             if key not in kept:
                 self.margin_nums[key[0]].update(_NUM.findall(key[3]))
                 self.furniture_words[key[0]].update(_WORD.findall(key[3].translate(LIGATURES)))
-        for ln in ch.lines:
+        for ln in self.lines:
             if ln.text in self.repeated:
                 self.furniture_words[ln.page].update(_WORD.findall(ln.text.translate(LIGATURES)))
 

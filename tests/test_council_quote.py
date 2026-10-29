@@ -528,3 +528,57 @@ def test_a_relaxed_item_from_a_later_list_is_not_joined_to_the_lead_in():
                      "i. retain the existing ground levels", item]})
     out = cq.judge(row(f"{lead}\n{item}"), [st])
     assert out["reason"] != "pieces"
+
+
+_REST = [f"Section {n} of this chapter sets out its own controls." for n in range(60)]
+
+
+def _doubled(texts: list[str]) -> list[str]:
+    """Campbelltown's text layer: each printed line twice, the first copy still carrying its label."""
+    out = []
+    for t in texts:
+        out += [t, t.split("\t")[-1]] if "\t" in t else [t, t]
+    return out
+
+
+def test_a_text_layer_holding_every_line_twice_is_read_once():
+    printed = ["d)\tAll communication dishes, antennae and the",
+               "like shall be located in a manner which",
+               "minimises any visual impact on neighbouring",
+               "properties and/or the public domain."]
+    out = cq.judge(row("All communication dishes, antennae and the like shall be located in a manner which "
+                       "minimises any visual impact on neighbouring properties and/or the public domain.",
+                       page=64), [stream({64: _doubled(printed), 65: _doubled(_REST)})])
+    assert out["status"] == "exact"
+    assert out["quote"].count("minimises any visual impact") == 1
+
+
+def test_a_stored_rule_that_repeats_the_doubled_text_stays_hidden():
+    printed = ["Where a battleaxe allotment is created, no right",
+               "of carriage way is proposed over the other allotments",
+               "unless Council is satisfied it is necessary."]
+    out = cq.judge(row("Where a battleaxe allotment is created, no right of carriage way is proposed over the "
+                       "other allotments proposed over the other allotments", page=3),
+                   [stream({3: _doubled(printed), 4: _doubled(_REST)})])
+    assert out["status"] == "unconfirmed"
+
+
+def test_a_table_with_repeated_short_cells_is_not_read_as_doubled():
+    lines = [cp.Line(1, 100.0 + 12 * n, 72.0, t) for n, t in
+             enumerate([f"plant {n} acer palmatum japanese maple deciduous tree" if k == 2 else "y"
+                        for n in range(100) for k in range(3)])]
+    assert cq.doubled_lines(lines) == set()
+
+
+def test_one_repeated_sentence_in_a_normal_chapter_is_kept():
+    texts = [f"control {n} applies to every lot in the precinct area" for n in range(20)]
+    texts.insert(5, texts[4])
+    lines = [cp.Line(1, 100.0 + 12 * n, 72.0, t) for n, t in enumerate(texts)]
+    assert cq.doubled_lines(lines) == set()
+
+
+def test_a_table_chapter_with_one_repeated_sentence_is_not_read_as_doubled():
+    texts = ["the following plants are suitable for this zone", "the following plants are suitable for this zone"]
+    texts += ["y", "y", "shrub", "shrub"] * 10
+    lines = [cp.Line(1, 100.0 + 12 * n, 72.0, t) for n, t in enumerate(texts)]
+    assert cq.doubled_lines(lines) == set()

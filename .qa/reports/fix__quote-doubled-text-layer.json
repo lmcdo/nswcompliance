@@ -1,0 +1,73 @@
+{
+  "tier": "standard",
+  "justification": "Changes which council rows the quote check can prove, and the quote text shown, for chapters whose PDF text layer holds every line twice. Only Campbelltown Part 3 qualifies today.",
+  "commit_hash": "db9d09cc",
+  "files": [
+    "scripts/council_quote.py",
+    "tests/test_council_quote.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_council_quote.py -q -o addopts=",
+    "expected": "all pass",
+    "fails_when": "doubled lines are not dropped (the antenna rule is refused), or short repeated table cells mark a chapter as doubled",
+    "observed_red": "2026-10-29: DOUBLED_SHARE set to 9 -> test_a_text_layer_holding_every_line_twice_is_read_once FAILED; DOUBLED_MIN_CHARS set to 0 -> test_a_table_with_repeated_short_cells_is_not_read_as_doubled FAILED. Restored, 70 pass. Then DOUBLED_MIN_PAIRS set to 0 -> test_a_table_chapter_with_one_repeated_sentence_is_not_read_as_doubled FAILED."
+  },
+  "pre_impl": {
+    "existing_data": "2026-10-29 read-only run over every chapter with an unproven shown rule: share of 20+ character lines repeating the line before = 0.33 for campbelltown-dcp-part3-low-medium.pdf, next highest 0.04. In that chapter 43 hidden rules become 29 exact + 3 recovered; 1 recovered rule (253636, whose stored text itself repeats a phrase) becomes unconfirmed; 153 of 461 shown quotes currently print lines twice and are re-copied once.",
+    "assumption_mismatch": "The checker assumed each printed line appears once in the text layer.",
+    "new_vs_existing": "One filter on the lines a Stream reads; no new status, table or column."
+  },
+  "functions": [
+    {
+      "name": "doubled_lines",
+      "file_line": "scripts/council_quote.py",
+      "input": "the lines of one chapter reading, in reading order",
+      "output": "indexes of lines that repeat the line before on the same page, only when 50+ and 15%+ of 20+ character lines do; else empty set",
+      "if_none": "an empty chapter has no lines, returns an empty set, nothing dropped"
+    }
+  ],
+  "values": [
+    {
+      "value": "ch.lines",
+      "read_at": "scripts/council_quote.py Stream.__init__",
+      "if_missing": "empty list: no doubled lines, stream is empty as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A plant table where short cells ('Y', 'Y', 'Shrub') repeat on consecutive lines.",
+      "what_happens": "Real table cells would be dropped and table quotes broken (Wollongong E6 scored 0.23 when short lines counted).",
+      "mitigated": true,
+      "how": "Only lines of 20+ characters decide the share; test covers it.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k repeated_short_cells"
+    },
+    {
+      "scenario": "A normal chapter that prints one sentence twice in a row on purpose.",
+      "what_happens": "The council's real wording would be shortened.",
+      "mitigated": true,
+      "how": "Lines are dropped only when the whole chapter is doubled; test covers a single repeat.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k one_repeated_sentence"
+    },
+    {
+      "scenario": "A stored rule that copied the doubled text ('proposed over the other allotments' twice).",
+      "what_happens": "It was proven before by matching the doubled layer; it would show garbled text.",
+      "mitigated": true,
+      "how": "With the layer read once, the repeat is not on the page, so it stays hidden; test covers it.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k repeats_the_doubled_text"
+    },
+    {
+      "scenario": "A short table-heavy chapter with one long sentence printed twice (cross-review 2026-10-29).",
+      "what_happens": "The 15% share would be met by one pair and every repeated cell dropped.",
+      "mitigated": true,
+      "how": "At least 50 long doubled pairs are also required; test covers it.",
+      "repro": "python -m pytest tests/test_council_quote.py -q -o addopts= -k one_repeated_sentence_is_not"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "Yes: re-check Campbelltown Part 3 rows with council_quote.py --apply after a backup, so stored quotes and statuses match.",
+    "secrets": "No.",
+    "other_repo": "No.",
+    "manual_verify": "No."
+  }
+}
