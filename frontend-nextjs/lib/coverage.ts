@@ -136,7 +136,7 @@ export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
   dcpNumericCouncils: 25,
-  dcpSetbackTripleCouncils: 17,   // 2026-10-28: penrith back -- 16 rows re-checked against the 1 Oct edition
+  dcpSetbackTripleCouncils: 16,   // 2026-10-29: live 16 again after penrith's return; the council that lost a setback after #1535 is not traced (no monitor change, table keeps no history)
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
   regulatoryDefinitions: 474,
@@ -158,7 +158,7 @@ export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
   dcpNumericCouncils: '25',
-  dcpSetbackTripleCouncils: '17',
+  dcpSetbackTripleCouncils: '16',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
   regulatoryDefinitions: '470+',
