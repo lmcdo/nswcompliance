@@ -1,0 +1,59 @@
+{
+  "tier": "standard",
+  "justification": "Changes how one checker reads units; no served data changes. Not critical: it only decides whether a stored value is explained by its own quote.",
+  "commit_hash": "b56fb602",
+  "files": [
+    "services/extracted_data_integrity.py",
+    "tests/test_control_source_values.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls.source_text and unit, read only by this checker",
+    "assumption_mismatch": "A PDF prints m² as 'm 2'; the checker read it as metres and flagged a correct row",
+    "new_vs_existing": "Applies to every row the next time the checker runs; it writes nothing"
+  },
+  "functions": [
+    {
+      "name": "_family_conflict",
+      "file_line": "services/extracted_data_integrity.py:440",
+      "input": "quote text, match end offset, stored unit string",
+      "output": "True when the text labels the number as a different kind of unit",
+      "if_none": "returns False so an unknown unit is never rejected"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Quote '24m 2 of private open space' read as a 24 metre length",
+      "what_happens": "a correct council area rule flagged and the nightly check goes red",
+      "mitigated": true,
+      "how": "_TRAILING_UNIT_RE accepts m\\s2 as area before bare m",
+      "repro": "pytest -k a_pdf_spaced_m_2"
+    },
+    {
+      "scenario": "Setback text '3m 2 storeys and above' wrongly treated as square metres",
+      "what_happens": "a true three metre setback would look unexplained by its own quote",
+      "mitigated": true,
+      "how": "negative lookahead excludes storeys, bed, car, spaces, dwellings, units, levels after the 2",
+      "repro": "pytest -k storeys"
+    },
+    {
+      "scenario": "Area text 'm 2' accepted as evidence for a value stored in metres",
+      "what_happens": "a wrong-unit row would pass the check silently and be served",
+      "mitigated": true,
+      "how": "'m 2' maps to the area family so it conflicts with a length unit",
+      "repro": "pytest -k does_not_explain_a_length"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_control_source_values.py -q -k 'm_2 or storeys'",
+    "fails_when": "'24m 2' is read as a length, or a spaced m 2 area explains a metre value",
+    "observed_red": "On origin/main's extracted_data_integrity.py two of the three new tests fail; live checker showed 1 blocking row, now 0"
+  }
+}

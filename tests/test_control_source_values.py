@@ -448,6 +448,29 @@ class TestExplainRow:
                            source_field="source_text",
                            unit_field="unit")["state"] == "unit_conversion"
 
+    def test_a_pdf_spaced_m_2_is_square_metres(self):
+        # Penrith id 1117: the PDF text layer prints 24m² as "24m 2".
+        row = {"value_min": 24, "value_max": None, "unit": "m2",
+               "source_text": "The secondary dwelling must have more than 24m 2 of usable private open space."}
+        assert explain_row(row, value_fields=["value_min", "value_max"],
+                           source_field="source_text",
+                           unit_field="unit")["state"] != UNEXPLAINED
+
+    def test_m_followed_by_storeys_stays_a_length(self):
+        # "3m 2 storeys" must not turn a 3 m setback into an area.
+        row = {"value_min": 3, "value_max": None, "unit": "m",
+               "source_text": "a rear setback of 3m 2 storeys and above"}
+        assert explain_row(row, value_fields=["value_min", "value_max"],
+                           source_field="source_text",
+                           unit_field="unit")["state"] != UNEXPLAINED
+
+    def test_a_spaced_m_2_area_does_not_explain_a_length(self):
+        row = {"value_min": 24, "value_max": None, "unit": "m",
+               "source_text": "more than 24m 2 of usable private open space"}
+        assert explain_row(row, value_fields=["value_min", "value_max"],
+                           source_field="source_text",
+                           unit_field="unit")["state"] == UNEXPLAINED
+
     def test_a_row_with_no_values_is_its_own_state(self):
         row = {"value_min": None, "value_max": None, "unit": None,
                "source_text": "the control is qualitative"}
