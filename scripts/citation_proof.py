@@ -29,6 +29,7 @@ tests/test_citation_proof.py. Deterministic string work only -- no model.
 """
 from __future__ import annotations
 
+import bisect
 import collections
 import re
 from dataclasses import dataclass, field
@@ -159,10 +160,17 @@ class ChapterLines:
     #: Woollahra prints its chapter code only there and numbers sections
     #: inside without it, so E6 > 1.1 has no other printed "e6".
     header_codes: set = field(default_factory=set)
+    #: code -> pages whose running header names it. "Names only the chapter" must be
+    #: the header over the RULE's page: Woollahra's "c1.3 building types" header
+    #: (pages 19-62) passed C1.3 for rules on pages 15-16, inside C1.2.3 (2026-10-30).
+    header_pages: dict = field(default_factory=dict)
+    #: code -> [(first page, last page)] from the PDF's own bookmarks (outline_ranges).
+    #: Empty when the PDF has none, or they are broken.
+    outline: dict = field(default_factory=dict)
 
     @classmethod
     def build(cls, raw: list[Line], page_width: float | None = None,
-              keep_order: bool = False) -> "ChapterLines":
+              keep_order: bool = False, outline: list | None = None) -> "ChapterLines":
         """keep_order: trust the PDF's own reading order (PyMuPDF block order)
         instead of sorting each page top-to-bottom. Sorting interleaves a
         two-column page line by line (Hornsby, Campbelltown), so a rule's
@@ -201,6 +209,11 @@ class ChapterLines:
                 kept.append(ln)
         out = cls(kept, toc, page_width=page_width)
         out.header_codes = {m.group(1) for t in furniture if (m := CODE_AT_START.match(t))}
+        hp = collections.defaultdict(set)
+        for x in raw:
+            if in_margin(x) and x.text in furniture and (m := CODE_AT_START.match(x.text)):
+                hp[m.group(1)].add(x.page)
+        out.header_pages = dict(hp)
         heads = collections.defaultdict(list)
         for i, ln in enumerate(kept):
             m = CODE_AT_START.match(ln.text)
@@ -222,10 +235,45 @@ class ChapterLines:
         for k in range(len(out.tokens) - 5):
             idx[tuple(out.tokens[k:k + 6])].append(k)
         out.index = idx
+        out.outline = outline_ranges(outline)
         return out
 
 
-def both_orders(raw: list[Line], page_width: float | None) -> tuple[ChapterLines, ChapterLines]:
+def outline_entries(toc: list | None) -> list[tuple[int, str, str]]:
+    """(page, lowercase code, title words) for each numbered bookmark; [] when the
+    numbered bookmarks all point to one page (City of Sydney's broken outline)."""
+    out = []
+    for _lvl, title, page in toc or []:
+        m = re.match(r"\s*([A-Za-z]{0,3}\d+(?:\.\d+)+)\.?\s+(.+)", title or "")
+        if m and page and page > 0:
+            out.append((page, m.group(1).lower(), " ".join(_WORD.findall(m.group(2).lower()))))
+    if len(out) > 3 and len({p for p, _c, _t in out}) == 1:
+        return []
+    return out
+
+
+def outline_ranges(toc: list | None) -> dict:
+    """code -> [(first page, last page)]. A section runs to the page where the next
+    bookmark that is not its own sub-section starts (that page included: the next
+    heading can sit low on it)."""
+    ent = outline_entries(toc)
+    rng = collections.defaultdict(list)
+    for k, (page, code, _t) in enumerate(ent):
+        end = next((p for p, c, _ in ent[k + 1:] if c != code and not c.startswith(code + ".")), None)
+        rng[code].append((page, end))
+    return dict(rng)
+
+
+def outline_allows(ch: ChapterLines, code: str, page: int) -> bool | None:
+    """Do the PDF's own bookmarks put `page` inside section `code`? None = they do not say."""
+    spans = ch.outline.get(code)
+    if not spans:
+        return None
+    return any(s <= page and (e is None or page <= e) for s, e in spans)
+
+
+def both_orders(raw: list[Line], page_width: float | None,
+                outline: list | None = None) -> tuple[ChapterLines, ChapterLines]:
     """The same lines read two ways: the PDF's own reading order, and top-to-bottom.
 
     Neither is right everywhere. Top-to-bottom interleaves a two-column page
@@ -233,8 +281,15 @@ def both_orders(raw: list[Line], page_width: float | None) -> tuple[ChapterLines
     column it heads (Canterbury-Bankstown). A citation printed above its rule
     in either reading is the council's; a wrong one has to fail in both.
     """
-    return (ChapterLines.build(raw, page_width=page_width, keep_order=True),
-            ChapterLines.build(raw, page_width=page_width, keep_order=False))
+    return (ChapterLines.build(raw, page_width=page_width, keep_order=True, outline=outline),
+            ChapterLines.build(raw, page_width=page_width, keep_order=False, outline=outline))
+
+
+def read_outline(pdf_path: str) -> list:
+    """The PDF's bookmarks as [level, title, page] (PyMuPDF get_toc)."""
+    import fitz
+    with fitz.open(pdf_path) as doc:
+        return doc.get_toc()
 
 
 # prior-art-checked: reuse not viable because dcp_extract_changed._extract_page_text
@@ -260,8 +315,35 @@ def read_raw_lines(pdf_path: str) -> tuple[list[Line], float | None]:
                         raw.append(Line(pno, ln["bbox"][1], ln["bbox"][0], t))
             pictures += [(pno, y, x, m, h) for y, x, m, h in ppl.page_label_pictures(doc, page, masks)]
             read += [(pno, y, x, t) for y, x, t in ppl.ocr_label_pictures(doc, page, ocr_cache, reader)]
+        outline = doc.get_toc()
     pictures = [p[:4] for p in ppl.label_sized(pictures)]
-    return ppl.merge_labels(raw, pictures, Line, read), width
+    return restore_outline_numbers(ppl.merge_labels(raw, pictures, Line, read), outline), width
+
+
+def restore_outline_numbers(lines: list[Line], outline: list) -> list[Line]:
+    """Put a heading's number back where the page prints only its title.
+
+    Parramatta prints "5.4.4" in a coloured box (no text, no OCR hit) beside the
+    text "solar light reflectivity (glare)". Without the number, the heading that
+    ENDS 5.4.3.5 is invisible and 5.4.3.5 kept proving rules from 5.4.4 and 5.4.7
+    (2026-10-30). The PDF's own bookmark names the number and the page; it is used
+    only when that page prints the bookmark's title as a line of its own, and never
+    for an outline whose numbered entries all point to one page (City of Sydney's
+    broken bookmarks)."""
+    entries = outline_entries(outline)
+    by_page = collections.defaultdict(list)
+    for k, ln in enumerate(lines):
+        by_page[ln.page].append(k)
+    out = list(lines)
+    for page, num, title in entries:
+        if len(title) < 4 or any(out[k].text.startswith(num) for k in by_page.get(page, ())):
+            continue
+        hits = [k for k in by_page.get(page, ())
+                if " ".join(_WORD.findall(out[k].text)) == title]
+        if len(hits) == 1:
+            k = hits[0]
+            out[k] = Line(out[k].page, out[k].y, out[k].x, f"{num} {out[k].text}")
+    return out
 
 
 def load_lines(pdf_path: str) -> ChapterLines:
@@ -273,7 +355,7 @@ def load_lines(pdf_path: str) -> ChapterLines:
 def load_readings(pdf_path: str) -> tuple[ChapterLines, ChapterLines]:
     """Both readings of a PDF, for prove_citation_any."""
     raw, width = read_raw_lines(pdf_path)
-    return both_orders(raw, width)
+    return both_orders(raw, width, read_outline(pdf_path))
 
 
 # -- proof -------------------------------------------------------------------------
@@ -459,7 +541,10 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         heads += [i for i in at if end < i < end + 12 and L[i].page == L[start].page
                   and L[i].y <= L[start].y + 2.0]
         if not heads:
-            if leaf in ch.header_codes:
+            # Not for the "section + numbered item" reading: "C1.3" read as chapter "c1"
+            # (in every header) + item "3" that nothing checked passed 21 Woollahra rules
+            # sitting in C1.2.3 (2026-10-30).
+            if not numbered and L[start].page in ch.header_pages.get(leaf, ()):
                 # "E2 C6": the chapter, named only in its running header. True,
                 # but C6 recurs in every section, so nobody can find the rule.
                 keep("imprecise:names only the chapter")
@@ -468,6 +553,24 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
             continue
         above = [i for i in heads if i <= end]
         h = max(above) if above else min(heads)   # below only for a side-column heading
+        # A heading printed INSIDE the rule's own span heads it only when the rule
+        # opened under that heading's own parent (City of Sydney rows open with the
+        # parent site's preamble, then "6.3.29.1"). If the rule opened under a
+        # different section, its stored wording ran on into the NEXT section and that
+        # section's heading proved it: Blacktown 4.3.3 from inside 4.3.2, Wollongong
+        # 4.2.1/3.7.1, Parramatta 9.3.5.2.2 (2026-10-30).
+        if start < h <= end:
+            opened = [i for i in range(start, max(-1, start - 400), -1)
+                      if L[i].page not in toc and _heading_like(L[i], ch.page_width)
+                      and (m := CODE_AT_START.match(L[i].text)) and "." in m.group(1)
+                      and _shape(m.group(1))[0] == _shape(leaf)[0]]
+            parent = CODE_AT_START.match(L[opened[0]].text).group(1) if opened else None
+            tl = ch.token_line            # ascending: tokens were added line by line
+            before = bisect.bisect_left(tl, h) - bisect.bisect_left(tl, start)
+            after = bisect.bisect_right(tl, end) - bisect.bisect_right(tl, h)
+            if parent and not leaf.startswith(parent + ".") and parent != leaf or (not parent and before > after):
+                keep("not_nearest:heading after most of the rule")
+                continue
         lo = min(h, start)
         # "C12" with no section is the rule's own LABEL, not a heading: what follows
         # it is the rule's sentence. A lettered section is followed by a title, on
@@ -484,7 +587,9 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
                 continue
         between = [L[i].text for i in range(lo + 1, end + 1)
                    if L[i].page not in toc and _heading_like(L[i], ch.page_width)
-                   and (m := CODE_AT_START.match(L[i].text)) and _ends_scope(m.group(1), leaf, item_family)]
+                   and (m := CODE_AT_START.match(L[i].text)) and _ends_scope(m.group(1), leaf, item_family)
+                   # a summary line whose own bookmark starts on another page is not that heading
+                   and outline_allows(ch, m.group(1), L[i].page) is not False]
         if between:
             keep("not_nearest:" + between[-1][:30])
             continue
@@ -497,8 +602,17 @@ def _prove_group(ch: ChapterLines, end: int, start: int, group, item: str | None
         # 2.25.3.4). Counted apart from wrong citations, never as proven.
         finer = [L[i].text for i in range(lo + 1, end + 1)
                  if L[i].page not in toc and _heading_like(L[i], ch.page_width)
-                 and (m := CODE_AT_START.match(L[i].text)) and m.group(1).startswith(leaf + ".")]
+                 and (m := CODE_AT_START.match(L[i].text)) and m.group(1).startswith(leaf + ".")
+                 and outline_allows(ch, m.group(1), L[i].page) is not False]
         hi = min(len(L), end + 3)
+        # "4.3.3" read as section 4.3 + item 3: a sub-heading 4.3.x printed between
+        # the 4.3 heading and the rule says which sub-section the rule is in, and it
+        # must be 4.3.3. Blacktown 4.3.2 and Campbelltown 2.1.7 rules passed as .3/.8.
+        if numbered and finer:
+            sub = CODE_AT_START.match(finer[-1]).group(1)
+            if sub != f"{leaf}.{numbered}" and not sub.startswith(f"{leaf}.{numbered}."):
+                keep("not_nearest:" + finer[-1][:30])
+                continue
         if numbered and not any(re.match(r"^\(?" + re.escape(numbered) + r"[.)]\s", L[i].text)
                                 for i in range(lo, hi)):
             keep("item_missing")
@@ -610,7 +724,7 @@ def _anchors(ch: ChapterLines, text: str, page_hint) -> list[tuple[int, int]]:
 
 
 def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
-                   page_hint: int | None = None) -> dict:
+                   page_hint: int | None = None, page_proven: bool = False) -> dict:
     """-> {"status": proven | imprecise | not_proven | unjudged | text_not_found, "detail"}.
 
     imprecise: every piece is the council's and above the rule, but a more
@@ -635,6 +749,14 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
     anchors = _anchors(ch, text, page_hint)
     if not anchors:
         return {"status": "text_not_found", "detail": "the rule's wording is not in its source"}
+    # The same wording printed in several places (Parramatta repeats "Provisions" per
+    # heritage area): judge the copy on the rule's own page when it has one. Any copy
+    # proving let 7.10.3.4 stand for a rule printed under 7.10.4.4 (2026-10-30).
+    # Only a page proven to hold the rule (page_check on_page/moved) narrows the search;
+    # an unchecked stored page is the AI reader's chunk start and only orders it.
+    if page_hint and page_proven:
+        here = [(e, s) for e, s in anchors if ch.lines[s].page <= page_hint <= ch.lines[e].page]
+        anchors = here or anchors
     item_code = render(item).lower() if item else None
     worst = coarse = None
     whole = {}
@@ -643,6 +765,14 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
     for end, start in anchors:
         verdicts = [_prove_group(ch, end, start, g, item_code, bare, whole[start])
                     for g in sections]
+        # The PDF's own bookmarks, when it has working ones, must agree: a "D5.6
+        # development controls" line inside D5.1.5's chapter guide is a summary entry,
+        # not the heading (Woollahra D5/D6, 2026-10-30).
+        page = ch.lines[start].page
+        verdicts = ["not_nearest:outside its bookmarked pages"
+                    if (v == "proven" or v.startswith("imprecise"))
+                    and outline_allows(ch, render(g).lower(), page) is False else v
+                    for g, v in zip(sections, verdicts)]
         if all(v == "proven" for v in verdicts):
             return {"status": "proven", "detail": None}
         if coarse is None and all(v == "proven" or v.startswith("imprecise") for v in verdicts):
@@ -660,10 +790,10 @@ def prove_citation(ref_number: str | None, text: str | None, ch: ChapterLines,
 _BEST = {"proven": 3, "imprecise": 2}
 
 
-def prove_citation_any(ref_number, text, readings, page_hint=None) -> dict:
+def prove_citation_any(ref_number, text, readings, page_hint=None, page_proven=False) -> dict:
     """Proven if proven under ANY reading order (see both_orders). Otherwise the
     first reading's verdict, so the report names a real reason."""
-    verdicts = [prove_citation(ref_number, text, ch, page_hint) for ch in readings]
+    verdicts = [prove_citation(ref_number, text, ch, page_hint, page_proven) for ch in readings]
     best = max(verdicts, key=lambda v: _BEST.get(v["status"], 0))
     if best["status"] in _BEST:
         return best
@@ -704,11 +834,11 @@ def unjudged_pieces(ref_number: str | None) -> list[str]:
     return left + subs
 
 
-def prove_label(ref_number, text, readings, page_hint=None) -> dict:
+def prove_label(ref_number, text, readings, page_hint=None, page_proven=False) -> dict:
     """prove_citation_any, with a verdict of 'partial' when the page proves some pieces
     of the label but the label also carries pieces nothing checked. 'partial' is not
     shown: a reader cannot tell the checked pieces from the unchecked ones."""
-    verdict = prove_citation_any(ref_number, text, readings, page_hint)
+    verdict = prove_citation_any(ref_number, text, readings, page_hint, page_proven)
     if verdict["status"] in _BEST:
         left = unjudged_pieces(ref_number)
         if left:
