@@ -21,7 +21,7 @@ export async function generateSitemaps() {
   return [
     { id: 0 },  // core — static pages + tools
     { id: 1 },  // granny-flat — LGA pages
-    { id: 2 },  // flood — LGA pages (empty while withdrawn: lib/hidden-products.ts)
+    { id: 2 },  // flood — LGA pages
     { id: 3 },  // solar — LGA pages (empty while withdrawn)
     { id: 4 },  // hazards — bushfire LGA pages (empty while withdrawn)
     { id: 5 },  // monitoring — threat-radar + pre-da-history LGA pages
