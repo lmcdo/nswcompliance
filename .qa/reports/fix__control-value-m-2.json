@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how one checker reads units; no served data changes. Not critical: it only decides whether a stored value is explained by its own quote.",
-  "commit_hash": "abd536a9",
+  "commit_hash": "b56fb602",
   "files": [
     "services/extracted_data_integrity.py",
     "tests/test_control_source_values.py"
