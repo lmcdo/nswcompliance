@@ -19,4 +19,4 @@ pandas>=3.0.5
 pyarrow>=25.0.1            # parquet read/write for the export + audit
 numpy>=2.5.3
 scikit-learn>=1.9.1        # TF-IDF + SVD (offline embedder) and NearestNeighbors
-sentence-transformers>=2.2   # default semantic embedder (BAAI/bge-small-en-v1.5)
+sentence-transformers>=6.1.0   # default semantic embedder (BAAI/bge-small-en-v1.5)
