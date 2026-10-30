@@ -59,12 +59,15 @@ function offenders(): string[] {
 
 describe('withdrawn products are not linked', () => {
   it('isHiddenPath matches each prefix and its sub-pages, nothing else', () => {
-    expect(isHiddenPath('/reports/flood')).toBe(true);
-    expect(isHiddenPath('/flood-risk/penrith')).toBe(true);
+    expect(isHiddenPath('/reports/bushfire')).toBe(true);
+    expect(isHiddenPath('/solar-potential/penrith')).toBe(true);
+    // Flood is back (2026-10-30): its routes are linkable again.
+    expect(isHiddenPath('/reports/flood')).toBe(false);
+    expect(isHiddenPath('/flood-risk/penrith')).toBe(false);
     expect(isHiddenPath('https://canibuildit.com.au/bushfire/ballina?x=1')).toBe(true);
     expect(isHiddenPath('/reports/granny-flat')).toBe(false);
     expect(isHiddenPath('/blog/is-my-house-in-a-flood-zone-nsw')).toBe(false);
-    expect(isHiddenPath('/reports/floodplain')).toBe(false);
+    expect(isHiddenPath('/reports/bushfire-zone')).toBe(false);
   });
 
   it('no page, component or lib file links to a withdrawn product', () => {

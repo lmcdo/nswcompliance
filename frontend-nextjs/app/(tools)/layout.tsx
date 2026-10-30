@@ -7,6 +7,7 @@ import { TOOLS_LAYOUT_FOOTER } from '@/lib/disclaimers';
 
 const TOOLS = [
   { label: 'Granny Flat Check', href: '/reports/granny-flat', emoji: '🏡' },
+  { label: 'Flood Check', href: '/reports/flood', emoji: '🌊' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history', emoji: '🛰' },
   { label: 'Threat Radar', href: '/reports/threat-radar', emoji: '📡' },
 ];
@@ -24,6 +25,7 @@ const TOP_LGAS = [
 
 const TOOL_PREFIXES: Record<string, string> = {
   '/granny-flat': '/granny-flat',
+  '/flood-risk': '/flood-risk',
   '/threat-radar': '/threat-radar',
 };
 
