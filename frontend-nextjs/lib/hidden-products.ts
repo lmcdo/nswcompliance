@@ -1,6 +1,6 @@
 /**
  * Products withdrawn from navigation, sitemaps and links until they are
- * checked (owner decision 2026-10-28): flood, bushfire, solar, and climate
+ * checked (owner decision 2026-10-28): bushfire, solar, and climate
  * risk (which runs flood and bushfire together).
  *
  * The pages still work for anyone who has a link; they are not linked from
@@ -16,9 +16,6 @@
  * matches are setuptools internals and a satellite manifest checker.
  */
 export const HIDDEN_ROUTE_PREFIXES = [
-  '/flood-risk',
-  '/reports/flood',
-  '/embed/flood',
   '/bushfire',
   '/reports/bushfire',
   '/solar-potential',

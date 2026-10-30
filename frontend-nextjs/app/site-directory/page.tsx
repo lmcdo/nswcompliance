@@ -38,6 +38,7 @@ const GROUPS: DirGroup[] = [
     items: [
       { href: '/reports', label: 'All reports', desc: 'Pick a report type to run for an address.' },
       { href: '/reports/granny-flat', label: 'Granny flat feasibility', desc: 'Secondary-dwelling potential and yield.', badge: `${GRANNY_FLAT_LGAS.length} councils` },
+      { href: '/reports/flood', label: 'Flood check', desc: "Whether a lot is on its council's flood planning map." },
       { href: '/reports/threat-radar', label: 'Development monitoring', desc: 'Track nearby development applications.', badge: `${THREAT_RADAR_LGAS.length} councils` },
       { href: '/reports/pre-da-history', label: 'Site history', desc: "A lot's past development-application history.", badge: `${PRE_DA_HISTORY_LGAS.length} councils` },
       { href: '/reports/conveyancing', label: 'Conveyancing disclosure', desc: 'Planning-disclosure report for a transaction.', badge: `${CONVEYANCING_LGAS.length} councils` },
