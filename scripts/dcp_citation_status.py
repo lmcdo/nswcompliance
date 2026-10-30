@@ -73,9 +73,10 @@ def _judge_chapter(args) -> dict[int, str]:
         readings = probe.chapter_lines(s3, os.environ["R2_BUCKET_NAME"], r2_path, Path(cache_dir))
     except Exception as e:  # noqa: BLE001 -- a missing PDF is a verdict, not a crash
         print(f"  no source for {r2_path}: {str(e)[:80]}", flush=True)
-        return {rid: "no_source" for rid, _ref, _text, _pages in rows}
-    return {rid: cp.prove_label(ref, text, readings, (pages or [None])[0])["status"]
-            for rid, ref, text, pages in rows}
+        return {rid: "no_source" for rid, _ref, _text, _pages, _pp in rows}
+    return {rid: (cp.prove_label(ref, text, readings, pp, True) if pp else
+                  cp.prove_label(ref, text, readings, (pages or [None])[0]))["status"]
+            for rid, ref, text, pages, pp in rows}
 
 
 def main() -> int:
@@ -97,8 +98,13 @@ def main() -> int:
         cur.execute("SET statement_timeout = '30000'")
         _total, rows = probe.fetch_served(conn, args.council)
         by_pdf = defaultdict(list)
+        # A page proven to hold the rule (page_check, dcp_page_repair) lets the proof judge
+        # the copy of repeated wording on that page only (citation_proof.prove_citation).
+        cur.execute("SELECT id, pdf_page FROM regulatory_provisions WHERE id = ANY(%s) "
+                    "AND is_current AND page_check IN ('on_page', 'moved')", ([r[0] for r in rows],))
+        proven_page = dict(cur.fetchall())
         for rid, _co, _chk, ref, r2_path, text, pages in rows:
-            by_pdf[r2_path].append((rid, ref, text, pages))
+            by_pdf[r2_path].append((rid, ref, text, pages, proven_page.get(rid)))
         Path(args.cache_dir).mkdir(parents=True, exist_ok=True)
         verdicts: dict[int, str] = {}
         jobs = [(p, rs, args.cache_dir) for p, rs in by_pdf.items()]
