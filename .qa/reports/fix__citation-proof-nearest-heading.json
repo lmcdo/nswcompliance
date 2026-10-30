@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "citation_proof.py decides whether a DCP section number is shown to users (frontend-nextjs/lib/citation-display.ts). Re-judging 368 numbers found wrong on the live PDFs on 2026-10-30 showed 57 of them had been shown as proven/imprecise. Six leaks closed; shown-wrong falls to 3 (two print identical words under two sections, one is a doubtful renumber the checker now withholds).",
- "commit_hash": "e59db524",
+ "commit_hash": "cdbab963",
  "files": [
   "scripts/citation_proof.py",
   "scripts/dcp_citation_status.py",
