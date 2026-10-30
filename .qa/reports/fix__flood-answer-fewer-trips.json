@@ -1,0 +1,76 @@
+{
+ "tier": "standard",
+ "justification": "Changes how the flood planning endpoint gets its database connection (pool + one retry) and drops a duplicate timeout statement. Answers are unchanged. Standard: live endpoint path.",
+ "commit_hash": "ee5682d5",
+ "files": [
+  "services/flood_truth.py",
+  "services/flood_planning.py",
+  "tests/test_flood_planning.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_flood_planning.py -q",
+  "fails_when": "Fails if a dropped pooled connection is not retried on a fresh one, if a good answer opens a second connection, or if the near-edge check sends its own timeout trip.",
+  "external_authority": "Real DB 2026-10-30 from this PC: six answers (Sydney, Ballina, Cessnock twice) on one reused connection, 0.06-0.52 s each, same values as before.",
+  "observed_red": "Live endpoint 2.4-3.8 s per answer with 0.05-0.4 s of DB work; every request opened a new connection."
+ },
+ "pre_impl": {
+  "existing_data": "No table or stored data changes; only how connections are opened.",
+  "assumption_mismatch": "Endpoint assumed a new connection per request is cheap; it is several Sydney round trips.",
+  "new_vs_existing": "psycopg2 ThreadedConnectionPool, already installed; no new source.",
+  "external_source_error": "A dead pooled connection gives 'could not be checked', then one retry on a fresh connection; never 'no'."
+ },
+ "functions": [
+  {
+   "name": "flood_planning",
+   "file_line": "services/flood_truth.py",
+   "what": "Endpoint: pooled connection, one retry on a fresh one if the answer could not be checked.",
+   "input": "latitude, longitude and optional lot outline",
+   "output": "the same flood planning answer fields as before",
+   "if_none": "no DATABASE_URL falls back to the old single connection",
+   "edge_cases": "dead pooled connection discarded and retried",
+   "failure_mode": "both attempts failing returns value None with could not be checked"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Lot point 6 m outside a partial council flood line",
+   "what_happens": "With the lot it is yes; point only it says near the map",
+   "mitigated": true,
+   "how": "lot_wkt passed by all callers; _nearest_yes_m on partial path",
+   "repro": "pytest tests/test_flood_planning.py -k partial"
+  },
+  {
+   "scenario": "Caller sends a neighbouring or stale lot outline",
+   "what_happens": "Outline ignored and only the point rule is applied",
+   "mitigated": true,
+   "how": "_trusted_lot ST_Covers check",
+   "repro": "pytest -k untrusted_lot"
+  },
+  {
+   "scenario": "Lot boundary in an unexpected coordinate system",
+   "what_happens": "Helper returns null and the point rule is used",
+   "mitigated": true,
+   "how": "wkid allow-list",
+   "repro": "jest lot-rings-to-wkt"
+  }
+ ],
+ "verified": [
+  "flood pytest 918/918",
+  "jest related 152/152 + 8 new",
+  "Live DB on the fixture lot: point not known (5.9 m), lot yes"
+ ],
+ "gaps": [
+  "Re-check the lead's address on production after deploy",
+  "Saved checks are not re-scored; old point-only rows stop being served at 2026-10-31"
+ ],
+ "post_merge": {
+  "action": "Re-run the flood check for the Heddon Greta lead address on production",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "POST /pipeline/flood-planning with lot_wkt for that lot returns value true"
+ },
+ "real_layer_exempt": {
+  "services/flood_truth.py": "Verified against the real database from this PC (six pooled answers, one connection); a CI real-DB test would need production credentials in CI."
+ }
+}

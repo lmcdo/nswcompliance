@@ -194,7 +194,7 @@ def test_the_endpoint_returns_the_producer_answer(monkeypatch):
     monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": None, "reason": "we do not hold this council's flood planning map",
         "council": "NEWCASTLE", "category": None, "nearest_m": None, "hits": [1]})
-    monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: MagicMock())
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out == {"value": None, "reason": "we do not hold this council's flood planning map",
                    "council": "NEWCASTLE", "category": None, "nearest_m": None, "whole_lot": None,
@@ -203,7 +203,7 @@ def test_the_endpoint_returns_the_producer_answer(monkeypatch):
 
 def test_the_endpoint_never_raises(monkeypatch):
     import services.flood_truth as ft
-    monkeypatch.setattr(ft, "_get_conn", lambda: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: (_ for _ in ()).throw(RuntimeError("down")))
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out["value"] is None
 
@@ -349,3 +349,35 @@ def test_the_hit_query_names_the_overlap_and_unions_the_pieces():
     fp.flood_planning_status(-28.86, 153.56, c, lot_wkt=LOT)
     sql = " ".join(c.cursor.return_value.sql)
     assert "AS lot_m2" in sql and "ST_UnaryUnion(ST_Collect" in sql
+
+
+def test_a_dropped_pooled_connection_is_retried_on_a_fresh_one(monkeypatch):
+    """A pooled connection the pooler closed while idle gives 'could not be checked';
+    the endpoint retries once on a fresh connection and discards the dead one."""
+    import services.flood_truth as ft
+    got, returned = [], []
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: got.append(fresh) or ("fresh" if fresh else "pooled"))
+    monkeypatch.setattr(ft, "_flood_conn_return", lambda conn, discard=False: returned.append((conn, discard)))
+    answers = {"pooled": {"value": None, "reason": "flood planning map could not be checked"},
+               "fresh": {"value": True, "reason": "on the council's flood planning map"}}
+    monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn, **kw: answers[conn])
+    out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
+    assert out["value"] is True and got == [False, True]
+    assert returned == [("pooled", True), ("fresh", False)]
+
+
+def test_a_good_pooled_answer_uses_one_connection_and_keeps_it(monkeypatch):
+    import services.flood_truth as ft
+    got, returned = [], []
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: got.append(fresh) or "pooled")
+    monkeypatch.setattr(ft, "_flood_conn_return", lambda conn, discard=False: returned.append((conn, discard)))
+    monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn, **kw: {"value": False, "reason": "x"})
+    assert ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))["value"] is False
+    assert got == [False] and returned == [("pooled", False)]
+
+
+def test_the_near_edge_check_adds_no_extra_timeout_trip():
+    c = conn_with([(150.0,)])
+    with c.cursor() as cur:
+        fp._nearest_yes_m(cur, -33.0, 151.0)
+    assert not any(q.startswith("SET LOCAL") for q in c.cursor.return_value.sql)

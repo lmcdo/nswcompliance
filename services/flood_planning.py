@@ -195,7 +195,8 @@ def _nearest_yes_m(cur, lat: float, lng: float, council: Optional[str] = None) -
     prior-art-checked: the existing near-edge query below, moved into a function
     so the partial-council path can use it too; no new source.
     """
-    cur.execute("SET LOCAL statement_timeout = '5000'")
+    # Runs inside _flood_planning_core's transaction, which already set the
+    # 5 s timeout -- a second SET LOCAL was one more network trip (2026-10-30).
     cur.execute(
         "SELECT min(ST_Distance(geom::geography, "
         "ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography)) FROM spatial_overlays "

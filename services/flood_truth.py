@@ -61,6 +61,7 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
 import logging
 import math
 import os
+import threading
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
@@ -469,6 +470,49 @@ def _get_conn():
         port=int(os.environ.get("DB_PORT", 5432)),
     )
 
+
+
+# The flood planning answer is 3-7 short queries; opening a new connection for
+# each request added several round trips to Sydney (2026-10-30: DB work
+# 0.05-0.4 s, live answer 2.4-3.8 s). A small pool keeps them open.
+_flood_pool = None
+_flood_pool_lock = threading.Lock()
+
+
+def _flood_conn(fresh: bool = False):
+    """A pooled connection (fresh=True: a new one). Falls back to _get_conn()."""
+    global _flood_pool
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        return _get_conn()
+    from psycopg2.pool import ThreadedConnectionPool
+    with _flood_pool_lock:
+        if _flood_pool is None:
+            _flood_pool = ThreadedConnectionPool(1, 8, dsn)
+    if fresh:
+        return psycopg2.connect(dsn)
+    return _flood_pool.getconn()
+
+
+def _flood_conn_return(conn, discard: bool = False) -> None:
+    """End the transaction and give the connection back (or close it)."""
+    if conn is None:
+        return
+    try:
+        if not discard:
+            conn.rollback()
+    except Exception:  # noqa: BLE001 -- a dead connection is discarded below
+        discard = True
+    try:
+        if _flood_pool is not None:
+            _flood_pool.putconn(conn, close=discard)  # raises for a fresh, unpooled one
+            return
+    except Exception:  # noqa: BLE001 -- not from the pool (a fresh one): close it
+        pass
+    try:
+        conn.close()
+    except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
+        pass
 
 # ---------------------------------------------------------------------------
 # EPI overlay
@@ -2155,19 +2199,22 @@ def flood_planning(req: FloodPlanningRequest) -> dict:
     Never raises -- a failure is value None with its reason.
     """
     from flood_planning import flood_planning_status
-    conn = None
-    try:
-        conn = _get_conn()
-        out = flood_planning_status(req.lat, req.lng, conn, lot_wkt=req.lot_wkt)
-    except Exception as e:  # noqa: BLE001 -- unknown, never "no"
-        logger.warning(f"/pipeline/flood-planning failed: {e}")
-        out = {"value": None, "reason": "flood planning map could not be checked"}
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:  # noqa: BLE001 -- a close failure must not lose the answer
-                pass
+    out = {"value": None, "reason": "flood planning map could not be checked"}
+    # A reused connection may have been dropped by the pooler while idle: one
+    # retry on a fresh connection, never a "no" from a dead one.
+    for fresh in (False, True):
+        conn, bad = None, False
+        try:
+            conn = _flood_conn(fresh)
+            out = flood_planning_status(req.lat, req.lng, conn, lot_wkt=req.lot_wkt)
+            bad = out.get("reason") == "flood planning map could not be checked"
+        except Exception as e:  # noqa: BLE001 -- unknown, never "no"
+            logger.warning(f"/pipeline/flood-planning failed: {e}")
+            bad = True
+        finally:
+            _flood_conn_return(conn, discard=bad)
+        if not bad:
+            break
     return {k: out.get(k) for k in ("value", "reason", "council", "category", "nearest_m", "whole_lot", "council_info_text")}
 
 
