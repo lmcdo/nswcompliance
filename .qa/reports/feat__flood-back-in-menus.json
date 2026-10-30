@@ -1,0 +1,79 @@
+{
+ "tier": "standard",
+ "justification": "Puts flood back in six navigation surfaces and lifts its noindex. Not Critical: no data or answer logic changes. Not Minor: user-facing menus and copy on every page.",
+ "commit_hash": "3320656e",
+ "files": [
+  "frontend-nextjs/__tests__/lib/hidden-products-not-linked.test.ts",
+  "frontend-nextjs/app/(tools)/layout.tsx",
+  "frontend-nextjs/app/reports/layout.tsx",
+  "frontend-nextjs/app/reports/page.tsx",
+  "frontend-nextjs/app/site-directory/page.tsx",
+  "frontend-nextjs/app/sitemap.ts",
+  "frontend-nextjs/components/marketing/SiteFooter.tsx",
+  "frontend-nextjs/lib/hidden-products.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/hidden-products-not-linked.test.ts",
+  "fails_when": "Fails if flood routes are still treated as hidden, or if bushfire, solar or climate links reappear anywhere.",
+  "external_authority": "Owner instruction 2026-10-30 (reply 'y'): bring flood back into the menus; the rest stays withdrawn.",
+  "observed_red": "Before the test edit, isHiddenPath('/reports/flood') expected true and failed once flood was unhidden."
+ },
+ "pre_impl": {
+  "existing_data": "lib/hidden-products.ts already lists withdrawn route prefixes; sitemap and middleware read it.",
+  "assumption_mismatch": "Old flood copy named satellite radar, which the flood answer does not use, so it was rewritten, not restored.",
+  "new_vs_existing": "No new files; six one-line link entries and one rewritten reports card.",
+  "external_source_error": "Not applicable: no external source is called."
+ },
+ "functions": [
+  {
+   "name": "isHiddenPath",
+   "file_line": "frontend-nextjs/lib/hidden-products.ts",
+   "what": "Matches a withdrawn route or its sub-pages; flood prefixes removed.",
+   "input": "a path or full URL string",
+   "output": "true when the path is still withdrawn",
+   "if_none": "A malformed URL returns false, not an error.",
+   "edge_cases": "/reports/flood now false; /reports/bushfire still true",
+   "failure_mode": "A leftover flood prefix would keep flood out of the sitemap and noindexed"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Flood stays noindexed after merge",
+   "what_happens": "Search engines keep ignoring flood pages",
+   "mitigated": true,
+   "how": "middleware and sitemap both read the same list, which no longer has flood",
+   "repro": "curl -I https://canibuildit.com.au/reports/flood after deploy"
+  },
+  {
+   "scenario": "Bushfire links come back by accident",
+   "what_happens": "The link gate test fails in CI",
+   "mitigated": true,
+   "how": "repo-wide string scan unchanged for the other products",
+   "repro": "jest hidden-products-not-linked"
+  },
+  {
+   "scenario": "An old blog post still says flood is unavailable",
+   "what_happens": "Copy is stale but no link is broken; flood pages work",
+   "mitigated": false,
+   "how": "listed under gaps for a follow-up copy pass",
+   "repro": "grep -ri flood frontend-nextjs/app/blog"
+  }
+ ],
+ "verified": [
+  "jest lib + components 1,619/1,619 (120 suites)",
+  "tsc: no errors in changed files"
+ ],
+ "gaps": [
+  "Blog posts and other pages that linked to flood before #1538 are not re-linked; only the main menus, footer, sitemap, reports hub and site directory are"
+ ],
+ "post_merge": {
+  "action": "After deploy: curl -I /reports/flood shows no X-Robots-Tag noindex; sitemap 2 lists flood council pages",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "Header, footer and reports page show a Flood link; bushfire, solar and climate links stay absent"
+ },
+ "real_layer_exempt": {
+  "frontend-nextjs/lib/hidden-products.ts": "Navigation list only; checked live after deploy."
+ }
+}
