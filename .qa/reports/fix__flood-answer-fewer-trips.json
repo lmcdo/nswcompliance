@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the flood planning endpoint gets its database connection (pool + one retry) and drops a duplicate timeout statement. Answers are unchanged. Standard: live endpoint path.",
- "commit_hash": "b3ab08bf",
+ "commit_hash": "ee5682d5",
  "files": [
   "services/flood_truth.py",
   "services/flood_planning.py",

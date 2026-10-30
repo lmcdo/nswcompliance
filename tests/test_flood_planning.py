@@ -194,7 +194,7 @@ def test_the_endpoint_returns_the_producer_answer(monkeypatch):
     monkeypatch.setattr(fp, "flood_planning_status", lambda lat, lng, conn, **kw: {
         "value": None, "reason": "we do not hold this council's flood planning map",
         "council": "NEWCASTLE", "category": None, "nearest_m": None, "hits": [1]})
-    monkeypatch.setattr(ft, "_get_conn", lambda: MagicMock())
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: MagicMock())
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out == {"value": None, "reason": "we do not hold this council's flood planning map",
                    "council": "NEWCASTLE", "category": None, "nearest_m": None, "whole_lot": None,
@@ -203,7 +203,7 @@ def test_the_endpoint_returns_the_producer_answer(monkeypatch):
 
 def test_the_endpoint_never_raises(monkeypatch):
     import services.flood_truth as ft
-    monkeypatch.setattr(ft, "_get_conn", lambda: (_ for _ in ()).throw(RuntimeError("down")))
+    monkeypatch.setattr(ft, "_flood_conn", lambda fresh=False: (_ for _ in ()).throw(RuntimeError("down")))
     out = ft.flood_planning(ft.FloodPlanningRequest(lat=-32.93, lng=151.78))
     assert out["value"] is None
 
