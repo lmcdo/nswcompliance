@@ -26,3 +26,4 @@ Remaining 3 (v6), each checked on the live page:
 - 220432: the rule's opening words are printed on p1109 (9.3.5.2.1) and p1110 (9.3.5.2.2); its text cites figure
   9.3.5.2.2.2. Today's renumber to 9.3.5.2.1 is doubtful; the checker withholds the new number (safe).
 Cost: 1 known-right rule lost (122395, CB "1.17", own clause number printed inside its span) -> shows page only.
+| v7 | bookmark used only if its title is printed on its page (cross-review MEDIUM) | 3 | 318 | 1016 |

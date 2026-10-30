@@ -542,3 +542,11 @@ def test_wording_that_runs_into_the_next_section_is_not_proved_by_its_heading():
     stored = first + " " + spill
     assert prove("4_3_3", ch, text=stored)["status"] == "not_proven"
     assert prove("4_3_2", ch, text=stored)["status"] == "proven"
+
+
+def test_a_stale_bookmark_cannot_hide_a_proven_number():
+    # The bookmark says 4.3.3 starts on page 2; the page it points to does not print it.
+    ch = doc(["4.3.3 alterations to heritage items", BODY], ["unrelated words here"])
+    stale = C.ChapterLines.build(ch.lines, page_width=595.0,
+                                 outline=[[3, "4.3.3 Alterations to heritage items", 2], [3, "4.3.4 Other", 2]])
+    assert prove("4_3_3", stale)["status"] == "proven"

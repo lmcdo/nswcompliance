@@ -235,7 +235,7 @@ class ChapterLines:
         for k in range(len(out.tokens) - 5):
             idx[tuple(out.tokens[k:k + 6])].append(k)
         out.index = idx
-        out.outline = outline_ranges(outline)
+        out.outline = outline_ranges(outline, kept)
         return out
 
 
@@ -252,13 +252,23 @@ def outline_entries(toc: list | None) -> list[tuple[int, str, str]]:
     return out
 
 
-def outline_ranges(toc: list | None) -> dict:
+def outline_ranges(toc: list | None, lines: list | None = None) -> dict:
     """code -> [(first page, last page)]. A section runs to the page where the next
     bookmark that is not its own sub-section starts (that page included: the next
-    heading can sit low on it)."""
+    heading can sit low on it). With `lines`, a section is kept only when its
+    bookmark is CONFIRMED -- its title's words are printed on the page it points
+    to -- so a stale single bookmark cannot hide a proven number (cross-review,
+    2026-10-30). Ends still come from every entry."""
     ent = outline_entries(toc)
+    on_page = None
+    if lines is not None:
+        on_page = collections.defaultdict(str)
+        for ln in lines:
+            on_page[ln.page] += " " + " ".join(_WORD.findall(ln.text))
     rng = collections.defaultdict(list)
-    for k, (page, code, _t) in enumerate(ent):
+    for k, (page, code, title) in enumerate(ent):
+        if on_page is not None and (len(title) < 4 or title not in on_page.get(page, "")):
+            continue
         end = next((p for p, c, _ in ent[k + 1:] if c != code and not c.startswith(code + ".")), None)
         rng[code].append((page, end))
     return dict(rng)
