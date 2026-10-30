@@ -27,3 +27,4 @@ Remaining 3 (v6), each checked on the live page:
   9.3.5.2.2.2. Today's renumber to 9.3.5.2.1 is doubtful; the checker withholds the new number (safe).
 Cost: 1 known-right rule lost (122395, CB "1.17", own clause number printed inside its span) -> shows page only.
 | v7 | bookmark used only if its title is printed on its page (cross-review MEDIUM) | 3 | 318 | 1016 |
+| v8-v12 | review round 2: in-order bookmarks only, no restore onto guide pages, is_current filter; over-broad "printed anywhere" guard tried and removed (cost 6 Parramatta) | 3 | 318 | 1016 |

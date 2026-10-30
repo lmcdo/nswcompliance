@@ -101,7 +101,7 @@ def main() -> int:
         # A page proven to hold the rule (page_check, dcp_page_repair) lets the proof judge
         # the copy of repeated wording on that page only (citation_proof.prove_citation).
         cur.execute("SELECT id, pdf_page FROM regulatory_provisions WHERE id = ANY(%s) "
-                    "AND page_check IN ('on_page', 'moved')", ([r[0] for r in rows],))
+                    "AND is_current AND page_check IN ('on_page', 'moved')", ([r[0] for r in rows],))
         proven_page = dict(cur.fetchall())
         for rid, _co, _chk, ref, r2_path, text, pages in rows:
             by_pdf[r2_path].append((rid, ref, text, pages, proven_page.get(rid)))

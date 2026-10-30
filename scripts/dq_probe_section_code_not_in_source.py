@@ -58,7 +58,7 @@ SERVED_COUNT_SQL = ("SELECT count(*) FROM regulatory_provisions WHERE is_current
 
 
 def _cache_file(cache_dir: Path, r2_path: str) -> Path:
-    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v5.json"   # v5: + bookmarks (restored numbers, section page ranges)
+    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v9.json"   # v9: restore only from in-order bookmarks, never onto guide pages
 
 
 def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):

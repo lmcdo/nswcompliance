@@ -550,3 +550,28 @@ def test_a_stale_bookmark_cannot_hide_a_proven_number():
     stale = C.ChapterLines.build(ch.lines, page_width=595.0,
                                  outline=[[3, "4.3.3 Alterations to heritage items", 2], [3, "4.3.4 Other", 2]])
     assert prove("4_3_3", stale)["status"] == "proven"
+
+
+def test_no_number_is_restored_onto_a_chapter_guide_page():
+    # A guide page lists sections that start later; a stale bookmark points at it.
+    lines = [C.Line(1, 100.0, 70.0, "alterations to heritage items"),
+             C.Line(1, 120.0, 70.0, "demolition of heritage items"),
+             C.Line(1, 140.0, 70.0, "development in the vicinity of a heritage item"),
+             C.Line(1, 160.0, 70.0, "signage on heritage items")]
+    toc = [[3, "4.3.1 Introduction", 1], [3, "4.3.3 Alterations to heritage items", 1],
+           [3, "4.3.4 Demolition of heritage items", 8], [3, "4.3.5 Development in the vicinity of a heritage item", 9],
+           [3, "4.3.6 Signage on heritage items", 10]]
+    assert C.restore_outline_numbers(lines, toc) == lines
+
+
+def test_out_of_order_bookmark_is_not_used_to_restore():
+    lines = [C.Line(5, 100.0, 70.0, "alterations to heritage items")]
+    toc = [[3, "4.3.2 Vicinity", 6], [3, "4.3.3 Alterations to heritage items", 5], [3, "4.3.4 Demolition", 7]]
+    assert C.restore_outline_numbers(lines, toc) == lines
+
+
+def test_a_contents_line_does_not_block_restoring_a_picture_heading():
+    lines = [C.Line(1, 100.0, 70.0, "5.4.4 solar light reflectivity (glare) .......... 259"),
+             C.Line(3, 64.0, 113.0, "solar light reflectivity (glare)")]
+    toc = [[3, "5.4.3.5 Green roofs", 2], [3, "5.4.4 Solar light reflectivity (glare)", 3], [3, "5.4.5 Wind", 4]]
+    assert C.restore_outline_numbers(lines, toc)[1].text.startswith("5.4.4 ")

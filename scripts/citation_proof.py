@@ -345,8 +345,29 @@ def restore_outline_numbers(lines: list[Line], outline: list) -> list[Line]:
     for k, ln in enumerate(lines):
         by_page[ln.page].append(k)
     out = list(lines)
-    for page, num, title in entries:
+    titles = {t for _p, _n, t in entries if len(t) >= 4}
+    title_pages = collections.defaultdict(set)
+    for p_, _n, t in entries:
+        title_pages[t].add(p_)
+    seen_on = collections.defaultdict(set)
+    for ln in lines:
+        seen_on[" ".join(_WORD.findall(ln.text))].add(ln.page)
+    furniture = {t for t, ps in seen_on.items() if len(ps) >= 3}
+    pages = sorted(p for p, _n, _t in entries)
+    for j, (page, num, title) in enumerate(entries):
         if len(title) < 4 or any(out[k].text.startswith(num) for k in by_page.get(page, ())):
+            continue      # the page already prints the number: nothing to restore
+        # Bookmarks must run in page order around this one, or it is stale.
+        if (j and entries[j - 1][0] > page) or (j + 1 < len(entries) and entries[j + 1][0] < page):
+            continue
+        # A page listing several bookmark titles on lines of their own is a contents
+        # or chapter-guide page; a title there is a summary entry, not the heading
+        # (cross-review 2026-10-30, HIGH).
+        here = {" ".join(_WORD.findall(out[k].text)) for k in by_page.get(page, ())}
+        # count only titles of sections bookmarked on OTHER pages, and never a
+        # running header (Parramatta prints "environmental performance" on every page)
+        listed = {t for t in here & titles if t not in furniture and page not in title_pages.get(t, ())}
+        if len(listed) >= 3:
             continue
         hits = [k for k in by_page.get(page, ())
                 if " ".join(_WORD.findall(out[k].text)) == title]
