@@ -1,0 +1,116 @@
+{
+ "tier": "critical",
+ "justification": "citation_proof.py decides whether a DCP section number is shown to users (frontend-nextjs/lib/citation-display.ts). Re-judging 368 numbers found wrong on the live PDFs on 2026-10-30 showed 57 of them had been shown as proven/imprecise. Six leaks closed; shown-wrong falls to 3 (two print identical words under two sections, one is a doubtful renumber the checker now withholds).",
+ "commit_hash": "e59db524",
+ "files": [
+  "scripts/citation_proof.py",
+  "scripts/dcp_citation_status.py",
+  "scripts/dq_probe_section_code_not_in_source.py",
+  "tests/test_citation_proof.py",
+  "docs/qa/citation-proof-hardening-2026-10-30.md"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_citation_proof.py tests/test_dcp_citation_status.py -o addopts=",
+  "fails_when": "Restoring origin/main scripts/citation_proof.py fails 10 tests (8 new, 1 unmarked former strict-xfail, 1 page-proven test); measured. Bench on live R2 PDFs (~/.claude/plans/ce-devtype-evidence-2026-10-29/bench/bench.py): known_wrong shown 57 -> 3, known_right proven 1017 -> 1016.",
+  "external_authority": "The council PDFs in R2 (cached lines v5 incl. bookmarks); known-wrong set = numbers corrected today after page-text + Sonnet checks with quoted headings.",
+  "observed_red": "git show origin/main:scripts/citation_proof.py over the file, then pytest tests/test_citation_proof.py: 10 failed / 42 passed. Restored: 55 passed."
+ },
+ "pre_impl": {
+  "existing_data": "Measured on 368 known-wrong and 1,688 known-right rows against live R2 PDFs (bench_baseline: 57 wrong numbers shown).",
+  "assumption_mismatch": "Old proof accepted a code named in ANY page's running header, and could not see heading numbers printed as pictures.",
+  "new_vs_existing": "Extends citation_proof.py in place; no new module, no schema change.",
+  "external_source_error": "A PDF that cannot be read stays verdict no_source in dcp_citation_status (unchanged); a PDF with no bookmarks gets an empty outline and the new checks are skipped, not failed.",
+  "frontend_type": "citation_status is a text column read by frontend-nextjs/lib/citation-display.ts; only proven and imprecise are shown, so the change can only hide numbers, never invent one.",
+  "user_failure_mode": "A wrong verdict of not_proven hides a correct section number and the user sees the page reference only; a wrong proven shows a wrong clause number, which this change reduces from 57 to 3 on the bench."
+ },
+ "functions": [
+  {
+   "name": "restore_outline_numbers",
+   "file_line": "scripts/citation_proof.py",
+   "input": "the PDF's own text lines with page and position, plus its bookmark list of level, title and page",
+   "output": "lines with the bookmark's number prefixed where only its title is printed",
+   "if_none": "no bookmarks or broken ones -> lines unchanged"
+  },
+  {
+   "name": "outline_allows",
+   "file_line": "scripts/citation_proof.py",
+   "input": "the chapter's built lines with its bookmark page ranges, a section code, and one page number",
+   "output": "True/False/None whether bookmarks place the page in that section",
+   "if_none": "when the PDF has no usable bookmarks it returns None and every caller skips the bookmark check entirely"
+  },
+  {
+   "name": "prove_citation",
+   "file_line": "scripts/citation_proof.py",
+   "input": "a stored reference number, the stored rule text, one reading of the chapter lines, a page hint and whether that page is proven",
+   "output": "a status of proven, imprecise, not_proven, unjudged or text_not_found with a short detail naming the failing heading",
+   "if_none": "when the rule's wording cannot be found anywhere in the PDF it returns text_not_found and the number is not shown"
+  }
+ ],
+ "values": [
+  {
+   "value": "known_wrong shown 57 -> 3; known_right proven 1017 -> 1016",
+   "read_at": "bench.py runs baseline..v6, 2026-10-30, bench_runs.log",
+   "if_missing": "no evidence the stricter checker removes wrong numbers"
+  }
+ ],
+ "queries": [
+  {
+   "sql": "SELECT id, pdf_page FROM regulatory_provisions WHERE id = ANY(%s) AND page_check IN ('on_page','moved')",
+   "purpose": "Find which served rules have a stored page proven to hold them, so the proof judges repeated wording on that page only.",
+   "file_line": "scripts/dcp_citation_status.py:main (after probe.fetch_served)",
+   "where_clause": "id = ANY(served ids) AND page_check IN ('on_page','moved') -- read-only, no write"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "City of Sydney bookmarks all point to page 1",
+   "what_happens": "every section would be placed on page 1 and good numbers rejected",
+   "mitigated": true,
+   "how": "outline_entries returns [] when all numbered entries share a page",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k every_entry_points_to_one_page"
+  },
+  {
+   "scenario": "A bookmark title also appears inside a sentence on its page",
+   "what_happens": "a number would be glued onto prose and become a fake heading",
+   "mitigated": true,
+   "how": "only a line equal to the title, exactly once on that page",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k title_printed_alone"
+  },
+  {
+   "scenario": "Unchecked stored page points at the wrong copy of repeated wording",
+   "what_happens": "a correct section number would be rejected because the wrong copy was judged",
+   "mitigated": true,
+   "how": "the page narrows the search only when page_check proved it",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k stored_page_only_orders_the_search"
+  },
+  {
+   "scenario": "Running header names the chapter on every page and the number is chapter plus an unchecked item",
+   "what_happens": "C1.3 passed for Woollahra rules that are printed under C1.2.3 instead",
+   "mitigated": true,
+   "how": "header evidence only for a plain section reading and only on the rule's page",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k unchecked_item"
+  },
+  {
+   "scenario": "City of Sydney rule text opens with the parent site's preamble before its sub-heading",
+   "what_happens": "the run-on rule could reject the correct sub-heading",
+   "mitigated": true,
+   "how": "a heading inside the span is accepted when the rule opened under its parent",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k opening_with_its_parent_heading"
+  },
+  {
+   "scenario": "The query that finds served rules with a proven stored page returns a stale page_check (rule moved since)",
+   "what_happens": "the proof would judge only the copy on an outdated page and could reject a correct number",
+   "mitigated": true,
+   "how": "if no copy of the wording lies on that page the narrowing falls back to every copy (here or anchors)",
+   "repro": "python -m pytest tests/test_citation_proof.py -o addopts= -k proven_page"
+  }
+ ],
+ "mutation_analysis": "Old code: 10 tests fail; new: 55 pass.",
+ "residual_risk": "Test sets come from today's own methods; bookmarks trusted when not obviously broken; 1 known-right row (122395) now page-only. Cache key bumped to v5, so the next status run re-reads every PDF (slow, OCR).",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/dcp_citation_status.py (dry run, re-reads all PDFs: cache v5) and compare shown counts per council before --apply."
+ }
+}
