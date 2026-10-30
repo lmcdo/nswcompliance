@@ -385,8 +385,9 @@ def _close(stored: float, derived: float) -> bool:
 # What a number is measured in, when the text says so right after it. A quantity
 # carrying an explicit unit cannot explain a value stored in an incompatible one:
 # "a minimum of 3 hours of sunlight" must not explain a 3 metre setback.
+# "24m 2" is how a PDF text layer prints 24m² (the superscript becomes a spaced 2); "3m 2 storeys" stays a length.
 _TRAILING_UNIT_RE = re.compile(
-    r"\s*(mm|cm|m2|m²|sqm|square\s+metres?|metres?|meters?|m|%|per\s?cent|hours?|storeys?|"
+    r"\s*(mm|cm|m2|m²|m\s2(?!\.?\d|\s*(?:storeys?|stor|bed|car|spaces?|dwell|units?|levels?))|sqm|square\s+metres?|metres?|meters?|m|%|per\s?cent|hours?|storeys?|"
     r"stories|spaces?|dwellings?|units?|beds?|bedrooms?|trees?|days?|years?)"
     r"(?![a-z0-9])", re.I)
 
@@ -398,7 +399,7 @@ _UNIT_FAMILY = {
     # 'm²' must be listed BOTH here and in the trailing-unit alternation ahead of
     # bare 'm', or "3m²" matches only the 'm' and a landscaped AREA reads as a
     # length — the row's own square-metre marker disappearing into a substring.
-    "m2": "area", "m²": "area", "sqm": "area",
+    "m2": "area", "m²": "area", "m 2": "area", "sqm": "area",
     "square metre": "area", "square metres": "area",
     "%": "ratio", "per cent": "ratio", "percent": "ratio",
     "hour": "time", "hours": "time", "day": "time", "days": "time",
