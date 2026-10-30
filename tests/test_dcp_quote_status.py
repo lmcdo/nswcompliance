@@ -33,6 +33,17 @@ def test_quote_split_over_a_page_break_is_verbatim():
     assert Q.classify("The minimum rear setback is 6 metres", pages, 2) == "verbatim"
 
 
+def test_quote_wholly_on_the_next_page_is_wrong_page():
+    pages = ["Part 3 introduction.", "The minimum rear setback is 6 metres."]
+    assert Q.classify("The minimum rear setback is 6 metres", pages, 1) == "wrong_page"
+    assert Q.classify("The minimum rear setback is 6 metres", pages, 2) == "verbatim"
+
+
+def test_quote_wholly_on_the_previous_page_is_wrong_page():
+    pages = ["The minimum rear setback is 6 metres.", "Part 4 introduction."]
+    assert Q.classify("The minimum rear setback is 6 metres", pages, 2) == "wrong_page"
+
+
 def test_quote_on_another_page_is_wrong_page_not_verbatim():
     assert Q.classify(RULE, PAGES, 1) == "wrong_page"
 

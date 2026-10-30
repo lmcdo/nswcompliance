@@ -52,6 +52,17 @@ def norm(text: str) -> str:
     return re.sub(r"[^a-z0-9.%]", "", t)
 
 
+def _spans(q: str, a: str, b: str) -> bool:
+    """True when q occurs in a+b starting inside a and ending inside b."""
+    joined = a + b
+    start = joined.find(q, max(0, len(a) - len(q) + 1))
+    while start != -1 and start < len(a):
+        if start + len(q) > len(a):
+            return True
+        start = joined.find(q, start + 1)
+    return False
+
+
 def classify(quote: str | None, pages: list[str] | None, pdf_page: int | None) -> str:
     """Verdict for one quote against a chapter's page texts (raw, 1-based by position).
 
@@ -67,12 +78,13 @@ def classify(quote: str | None, pages: list[str] | None, pdf_page: int | None) -
         return "no_source"
     i = pdf_page - 1
     if 0 <= i < len(np):
-        here = [np[i]]
-        if i > 0:
-            here.append(np[i - 1] + np[i])
-        if i + 1 < len(np):
-            here.append(np[i] + np[i + 1])
-        if any(q in t for t in here):
+        if q in np[i]:
+            return "verbatim"
+        # A neighbour counts only when the match crosses the page break itself;
+        # a quote wholly on the next page is on the wrong page.
+        if i > 0 and _spans(q, np[i - 1], np[i]):
+            return "verbatim"
+        if i + 1 < len(np) and _spans(q, np[i], np[i + 1]):
             return "verbatim"
     if any(q in t for t in np) or any(q in a + b for a, b in zip(np, np[1:])):
         return "wrong_page"
