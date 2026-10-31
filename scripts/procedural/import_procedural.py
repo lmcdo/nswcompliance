@@ -116,9 +116,7 @@ def backup_and_clear(cur, table: str, planned_rows: int | None = None,
         shrinks = check_shrink({table: planned_rows}, {table: len(rows)}, allow_shrink)
         if shrinks:
             cur.connection.rollback()
-            sys.exit("[ABORT] under lock: " + shrinks[0] + f"; {table} rolled back."
-                     " Tables imported earlier in this run are already committed;"
-                     " their backups are in data/db_rollback_backups/.")
+            sys.exit("[ABORT] under lock: " + shrinks[0] + f"; all three tables rolled back, nothing written.")
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S_%f")
     path = BACKUP_DIR / f"{table}_pre_import_procedural_{stamp}.json"
@@ -228,7 +226,7 @@ def import_pathway_guidance(conn, guidance_data, planned_rows=None, allow_shrink
         ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM procedural_guidance")
@@ -288,7 +286,7 @@ def import_checklists(conn, checklist_data, planned_rows=None, allow_shrink=Fals
             ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM application_checklists")
@@ -367,7 +365,7 @@ def import_guides(conn, guides_data, planned_rows=None, allow_shrink=False):
         ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM getting_started_guides")
@@ -449,6 +447,10 @@ def main():
     print()
 
     # Summary
+    # One commit for all three tables: a failure in any import rolls back all of
+    # them, so users never see a half-replaced set.
+    conn.commit()
+
     print("=" * 70)
     print("IMPORT COMPLETE")
     print("=" * 70)
