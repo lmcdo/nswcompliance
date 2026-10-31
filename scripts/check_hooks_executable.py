@@ -38,7 +38,8 @@ def non_executable(ls_files_output: str) -> list[str]:
         meta, _, path = line.partition("\t")
         if not path.startswith(HOOK_DIR):
             continue
-        if meta.split()[0] != "100755":
+        fields = meta.strip().split()
+        if not fields or fields[0] != "100755":
             bad.append(path)
     return bad
 

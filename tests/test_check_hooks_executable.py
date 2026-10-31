@@ -30,5 +30,9 @@ def test_paths_outside_hook_dir_ignored():
     assert mod.non_executable(_line("100644", "scripts/x.py")) == []
 
 
+def test_hook_line_with_no_mode_is_reported_not_crashed():
+    assert mod.non_executable("\t.githooks/pre-push") == [".githooks/pre-push"]
+
+
 def test_empty_output_reports_nothing():
     assert mod.non_executable("") == []

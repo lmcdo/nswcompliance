@@ -1,0 +1,65 @@
+{
+  "tier": "minor",
+  "justification": "Minor: changes git index file modes of the four .githooks files to 100755 and adds a CI check that reads those modes. No production code, no database, no user-facing text.",
+  "commit_hash": "3a016206",
+  "files": [
+    ".githooks/commit-msg",
+    ".githooks/post-commit",
+    ".githooks/pre-commit",
+    ".githooks/pre-push",
+    ".github/workflows/gates.yml",
+    "scripts/check_hooks_executable.py",
+    "tests/test_check_hooks_executable.py"
+  ],
+  "pre_impl": {
+    "existing_data": "N/A -- no database access.",
+    "assumption_mismatch": "The hooks were assumed to run everywhere. git ls-tree origin/main .githooks/ showed all four as 100644, which git skips on Linux/macOS.",
+    "new_vs_existing": "No existing script reads git index modes (grep for 100755/chmod in scripts/ and .github/ on 1dc64af6 returned nothing).",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "N/A"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/check_hooks_executable.py",
+    "fails_when": "Any .githooks file has index mode other than 100755.",
+    "observed_red": "After git update-index --chmod=-x .githooks/pre-push the check printed '.githooks/pre-push' and exited 1; restored to +x it printed OK and exited 0."
+  },
+  "functions": [
+    {
+      "name": "non_executable",
+      "file_line": "scripts/check_hooks_executable.py",
+      "input": "git ls-files -s output",
+      "output": "List of .githooks paths whose mode is not 100755",
+      "if_none": "Empty output returns []; main() reports UNKNOWN and exits 1 when nothing is tracked"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A later commit (e.g. from Windows, which ignores modes) resets a hook to 100644.",
+      "what_happens": "Hooks silently stop running on Linux/macOS again.",
+      "mitigated": true,
+      "how": "gates step 'Git hooks are executable' fails the PR",
+      "repro": "git update-index --chmod=-x .githooks/pre-push && python scripts/check_hooks_executable.py -> exit 1"
+    },
+    {
+      "scenario": "git ls-files output has a malformed line with no mode field.",
+      "what_happens": "Check could crash with IndexError and CI shows an error instead of the bad path.",
+      "mitigated": true,
+      "how": "empty mode field is reported as non-executable",
+      "repro": "pytest tests/test_check_hooks_executable.py::test_hook_line_with_no_mode_is_reported_not_crashed"
+    },
+    {
+      "scenario": ".githooks directory renamed or emptied.",
+      "what_happens": "Check would pass vacuously.",
+      "mitigated": true,
+      "how": "main() prints UNKNOWN and exits 1 when nothing is tracked",
+      "repro": "read main() in scripts/check_hooks_executable.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None -- no database change.",
+    "secrets": "None -- no secrets or env vars.",
+    "other_repo": "None -- self-contained in this repo.",
+    "manual_verify": "On a Linux/macOS clone, git commit runs the pre-commit hook output; CI 'Git hooks are executable' step is green."
+  }
+}
