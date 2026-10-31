@@ -116,7 +116,9 @@ def backup_and_clear(cur, table: str, planned_rows: int | None = None,
         shrinks = check_shrink({table: planned_rows}, {table: len(rows)}, allow_shrink)
         if shrinks:
             cur.connection.rollback()
-            sys.exit("[ABORT] under lock: " + shrinks[0] + "; rolled back, nothing written.")
+            sys.exit("[ABORT] under lock: " + shrinks[0] + f"; {table} rolled back."
+                     " Tables imported earlier in this run are already committed;"
+                     " their backups are in data/db_rollback_backups/.")
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S_%f")
     path = BACKUP_DIR / f"{table}_pre_import_procedural_{stamp}.json"
