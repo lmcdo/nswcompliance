@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: changes git index file modes of the four .githooks files to 100755 and adds a CI check that reads those modes. No production code, no database, no user-facing text.",
-  "commit_hash": "3a016206",
+  "commit_hash": "17226ff5",
   "files": [
     ".githooks/commit-msg",
     ".githooks/post-commit",
