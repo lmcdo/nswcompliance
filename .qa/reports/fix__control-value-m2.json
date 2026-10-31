@@ -1,0 +1,60 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes a shared unit regex in services/extracted_data_integrity.py used by the control-value gate. Not Critical: it only widens what a check accepts for one written form of m2, and a guard test proves a length quote still fails. Not Minor: it changes a gate's verdict on live data.",
+  "commit_hash": "1fde8792",
+  "files": [
+    "services/extracted_data_integrity.py",
+    "tests/test_control_source_values.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls row id 1117 (penrith/private_open_space, value_min 24, unit m2), read via read-only role.",
+    "assumption_mismatch": "The trailing-unit regex assumed m2 is written 'm2' or 'm\u00b2'. PDF extraction writes it 'm 2', which matched bare 'm' (length).",
+    "new_vs_existing": "Extends the existing _TRAILING_UNIT_RE and _UNIT_FAMILY; no new rule.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "N/A -- gate only, nothing served changes."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_control_source_values.py -k superscript -o addopts=",
+    "fails_when": "services/extracted_data_integrity.py is reverted to origin/main.",
+    "observed_red": "With origin/main's file: 1 failed (test_a_superscript_split_by_extraction_still_reads_as_area). With this branch: passes. Live: validate_control_source_values.py NEW blocking 1 -> 0."
+  },
+  "functions": [
+    {
+      "name": "_family_conflict",
+      "file_line": "services/extracted_data_integrity.py (uses _TRAILING_UNIT_RE/_UNIT_FAMILY)",
+      "input": "quote text after a number",
+      "output": "'m 2' now maps to area",
+      "if_none": "no trailing unit -> unchanged (returns False)"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "'3m 2.5m' (two lengths) read as 3 square metres.",
+      "what_happens": "An area value wrongly explained by a length quote.",
+      "mitigated": true,
+      "how": "m\\s+2 is followed by (?![\\d.,])",
+      "repro": "pytest -k does_not_swallow_a_decimal"
+    },
+    {
+      "scenario": "An area value matched against a plain metre quote.",
+      "what_happens": "The unit gate stops rejecting an area value explained by a length.",
+      "mitigated": true,
+      "how": "bare 'm' still maps to length",
+      "repro": "pytest -k area_value_against_a_length_quote"
+    },
+    {
+      "scenario": "'6m 2 storeys' read as area.",
+      "what_happens": "A length quote could explain an area value.",
+      "mitigated": false,
+      "how": "Not guarded; no such quote found in the 1,273 live rows (check still passes with 0 new rows).",
+      "repro": "python scripts/validate_control_source_values.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None -- no database change.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "gates 'Schema contract' job green on main after merge."
+  }
+}

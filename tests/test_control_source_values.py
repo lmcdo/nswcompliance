@@ -119,6 +119,18 @@ class TestExactDigitMatch:
         assert rule_of(6, "a minimum front setback of 6 metres", "m") \
             == "exact_digit_match"
 
+    def test_a_superscript_split_by_extraction_still_reads_as_area(self):
+        # PDF text drops the ² into its own token: "24m 2". Penrith id 1117.
+        assert rule_of(24, "must have more than 24m 2 of usable private open space",
+                       "m2") == "exact_digit_match"
+
+    def test_a_split_superscript_does_not_swallow_a_decimal(self):
+        # "3m 2.5m" is two lengths, not 3 square metres.
+        assert rule_of(3, "a setback of 3m 2.5m above", "m2") == UNEXPLAINED
+
+    def test_an_area_value_against_a_length_quote_still_fails(self):
+        assert rule_of(24, "a setback of 24m from the boundary", "m2") == UNEXPLAINED
+
     def test_a_near_miss_is_not_a_match(self):
         # No rounding tolerance on exact matching: 0.899 and 0.9 are different
         # numbers and accepting one for the other would swallow a typo.
