@@ -85,5 +85,9 @@
     "secrets": "None.",
     "other_repo": "None.",
     "manual_verify": "Anyone running either script now gets a dry run; real writes need --apply."
+  },
+  "real_layer_exempt": {
+    "scripts/_clean_krg_reversed.py": "The SQL statements are unchanged; this change only adds guards before them. A real-layer test would DELETE/UPDATE production tables (single Supabase DB, no branch DB), which CLAUDE.md forbids in tests. The read path was exercised live with the read-only role (dry run: 46/158/5 rows, nothing written); guard logic is covered by unit tests.",
+    "scripts/procedural/import_procedural.py": "The SQL statements are unchanged; this change only adds guards before them. A real-layer test would DELETE/UPDATE production tables (single Supabase DB, no branch DB), which CLAUDE.md forbids in tests. The read path was exercised live with the read-only role (dry run: 46/158/5 rows, nothing written); guard logic is covered by unit tests."
   }
 }
