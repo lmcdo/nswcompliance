@@ -3,11 +3,20 @@
 Import procedural guidance, application checklists, and getting started guides to Supabase.
 
 Usage:
-    python scripts/procedural/import_procedural.py
+    python scripts/procedural/import_procedural.py           # dry run: counts only
+    python scripts/procedural/import_procedural.py --apply   # back up, then replace
+
+Each table is emptied and refilled, so this refuses to write unless every input
+file is present and non-empty, and refuses to shrink any table by more than half
+(--allow-shrink overrides). Existing rows are saved to data/db_rollback_backups/
+before the DELETE.
 """
 
+import argparse
+import datetime
 import json
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import psycopg2
@@ -27,9 +36,78 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable not set")
 
 
+# prior-art-checked: reuse not viable because the only shared-looking backup
+# helper (scripts/load_greenweb_overlay.py:backup_existing) is hard-wired to
+# spatial_overlays columns; the data/db_rollback_backups/*.py hits are one-off
+# scripts, not importable modules. 2026-10-31.
+BACKUP_DIR = PROJECT_ROOT / "data" / "db_rollback_backups"
+
+# table -> (input file, function that counts the rows that file will produce)
+INPUTS = {
+    "procedural_guidance": ("pathway_guidance.json", len),
+    "application_checklists": (
+        "application_checklists.json",
+        lambda data: sum(len(c.get("items") or []) for c in data),
+    ),
+    "getting_started_guides": ("getting_started_guides.json", len),
+}
+
+
 def get_db_connection():
     """Get database connection."""
     return psycopg2.connect(DATABASE_URL)
+
+
+def planned_row_counts() -> dict:
+    """Load every input file and return table -> rows it would write.
+
+    Raises:
+        SystemExit: if any file is missing, unreadable, not a list, or would
+            write zero rows. A missing or truncated export must never reach
+            the DELETE that empties the table.
+    """
+    counts = {}
+    for table, (name, count_rows) in INPUTS.items():
+        path = EXTRACTED_DIR / name
+        if not path.exists():
+            sys.exit(f"[ABORT] {path} is missing; nothing written.")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            sys.exit(f"[ABORT] {path} could not be read ({exc}); nothing written.")
+        if not isinstance(data, list):
+            sys.exit(f"[ABORT] {path} is not a list; nothing written.")
+        rows = count_rows(data)
+        if rows == 0:
+            sys.exit(f"[ABORT] {path} would write 0 rows to {table}; nothing written.")
+        counts[table] = rows
+    return counts
+
+
+def check_shrink(planned: dict, current: dict, allow_shrink: bool) -> list[str]:
+    """Return a message for each table the import would shrink by more than half."""
+    if allow_shrink:
+        return []
+    return [
+        f"{t}: {current[t]} rows now, import would leave {planned[t]}"
+        for t in planned
+        if current.get(t, 0) and planned[t] < current[t] / 2
+    ]
+
+
+def backup_and_clear(cur, table: str) -> None:
+    """Save every row of ``table`` to a JSON file, then delete them."""
+    cur.execute(f"SELECT * FROM {table}")
+    cols = [d[0] for d in cur.description]
+    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
+    path = BACKUP_DIR / f"{table}_pre_import_procedural_{stamp}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, default=str, indent=1)
+    print(f"[BACKUP] {len(rows)} rows of {table} -> {path}")
+    cur.execute(f"DELETE FROM {table}")
 
 
 def create_tables(conn):
@@ -75,7 +153,7 @@ def import_pathway_guidance(conn):
     cur = conn.cursor()
 
     # Clear existing data (optional - comment out if you want to preserve)
-    cur.execute("DELETE FROM procedural_guidance")
+    backup_and_clear(cur, "procedural_guidance")
 
     # Insert new data
     insert_sql = """
@@ -164,7 +242,7 @@ def import_checklists(conn):
     cur = conn.cursor()
 
     # Clear existing data
-    cur.execute("DELETE FROM application_checklists")
+    backup_and_clear(cur, "application_checklists")
 
     # Insert new data
     insert_sql = """
@@ -232,7 +310,7 @@ def import_guides(conn):
     cur = conn.cursor()
 
     # Clear existing data
-    cur.execute("DELETE FROM getting_started_guides")
+    backup_and_clear(cur, "getting_started_guides")
 
     # Insert new data
     insert_sql = """
@@ -312,11 +390,39 @@ def main():
     print("=" * 70)
     print()
 
-    # Connect to database
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--apply", action="store_true",
+                        help="back up and replace the tables (default: dry run)")
+    parser.add_argument("--allow-shrink", action="store_true",
+                        help="allow a table to lose more than half its rows")
+    args = parser.parse_args()
+
+    # Inputs are checked before any connection is opened.
+    planned = planned_row_counts()
+
     print("Connecting to database...")
     conn = get_db_connection()
     print("[OK] Connected")
     print()
+
+    cur = conn.cursor()
+    current = {}
+    for table in planned:
+        cur.execute(f"SELECT COUNT(*) FROM {table}")
+        current[table] = cur.fetchone()[0]
+        print(f"  {table}: {current[table]} rows now -> {planned[table]} after import")
+    cur.close()
+    print()
+
+    shrinks = check_shrink(planned, current, args.allow_shrink)
+    if shrinks:
+        conn.close()
+        sys.exit("[ABORT] import would shrink tables by more than half "
+                 "(--allow-shrink to override):\n  " + "\n  ".join(shrinks))
+    if not args.apply:
+        conn.close()
+        print("DRY RUN: nothing written. Re-run with --apply to back up and replace.")
+        return
 
     # Create tables
     print("Creating/verifying tables...")
