@@ -28,6 +28,16 @@ that covers all of them.** Hooks become the fast first warning; Postgres and CI 
 
 ## 2. Workstreams
 
+### W0 — Git hooks never run on Linux/macOS clones — P0
+`git ls-files -s .githooks` → all 4 hooks are mode `100644` (not executable). Git skips
+them ("hook was ignored because it's not set as executable"), so on any non-Windows clone,
+including every cloud session, commits and pushes go through with **no** local checks. Observed
+2026-10-31: this spec's own commit and push ran with none of the hooks.
+- Fix: `git update-index --chmod=+x .githooks/*` (mode `100755`).
+- Guard: CI step fails if any `.githooks/*` or `.claude/hooks/*.sh` is not `100755` in the index.
+- SessionStart hook prints `HOOKS INACTIVE` if `core.hooksPath` ≠ `.githooks` or any hook is
+  not executable.
+
 ### W1 — Write path: database-enforced (closes modes 1, 3, 7 for data) — P1
 1. **Roles.** Create `agent_ro` (SELECT only) and `pipeline_writer` (INSERT/UPDATE on named
    tables; no DELETE/TRUNCATE/DDL). Model sessions receive **only** the `agent_ro` DSN as
@@ -94,7 +104,7 @@ reviewer quality of Sol; product-surface UI changes.
   check (`return allow` / `return []` must make a test fail).
 
 ## 5. Sequencing
-W1.1 roles (one day, highest leverage: removes write capability from model sessions
+W0 (minutes) → W1.1 roles (one day, highest leverage: removes write capability from model sessions
 outright) → W2 → W3 → W1.2–1.4 → W4 → W5 → W6. Each is its own PR.
 
 ## 6. Risks
