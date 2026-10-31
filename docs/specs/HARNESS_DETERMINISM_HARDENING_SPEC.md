@@ -92,6 +92,21 @@ including every cloud session, commits and pushes go through with **no** local c
   session's `application_name`). `SessionStart` (source=compact) re-injects it. Facts are
   restored from the file, not from the model's summary.
 
+### A1 — One-off integrity audit of existing extracted data — do first, read-only
+Answers "is what we already serve verbatim?" before any hardening lands.
+- **Prereq:** read-only `DATABASE_URL` added as an environment secret (never pasted in chat).
+- **Script:** `scripts/audit_verbatim_existing.py` — SELECT only. For each
+  `is_current AND v2_is_actionable` provision: load source text at cited page, normalise
+  whitespace/hyphenation/ligatures only, substring test. Same core function as W4.
+- **Output:** `.qa/audits/verbatim-<date>.csv` (id, document_id, page, status ∈
+  {MATCH, MISMATCH, SOURCE_MISSING, UNKNOWN}) + counts printed.
+- **Open question:** whether page-level source text is in the DB. If not, PDFs from R2 are
+  needed — stop and ask before fetching.
+- **Tests:** known match, known paraphrase, missing source; mutation: `return MATCH` must fail.
+- **Effort:** build ~1–2 h; run minutes for ~20k rows. No model in the check loop.
+- **DONE WHEN:** `python scripts/audit_verbatim_existing.py --summary` prints
+  `MISMATCH=<n> SOURCE_MISSING=<n> UNKNOWN=0`; any non-zero MISMATCH becomes a DQ entry.
+
 ## 3. Out of scope
 Making the model itself deterministic (not possible: same input does not guarantee same tokens);
 reviewer quality of Sol; product-surface UI changes.
@@ -104,7 +119,7 @@ reviewer quality of Sol; product-surface UI changes.
   check (`return allow` / `return []` must make a test fail).
 
 ## 5. Sequencing
-W0 (minutes) → W1.1 roles (one day, highest leverage: removes write capability from model sessions
+A1 audit (as soon as a read-only DSN exists) ∥ W0 (minutes) → W1.1 roles (one day, highest leverage: removes write capability from model sessions
 outright) → W2 → W3 → W1.2–1.4 → W4 → W5 → W6. Each is its own PR.
 
 ## 6. Risks
