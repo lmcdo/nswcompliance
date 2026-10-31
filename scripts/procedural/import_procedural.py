@@ -3,11 +3,20 @@
 Import procedural guidance, application checklists, and getting started guides to Supabase.
 
 Usage:
-    python scripts/procedural/import_procedural.py
+    python scripts/procedural/import_procedural.py           # dry run: counts only
+    python scripts/procedural/import_procedural.py --apply   # back up, then replace
+
+Each table is emptied and refilled, so this refuses to write unless every input
+file is present and non-empty, and refuses to shrink any table by more than half
+(--allow-shrink overrides). Existing rows are saved to data/db_rollback_backups/
+before the DELETE.
 """
 
+import argparse
+import datetime
 import json
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import psycopg2
@@ -27,9 +36,94 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable not set")
 
 
+# prior-art-checked: reuse not viable because the only shared-looking backup
+# helper (scripts/load_greenweb_overlay.py:backup_existing) is hard-wired to
+# spatial_overlays columns; the data/db_rollback_backups/*.py hits are one-off
+# scripts, not importable modules. 2026-10-31.
+BACKUP_DIR = PROJECT_ROOT / "data" / "db_rollback_backups"
+
+# table -> (input file, function that counts the rows that file will produce)
+INPUTS = {
+    "procedural_guidance": ("pathway_guidance.json", len),
+    "application_checklists": (
+        "application_checklists.json",
+        lambda data: sum(len(c.get("items") or []) for c in data),
+    ),
+    "getting_started_guides": ("getting_started_guides.json", len),
+}
+
+
 def get_db_connection():
     """Get database connection."""
     return psycopg2.connect(DATABASE_URL)
+
+
+def planned_row_counts() -> tuple[dict, dict]:
+    """Load every input file once; return (table -> rows, table -> parsed payload).
+
+    The payloads returned here are the ones written, so a file changed after
+    this check cannot reach the DELETE.
+
+    Raises:
+        SystemExit: if any file is missing, unreadable, not a list, or would
+            write zero rows. A missing or truncated export must never reach
+            the DELETE that empties the table.
+    """
+    counts, payloads = {}, {}
+    for table, (name, count_rows) in INPUTS.items():
+        path = EXTRACTED_DIR / name
+        if not path.exists():
+            sys.exit(f"[ABORT] {path} is missing; nothing written.")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            sys.exit(f"[ABORT] {path} could not be read ({exc}); nothing written.")
+        if not isinstance(data, list):
+            sys.exit(f"[ABORT] {path} is not a list; nothing written.")
+        rows = count_rows(data)
+        if rows == 0:
+            sys.exit(f"[ABORT] {path} would write 0 rows to {table}; nothing written.")
+        counts[table] = rows
+        payloads[table] = data
+    return counts, payloads
+
+
+def check_shrink(planned: dict, current: dict, allow_shrink: bool) -> list[str]:
+    """Return a message for each table the import would shrink by more than half."""
+    if allow_shrink:
+        return []
+    return [
+        f"{t}: {current[t]} rows now, import would leave {planned[t]}"
+        for t in planned
+        if current.get(t, 0) and planned[t] < current[t] / 2
+    ]
+
+
+def backup_and_clear(cur, table: str, planned_rows: int | None = None,
+                     allow_shrink: bool = False) -> None:
+    """Lock ``table``, save every row to a JSON file, then delete them.
+
+    The lock is held until the caller commits, so no row can be added between
+    the backup and the DELETE.
+    """
+    cur.execute(f"LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE")
+    cur.execute(f"SELECT * FROM {table}")
+    cols = [d[0] for d in cur.description]
+    rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    # Re-check under the lock: the table may have grown since the dry-run count.
+    if planned_rows is not None:
+        shrinks = check_shrink({table: planned_rows}, {table: len(rows)}, allow_shrink)
+        if shrinks:
+            cur.connection.rollback()
+            sys.exit("[ABORT] under lock: " + shrinks[0] + f"; all three tables rolled back, nothing written.")
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S_%f")
+    path = BACKUP_DIR / f"{table}_pre_import_procedural_{stamp}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, default=str, indent=1)
+    print(f"[BACKUP] {len(rows)} rows of {table} -> {path}")
+    cur.execute(f"DELETE FROM {table}")
 
 
 def create_tables(conn):
@@ -61,21 +155,13 @@ def create_tables(conn):
     cur.close()
 
 
-def import_pathway_guidance(conn):
+def import_pathway_guidance(conn, guidance_data, planned_rows=None, allow_shrink=False):
     """Import pathway guidance Q&A pairs."""
-    guidance_path = EXTRACTED_DIR / "pathway_guidance.json"
-
-    if not guidance_path.exists():
-        print(f"[ERROR] File not found: {guidance_path}")
-        return 0
-
-    with open(guidance_path, 'r', encoding='utf-8') as f:
-        guidance_data = json.load(f)
 
     cur = conn.cursor()
 
     # Clear existing data (optional - comment out if you want to preserve)
-    cur.execute("DELETE FROM procedural_guidance")
+    backup_and_clear(cur, "procedural_guidance", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -140,7 +226,7 @@ def import_pathway_guidance(conn):
         ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM procedural_guidance")
@@ -150,21 +236,13 @@ def import_pathway_guidance(conn):
     return count
 
 
-def import_checklists(conn):
+def import_checklists(conn, checklist_data, planned_rows=None, allow_shrink=False):
     """Import application checklists."""
-    checklist_path = EXTRACTED_DIR / "application_checklists.json"
-
-    if not checklist_path.exists():
-        print(f"[ERROR] File not found: {checklist_path}")
-        return 0
-
-    with open(checklist_path, 'r', encoding='utf-8') as f:
-        checklist_data = json.load(f)
 
     cur = conn.cursor()
 
     # Clear existing data
-    cur.execute("DELETE FROM application_checklists")
+    backup_and_clear(cur, "application_checklists", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -208,7 +286,7 @@ def import_checklists(conn):
             ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM application_checklists")
@@ -218,21 +296,13 @@ def import_checklists(conn):
     return count
 
 
-def import_guides(conn):
+def import_guides(conn, guides_data, planned_rows=None, allow_shrink=False):
     """Import getting started guides."""
-    guides_path = EXTRACTED_DIR / "getting_started_guides.json"
-
-    if not guides_path.exists():
-        print(f"[SKIP] File not found: {guides_path}")
-        return 0
-
-    with open(guides_path, 'r', encoding='utf-8') as f:
-        guides_data = json.load(f)
 
     cur = conn.cursor()
 
     # Clear existing data
-    cur.execute("DELETE FROM getting_started_guides")
+    backup_and_clear(cur, "getting_started_guides", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -295,7 +365,7 @@ def import_guides(conn):
         ))
 
     execute_values(cur, insert_sql, values)
-    conn.commit()
+    # committed once in main(), with the other two tables
 
     # Verify count
     cur.execute("SELECT COUNT(*) FROM getting_started_guides")
@@ -312,11 +382,43 @@ def main():
     print("=" * 70)
     print()
 
-    # Connect to database
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--apply", action="store_true",
+                        help="back up and replace the tables (default: dry run)")
+    parser.add_argument("--allow-shrink", action="store_true",
+                        help="allow a table to lose more than half its rows")
+    args = parser.parse_args()
+
+    # Inputs are checked before any connection is opened.
+    planned, payloads = planned_row_counts()
+
     print("Connecting to database...")
     conn = get_db_connection()
     print("[OK] Connected")
     print()
+
+    cur = conn.cursor()
+    current = {}
+    for table in planned:
+        cur.execute("SELECT to_regclass(%s)", (table,))
+        if cur.fetchone()[0] is None:
+            current[table] = 0  # created by create_tables() on --apply
+        else:
+            cur.execute(f"SELECT COUNT(*) FROM {table}")
+            current[table] = cur.fetchone()[0]
+        print(f"  {table}: {current[table]} rows now -> {planned[table]} after import")
+    cur.close()
+    print()
+
+    shrinks = check_shrink(planned, current, args.allow_shrink)
+    if shrinks:
+        conn.close()
+        sys.exit("[ABORT] import would shrink tables by more than half "
+                 "(--allow-shrink to override):\n  " + "\n  ".join(shrinks))
+    if not args.apply:
+        conn.close()
+        print("DRY RUN: nothing written. Re-run with --apply to back up and replace.")
+        return
 
     # Create tables
     print("Creating/verifying tables...")
@@ -325,23 +427,30 @@ def main():
 
     # Import pathway guidance
     print("Importing pathway guidance...")
-    guidance_count = import_pathway_guidance(conn)
+    guidance_count = import_pathway_guidance(conn, payloads["procedural_guidance"],
+        planned["procedural_guidance"], args.allow_shrink)
     print(f"[OK] Imported {guidance_count} Q&A pairs")
     print()
 
     # Import checklists
     print("Importing application checklists...")
-    checklist_count = import_checklists(conn)
+    checklist_count = import_checklists(conn, payloads["application_checklists"],
+        planned["application_checklists"], args.allow_shrink)
     print(f"[OK] Imported {checklist_count} checklist items")
     print()
 
     # Import guides
     print("Importing getting started guides...")
-    guides_count = import_guides(conn)
+    guides_count = import_guides(conn, payloads["getting_started_guides"],
+        planned["getting_started_guides"], args.allow_shrink)
     print(f"[OK] Imported {guides_count} guides")
     print()
 
     # Summary
+    # One commit for all three tables: a failure in any import rolls back all of
+    # them, so users never see a half-replaced set.
+    conn.commit()
+
     print("=" * 70)
     print("IMPORT COMPLETE")
     print("=" * 70)

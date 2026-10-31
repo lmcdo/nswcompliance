@@ -1,0 +1,93 @@
+{
+  "tier": "standard",
+  "justification": "Standard: adds guards to two scripts that write production tables. Not Critical: no change to what is written when the guards pass, and nothing served changes. Not Minor: it changes when production writes happen.",
+  "commit_hash": "41dd70e7",
+  "files": [
+    "scripts/procedural/import_procedural.py",
+    "scripts/_clean_krg_reversed.py",
+    "tests/test_fail_closed_writers.py"
+  ],
+  "pre_impl": {
+    "existing_data": "procedural_guidance 46, application_checklists 158, getting_started_guides 5 rows (RLS on); ku_ring_gai current provisions 6042. Read via read-only role.",
+    "assumption_mismatch": "The checklist file has 12 entries but writes 158 rows (items per checklist), so the shrink guard counts items, not entries.",
+    "new_vs_existing": "Guards added inside the existing scripts. The only shared backup helper (load_greenweb_overlay.backup_existing) is tied to spatial_overlays.",
+    "external_source_error": "A missing, truncated or non-list JSON export now aborts before any connection.",
+    "frontend_type": "N/A",
+    "user_failure_mode": "Before: an empty export file emptied the procedural guidance tables served to users. Now: abort with nothing written."
+  },
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_fail_closed_writers.py -o addopts=",
+    "fails_when": "scripts/_clean_krg_reversed.py is reverted to origin/main.",
+    "observed_red": "With origin/main's KRG script: 2 failed (test_import_does_not_connect, test_dry_run_reads_but_never_updates). This branch: 13 passed. Live dry run with read-only role: 46/158/5 rows now and after, nothing written."
+  },
+  "functions": [
+    {
+      "name": "planned_row_counts",
+      "file_line": "scripts/procedural/import_procedural.py",
+      "input": "the three extracted JSON files",
+      "output": "table -> rows to write",
+      "if_none": "missing/unreadable/non-list/zero rows -> SystemExit before connecting"
+    },
+    {
+      "name": "check_shrink",
+      "file_line": "scripts/procedural/import_procedural.py",
+      "input": "planned and current row counts",
+      "output": "messages for tables losing more than half",
+      "if_none": "current 0 -> not a shrink"
+    },
+    {
+      "name": "backup_and_clear",
+      "file_line": "scripts/procedural/import_procedural.py",
+      "input": "an open cursor and the name of a table to replace",
+      "output": "JSON backup file, then DELETE",
+      "if_none": "empty table -> empty backup written, DELETE is a no-op"
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/_clean_krg_reversed.py",
+      "input": "the --apply flag from the command line and SUPABASE_DB_URL from the environment",
+      "output": "dry run counts, or backup then UPDATE",
+      "if_none": "no URL -> exit 1, nothing written"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Export job writes an empty pathway_guidance.json.",
+      "what_happens": "Old code deleted all 46 guidance rows and inserted none.",
+      "mitigated": true,
+      "how": "planned_row_counts aborts on 0 rows before connecting",
+      "repro": "pytest -k empty_list_aborts"
+    },
+    {
+      "scenario": "Export is cut off mid-write, leaving invalid JSON.",
+      "what_happens": "Old code crashed after create_tables, partial state possible.",
+      "mitigated": true,
+      "how": "JSONDecodeError caught, abort before connecting",
+      "repro": "pytest -k truncated_json_aborts"
+    },
+    {
+      "scenario": "Another script imports _clean_krg_reversed for clean_text.",
+      "what_happens": "Old code rewrote 6,042 live provisions on import with no backup.",
+      "mitigated": true,
+      "how": "__main__ guard; dry run unless --apply",
+      "repro": "pytest -k import_does_not_connect"
+    },
+    {
+      "scenario": "Checklist export loses most of its items but is not empty.",
+      "what_happens": "Table silently shrinks from 158 rows to a handful.",
+      "mitigated": true,
+      "how": "check_shrink refuses more than half loss unless --allow-shrink",
+      "repro": "pytest -k shrink_over_half"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None -- no database change.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Anyone running either script now gets a dry run; real writes need --apply."
+  },
+  "real_layer_exempt": {
+    "scripts/_clean_krg_reversed.py": "The SQL statements are unchanged; this change only adds guards before them. A real-layer test would DELETE/UPDATE production tables (single Supabase DB, no branch DB), which CLAUDE.md forbids in tests. The read path was exercised live with the read-only role (dry run: 46/158/5 rows, nothing written); guard logic is covered by unit tests.",
+    "scripts/procedural/import_procedural.py": "The SQL statements are unchanged; this change only adds guards before them. A real-layer test would DELETE/UPDATE production tables (single Supabase DB, no branch DB), which CLAUDE.md forbids in tests. The read path was exercised live with the read-only role (dry run: 46/158/5 rows, nothing written); guard logic is covered by unit tests."
+  }
+}
