@@ -138,3 +138,16 @@ class TestSolFindings:
             assert mod.main() == 1
         conn.rollback.assert_called_once()
         conn.commit.assert_not_called()
+
+
+class TestShrinkUnderLock:
+    def test_table_grown_since_dry_run_aborts_before_delete(self, proc, tmp_path, monkeypatch):
+        monkeypatch.setattr(proc, "BACKUP_DIR", tmp_path)
+        cur = mock.MagicMock()
+        cur.description = [("id",)]
+        cur.fetchall.return_value = [(i,) for i in range(200)]
+        with pytest.raises(SystemExit, match="under lock"):
+            proc.backup_and_clear(cur, "procedural_guidance", planned_rows=60)
+        sql = [str(c.args[0]) for c in cur.execute.call_args_list]
+        assert not any(s.startswith("DELETE") for s in sql)
+        cur.connection.rollback.assert_called_once()

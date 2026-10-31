@@ -100,7 +100,8 @@ def check_shrink(planned: dict, current: dict, allow_shrink: bool) -> list[str]:
     ]
 
 
-def backup_and_clear(cur, table: str) -> None:
+def backup_and_clear(cur, table: str, planned_rows: int | None = None,
+                     allow_shrink: bool = False) -> None:
     """Lock ``table``, save every row to a JSON file, then delete them.
 
     The lock is held until the caller commits, so no row can be added between
@@ -110,8 +111,14 @@ def backup_and_clear(cur, table: str) -> None:
     cur.execute(f"SELECT * FROM {table}")
     cols = [d[0] for d in cur.description]
     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    # Re-check under the lock: the table may have grown since the dry-run count.
+    if planned_rows is not None:
+        shrinks = check_shrink({table: planned_rows}, {table: len(rows)}, allow_shrink)
+        if shrinks:
+            cur.connection.rollback()
+            sys.exit("[ABORT] under lock: " + shrinks[0] + "; rolled back, nothing written.")
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S")
+    stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H%M%S_%f")
     path = BACKUP_DIR / f"{table}_pre_import_procedural_{stamp}.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(rows, f, default=str, indent=1)
@@ -148,13 +155,13 @@ def create_tables(conn):
     cur.close()
 
 
-def import_pathway_guidance(conn, guidance_data):
+def import_pathway_guidance(conn, guidance_data, planned_rows=None, allow_shrink=False):
     """Import pathway guidance Q&A pairs."""
 
     cur = conn.cursor()
 
     # Clear existing data (optional - comment out if you want to preserve)
-    backup_and_clear(cur, "procedural_guidance")
+    backup_and_clear(cur, "procedural_guidance", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -229,13 +236,13 @@ def import_pathway_guidance(conn, guidance_data):
     return count
 
 
-def import_checklists(conn, checklist_data):
+def import_checklists(conn, checklist_data, planned_rows=None, allow_shrink=False):
     """Import application checklists."""
 
     cur = conn.cursor()
 
     # Clear existing data
-    backup_and_clear(cur, "application_checklists")
+    backup_and_clear(cur, "application_checklists", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -289,13 +296,13 @@ def import_checklists(conn, checklist_data):
     return count
 
 
-def import_guides(conn, guides_data):
+def import_guides(conn, guides_data, planned_rows=None, allow_shrink=False):
     """Import getting started guides."""
 
     cur = conn.cursor()
 
     # Clear existing data
-    backup_and_clear(cur, "getting_started_guides")
+    backup_and_clear(cur, "getting_started_guides", planned_rows, allow_shrink)
 
     # Insert new data
     insert_sql = """
@@ -420,19 +427,22 @@ def main():
 
     # Import pathway guidance
     print("Importing pathway guidance...")
-    guidance_count = import_pathway_guidance(conn, payloads["procedural_guidance"])
+    guidance_count = import_pathway_guidance(conn, payloads["procedural_guidance"],
+        planned["procedural_guidance"], args.allow_shrink)
     print(f"[OK] Imported {guidance_count} Q&A pairs")
     print()
 
     # Import checklists
     print("Importing application checklists...")
-    checklist_count = import_checklists(conn, payloads["application_checklists"])
+    checklist_count = import_checklists(conn, payloads["application_checklists"],
+        planned["application_checklists"], args.allow_shrink)
     print(f"[OK] Imported {checklist_count} checklist items")
     print()
 
     # Import guides
     print("Importing getting started guides...")
-    guides_count = import_guides(conn, payloads["getting_started_guides"])
+    guides_count = import_guides(conn, payloads["getting_started_guides"],
+        planned["getting_started_guides"], args.allow_shrink)
     print(f"[OK] Imported {guides_count} guides")
     print()
 
