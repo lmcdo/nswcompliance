@@ -58,15 +58,18 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def planned_row_counts() -> dict:
-    """Load every input file and return table -> rows it would write.
+def planned_row_counts() -> tuple[dict, dict]:
+    """Load every input file once; return (table -> rows, table -> parsed payload).
+
+    The payloads returned here are the ones written, so a file changed after
+    this check cannot reach the DELETE.
 
     Raises:
         SystemExit: if any file is missing, unreadable, not a list, or would
             write zero rows. A missing or truncated export must never reach
             the DELETE that empties the table.
     """
-    counts = {}
+    counts, payloads = {}, {}
     for table, (name, count_rows) in INPUTS.items():
         path = EXTRACTED_DIR / name
         if not path.exists():
@@ -82,7 +85,8 @@ def planned_row_counts() -> dict:
         if rows == 0:
             sys.exit(f"[ABORT] {path} would write 0 rows to {table}; nothing written.")
         counts[table] = rows
-    return counts
+        payloads[table] = data
+    return counts, payloads
 
 
 def check_shrink(planned: dict, current: dict, allow_shrink: bool) -> list[str]:
@@ -97,7 +101,12 @@ def check_shrink(planned: dict, current: dict, allow_shrink: bool) -> list[str]:
 
 
 def backup_and_clear(cur, table: str) -> None:
-    """Save every row of ``table`` to a JSON file, then delete them."""
+    """Lock ``table``, save every row to a JSON file, then delete them.
+
+    The lock is held until the caller commits, so no row can be added between
+    the backup and the DELETE.
+    """
+    cur.execute(f"LOCK TABLE {table} IN ACCESS EXCLUSIVE MODE")
     cur.execute(f"SELECT * FROM {table}")
     cols = [d[0] for d in cur.description]
     rows = [dict(zip(cols, r)) for r in cur.fetchall()]
@@ -139,16 +148,8 @@ def create_tables(conn):
     cur.close()
 
 
-def import_pathway_guidance(conn):
+def import_pathway_guidance(conn, guidance_data):
     """Import pathway guidance Q&A pairs."""
-    guidance_path = EXTRACTED_DIR / "pathway_guidance.json"
-
-    if not guidance_path.exists():
-        print(f"[ERROR] File not found: {guidance_path}")
-        return 0
-
-    with open(guidance_path, 'r', encoding='utf-8') as f:
-        guidance_data = json.load(f)
 
     cur = conn.cursor()
 
@@ -228,16 +229,8 @@ def import_pathway_guidance(conn):
     return count
 
 
-def import_checklists(conn):
+def import_checklists(conn, checklist_data):
     """Import application checklists."""
-    checklist_path = EXTRACTED_DIR / "application_checklists.json"
-
-    if not checklist_path.exists():
-        print(f"[ERROR] File not found: {checklist_path}")
-        return 0
-
-    with open(checklist_path, 'r', encoding='utf-8') as f:
-        checklist_data = json.load(f)
 
     cur = conn.cursor()
 
@@ -296,16 +289,8 @@ def import_checklists(conn):
     return count
 
 
-def import_guides(conn):
+def import_guides(conn, guides_data):
     """Import getting started guides."""
-    guides_path = EXTRACTED_DIR / "getting_started_guides.json"
-
-    if not guides_path.exists():
-        print(f"[SKIP] File not found: {guides_path}")
-        return 0
-
-    with open(guides_path, 'r', encoding='utf-8') as f:
-        guides_data = json.load(f)
 
     cur = conn.cursor()
 
@@ -398,7 +383,7 @@ def main():
     args = parser.parse_args()
 
     # Inputs are checked before any connection is opened.
-    planned = planned_row_counts()
+    planned, payloads = planned_row_counts()
 
     print("Connecting to database...")
     conn = get_db_connection()
@@ -408,8 +393,12 @@ def main():
     cur = conn.cursor()
     current = {}
     for table in planned:
-        cur.execute(f"SELECT COUNT(*) FROM {table}")
-        current[table] = cur.fetchone()[0]
+        cur.execute("SELECT to_regclass(%s)", (table,))
+        if cur.fetchone()[0] is None:
+            current[table] = 0  # created by create_tables() on --apply
+        else:
+            cur.execute(f"SELECT COUNT(*) FROM {table}")
+            current[table] = cur.fetchone()[0]
         print(f"  {table}: {current[table]} rows now -> {planned[table]} after import")
     cur.close()
     print()
@@ -431,19 +420,19 @@ def main():
 
     # Import pathway guidance
     print("Importing pathway guidance...")
-    guidance_count = import_pathway_guidance(conn)
+    guidance_count = import_pathway_guidance(conn, payloads["procedural_guidance"])
     print(f"[OK] Imported {guidance_count} Q&A pairs")
     print()
 
     # Import checklists
     print("Importing application checklists...")
-    checklist_count = import_checklists(conn)
+    checklist_count = import_checklists(conn, payloads["application_checklists"])
     print(f"[OK] Imported {checklist_count} checklist items")
     print()
 
     # Import guides
     print("Importing getting started guides...")
-    guides_count = import_guides(conn)
+    guides_count = import_guides(conn, payloads["getting_started_guides"])
     print(f"[OK] Imported {guides_count} guides")
     print()
 

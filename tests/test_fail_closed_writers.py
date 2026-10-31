@@ -40,7 +40,7 @@ def _write_inputs(d: Path, guidance=1, checklist_items=1, guides=1):
 class TestImportProceduralInputs:
     def test_valid_inputs_count_checklist_items_not_checklists(self, proc, tmp_path):
         _write_inputs(tmp_path, guidance=46, checklist_items=158, guides=5)
-        assert proc.planned_row_counts() == {
+        assert proc.planned_row_counts()[0] == {
             "procedural_guidance": 46,
             "application_checklists": 158,
             "getting_started_guides": 5,
@@ -115,3 +115,26 @@ class TestCleanKrgReversed:
         monkeypatch.setitem(sys.modules, "psycopg2", mock.MagicMock())
         mod = _load("scripts/_clean_krg_reversed.py", "clean_krg_t3")
         assert mod.clean_text("Keep this\nGNIKRAP\n3A\nand this") == "Keep this\nand this"
+
+
+class TestSolFindings:
+    def test_checked_payload_is_the_one_returned_for_writing(self, proc, tmp_path):
+        _write_inputs(tmp_path, guidance=2)
+        _, payloads = proc.planned_row_counts()
+        (tmp_path / "pathway_guidance.json").write_text("[]")  # changed after the check
+        assert len(payloads["procedural_guidance"]) == 2
+
+    def test_krg_concurrent_change_rolls_back(self, monkeypatch):
+        cur = mock.MagicMock()
+        cur.fetchall.return_value = [(1, "Real text\nGNIKRAP\nmore text")]
+        cur.rowcount = 0  # the row changed after it was read
+        conn = mock.MagicMock(cursor=mock.MagicMock(return_value=cur))
+        monkeypatch.setitem(sys.modules, "psycopg2",
+                            mock.MagicMock(connect=mock.MagicMock(return_value=conn)))
+        mod = _load("scripts/_clean_krg_reversed.py", "clean_krg_t4")
+        monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://unused")
+        monkeypatch.setattr(sys, "argv", ["_clean_krg_reversed.py", "--apply"])
+        with mock.patch.object(Path, "write_text"), mock.patch.object(Path, "mkdir"):
+            assert mod.main() == 1
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()

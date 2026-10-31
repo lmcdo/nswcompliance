@@ -96,7 +96,7 @@ def main() -> int:
     cur.execute("""
         SELECT id, provision_text FROM regulatory_provisions
         WHERE source_council = 'ku_ring_gai' AND is_current = true
-    """)
+    """ + (" FOR UPDATE" if args.apply else ""))
     rows = cur.fetchall()
     print(f"Checking {len(rows)} provisions...")
 
@@ -126,8 +126,23 @@ def main() -> int:
         encoding='utf-8')
     print(f"[BACKUP] {len(old_text)} rows -> {backup}")
 
+    # Rows are locked (FOR UPDATE) since the SELECT, and each UPDATE also requires
+    # the row still to be current Ku-ring-gai with the text that was backed up, so
+    # any concurrent change shows up as a count mismatch and nothing is written.
+    changed = 0
     for new_text, pid in updates:
-        cur.execute("UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s", (new_text, pid))
+        cur.execute(
+            "UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s"
+            " AND source_council = 'ku_ring_gai' AND is_current = true"
+            " AND provision_text IS NOT DISTINCT FROM %s",
+            (new_text, pid, old_text[pid]),
+        )
+        changed += cur.rowcount
+    if changed != len(updates):
+        conn.rollback()
+        print(f"[ABORT] {changed} of {len(updates)} rows still matched; rolled back, nothing written.")
+        conn.close()
+        return 1
 
     conn.commit()
     print(f"Applied {len(updates)} text cleanups.")
