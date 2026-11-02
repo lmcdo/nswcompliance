@@ -1,4 +1,32 @@
-{"tier": "minor", "justification": "Lowers two published coverage counts to the live values after held rules were rolled back", "commit_hash": "d234165c",
- "files": ["frontend-nextjs/lib/coverage.ts"],
- "break_it": [{"scenario": "published count higher than the rules actually served", "what_happens": "the site claims coverage for councils it does not serve", "mitigated": true, "how": "values set from verify_coverage_stats live column", "repro": "python scripts/verify_coverage_stats.py"}],
- "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — verify_coverage_stats prints current"}}
+{
+ "tier": "minor",
+ "justification": "Lowers two published coverage counts to the live values after held rules were rolled back",
+ "commit_hash": "d745039e",
+ "files": [
+  "frontend-nextjs/lib/coverage.ts",
+  "scripts/council_quote.py",
+  "tests/test_council_quote.py"
+ ],
+ "break_it": [
+  {
+   "scenario": "published count higher than the rules actually served",
+   "what_happens": "the site claims coverage for councils it does not serve",
+   "mitigated": true,
+   "how": "values set from verify_coverage_stats live column",
+   "repro": "python scripts/verify_coverage_stats.py"
+  },
+  {
+   "scenario": "council_quote run from /app in the Railway image",
+   "what_happens": "ROOT.parents[2] raised IndexError and dcp-commit exited 1",
+   "mitigated": true,
+   "how": "_env_file checks len(parents) first",
+   "repro": "python -m pytest tests/test_council_quote.py -k env_file"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No \u2014 verify_coverage_stats prints current"
+ }
+}
