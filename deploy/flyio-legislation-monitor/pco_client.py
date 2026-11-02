@@ -4,7 +4,7 @@ PCO (Parliamentary Counsel's Office) XML Export Client
 =====================================================
 Queries legislation.nsw.gov.au export API for instrument changes.
 
-IP 149.28.176.81 whitelisted (confirmed 2026-05-19 by PCO Website Help).
+IP 209.71.97.10 allow-listed (confirmed 2026-07-02 by PCO Website Help; the earlier 149.28.176.81 was the retired Railway copy).
 Must run outside Sydney business hours (agreed condition).
 
 Reference: https://legislation.nsw.gov.au/help/export
@@ -43,7 +43,7 @@ SESSION.headers.update(HEADERS)
 
 class PCOAccessDenied(Exception):
     """Raised when PCO returns 403 — IP may not be active on this machine.
-    Whitelisted IP: 149.28.176.81 (confirmed 2026-05-19).
+    Allow-listed IP: 209.71.97.10 (confirmed 2026-07-02).
     """
     pass
 
@@ -71,7 +71,7 @@ def _request(url: str, timeout: int = 30) -> requests.Response:
     if resp.status_code == 403:
         raise PCOAccessDenied(
             f"HTTP 403 from PCO — this machine's IP may not be the "
-            f"whitelisted IP (149.28.176.81). URL: {url}"
+            f"allow-listed IP (209.71.97.10). URL: {url}"
         )
     if resp.status_code != 200:
         raise PCOError(f"HTTP {resp.status_code}: {url}")
@@ -197,5 +197,5 @@ if __name__ == "__main__":
                 print(f"      Point in time: {c.point_in_time}")
     else:
         print("  PCO returned 403 — this machine's IP is not the whitelisted IP.")
-        print("  Whitelisted IP: 149.28.176.81 (run from that server)")
+        print("  Allow-listed IP: 209.71.97.10 (the Fly app egress)")
         sys.exit(1)
