@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds the five scripts the dcp-commit and outreach jobs reach but the monitors image never copied; adds a test that walks imports and subprocess paths from every worker",
- "commit_hash": "f91d1e8a",
+ "commit_hash": "c299b599",
  "files": [
   "Dockerfile.monitors",
   "tests/test_dockerfile_monitors_imports.py"
@@ -11,7 +11,7 @@
    "scenario": "a worker runs a sibling script as a subprocess instead of importing it",
    "what_happens": "the old scan saw only 'from scripts.X import', so the file was left out and dcp-commit exited 1 every day from 2026-10-30",
    "mitigated": true,
-   "how": "test_everything_a_worker_reaches_is_copied follows '\"scripts\" / \"x.py\"' paths and bare lazy imports transitively",
+   "how": "test_everything_a_worker_reaches_is_copied follows subprocess script paths built from the scripts folder, and bare lazy imports, transitively",
    "repro": "remove 'COPY scripts/council_quote.py' and run pytest tests/test_dockerfile_monitors_imports.py"
   },
   {
