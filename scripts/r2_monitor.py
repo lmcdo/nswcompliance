@@ -875,7 +875,6 @@ def run_monitor(
     """
     if bool(manual_key) != bool(manual_file) or (manual_file and not council_filter):
         raise ValueError("manual intake needs manual_key, manual_file and a council together")
-    manual_matched = 0
     rec = recorder or Recorder(conn, dry_run=True, mode="unrecorded")
     _host_pause_spent.clear()  # the 429 budget is per run, not per process (Sol, 2026-10-23)
     cur = conn.cursor()
@@ -918,6 +917,13 @@ def run_monitor(
     cols = [d[0] for d in cur.description]
     chapters = [dict(zip(cols, row)) for row in rows]
     cur.close()
+    if manual_key:
+        # Before any write: a typo (0 rows) or a duplicated key (2+) must stop the run here, not
+        # after the loop has already stored the file (Sol, PR #1580).
+        n_match = sum(1 for ch in chapters if ch["chapter_key"] == manual_key)
+        if n_match != 1:
+            raise RuntimeError(f"manual intake: chapter_key {manual_key!r} matched {n_match} active "
+                               f"registry rows for {council_filter}, expected exactly 1 -- nothing ingested")
 
     # Group by council for hub-scrape approach
     by_council: dict[str, list[dict]] = defaultdict(list)
@@ -1197,8 +1203,6 @@ def run_monitor(
             stored_hash = chapter["content_hash"]
             if manual_key and key != manual_key:
                 continue  # manual intake touches its one chapter only
-            if manual_key:
-                manual_matched += 1
             stored_len  = chapter["url_content_length"]
             failures    = chapter["check_failures"] or 0
             is_spatial  = chapter.get("is_spatial", False)
@@ -1589,10 +1593,6 @@ def run_monitor(
         cur.close()
         rec.flush()
 
-    if manual_key and manual_matched != 1:
-        # A typo in the key must not end as a clean run with the PDF still unstored (Sol, PR #1580).
-        raise RuntimeError(f"manual intake: chapter_key {manual_key!r} matched {manual_matched} active "
-                           f"registry rows for {council_filter}, expected exactly 1 -- nothing was ingested")
     return results
 
 

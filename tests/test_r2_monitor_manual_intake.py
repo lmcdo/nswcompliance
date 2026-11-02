@@ -164,3 +164,14 @@ def test_a_chapter_with_no_recorded_hash_needs_the_hash_named(run):
     res, sql, s3 = run([_row(1, "ch2", content_hash=None)])
     assert s3.put_object.call_count == 0 and not _registry_writes(sql)
     assert res["failed"] == 1
+
+
+def test_a_duplicated_key_stops_before_any_write(monkeypatch, tmp_path):
+    f = tmp_path / "ch.pdf"
+    f.write_bytes(PDF)
+    h = r2_monitor.sha256(PDF)
+    conn, s3 = _Conn([_row(1, "ch2", content_hash=h), _row(2, "ch2", content_hash=h)]), MagicMock()
+    monkeypatch.setattr(r2_monitor, "send_telegram", lambda m: None)
+    with pytest.raises(RuntimeError, match="matched 2"):
+        r2_monitor.run_monitor("sutherland_shire", s3, conn, manual_key="ch2", manual_file=str(f))
+    assert s3.put_object.call_count == 0 and not _registry_writes(conn.cur.sql)
