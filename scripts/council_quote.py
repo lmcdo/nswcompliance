@@ -576,7 +576,7 @@ def judge_twice(row: dict, streams: list[Stream], unlabelled: list[Stream]) -> d
 def chapter(args) -> tuple[list[dict], str | None]:
     r2_path, rows = args
     from dotenv import load_dotenv
-    load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
+    load_dotenv(_env_file(ROOT))
     try:
         readings, cased = load_chapter(r2_path)
     except Exception as e:  # noqa: BLE001 -- one bad PDF must not stop the fleet
@@ -640,6 +640,17 @@ def report(res: list[dict]) -> None:
                 print("    " + r["quote"][:500].replace("\n", "\n    "))
 
 
+def _env_file(root: Path) -> Path:
+    """The main checkout's .env when run from a worktree, else root/.env.
+
+    A worktree sits three levels below the main checkout; the Railway image is /app,
+    which has one parent, so indexing parents[2] there raised IndexError on every run.
+    """
+    if len(root.parents) > 2 and (root.parents[2] / ".env").exists():
+        return root.parents[2] / ".env"
+    return root / ".env"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     mode = ap.add_mutually_exclusive_group(required=True)
@@ -655,7 +666,7 @@ def main() -> int:
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     from dotenv import load_dotenv
-    load_dotenv(ROOT.parents[2] / ".env" if (ROOT.parents[2] / ".env").exists() else ROOT / ".env")
+    load_dotenv(_env_file(ROOT))
     ids = [int(x) for x in a.ids.split(",")] if a.ids else None
     if a.chapter is not None and (not a.chapter.strip() or not a.council):
         ap.error("--chapter needs a chapter_key and --council")   # a blank one would widen to the council
