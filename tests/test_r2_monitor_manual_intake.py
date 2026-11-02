@@ -102,7 +102,7 @@ def test_known_case_hash_set_but_no_file_is_stored_and_queued(run):
 
 
 def test_only_the_named_chapter_is_touched(run):
-    res, sql, s3 = run([_row(1, "ch2"), _row(2, "ch4")], key="ch4")
+    res, sql, s3 = run([_row(1, "ch2"), _row(2, "ch4", content_hash=r2_monitor.sha256(PDF))], key="ch4")
     (s, p), = _registry_writes(sql)
     assert p[-1] == 2
 
@@ -157,3 +157,10 @@ def test_a_named_new_hash_is_accepted_as_an_amendment(monkeypatch, tmp_path):
 def test_a_mistyped_key_fails_loudly(run):
     with pytest.raises(RuntimeError, match="matched 0"):
         run([_row(1, "ch2")], key="ch2x")
+
+
+def test_a_chapter_with_no_recorded_hash_needs_the_hash_named(run):
+    # Sol 2nd pass: content_hash NULL must not mean "any file will do".
+    res, sql, s3 = run([_row(1, "ch2", content_hash=None)])
+    assert s3.put_object.call_count == 0 and not _registry_writes(sql)
+    assert res["failed"] == 1

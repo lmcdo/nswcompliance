@@ -1324,10 +1324,11 @@ def run_monitor(
                 # already fingerprinted, unless the operator names the new file's hash up front
                 # (a genuine amendment downloaded by hand). Otherwise Chapter 4 fed under the
                 # Chapter 2 key would be stored as Chapter 2's source (Sol review, PR #1580).
-                if manual_file and stored_hash and new_hash != stored_hash                         and new_hash != (manual_expect_sha256 or "").lower():
+                # A chapter with no recorded hash accepts nothing unnamed either (Sol, 2nd pass).
+                if manual_file and new_hash not in {stored_hash, (manual_expect_sha256 or "").lower()} - {None, ""}:
                     raise RuntimeError(
                         f"manual intake refused: {manual_file} has sha256 {new_hash[:16]}, the registry "
-                        f"holds {stored_hash[:16]} for {key}. Wrong file, or an amendment: re-run with "
+                        f"holds {(stored_hash or 'no hash')[:16]} for {key}. Wrong file, or an amendment: re-run with "
                         f"--expect-sha256 {new_hash} if this is the council's new version.")
                 # Store the HEAD Content-Length (not len(content)) so future HEAD
                 # fast-path comparisons use the same value the server reports.
