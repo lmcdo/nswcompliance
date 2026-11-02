@@ -5,7 +5,7 @@ Legislation Monitor
 Monthly check of NSW planning instruments (SEPPs, LEPs) for version changes.
 
 Source of truth: each instrument's own page on legislation.nsw.gov.au
-  - Read from the PCO-whitelisted IP 149.28.176.81 (the Fly app); verified 2026-10-08
+  - Read from the PCO-whitelisted IP 209.71.97.10 (the Fly app egress; allow-listed 2026-07-02)
   - The newest point-in-time date on the page is the version
   - A page that cannot be read is a named error; nothing is stamped "unchanged"
 
@@ -288,8 +288,8 @@ def check_via_nsw_legislation(
 ) -> tuple[dict[str, str | None], list[str]]:
     """Check instruments via legislation.nsw.gov.au (official NSW source).
 
-    IP 149.28.176.81 whitelisted by PCO (confirmed 2026-05-19).
-    Uses plain HTTP requests. Falls back to Playwright if HTTP fails (403).
+    Egress IP 209.71.97.10 allow-listed by PCO (confirmed 2026-07-02).
+    Uses plain HTTP requests. A 403 fails loudly (no browser fallback).
 
     Returns (version_map, fetch_errors).
     """
@@ -370,8 +370,7 @@ def _extract_latest_pit_date(html: str, url: str) -> str | None:
 def _fetch_nsw_legislation_version_http(url: str) -> str | None:
     """Fetch version date from legislation.nsw.gov.au using plain HTTP.
 
-    IP 149.28.176.81 whitelisted by PCO (confirmed 2026-05-19).
-    Falls back to Playwright if HTTP returns 403.
+    Egress IP 209.71.97.10 allow-listed by PCO (confirmed 2026-07-02); a 403 fails loudly.
 
     Prefers point-in-time version dates (actual amendment dates) over the
     "Current version for" header which advances with time even when the
@@ -380,9 +379,11 @@ def _fetch_nsw_legislation_version_http(url: str) -> str | None:
     resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
 
     if resp.status_code == 403:
-        # IP may not be active on this machine — fall back to Playwright
-        print(f"    HTTP 403 — falling back to Playwright for {url}")
-        return _fetch_nsw_legislation_version_playwright(url)
+        # PCO allow-lists this machine's egress IP (209.71.97.10). A 403 means the
+        # allow-list is not honouring it; a browser cannot and must not get round that.
+        raise RuntimeError(
+            f"HTTP 403 - PCO is blocking this machine's IP (expected 209.71.97.10); "
+            f"run check_ip.py and ask PCO to check the allow-list: {url}")
     if resp.status_code == 404:
         raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
     if resp.status_code != 200:
@@ -397,60 +398,6 @@ def _fetch_nsw_legislation_version_http(url: str) -> str | None:
         )
 
     return _extract_version_from_html(resp.text, url)
-
-
-def _fetch_nsw_legislation_version_playwright(url: str) -> str | None:
-    """Playwright fallback for legislation.nsw.gov.au when HTTP fails."""
-    browser = _get_playwright_browser()
-    ctx = browser.new_context(
-        user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/125.0.0.0 Safari/537.36"
-        ),
-        accept_downloads=True,
-    )
-    page = ctx.new_page()
-    try:
-        resp = page.goto(url, timeout=45000, wait_until="domcontentloaded")
-        if resp and resp.status == 404:
-            raise RuntimeError(f"HTTP 404 — EPI ID may be wrong: {url}")
-
-        # Wait for Cloudflare challenge to resolve — the challenge page has
-        # title "Just a moment..." and its own <h1>. Poll until the real page
-        # appears or timeout after ~30s.
-        for attempt in range(6):
-            html = page.content()
-            if "Just a moment" not in html:
-                break
-            print(f"    Cloudflare challenge detected, waiting... (attempt {attempt + 1}/6)")
-            time.sleep(5)
-        else:
-            raise RuntimeError(
-                f"Cloudflare challenge did not resolve after 30s: {url}"
-            )
-
-        # Wait for actual legislation content to render
-        try:
-            page.wait_for_selector(
-                ".legislation-title, #content, .legislation-body",
-                timeout=10000,
-            )
-        except Exception:
-            pass  # Content may already be in the HTML from goto
-        time.sleep(1)
-        html = page.content()
-    except Exception as exc:
-        if "Download is starting" in str(exc):
-            raise DownloadTriggeredError(
-                f"Page triggers download instead of rendering HTML — "
-                f"manual check needed: {url}"
-            ) from exc
-        raise
-    finally:
-        ctx.close()
-
-    return _extract_version_from_html(html, url)
 
 
 def _extract_version_from_html(html: str, url: str) -> str | None:
