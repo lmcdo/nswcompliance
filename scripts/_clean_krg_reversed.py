@@ -22,7 +22,7 @@ Reversed tokens identified:
 Strategy: remove lines that are ONLY these reversed tokens (standalone lines).
 Safe because real English content won't be entirely these tokens.
 """
-import os, sys, re
+import argparse, datetime, json, os, sys, re
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
@@ -69,28 +69,87 @@ def clean_text(text: str) -> str:
     return result.strip()
 
 
-conn = psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
-cur = conn.cursor()
+# prior-art-checked: reuse not viable because this guards the same script's
+# existing write in place (no new data source); the suggested matches are
+# unrelated one-off scripts with no importable backup helper. 2026-10-31.
+BACKUP_DIR = Path(__file__).parent.parent / 'data' / 'db_rollback_backups'
 
-cur.execute("""
-    SELECT id, provision_text FROM regulatory_provisions
-    WHERE source_council = 'ku_ring_gai' AND is_current = true
-""")
-rows = cur.fetchall()
-print(f"Checking {len(rows)} provisions...")
 
-updates = []
-for pid, text in rows:
-    cleaned = clean_text(text)
-    if cleaned != (text or '').strip():
-        updates.append((cleaned, pid))
+def main() -> int:
+    """Dry run by default; --apply backs up the old text, then rewrites it.
 
-print(f"Provisions needing cleanup: {len(updates)}")
+    This rewrites live provision_text, so it must never run on import and never
+    without a copy of what it replaced.
+    """
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apply', action='store_true',
+                        help='back up and rewrite (default: dry run)')
+    args = parser.parse_args()
 
-for new_text, pid in updates:
-    cur.execute("UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s", (new_text, pid))
+    url = os.getenv('SUPABASE_DB_URL')
+    if not url:
+        print('[ABORT] SUPABASE_DB_URL not set; nothing written.')
+        return 1
+    conn = psycopg2.connect(url)
+    cur = conn.cursor()
 
-conn.commit()
-print(f"Applied {len(updates)} text cleanups.")
-cur.close()
-conn.close()
+    cur.execute("""
+        SELECT id, provision_text FROM regulatory_provisions
+        WHERE source_council = 'ku_ring_gai' AND is_current = true
+    """ + (" FOR UPDATE" if args.apply else ""))
+    rows = cur.fetchall()
+    print(f"Checking {len(rows)} provisions...")
+
+    updates = []
+    old_text = {}
+    for pid, text in rows:
+        cleaned = clean_text(text)
+        if cleaned != (text or '').strip():
+            updates.append((cleaned, pid))
+            old_text[pid] = text
+
+    print(f"Provisions needing cleanup: {len(updates)}")
+    if not args.apply:
+        print('DRY RUN: nothing written. Re-run with --apply to back up and rewrite.')
+        conn.close()
+        return 0
+    if not updates:
+        conn.close()
+        return 0
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now().strftime('%Y-%m-%dT%H%M%S')
+    backup = BACKUP_DIR / f'krg_reversed_provision_text_pre_{stamp}.json'
+    backup.write_text(json.dumps(
+        {'table': 'regulatory_provisions', 'column': 'provision_text',
+         'rows': [{'id': pid, 'provision_text': t} for pid, t in old_text.items()]}),
+        encoding='utf-8')
+    print(f"[BACKUP] {len(old_text)} rows -> {backup}")
+
+    # Rows are locked (FOR UPDATE) since the SELECT, and each UPDATE also requires
+    # the row still to be current Ku-ring-gai with the text that was backed up, so
+    # any concurrent change shows up as a count mismatch and nothing is written.
+    changed = 0
+    for new_text, pid in updates:
+        cur.execute(
+            "UPDATE regulatory_provisions SET provision_text = %s WHERE id = %s"
+            " AND source_council = 'ku_ring_gai' AND is_current = true"
+            " AND provision_text IS NOT DISTINCT FROM %s",
+            (new_text, pid, old_text[pid]),
+        )
+        changed += cur.rowcount
+    if changed != len(updates):
+        conn.rollback()
+        print(f"[ABORT] {changed} of {len(updates)} rows still matched; rolled back, nothing written.")
+        conn.close()
+        return 1
+
+    conn.commit()
+    print(f"Applied {len(updates)} text cleanups.")
+    cur.close()
+    conn.close()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

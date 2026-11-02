@@ -1,0 +1,99 @@
+{
+ "tier": "standard",
+ "justification": "Changes when a production monitor runs and how it reports a block. Not Critical: no data written differently. Not Minor: production scheduling and error path.",
+ "commit_hash": "134e38d1",
+ "files": [
+  "deploy/flyio-legislation-monitor/Dockerfile",
+  "deploy/flyio-legislation-monitor/legislation_monitor.py",
+  "deploy/flyio-legislation-monitor/pco_client.py",
+  "deploy/flyio-legislation-monitor/run_loop.sh",
+  "scripts/legislation_monitor.py",
+  "scripts/pco_client.py",
+  "tests/test_legislation_monitor_no_silent_pass.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_legislation_monitor_no_silent_pass.py -k '403 or after_hours'",
+  "fails_when": "Fails if a 403 retries through a browser or is not named, or if the loop stops waiting for Sydney after hours.",
+  "external_authority": "PCO email 2026-04-22: scripts must run outside Sydney business hours; allow-list confirmed for 209.71.97.10 on 2026-07-02.",
+  "observed_red": "Mutating the 403 message made the 403 test fail (1 failed)."
+ },
+ "pre_impl": {
+  "existing_data": "run_loop.sh ran immediately on every start; a restart at 05:44 UTC ran it in business hours.",
+  "assumption_mismatch": "Code and docs still named 149.28.176.81, the retired Railway copy; check_ip.py on Fly prints 209.71.97.10.",
+  "new_vs_existing": "No new files; one function removed (browser fallback, now unused).",
+  "external_source_error": "A PCO 403 now raises a named RuntimeError instead of an ImportError from the missing browser."
+ },
+ "functions": [
+  {
+   "name": "_fetch_nsw_legislation_version_http",
+   "file_line": "deploy/flyio-legislation-monitor/legislation_monitor.py",
+   "what": "Reads an instrument's version date; 403 raises a named block.",
+   "input": "one legislation.nsw.gov.au instrument page URL to read",
+   "output": "version date string or None",
+   "if_none": "None when no date is on the page, as before",
+   "edge_cases": "403 names the expected IP",
+   "failure_mode": "A wrong expected IP in the message would mislead the reader, not the data"
+  },
+  {
+   "name": "after_hours",
+   "file_line": "deploy/flyio-legislation-monitor/run_loop.sh",
+   "what": "True from 19:00 to 03:59 Sydney time, so a run ends well before 06:00",
+   "input": "the container's system clock read in Sydney time",
+   "output": "shell exit status zero when a run is allowed",
+   "if_none": "Without tzdata TZ falls back to UTC; tzdata is installed in the image",
+   "edge_cases": "hours 03 and 19 start, 04 and 18 wait",
+   "failure_mode": "A wrong window delays the weekly run, it never writes data"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Fly restarts the machine at 2pm Sydney",
+   "what_happens": "The loop logs 'business hours; waiting' every 30 min and runs at 19:00",
+   "mitigated": true,
+   "how": "wait loop before each run",
+   "repro": "fly logs -a plotdetect-legislation-monitor after a deploy"
+  },
+  {
+   "scenario": "PCO keeps blocking the IP",
+   "what_happens": "Each instrument fails with a named 403 error and the run exits non-zero; DQ-69 stays red",
+   "mitigated": true,
+   "how": "named RuntimeError, no stamp on a miss",
+   "repro": "pytest -k 403"
+  },
+  {
+   "scenario": "tzdata missing from the image",
+   "what_happens": "Sydney hour reads as UTC and the window is wrong",
+   "mitigated": true,
+   "how": "Dockerfile installs tzdata; a test checks it",
+   "repro": "pytest -k after_hours"
+  },
+  {
+   "scenario": "A run starts late in the window",
+   "what_happens": "Starts by 03:59 at the latest and finishes in minutes, before 06:00",
+   "mitigated": true,
+   "how": "start window ends two hours before business hours",
+   "repro": "pytest -k after_hours"
+  }
+ ],
+ "verified": [
+  "Monitor tests 107 passed",
+  "403 test mutation-checked"
+ ],
+ "gaps": [
+  "Not deployed to Fly by this PR; needs fly deploy from deploy/flyio-legislation-monitor",
+  "PCO still has to lift the block"
+ ],
+ "post_merge": {
+  "action": "fly deploy in deploy/flyio-legislation-monitor; logs show the after-hours wait",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "After 19:00 Sydney, fly logs show the run and whether PCO still answers 403"
+ },
+ "real_layer_exempt": {
+  "deploy/flyio-legislation-monitor/legislation_monitor.py": "The real layer answers only from the Fly egress IP; checked live after deploy",
+  "deploy/flyio-legislation-monitor/pco_client.py": "The real layer answers only from the Fly egress IP; checked live after deploy",
+  "scripts/legislation_monitor.py": "The real layer answers only from the Fly egress IP; checked live after deploy",
+  "scripts/pco_client.py": "The real layer answers only from the Fly egress IP; checked live after deploy"
+ }
+}

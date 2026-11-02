@@ -405,3 +405,23 @@ class TestDeployedCopyMatchesSource:
             f"deploy/flyio-legislation-monitor/{filename} has drifted from "
             f"{source} — redeploy or resync before shipping."
         )
+
+
+def test_a_403_from_legislation_nsw_is_a_named_block_never_a_browser_retry(monkeypatch):
+    """2026-11-02: every page 403'd and the monitor fell back to a browser that is not
+    installed. An IP block is PCO's decision; the run must name it and stop, not retry
+    round it."""
+    class Resp:
+        status_code = 403
+        headers: dict = {}
+        text = ""
+    monkeypatch.setattr(lm.requests, "get", lambda *a, **k: Resp())
+    with pytest.raises(RuntimeError, match="PCO is blocking this machine's IP .*209.71.97.10"):
+        lm._fetch_nsw_legislation_version_http("https://legislation.nsw.gov.au/view/html/x")
+    assert not hasattr(lm, "_fetch_nsw_legislation_version_playwright")
+
+
+def test_the_fly_loop_waits_for_sydney_after_hours():
+    src = (ROOT / "deploy" / "flyio-legislation-monitor" / "run_loop.sh").read_text(encoding="utf-8")
+    assert "TZ=Australia/Sydney" in src and '-ge 19' in src and '-lt 4' in src
+    assert "tzdata" in (ROOT / "deploy" / "flyio-legislation-monitor" / "Dockerfile").read_text(encoding="utf-8")
