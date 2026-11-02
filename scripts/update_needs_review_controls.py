@@ -12,10 +12,14 @@ Results:
 - Burwood landscaping_min: → numeric (30% front / 70% rear yard soft landscaping)
 """
 
+import argparse
+import json
 import os
 import sys
+from datetime import date, datetime
+from pathlib import Path
+
 import psycopg2
-from datetime import date
 
 ENV_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -191,16 +195,31 @@ UPDATES = [
 ]
 
 
-def main():
+# prior-art-checked: same pattern as scripts/_clean_krg_reversed.py (#1571); no
+# importable backup helper exists. 2026-11-02.
+BACKUP_DIR = Path(__file__).parent.parent / "data" / "db_rollback_backups"
+COLS = ("value_min", "value_max", "needs_review", "condition", "source_text",
+        "section_ref", "review_reason", "reviewed_at", "last_verified_at", "extraction_method")
+
+
+def main() -> int:
+    """Dry run by default; --apply backs up the rows, then writes the values above.
+
+    A one-off from 2026-05-22 with hand-typed values. A row is written only while it
+    is still current AND still needs_review, so a re-run can never overwrite a row
+    that was resolved or corrected since.
+    """
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--apply", action="store_true", help="back up and write (default: dry run)")
+    args = ap.parse_args()
+
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
-
-    print(f"Updating {len(UPDATES)} needs_review rows...\n")
-
+    todo, before = [], {}
     for u in UPDATES:
-        # Verify row exists and matches expected lga/control_type
         cur.execute(
-            "SELECT lga, control_type FROM dcp_setback_controls WHERE id = %s AND is_current = true",
+            f"SELECT lga, control_type, {', '.join(COLS)} FROM dcp_setback_controls "
+            "WHERE id = %s AND is_current = true" + (" FOR UPDATE" if args.apply else ""),
             (u["id"],),
         )
         row = cur.fetchone()
@@ -208,9 +227,31 @@ def main():
             print(f"  SKIP id={u['id']}: not found or not current")
             continue
         if row[0] != u["lga"] or row[1] != u["control_type"]:
-            print(f"  SKIP id={u['id']}: mismatch — DB has {row[0]}/{row[1]}, expected {u['lga']}/{u['control_type']}")
+            print(f"  SKIP id={u['id']}: mismatch - DB has {row[0]}/{row[1]}, expected {u['lga']}/{u['control_type']}")
             continue
+        if row[2 + COLS.index("needs_review")] is not True:
+            print(f"  SKIP id={u['id']}: already resolved (needs_review is not true); not overwritten")
+            continue
+        todo.append(u)
+        before[u["id"]] = dict(zip(COLS, row[2:]))
+        print(f"  WOULD WRITE id={u['id']}: {u['lga']}/{u['control_type']}")
 
+    print(f"{len(todo)} of {len(UPDATES)} rows still need this update.")
+    if not args.apply:
+        print("DRY RUN: nothing written. Re-run with --apply to back up and write.")
+        conn.close()
+        return 0
+    if not todo:
+        conn.close()
+        return 0
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup = BACKUP_DIR / f"needs_review_controls_pre_{datetime.now():%Y-%m-%dT%H%M%S}.json"
+    backup.write_text(json.dumps({"table": "dcp_setback_controls", "rows": before}, default=str),
+                      encoding="utf-8")
+    print(f"[BACKUP] {len(before)} rows -> {backup}")
+
+    for u in todo:
         cur.execute(
             """
             UPDATE dcp_setback_controls SET
@@ -224,35 +265,20 @@ def main():
                 reviewed_at = NOW(),
                 last_verified_at = %s,
                 extraction_method = 'text_extraction'
-            WHERE id = %s
+            WHERE id = %s AND is_current = true AND needs_review = true
             """,
-            (
-                u["value_min"],
-                u["value_max"],
-                u["needs_review"],
-                u["condition"],
-                u["source_text"],
-                u["section_ref"],
-                u["review_reason"],
-                TODAY,
-                u["id"],
-            ),
+            (u["value_min"], u["value_max"], u["needs_review"], u["condition"],
+             u["source_text"], u["section_ref"], u["review_reason"], TODAY, u["id"]),
         )
-        status = "numeric" if u["value_min"] is not None else "not_applicable"
-        print(f"  OK id={u['id']}: {u['lga']}/{u['control_type']} -> {status}")
-
+        if cur.rowcount != 1:
+            conn.rollback()
+            print(f"[ABORT] id={u['id']} changed since it was read; nothing written.")
+            return 1
     conn.commit()
-    print(f"\nCommitted {len(UPDATES)} updates.")
-
-    # Verify
-    cur.execute(
-        "SELECT COUNT(*) FROM dcp_setback_controls WHERE needs_review = true AND is_current = true"
-    )
-    remaining = cur.fetchone()[0]
-    print(f"Remaining needs_review rows: {remaining}")
-
+    print(f"Committed {len(todo)} updates.")
     conn.close()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

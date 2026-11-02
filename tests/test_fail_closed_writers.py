@@ -151,3 +151,43 @@ class TestShrinkUnderLock:
         sql = [str(c.args[0]) for c in cur.execute.call_args_list]
         assert not any(s.startswith("DELETE") for s in sql)
         cur.connection.rollback.assert_called_once()
+
+
+class TestUpdateNeedsReviewControls:
+    """A one-off with hand-typed setback values: a re-run must never overwrite a row
+    that was resolved or corrected since, and never write without --apply."""
+
+    def _run(self, monkeypatch, tmp_path, argv, needs_review):
+        mod_path = "scripts/update_needs_review_controls.py"
+        cur = mock.MagicMock()
+        conn = mock.MagicMock(cursor=mock.MagicMock(return_value=cur))
+        monkeypatch.setitem(sys.modules, "psycopg2", mock.MagicMock(connect=mock.MagicMock(return_value=conn)))
+        monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+        mod = _load(mod_path, f"nrc_{len(argv)}_{needs_review}")
+        mod.BACKUP_DIR = tmp_path
+        u = mod.UPDATES[0]
+        cols = [None] * len(mod.COLS)
+        cols[mod.COLS.index("needs_review")] = needs_review
+        cur.fetchone.return_value = (u["lga"], u["control_type"], *cols)
+        cur.rowcount = 1
+        monkeypatch.setattr(mod, "UPDATES", [u])
+        monkeypatch.setattr(sys, "argv", ["x", *argv])
+        rc = mod.main()
+        sql = " ".join(str(c.args[0]) for c in cur.execute.call_args_list)
+        return rc, sql, conn
+
+    def test_dry_run_by_default_never_updates(self, monkeypatch, tmp_path):
+        rc, sql, conn = self._run(monkeypatch, tmp_path, [], True)
+        assert rc == 0 and "UPDATE dcp_setback_controls" not in sql
+        conn.commit.assert_not_called()
+
+    def test_a_resolved_row_is_never_overwritten_even_with_apply(self, monkeypatch, tmp_path):
+        rc, sql, conn = self._run(monkeypatch, tmp_path, ["--apply"], False)
+        assert rc == 0 and "UPDATE dcp_setback_controls" not in sql
+        conn.commit.assert_not_called()
+
+    def test_apply_backs_up_then_writes_only_a_still_open_row(self, monkeypatch, tmp_path):
+        rc, sql, conn = self._run(monkeypatch, tmp_path, ["--apply"], True)
+        assert rc == 0 and "needs_review = true" in sql
+        assert list(tmp_path.glob("needs_review_controls_pre_*.json"))
+        conn.commit.assert_called_once()
