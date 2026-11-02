@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "Sutherland's website returns 403 to the monitor (and to Zyte), so its DCP chapters could never be fetched, stored or extracted; 28 number rules cite them. A person can download the PDF in a browser. This feeds that file into the monitor's own write path so the PDF enters through the pipeline (versioned R2 copy, registry hash, needs_extraction, recorder) instead of by hand. It also fixes a real bug: a content_hash with r2_current_path NULL was treated as unchanged forever.",
+ "commit_hash": "85023a4c",
+ "files": [
+  "scripts/r2_monitor.py",
+  "tests/test_r2_monitor_manual_intake.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_r2_monitor_manual_intake.py -q",
+  "fails_when": "The r2_path fix is reverted (if new_hash == stored_hash:) - measured: 2 of 5 fail. A manual run calls the council (head_request/download_pdf/hub scraper are set to raise). A non-PDF is stored. A second chapter is written.",
+  "observed_red": "Measured 2026-11-02: with 'if new_hash == stored_hash:' restored, test_known_case_hash_set_but_no_file_is_stored_and_queued and test_a_normal_run_still_downloads_a_hash_with_no_file failed (2 failed, 3 passed)."
+ },
+ "pre_impl": {
+  "existing_data": "Registry rows for both Sutherland chapters already hold content_hash 5aabb8ad... (ch2) and 0e4555bb... (ch4) with r2_current_path NULL; the browser downloads match both byte for byte.",
+  "prior_art": "add_new_chapter.py, confirm_chapter.py, dcp_extract_changed.py and r2_monitor.py have no local-file option; the unblocker decision (meta-eval-web-unblocker-apis-2026-10-24) was tried: Zyte 520 Website Ban twice.",
+  "assumption_mismatch": "I assumed the monitor would store a file whose hash was already recorded. It would not: equal hashes took the unchanged branch even with no stored file, which is why Sutherland was stuck.",
+  "new_vs_existing": "No new write path. The existing per-chapter body of run_monitor does every write; the change only swaps where the bytes come from and adds a key filter."
+ },
+ "functions": [
+  {
+   "name": "run_monitor",
+   "file_line": "scripts/r2_monitor.py run_monitor",
+   "input": "council filter plus manual_key (a registered chapter_key) and manual_file (a local PDF path)",
+   "output": "the usual results dict with only that chapter processed and no hub scrape",
+   "if_none": "manual_key and manual_file default to None, which is the unchanged daily behaviour"
+  },
+  {
+   "name": "read_manual_pdf",
+   "file_line": "scripts/r2_monitor.py read_manual_pdf",
+   "input": "the filesystem path of a PDF a person downloaded in a browser",
+   "output": "a tuple of the raw bytes and an empty headers dict",
+   "if_none": "a missing path raises FileNotFoundError and the chapter is reported failed, nothing written"
+  }
+ ],
+ "values": [
+  {
+   "value": "dry run: ch2 and ch4 would upload to source-pdfs/dcps/sutherland_shire/v2.0-2026-11-02/",
+   "read_at": "python scripts/r2_monitor.py --council sutherland_shire --chapter-key ... --from-file ... --dry-run, 2026-11-02",
+   "if_missing": "no evidence the real registry rows take the store path"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "An HTML error page saved with a .pdf name",
+   "what_happens": "_assert_pdf_body raises before any upload or registry write",
+   "mitigated": "Mitigated in code on this branch: read_manual_pdf calls _assert_pdf_body, which raises on a body not starting %PDF or under MIN_PDF_BYTES",
+   "repro": "python -m pytest tests/test_r2_monitor_manual_intake.py::test_a_non_pdf_is_refused_and_writes_nothing",
+   "how": "read_manual_pdf calls _assert_pdf_body, which raises on a body not starting %PDF or under MIN_PDF_BYTES"
+  },
+  {
+   "scenario": "A stale or wrong file is fed for the chapter",
+   "what_happens": "its hash differs, so it takes the CHANGED path: a new version is stored, linked controls are flagged chapter_pdf_changed and the chapter is queued for extraction review",
+   "mitigated": "Mitigated in code on this branch: the differing hash routes to the existing CHANGED branch, which sets needs_extraction and flags linked controls for review",
+   "repro": "python scripts/r2_monitor.py --council sutherland_shire --chapter-key sutherland-dcp-2015-ch2-dwelling-houses --from-file <another pdf> --dry-run",
+   "how": "the differing hash routes to the existing CHANGED branch, which sets needs_extraction and flags linked controls for review"
+  },
+  {
+   "scenario": "--from-file given without --chapter-key or --council",
+   "what_happens": "argparse stops the run with an error before any connection is made",
+   "mitigated": "Mitigated in code on this branch: main() calls parser.error unless --chapter-key, --from-file and --council are all given together",
+   "repro": "python scripts/r2_monitor.py --from-file x.pdf --dry-run",
+   "how": "main() calls parser.error unless --chapter-key, --from-file and --council are all given together"
+  }
+ ],
+ "mutation_analysis": "Reverting the r2_path condition makes the known-case test and the source test fail (2/5), run not reasoned. The 'only the named chapter' test fails if the key filter is removed because two registry writes appear.",
+ "residual_risk": "A manually fed chapter is not watched: the council still blocks the monitor, so an amendment is only seen when someone downloads again. The 403s stay visible in waf_blocked. The fake-DB test checks the SQL parameters, not a real database.",
+ "post_merge": {
+  "db_reset": "No schema change. After merge: run the two manual intakes live (writes R2 + registry for 2 chapters), then the normal extract-to-review stage.",
+  "secrets": "None.",
+  "other_repo": "None; the Railway dcp-monitor cron runs without the new flags and behaves as before.",
+  "manual_verify": "Run the two intakes live, then select r2_current_path, content_hash, needs_extraction from dcp_chapter_registry for both Sutherland chapters and check the R2 objects' sha256."
+ }
+}
