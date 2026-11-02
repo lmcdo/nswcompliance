@@ -1,0 +1,25 @@
+{
+ "tier": "minor",
+ "justification": "Ledger status change only: DQ-69 declared open with its measured cause; no code or data changes.",
+ "commit_hash": "4e622419",
+ "files": [
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "break_it": [
+  {
+   "scenario": "PCO restores access and the monitor runs clean",
+   "what_happens": "DQ-69 then reads open while its check passes, so dq_check goes red until the row is set back to fixed",
+   "mitigated": true,
+   "how": "the ledger is two-way by design; flip the row in the PR that records the clean run",
+   "repro": "python scripts/dq_check.py"
+  }
+ ],
+ "post_merge": {
+  "action": "After PCO lifts the block, restart the Fly monitor and set DQ-69 back to fixed",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "dq_check lists DQ-69 as open, not red, on the next main run"
+ }
+}
