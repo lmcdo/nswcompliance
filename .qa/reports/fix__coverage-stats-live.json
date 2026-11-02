@@ -1,0 +1,4 @@
+{"tier": "minor", "justification": "Lowers two published coverage counts to the live values after held rules were rolled back", "commit_hash": "d234165c",
+ "files": ["frontend-nextjs/lib/coverage.ts"],
+ "break_it": [{"scenario": "published count higher than the rules actually served", "what_happens": "the site claims coverage for councils it does not serve", "mitigated": true, "how": "values set from verify_coverage_stats live column", "repro": "python scripts/verify_coverage_stats.py"}],
+ "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "No — verify_coverage_stats prints current"}}
