@@ -1217,8 +1217,10 @@ def run_monitor(
 
             try:
                 # Step 1: Quick HEAD check on Content-Length
-                head = ({"status": 200, "content_length": None, "etag": None}
-                        if manual_file else head_request(url))  # manual intake: nothing to ask
+                if manual_file:  # manual intake: no server to ask
+                    head = {"status": 200, "content_length": None, "etag": None}
+                else:
+                    head = head_request(url)
                 head_status = head.get("status")
                 if head_status == 403:
                     # WAF/access denied — don't count as check_failure (not a content issue).
