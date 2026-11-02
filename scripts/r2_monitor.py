@@ -858,6 +858,7 @@ def run_monitor(
     recorder: Recorder | None = None,
     manual_key: str | None = None,
     manual_file: str | None = None,
+    manual_expect_sha256: str | None = None,
 ) -> dict:
     """
     Main monitor loop.
@@ -872,6 +873,9 @@ def run_monitor(
     Returns summary dict with counts and list of changed chapters.
     `recorder` stores every outcome (migration 116); None records nothing (tests, reseed).
     """
+    if bool(manual_key) != bool(manual_file) or (manual_file and not council_filter):
+        raise ValueError("manual intake needs manual_key, manual_file and a council together")
+    manual_matched = 0
     rec = recorder or Recorder(conn, dry_run=True, mode="unrecorded")
     _host_pause_spent.clear()  # the 429 budget is per run, not per process (Sol, 2026-10-23)
     cur = conn.cursor()
@@ -1193,6 +1197,8 @@ def run_monitor(
             stored_hash = chapter["content_hash"]
             if manual_key and key != manual_key:
                 continue  # manual intake touches its one chapter only
+            if manual_key:
+                manual_matched += 1
             stored_len  = chapter["url_content_length"]
             failures    = chapter["check_failures"] or 0
             is_spatial  = chapter.get("is_spatial", False)
@@ -1314,6 +1320,15 @@ def run_monitor(
                 content, resp_headers = (read_manual_pdf(manual_file) if manual_file
                                          else download_pdf(url))
                 new_hash = sha256(content)
+                # A person can pick the wrong file. A hand-fed PDF must be the one the registry
+                # already fingerprinted, unless the operator names the new file's hash up front
+                # (a genuine amendment downloaded by hand). Otherwise Chapter 4 fed under the
+                # Chapter 2 key would be stored as Chapter 2's source (Sol review, PR #1580).
+                if manual_file and stored_hash and new_hash != stored_hash                         and new_hash != (manual_expect_sha256 or "").lower():
+                    raise RuntimeError(
+                        f"manual intake refused: {manual_file} has sha256 {new_hash[:16]}, the registry "
+                        f"holds {stored_hash[:16]} for {key}. Wrong file, or an amendment: re-run with "
+                        f"--expect-sha256 {new_hash} if this is the council's new version.")
                 # Store the HEAD Content-Length (not len(content)) so future HEAD
                 # fast-path comparisons use the same value the server reports.
                 # Servers may gzip responses, making len(content) != Content-Length.
@@ -1573,6 +1588,10 @@ def run_monitor(
         cur.close()
         rec.flush()
 
+    if manual_key and manual_matched != 1:
+        # A typo in the key must not end as a clean run with the PDF still unstored (Sol, PR #1580).
+        raise RuntimeError(f"manual intake: chapter_key {manual_key!r} matched {manual_matched} active "
+                           f"registry rows for {council_filter}, expected exactly 1 -- nothing was ingested")
     return results
 
 
@@ -1736,6 +1755,7 @@ def main():
     parser.add_argument("--reseed", action="store_true", help="Update council_url for all chapters from hub scrape (run once after CMS migration)")
     parser.add_argument("--reseed-hashes", action="store_true", help="Re-download all chapters and update stored hashes/ETags without triggering extraction (run after CMS migration invalidates ETags)")
     parser.add_argument("--chapter-key", help="Manual intake: the one registered chapter to feed --from-file into")
+    parser.add_argument("--expect-sha256", help="Manual intake: accept a file whose hash differs from the registry's only if it equals this (a council amendment downloaded by hand)")
     parser.add_argument("--from-file", help="Manual intake: a PDF downloaded in a browser from a council that blocks this monitor")
     parser.add_argument("--delay", type=float, default=None, help="Override default inter-request delay in seconds (default: 2.0, reseed-hashes: 5.0)")
     args = parser.parse_args()
@@ -1783,7 +1803,8 @@ def main():
         recorder.start()
         results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed,
                               recorder=recorder, manual_key=args.chapter_key,
-                              manual_file=args.from_file)
+                              manual_file=args.from_file,
+                              manual_expect_sha256=args.expect_sha256)
         # Read each newly found document's own cover and settle the ones it can (step 7).
         # Manual intake reads no hub page, so it finds no new documents to classify.
         results["new_documents"] = {} if args.from_file else classify_pending(

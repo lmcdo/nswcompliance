@@ -124,3 +124,36 @@ def test_a_normal_run_still_downloads_a_hash_with_no_file():
     src = open(r2_monitor.__file__, encoding="utf-8").read()
     assert "force=force or not r2_path" in src
     assert "if new_hash == stored_hash and r2_path:" in src
+
+
+def test_file_without_key_is_refused_inside_run_monitor(tmp_path):
+    f = tmp_path / "ch.pdf"
+    f.write_bytes(PDF)
+    with pytest.raises(ValueError):
+        r2_monitor.run_monitor("sutherland_shire", MagicMock(), _Conn([_row(1, "ch2")]), manual_file=str(f))
+
+
+def test_a_different_valid_pdf_is_refused_not_stored_as_an_amendment(run):
+    # Sol finding: Chapter 4's PDF fed under the Chapter 2 key. Registry holds Chapter 2's hash.
+    res, sql, s3 = run([_row(1, "ch2", content_hash="a" * 64)])
+    assert s3.put_object.call_count == 0 and not _registry_writes(sql)
+    assert res["failed"] == 1 and res["changed"] == []
+
+
+def test_a_named_new_hash_is_accepted_as_an_amendment(monkeypatch, tmp_path):
+    for name in ("head_request", "download_pdf"):
+        monkeypatch.setattr(r2_monitor, name, lambda *a, **k: (_ for _ in ()).throw(AssertionError(name)))
+    monkeypatch.setattr(r2_monitor, "send_telegram", lambda m: None)
+    monkeypatch.setattr(r2_monitor.time, "sleep", lambda s: None)
+    f = tmp_path / "ch.pdf"
+    f.write_bytes(PDF)
+    conn, s3 = _Conn([_row(1, "ch2", content_hash="a" * 64, r2_path="source-pdfs/dcps/sutherland_shire/v1.0-baseline/ch2.pdf")]), MagicMock()
+    s3.get_object.side_effect = Exception("no old copy")  # re-export gate fails open, as in production
+    res = r2_monitor.run_monitor("sutherland_shire", s3, conn, manual_key="ch2", manual_file=str(f),
+                                 manual_expect_sha256=r2_monitor.sha256(PDF))
+    assert s3.put_object.call_count == 1 and len(res["changed"]) == 1
+
+
+def test_a_mistyped_key_fails_loudly(run):
+    with pytest.raises(RuntimeError, match="matched 0"):
+        run([_row(1, "ch2")], key="ch2x")
