@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes when a production monitor runs and how it reports a block. Not Critical: no data written differently. Not Minor: production scheduling and error path.",
- "commit_hash": "e1515e16",
+ "commit_hash": "134e38d1",
  "files": [
   "deploy/flyio-legislation-monitor/Dockerfile",
   "deploy/flyio-legislation-monitor/legislation_monitor.py",
@@ -37,11 +37,11 @@
   {
    "name": "after_hours",
    "file_line": "deploy/flyio-legislation-monitor/run_loop.sh",
-   "what": "True from 19:00 to 05:59 Sydney time",
+   "what": "True from 19:00 to 03:59 Sydney time, so a run ends well before 06:00",
    "input": "the container's system clock read in Sydney time",
    "output": "shell exit status zero when a run is allowed",
    "if_none": "Without tzdata TZ falls back to UTC; tzdata is installed in the image",
-   "edge_cases": "hours 05 and 19 run, 06 and 18 wait (checked by hand)",
+   "edge_cases": "hours 03 and 19 start, 04 and 18 wait",
    "failure_mode": "A wrong window delays the weekly run, it never writes data"
   }
  ],
@@ -65,6 +65,13 @@
    "what_happens": "Sydney hour reads as UTC and the window is wrong",
    "mitigated": true,
    "how": "Dockerfile installs tzdata; a test checks it",
+   "repro": "pytest -k after_hours"
+  },
+  {
+   "scenario": "A run starts late in the window",
+   "what_happens": "Starts by 03:59 at the latest and finishes in minutes, before 06:00",
+   "mitigated": true,
+   "how": "start window ends two hours before business hours",
    "repro": "pytest -k after_hours"
   }
  ],

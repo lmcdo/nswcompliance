@@ -423,5 +423,5 @@ def test_a_403_from_legislation_nsw_is_a_named_block_never_a_browser_retry(monke
 
 def test_the_fly_loop_waits_for_sydney_after_hours():
     src = (ROOT / "deploy" / "flyio-legislation-monitor" / "run_loop.sh").read_text(encoding="utf-8")
-    assert "TZ=Australia/Sydney" in src and '-ge 19' in src and '-lt 6' in src
+    assert "TZ=Australia/Sydney" in src and '-ge 19' in src and '-lt 4' in src
     assert "tzdata" in (ROOT / "deploy" / "flyio-legislation-monitor" / "Dockerfile").read_text(encoding="utf-8")
