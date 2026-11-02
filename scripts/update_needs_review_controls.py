@@ -12,12 +12,8 @@ Results:
 - Burwood landscaping_min: → numeric (30% front / 70% rear yard soft landscaping)
 """
 
-import argparse
-import json
 import os
 import sys
-from datetime import date, datetime
-from pathlib import Path
 
 import psycopg2
 
@@ -42,7 +38,6 @@ if not DATABASE_URL:
     print("ERROR: DATABASE_URL not found")
     sys.exit(1)
 
-TODAY = date.today().isoformat()
 
 # ── Updates ──────────────────────────────────────────────────────────────────
 
@@ -195,87 +190,41 @@ UPDATES = [
 ]
 
 
-# prior-art-checked: same pattern as scripts/_clean_krg_reversed.py (#1571); no
-# importable backup helper exists. 2026-11-02.
-BACKUP_DIR = Path(__file__).parent.parent / "data" / "db_rollback_backups"
-COLS = ("value_min", "value_max", "needs_review", "condition", "source_text",
-        "section_ref", "review_reason", "reviewed_at", "last_verified_at", "extraction_method")
+COLS = ("value_min", "value_max", "needs_review", "condition", "section_ref")
 
 
 def main() -> int:
-    """Dry run by default; --apply backs up the rows, then writes the values above.
+    """Read-only. This one-off was applied on 2026-05-22 and no longer writes.
 
-    A one-off from 2026-05-22 with hand-typed values. A row is written only while it
-    is still current AND still needs_review, so a re-run can never overwrite a row
-    that was resolved or corrected since.
+    Its values are hand-typed from the DCPs as they stood in May. Writing them again
+    could overwrite a row that was reopened, re-sourced or corrected since, and no
+    guard on this script's side can prove a row is still the one it was written for.
+    It now reports how each row compares with those May values; a change to a
+    setback row goes through the current review pipeline instead.
     """
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--apply", action="store_true", help="back up and write (default: dry run)")
-    args = ap.parse_args()
-
+    if "--apply" in sys.argv:
+        print("[REFUSED] applied 2026-05-22; this script no longer writes. Nothing written.")
+        return 1
     conn = psycopg2.connect(DATABASE_URL)
+    conn.set_session(readonly=True)
     cur = conn.cursor()
-    todo, before = [], {}
+    differ = 0
     for u in UPDATES:
         cur.execute(
             f"SELECT lga, control_type, {', '.join(COLS)} FROM dcp_setback_controls "
-            "WHERE id = %s AND is_current = true" + (" FOR UPDATE" if args.apply else ""),
+            "WHERE id = %s AND is_current = true",
             (u["id"],),
         )
         row = cur.fetchone()
         if not row:
-            print(f"  SKIP id={u['id']}: not found or not current")
+            print(f"  id={u['id']}: not found or not current")
+            differ += 1
             continue
-        if row[0] != u["lga"] or row[1] != u["control_type"]:
-            print(f"  SKIP id={u['id']}: mismatch - DB has {row[0]}/{row[1]}, expected {u['lga']}/{u['control_type']}")
-            continue
-        if row[2 + COLS.index("needs_review")] is not True:
-            print(f"  SKIP id={u['id']}: already resolved (needs_review is not true); not overwritten")
-            continue
-        todo.append(u)
-        before[u["id"]] = dict(zip(COLS, row[2:]))
-        print(f"  WOULD WRITE id={u['id']}: {u['lga']}/{u['control_type']}")
-
-    print(f"{len(todo)} of {len(UPDATES)} rows still need this update.")
-    if not args.apply:
-        print("DRY RUN: nothing written. Re-run with --apply to back up and write.")
-        conn.close()
-        return 0
-    if not todo:
-        conn.close()
-        return 0
-
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    backup = BACKUP_DIR / f"needs_review_controls_pre_{datetime.now():%Y-%m-%dT%H%M%S}.json"
-    backup.write_text(json.dumps({"table": "dcp_setback_controls", "rows": before}, default=str),
-                      encoding="utf-8")
-    print(f"[BACKUP] {len(before)} rows -> {backup}")
-
-    for u in todo:
-        cur.execute(
-            """
-            UPDATE dcp_setback_controls SET
-                value_min = %s,
-                value_max = %s,
-                needs_review = %s,
-                condition = %s,
-                source_text = %s,
-                section_ref = %s,
-                review_reason = %s,
-                reviewed_at = NOW(),
-                last_verified_at = %s,
-                extraction_method = 'text_extraction'
-            WHERE id = %s AND is_current = true AND needs_review = true
-            """,
-            (u["value_min"], u["value_max"], u["needs_review"], u["condition"],
-             u["source_text"], u["section_ref"], u["review_reason"], TODAY, u["id"]),
-        )
-        if cur.rowcount != 1:
-            conn.rollback()
-            print(f"[ABORT] id={u['id']} changed since it was read; nothing written.")
-            return 1
-    conn.commit()
-    print(f"Committed {len(todo)} updates.")
+        now = dict(zip(("lga", "control_type", *COLS), row))
+        diffs = [k for k in ("lga", "control_type", *COLS) if now[k] != u.get(k)]
+        differ += bool(diffs)
+        print(f"  id={u['id']}: {'differs on ' + ', '.join(diffs) if diffs else 'matches the 2026-05-22 values'}")
+    print(f"{differ} of {len(UPDATES)} rows differ from the 2026-05-22 values. Nothing written.")
     conn.close()
     return 0
 

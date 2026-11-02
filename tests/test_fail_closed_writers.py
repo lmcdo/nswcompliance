@@ -154,40 +154,29 @@ class TestShrinkUnderLock:
 
 
 class TestUpdateNeedsReviewControls:
-    """A one-off with hand-typed setback values: a re-run must never overwrite a row
-    that was resolved or corrected since, and never write without --apply."""
+    """A one-off with hand-typed May setback values: it must never write again,
+    because no guard can prove a row is still the one those values were for."""
 
-    def _run(self, monkeypatch, tmp_path, argv, needs_review):
-        mod_path = "scripts/update_needs_review_controls.py"
+    def _run(self, monkeypatch, argv):
         cur = mock.MagicMock()
+        cur.fetchone.return_value = None
         conn = mock.MagicMock(cursor=mock.MagicMock(return_value=cur))
-        monkeypatch.setitem(sys.modules, "psycopg2", mock.MagicMock(connect=mock.MagicMock(return_value=conn)))
+        connect = mock.MagicMock(return_value=conn)
+        monkeypatch.setitem(sys.modules, "psycopg2", mock.MagicMock(connect=connect))
         monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
-        mod = _load(mod_path, f"nrc_{len(argv)}_{needs_review}")
-        mod.BACKUP_DIR = tmp_path
-        u = mod.UPDATES[0]
-        cols = [None] * len(mod.COLS)
-        cols[mod.COLS.index("needs_review")] = needs_review
-        cur.fetchone.return_value = (u["lga"], u["control_type"], *cols)
-        cur.rowcount = 1
-        monkeypatch.setattr(mod, "UPDATES", [u])
+        mod = _load("scripts/update_needs_review_controls.py", f"nrc_{len(argv)}")
         monkeypatch.setattr(sys, "argv", ["x", *argv])
         rc = mod.main()
         sql = " ".join(str(c.args[0]) for c in cur.execute.call_args_list)
-        return rc, sql, conn
+        return rc, sql, conn, connect
 
-    def test_dry_run_by_default_never_updates(self, monkeypatch, tmp_path):
-        rc, sql, conn = self._run(monkeypatch, tmp_path, [], True)
+    def test_report_is_read_only(self, monkeypatch):
+        rc, sql, conn, _ = self._run(monkeypatch, [])
         assert rc == 0 and "UPDATE dcp_setback_controls" not in sql
+        conn.set_session.assert_called_once_with(readonly=True)
         conn.commit.assert_not_called()
 
-    def test_a_resolved_row_is_never_overwritten_even_with_apply(self, monkeypatch, tmp_path):
-        rc, sql, conn = self._run(monkeypatch, tmp_path, ["--apply"], False)
-        assert rc == 0 and "UPDATE dcp_setback_controls" not in sql
-        conn.commit.assert_not_called()
-
-    def test_apply_backs_up_then_writes_only_a_still_open_row(self, monkeypatch, tmp_path):
-        rc, sql, conn = self._run(monkeypatch, tmp_path, ["--apply"], True)
-        assert rc == 0 and "needs_review = true" in sql
-        assert list(tmp_path.glob("needs_review_controls_pre_*.json"))
-        conn.commit.assert_called_once()
+    def test_apply_is_refused_before_connecting(self, monkeypatch):
+        rc, sql, conn, connect = self._run(monkeypatch, ["--apply"])
+        assert rc == 1 and sql == ""
+        connect.assert_not_called()
