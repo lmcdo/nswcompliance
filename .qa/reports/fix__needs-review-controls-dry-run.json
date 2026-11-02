@@ -1,0 +1,74 @@
+{
+ "tier": "standard",
+ "justification": "Guards a production writer that rewrites live setback values. Not Critical: no data written by this PR. Not Minor: changes when and what a prod script writes.",
+ "commit_hash": "531c471f",
+ "files": [
+  "scripts/update_needs_review_controls.py",
+  "tests/test_fail_closed_writers.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_fail_closed_writers.py -k NeedsReview",
+  "fails_when": "Fails if the script writes without --apply, overwrites a resolved row, or writes without a backup.",
+  "external_authority": "Harness hardening plan item 0 (2026-10-31): plain-run writers must back up and need --apply.",
+  "observed_red": "Removing the needs_review guard made the resolved-row test fail (1 failed)."
+ },
+ "pre_impl": {
+  "existing_data": "All 8 rows were resolved on 2026-05-22, so a dry run today should report 0 of 8 still to write.",
+  "assumption_mismatch": "The old script re-wrote rows regardless of later edits; reviewed_at moved on every run.",
+  "new_vs_existing": "No new file; pattern copied from scripts/_clean_krg_reversed.py (#1571).",
+  "external_source_error": "Not applicable: values are in the script, no external source is read."
+ },
+ "functions": [
+  {
+   "name": "main",
+   "file_line": "scripts/update_needs_review_controls.py",
+   "what": "Dry run by default; with --apply backs up then writes still-open rows only.",
+   "input": "command line flags and the eight hand-typed rows in UPDATES",
+   "output": "exit code zero on success, one on a concurrent change",
+   "if_none": "A row not found or not current is skipped with a message",
+   "edge_cases": "row resolved since 2026-05-22 is skipped, never overwritten",
+   "failure_mode": "A concurrent edit makes rowcount 0; the whole run rolls back"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone runs it today without flags",
+   "what_happens": "Prints what it would write; writes nothing",
+   "mitigated": true,
+   "how": "dry run default",
+   "repro": "pytest -k dry_run_by_default"
+  },
+  {
+   "scenario": "Someone runs --apply after a row was corrected by hand",
+   "what_happens": "That row is skipped as already resolved",
+   "mitigated": true,
+   "how": "needs_review guard on read and in the UPDATE WHERE",
+   "repro": "pytest -k resolved_row"
+  },
+  {
+   "scenario": "A row changes between read and write",
+   "what_happens": "rowcount 0, rollback, exit 1",
+   "mitigated": true,
+   "how": "FOR UPDATE lock plus WHERE needs_review = true",
+   "repro": "read the UPDATE WHERE clause"
+  }
+ ],
+ "verified": [
+  "tests/test_fail_closed_writers.py 19 passed",
+  "guard mutation-checked"
+ ],
+ "gaps": [
+  "build_cdc_lot_link.py still writes on a plain run; left because it only inserts with ON CONFLICT DO NOTHING",
+  "dcp_fidelity_gate.py checked: already leaves unreadable PDFs unchecked"
+ ],
+ "post_merge": {
+  "action": "None; script is not scheduled",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "python scripts/update_needs_review_controls.py prints 0 of 8 still need this update"
+ },
+ "real_layer_exempt": {
+  "scripts/update_needs_review_controls.py": "Mocked cursor in tests; a dry run against the live DB writes nothing by design"
+ }
+}
