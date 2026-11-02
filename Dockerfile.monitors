@@ -38,6 +38,13 @@ COPY scripts/probe_blocked_councils.py ./scripts/probe_blocked_councils.py
 # which dcp_extract_changed imports.
 COPY scripts/dcp_extract_changed.py ./scripts/dcp_extract_changed.py
 COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
+# dcp_commit_approved RUNS council_quote.py (subprocess, after every commit and as the
+# unchecked sweep), which imports the other three lazily. Missing, every daily run
+# from 2026-10-30 exited 1 with "can't open file '/app/scripts/council_quote.py'".
+COPY scripts/council_quote.py ./scripts/council_quote.py
+COPY scripts/council_quote_db.py ./scripts/council_quote_db.py
+COPY scripts/council_quote_table.py ./scripts/council_quote_table.py
+COPY scripts/council_quote_picture.py ./scripts/council_quote_picture.py
 # dcp_commit_approved re-derives v2_precinct_id for each council it commits -- a
 # committed provision is inserted with that field UNSET, exactly like the three
 # enrichment fields, so without this the keys stay NULL until a human runs the
@@ -98,6 +105,8 @@ COPY data/chapter_scope/ ./data/chapter_scope/
 COPY scripts/dq_db.py ./scripts/dq_db.py
 COPY scripts/qa_report_path.py ./scripts/qa_report_path.py
 COPY scripts/outreach_claim_checks.py ./scripts/outreach_claim_checks.py
+# outreach_claim_checks reads the served setbacks through conveyancing_db.fetch_dcp_setbacks.
+COPY scripts/conveyancing_db.py ./scripts/conveyancing_db.py
 COPY scripts/outreach_flood_depth_probe.py ./scripts/outreach_flood_depth_probe.py
 COPY scripts/outreach_scoped_councils.py ./scripts/outreach_scoped_councils.py
 COPY scripts/dq_probe_applicability_config.py ./scripts/dq_probe_applicability_config.py

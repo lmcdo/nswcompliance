@@ -67,6 +67,41 @@ def test_scripts_invoked_as_subprocesses_are_copied_too():
     )
 
 
+def _reached_siblings(src: str) -> set[str]:
+    """Every scripts/ sibling a file can reach: bare or `scripts.` imports (lazy ones
+    included, since the workers put scripts/ on sys.path) and `"scripts" / "x.py"`
+    paths handed to a subprocess."""
+    mods = set(re.findall(r"^\s*(?:from|import)\s+(?:scripts\.)?(\w+)", src, re.M))
+    mods |= set(re.findall(r"""["']scripts["']\s*/\s*["'](\w+)\.py""", src))
+    return {m for m in mods if (REPO / "scripts" / f"{m}.py").exists()}
+
+
+def test_everything_a_worker_reaches_is_copied():
+    """Walks the whole chain, not just the workers' own `from scripts.X` lines.
+
+    dcp_commit_approved runs council_quote.py as a subprocess, and council_quote
+    imports council_quote_db/_table/_picture inside functions. The scan above saw
+    none of them, so every daily dcp-commit from 2026-10-30 exited 1 with
+    "can't open file '/app/scripts/council_quote.py'".
+    """
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    copied = set(re.findall(r"COPY scripts/(\w+)\.py", docker))
+    seen: set[str] = set()
+    todo = [Path(w).stem for w in WORKERS]
+    missing = []
+    while todo:
+        mod = todo.pop()
+        if mod in seen:
+            continue
+        seen.add(mod)
+        for dep in sorted(_reached_siblings((REPO / "scripts" / f"{mod}.py").read_text(encoding="utf-8"))):
+            if dep not in copied:
+                missing.append(f"scripts/{mod}.py reaches scripts/{dep}.py")
+            todo.append(dep)
+    assert len(seen) > len(WORKERS), "walk found no siblings -- has the import form changed?"
+    assert not missing, "Missing COPY in Dockerfile.monitors:\n  " + "\n  ".join(sorted(set(missing)))
+
+
 # ── Same bug class, second image: deploy/flyio-legislation-monitor ────────────
 # That image is FLAT (`COPY x.py .`), so the imports are bare module names and
 # the Dockerfile.monitors regex above cannot see them. It bit live: #504 added
