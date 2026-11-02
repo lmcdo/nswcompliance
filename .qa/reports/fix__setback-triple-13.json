@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Published count only: one number in coverage.ts and the figure ledger, set to what verify_coverage_stats.py measures live. No code path changes.",
-  "commit_hash": "",
+  "commit_hash": "da25edf5",
   "files": [
     "frontend-nextjs/lib/coverage.ts",
     ".claude/regulatory_figure_ledger.json"
