@@ -1,0 +1,57 @@
+{
+ "tier": "standard",
+ "justification": "Adds the five scripts the dcp-commit and outreach jobs reach but the monitors image never copied; adds a test that walks imports and subprocess paths from every worker",
+ "commit_hash": "f91d1e8a",
+ "files": [
+  "Dockerfile.monitors",
+  "tests/test_dockerfile_monitors_imports.py"
+ ],
+ "break_it": [
+  {
+   "scenario": "a worker runs a sibling script as a subprocess instead of importing it",
+   "what_happens": "the old scan saw only 'from scripts.X import', so the file was left out and dcp-commit exited 1 every day from 2026-10-30",
+   "mitigated": true,
+   "how": "test_everything_a_worker_reaches_is_copied follows '\"scripts\" / \"x.py\"' paths and bare lazy imports transitively",
+   "repro": "remove 'COPY scripts/council_quote.py' and run pytest tests/test_dockerfile_monitors_imports.py"
+  },
+  {
+   "scenario": "the import form changes so the walk finds nothing and passes vacuously",
+   "what_happens": "the test would pass with every gap open",
+   "mitigated": true,
+   "how": "asserts the walk reached more modules than the worker list itself",
+   "repro": "replace the import regex with one that matches nothing and run the test: the 'walk found no siblings' assertion fails"
+  },
+  {
+   "scenario": "an import of a module with the same name as a scripts/ file but meant from pip",
+   "what_happens": "the test asks for a COPY that is not needed",
+   "mitigated": true,
+   "how": "a false demand fails loudly in CI, never silently in production; add the COPY or rename",
+   "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -k everything"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes \u2014 after Railway rebuilds dcp-commit, start one run and confirm the log has no 'can't open file' and exits 0"
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dockerfile_monitors_imports.py -q",
+  "fails_when": "any script a monitor worker imports or runs as a subprocess has no COPY line in Dockerfile.monitors",
+  "observed_red": "with Dockerfile.monitors reverted: test_everything_a_worker_reaches_is_copied failed listing dcp_commit_approved reaches council_quote, council_quote reaches council_quote_db, council_quote_picture, council_quote_table, outreach_claim_checks reaches conveyancing_db"
+ },
+ "pre_impl": {
+  "existing_data": "Railway dcp-commit logs 2026-10-30 to 2026-11-02: four runs, each 'can't open file /app/scripts/council_quote.py', exit 1",
+  "assumption_mismatch": "the existing image test only matched 'from scripts.X import', so subprocess calls and bare lazy imports were invisible to it",
+  "new_vs_existing": "extends the existing test file and the existing COPY list; no new image or new script"
+ },
+ "functions": [
+  {
+   "name": "test_everything_a_worker_reaches_is_copied",
+   "file_line": "tests/test_dockerfile_monitors_imports.py",
+   "input": "Dockerfile.monitors text plus the source of every scripts/ module reachable from the worker list",
+   "output": "assertion failure naming each reached module with no COPY line",
+   "if_none": "a module that does not exist under scripts/ is skipped, so stdlib and pip imports never count"
+  }
+ ]
+}
