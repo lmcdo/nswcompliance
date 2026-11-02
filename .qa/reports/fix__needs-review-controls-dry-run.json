@@ -1,16 +1,16 @@
 {
  "tier": "standard",
- "justification": "Guards a production writer that rewrites live setback values. Not Critical: no data written by this PR. Not Minor: changes when and what a prod script writes.",
- "commit_hash": "531c471f",
+ "justification": "Retires the write path of a production one-off that rewrote live setback values. Not Critical: no data written by this PR. Not Minor: removes a prod write path.",
+ "commit_hash": "5dd9a5de",
  "files": [
   "scripts/update_needs_review_controls.py",
   "tests/test_fail_closed_writers.py"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_fail_closed_writers.py -k NeedsReview",
-  "fails_when": "Fails if the script writes without --apply, overwrites a resolved row, or writes without a backup.",
+  "fails_when": "Fails if the script can write, or connects at all when --apply is passed.",
   "external_authority": "Harness hardening plan item 0 (2026-10-31): plain-run writers must back up and need --apply.",
-  "observed_red": "Removing the needs_review guard made the resolved-row test fail (1 failed)."
+  "observed_red": "The first version (guarded --apply) was rejected by cross-review: a reopened row passed the needs_review guard."
  },
  "pre_impl": {
   "existing_data": "All 8 rows were resolved on 2026-05-22, so a dry run today should report 0 of 8 still to write.",
@@ -22,40 +22,40 @@
   {
    "name": "main",
    "file_line": "scripts/update_needs_review_controls.py",
-   "what": "Dry run by default; with --apply backs up then writes still-open rows only.",
+   "what": "Read-only report of how each row compares with the 2026-05-22 values; --apply is refused.",
    "input": "command line flags and the eight hand-typed rows in UPDATES",
-   "output": "exit code zero on success, one on a concurrent change",
+   "output": "exit code zero for the report, one when --apply is refused",
    "if_none": "A row not found or not current is skipped with a message",
-   "edge_cases": "row resolved since 2026-05-22 is skipped, never overwritten",
-   "failure_mode": "A concurrent edit makes rowcount 0; the whole run rolls back"
+   "edge_cases": "--apply exits before any connection is opened",
+   "failure_mode": "None for data: the script holds no write statement"
   }
  ],
  "break_it": [
   {
-   "scenario": "Someone runs it today without flags",
-   "what_happens": "Prints what it would write; writes nothing",
+   "scenario": "Someone runs it with --apply",
+   "what_happens": "Refused before connecting; nothing written",
    "mitigated": true,
-   "how": "dry run default",
-   "repro": "pytest -k dry_run_by_default"
+   "how": "argv check before connect",
+   "repro": "pytest -k apply_is_refused"
   },
   {
-   "scenario": "Someone runs --apply after a row was corrected by hand",
-   "what_happens": "That row is skipped as already resolved",
+   "scenario": "A row was reopened for a new defect",
+   "what_happens": "Report shows it differs; nothing is overwritten",
    "mitigated": true,
-   "how": "needs_review guard on read and in the UPDATE WHERE",
-   "repro": "pytest -k resolved_row"
+   "how": "no write path",
+   "repro": "pytest -k read_only"
   },
   {
-   "scenario": "A row changes between read and write",
-   "what_happens": "rowcount 0, rollback, exit 1",
+   "scenario": "A row moved to another DCP instrument",
+   "what_happens": "Report shows the difference; nothing is overwritten",
    "mitigated": true,
-   "how": "FOR UPDATE lock plus WHERE needs_review = true",
-   "repro": "read the UPDATE WHERE clause"
+   "how": "no write path",
+   "repro": "read main()"
   }
  ],
  "verified": [
-  "tests/test_fail_closed_writers.py 19 passed",
-  "guard mutation-checked"
+  "tests/test_fail_closed_writers.py 18 passed",
+  "no UPDATE statement remains in the script"
  ],
  "gaps": [
   "build_cdc_lot_link.py still writes on a plain run; left because it only inserts with ON CONFLICT DO NOTHING",
@@ -66,7 +66,7 @@
   "db_reset": "None",
   "secrets": "None",
   "other_repo": "None",
-  "manual_verify": "python scripts/update_needs_review_controls.py prints 0 of 8 still need this update"
+  "manual_verify": "python scripts/update_needs_review_controls.py prints a read-only comparison"
  },
  "real_layer_exempt": {
   "scripts/update_needs_review_controls.py": "Mocked cursor in tests; a dry run against the live DB writes nothing by design"
