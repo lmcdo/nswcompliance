@@ -470,6 +470,14 @@ def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures
     raise TransientFetchError(f"Failed to download after {retries} attempts (transient): {url}")
 
 
+def read_manual_pdf(path: str) -> tuple[bytes, dict]:
+    """The bytes of a PDF a person downloaded, checked exactly as a fetched body is. No headers."""
+    with open(path, "rb") as fh:
+        content = fh.read()
+    _assert_pdf_body(content, path)
+    return content, {}
+
+
 def next_version_label(current: str) -> str:
     """Increment version label: v1.0-baseline → v1.1, v1.1 → v1.2, v2.3 → v2.4"""
     import re
@@ -848,9 +856,19 @@ def run_monitor(
     force: bool = False,
     reseed: bool = False,
     recorder: Recorder | None = None,
+    manual_key: str | None = None,
+    manual_file: str | None = None,
 ) -> dict:
     """
     Main monitor loop.
+
+    MANUAL INTAKE (`manual_key` + `manual_file`): for a council whose website refuses every automated
+    request (Sutherland, 403 on the hub page and every PDF, 2026-11-02 -- Zyte was banned too), the
+    PDF a person downloaded in a browser is fed into THIS loop in place of the blocked HEAD + GET.
+    Everything after the fetch is the normal path: hash compare, re-export gate, versioned upload,
+    registry write, needs_extraction, linked-control flagging and the recorder (fetch_reason
+    'manual_intake'). Only that one chapter is touched and the hub page is not scraped. No header
+    is invented: ETag and Last-Modified are stored as NULL because no server sent them.
     Returns summary dict with counts and list of changed chapters.
     `recorder` stores every outcome (migration 116); None records nothing (tests, reseed).
     """
@@ -944,7 +962,7 @@ def run_monitor(
         scraper = HUB_SCRAPERS.get(council)
 
         # ── Hub scrape (if scraper registered and hub URL available) ───────────
-        if scraper and hub_url:
+        if scraper and hub_url and not manual_key:
             print(f"\n[{council}] Scraping hub page...")
             expected_keys = {ch["chapter_key"] for ch in council_chapters}
             expected_labels = {
@@ -1154,7 +1172,7 @@ def run_monitor(
                     # recorded per council and alarmed by verifyops_coverage (list_not_read_2d), so it
                     # no longer turns every run into an exit 1 (Camden's DCP is HTML, no PDF links).
                     results["hub_errors"].append({"council": council, "url": hub_url, "error": str(exc)[:200]})
-        elif hub_url:
+        elif hub_url and not manual_key:
             # Recorded so the alarm can name a council whose list is never read.
             rec.council_list(council, hub_url, "no_scraper", detail="hub URL stored, no scraper registered")
 
@@ -1173,6 +1191,8 @@ def run_monitor(
             r2_path     = chapter["r2_current_path"]
             version     = chapter["r2_version_label"]
             stored_hash = chapter["content_hash"]
+            if manual_key and key != manual_key:
+                continue  # manual intake touches its one chapter only
             stored_len  = chapter["url_content_length"]
             failures    = chapter["check_failures"] or 0
             is_spatial  = chapter.get("is_spatial", False)
@@ -1188,7 +1208,7 @@ def run_monitor(
             # checked. head_request(None) would raise and be reported as a CONTENT
             # failure -- a lie about a chapter that was never monitorable. The
             # counter has existed, and necessarily read 0, since it was written.
-            if not (url or "").strip():
+            if not (url or "").strip() and not manual_file:
                 print("    [no council_url] hub-only chapter -- no hash check "
                       "possible; discovery for this council runs off its hub page")
                 results["skipped_no_url"] += 1
@@ -1197,7 +1217,8 @@ def run_monitor(
 
             try:
                 # Step 1: Quick HEAD check on Content-Length
-                head = head_request(url)
+                head = ({"status": 200, "content_length": None, "etag": None}
+                        if manual_file else head_request(url))  # manual intake: nothing to ask
                 head_status = head.get("status")
                 if head_status == 403:
                     # WAF/access denied — don't count as check_failure (not a content issue).
@@ -1255,10 +1276,15 @@ def run_monitor(
                 new_etag_head = head.get("etag")
                 spot = is_spot_check(chapter_id, now)
                 download, fetch_reason = decide_fetch(
-                    force=force, stored_hash=stored_hash, stored_etag=stored_etag,
+                    # A hash with no stored file behind it is not "unchanged": the bytes were
+                    # never kept (Sutherland ch2/ch4: content_hash set, r2_current_path NULL),
+                    # so every run skipped them as matching a file that did not exist.
+                    force=force or not r2_path, stored_hash=stored_hash, stored_etag=stored_etag,
                     head_etag=new_etag_head, stored_len=stored_len, head_len=_raw_len(head.get("content_length")),
                     last_downloaded=chapter.get("url_last_downloaded"), now=now, spot=spot,
                 )
+                if manual_file:
+                    download, fetch_reason = True, "manual_intake"
                 if not download:
                     head_outcome = "unchanged_etag" if fetch_reason == "etag_match" else "unchanged_head"
                     print(f"    [unchanged] {fetch_reason} — skipping download")
@@ -1283,7 +1309,8 @@ def run_monitor(
 
                 # Step 2: Full download + hash comparison
                 print(f"    Downloading for hash check ({fetch_reason})...")
-                content, resp_headers = download_pdf(url)
+                content, resp_headers = (read_manual_pdf(manual_file) if manual_file
+                                         else download_pdf(url))
                 new_hash = sha256(content)
                 # Store the HEAD Content-Length (not len(content)) so future HEAD
                 # fast-path comparisons use the same value the server reports.
@@ -1292,7 +1319,7 @@ def run_monitor(
                 new_etag = resp_headers.get("ETag")
                 new_lm = resp_headers.get("Last-Modified")
 
-                if new_hash == stored_hash:
+                if new_hash == stored_hash and r2_path:
                     print(f"    [unchanged] Hash matches stored ({new_hash[:16]}...)")
                     rec.chapter(chapter_id, ch_council, key, "unchanged_hash", fetch_reason)
                     cur.execute(
@@ -1377,7 +1404,10 @@ def run_monitor(
                         print(f"    [re-export check skipped: {exc}]")
 
                 # ── CHANGE DETECTED ──────────────────────────────────────────
-                print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
+                if new_hash == stored_hash:
+                    print(f"    [NOT STORED] hash {new_hash[:16]} was recorded but its file never kept -- storing it now")
+                else:
+                    print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
                 # A spot check that finds new bytes behind an unchanged tag: the server's tag lied.
                 rec.chapter(chapter_id, ch_council, key,
                             "etag_lied" if fetch_reason == "spot_check" else "changed", fetch_reason)
@@ -1703,8 +1733,12 @@ def main():
     parser.add_argument("--force", action="store_true", help="Re-download all even if Content-Length unchanged")
     parser.add_argument("--reseed", action="store_true", help="Update council_url for all chapters from hub scrape (run once after CMS migration)")
     parser.add_argument("--reseed-hashes", action="store_true", help="Re-download all chapters and update stored hashes/ETags without triggering extraction (run after CMS migration invalidates ETags)")
+    parser.add_argument("--chapter-key", help="Manual intake: the one registered chapter to feed --from-file into")
+    parser.add_argument("--from-file", help="Manual intake: a PDF downloaded in a browser from a council that blocks this monitor")
     parser.add_argument("--delay", type=float, default=None, help="Override default inter-request delay in seconds (default: 2.0, reseed-hashes: 5.0)")
     args = parser.parse_args()
+    if bool(args.chapter_key) != bool(args.from_file) or (args.from_file and not args.council):
+        parser.error("--chapter-key and --from-file go together, with --council")
 
     # Set default delay based on mode
     if args.delay is not None:
@@ -1739,15 +1773,18 @@ def main():
 
     # A one-council run is never a full run, whatever else it was asked to do: the alarm treats
     # only 'daily'/'force' as covering the fleet (no_run_2d, missing_from_last_run).
-    mode = (f"council:{args.council}" if args.council else "force" if args.force else
+    mode = (f"manual:{args.council}/{args.chapter_key}" if args.from_file else
+            f"council:{args.council}" if args.council else "force" if args.force else
             "reseed" if args.reseed else "daily")
     recorder = Recorder(conn, dry_run=args.dry_run, mode=mode)
     try:
         recorder.start()
         results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed,
-                              recorder=recorder)
+                              recorder=recorder, manual_key=args.chapter_key,
+                              manual_file=args.from_file)
         # Read each newly found document's own cover and settle the ones it can (step 7).
-        results["new_documents"] = classify_pending(
+        # Manual intake reads no hub page, so it finds no new documents to classify.
+        results["new_documents"] = {} if args.from_file else classify_pending(
             conn, lambda u: download_pdf(u)[0], datetime.now(timezone.utc).date(), args.dry_run,
             council=args.council)
         recorder.finish({k: (len(v) if isinstance(v, list) else v) for k, v in results.items()})
