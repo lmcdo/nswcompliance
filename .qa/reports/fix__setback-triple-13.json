@@ -1,0 +1,37 @@
+{
+  "tier": "minor",
+  "justification": "Published count only: one number in coverage.ts and the figure ledger, set to what verify_coverage_stats.py measures live. No code path changes.",
+  "commit_hash": "",
+  "files": [
+    "frontend-nextjs/lib/coverage.ts",
+    ".claude/regulatory_figure_ledger.json"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls shown rows (is_current and needs_review is not true); 345 after batch 3",
+    "assumption_mismatch": "none: the live query is the one verify_coverage_stats.py runs",
+    "new_vs_existing": "Applies to every row the next time the checker runs; it writes nothing"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Number set higher than live",
+      "what_happens": "verify_coverage_stats.py fails in CI",
+      "tested": "yes, it printed published 11 vs live 13 before the change",
+      "repro": "python scripts/verify_coverage_stats.py after editing coverage.ts to 14",
+      "mitigated": "yes, CI catches it",
+      "how": "verify_coverage_stats.py runs in CI and fails on any mismatch with the live count"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "python scripts/verify_coverage_stats.py",
+    "fails_when": "published count differs from the live count"
+  }
+}
