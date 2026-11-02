@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Sutherland's website returns 403 to the monitor (and to Zyte), so its DCP chapters could never be fetched, stored or extracted; 28 number rules cite them. A person can download the PDF in a browser. This feeds that file into the monitor's own write path so the PDF enters through the pipeline (versioned R2 copy, registry hash, needs_extraction, recorder) instead of by hand. It also fixes a real bug: a content_hash with r2_current_path NULL was treated as unchanged forever.",
- "commit_hash": "3e0d5f95",
+ "commit_hash": "a53b7e73",
  "files": [
   "scripts/r2_monitor.py",
   "tests/test_r2_monitor_manual_intake.py"
