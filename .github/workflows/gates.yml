@@ -133,6 +133,12 @@ jobs:
       - name: Quarantined tests (shrink-only ratchet)
         if: always()
         run: python scripts/check_test_quarantine.py
+      # Git skips a non-executable hook without failing. All four .githooks
+      # were 100644 until 2026-10-31, so every Linux/macOS clone committed
+      # and pushed with no local checks. Windows hides this.
+      - name: Git hooks are executable
+        if: always()
+        run: python scripts/check_hooks_executable.py
       # The data-quality ledger's statuses, enforced rather than asserted.
       # Runs BOTH ways: a row declared fixed whose check fails is a regression,
       # and a row declared open whose check PASSES means it was quietly fixed
