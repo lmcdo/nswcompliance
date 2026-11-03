@@ -85,9 +85,9 @@ def _scripts(command: str) -> list[str]:
     """
     found = []
     for seg in SEGMENT.split(command):
-        first = seg.strip().split(maxsplit=1)
-        if first and first[0].strip("'\"").lower().endswith(".py"):
-            found.append(first[0].strip("'\""))      # ./x.py run through its #! line
+        words = [w for w in seg.split() if not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w)]
+        if words and words[0].strip("'\"").lower().endswith(".py"):
+            found.append(words[0].strip("'\""))      # ./x.py through its #! (after VAR=x)
     for m in (m for seg in SEGMENT.split(command) for m in [PYTHON.search(seg)] if m):
         try:   # posix=False: posix mode eats the backslashes in C:\Users\... paths
             words = shlex.split(m.group(1), posix=False)
@@ -113,7 +113,9 @@ def verdict(command: str, cwd: Path, repo: Path) -> str | None:
     scripts = _scripts(command)
     if not PYTHON.search(command) and not scripts:
         return None
-    inline = re.search(r"(?:python3?|py)(?:\.exe)?\s+(?:-\s|-c\b|-\s*<<|-$)", command, re.I | re.M)
+    # options may come first: `python -u -c "..."`, `python -I - <<EOF`
+    inline = re.search(r"(?:python3?|py)(?:\.exe)?\s+(?:-[A-Za-z]\S*\s+)*?(?:-\s|-c\b|-\s*<<|-$)",
+                       command, re.I | re.M)
     if inline and WRITE.search(command):   # `python - <<EOF` / `python -c` carrying the SQL
         return "inline Python in this command writes a rule table"
     for word in scripts:

@@ -149,3 +149,12 @@ def test_an_uncommitted_edit_to_a_tracked_script_is_read(tmp_path):
     assert hook().returncode == 0                 # committed, read-only
     util.write_text(READ_ONLY + BATCH1, encoding="utf-8")
     assert hook().returncode == 2                 # same file, unreviewed write added
+
+
+def test_options_before_dash_c_and_env_before_shebang_are_seen(scratch):
+    """Sol review round 5."""
+    assert _run('python -u -c "cur.execute(\'UPDATE dcp_setback_controls SET source_text=1\')"',
+                scratch).returncode == 2
+    f = scratch / "write_batch1.py"
+    f.write_text("#!/usr/bin/env python3\n" + BATCH1, encoding="utf-8")
+    assert _run(f"DATABASE_URL=postgresql://x {f} --apply", scratch).returncode == 2
