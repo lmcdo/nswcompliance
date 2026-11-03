@@ -1,11 +1,13 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "b78ff8ba",
+ "commit_hash": "18d58ae0",
  "files": [
   "data/canterbury_bankstown_precincts/lep_hazard_area_2_4.geojson",
   "data/chapter_scope/suburb_unconfirmed_areas.json",
   "data/inner_west_precincts/leichhardt_c5_sep.geojson",
+  "frontend-nextjs/__tests__/lib/may-apply-reasons.test.ts",
+  "frontend-nextjs/lib/may-apply-reasons.ts",
   "frontend-nextjs/shared/may-apply-areas.json",
   "scripts/derive_precinct_keys.py",
   "scripts/gate_rules_areas.py",
@@ -81,13 +83,21 @@
    "mitigated": true,
    "how": "keyed to the LEP Hazard Area Map outline",
    "repro": "pytest -k cb_2_4 (10 Gwandalan Rd anchor)"
+  },
+  {
+   "scenario": "A house next to the pipeline corridor but outside the hazard map",
+   "what_happens": "Sees the pipeline rules in the may-apply box with the near-the-map reason, a map link and a yes/no question",
+   "mitigated": true,
+   "how": "may-apply area for Padstow, Revesby, Panania, East Hills",
+   "repro": "jest may-apply-meta; may-apply-areas.json entry cb-2-4-near-pipeline-hazard-area"
   }
  ],
  "verified": [
   "tests: gate_rules + derive_precinct_keys + rederive 63 passed",
   "live all-councils dry run: only Leichhardt C5 fails the outline check; Marrickville 2.26 23 already ok",
   "tests/test_gate_rules.py 32 passed",
-  "pipeline outline loaded live; importer checks passed"
+  "pipeline outline loaded live; importer checks passed",
+  "jest may-apply tests 15 passed (479 incl. components earlier)"
  ],
  "gaps": [
   "Sound Category street lines beyond the pink are not drawn; those lots get the may-apply box",
