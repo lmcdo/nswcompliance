@@ -23,7 +23,7 @@ PIPELINE = (
     "scripts/council_quote_db.py", "scripts/dcp_page_repair.py", "scripts/pipeline_run.py",
     "migrations/",
 )
-PLAN = re.compile(r"^\s*\**Plan:\**\s*(none\b|\S+\.md)", re.I | re.M)
+PLAN = re.compile(r"^\s*\**Plan:\**\s*(none\b.*|\S+\.md\s+--\s+\S.*)$", re.I | re.M)   # file AND section, or none
 
 
 def pipeline_changes(files: list[str]) -> list[str]:

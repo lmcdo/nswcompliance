@@ -36,3 +36,9 @@ def test_a_sentence_mentioning_a_plan_is_not_a_plan_line():
 
 def test_a_pr_touching_no_pipeline_file_needs_nothing():
     assert ci.pipeline_changes(["frontend-nextjs/lib/coverage.ts", "tests/x.py"]) == []
+
+
+def test_the_plan_line_needs_a_section_not_just_a_file_like_word():
+    assert not ci.has_plan_line("Plan: invented.mdXYZ")
+    assert not ci.has_plan_line("Plan: ce-x-PLAN.md")                    # no section
+    assert ci.has_plan_line("Plan: ce-x-PLAN.md -- step 3 section reader")

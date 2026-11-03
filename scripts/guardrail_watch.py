@@ -33,6 +33,7 @@ GUARD_PATHS = (
     "scripts/qa_gate.py",
     "scripts/check_pr_gates.py",
     "scripts/guardrail_watch.py",
+    "scripts/check_pr_plan_line.py",
 )
 
 BYPASS = re.compile(
@@ -95,7 +96,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--print-only", action="store_true", help="print, do not send")
     a = ap.parse_args(argv)
     if a.range:
-        diff, label = _git("diff", a.range), f"push {a.range}"
+        # Each pushed commit, not the endpoint trees: a hook disabled in one commit and
+        # restored in the next leaves an empty diff but still happened (Sol review).
+        diff, label = _git("log", "-p", "--first-parent", "--format=", a.range), f"push {a.range}"
     else:
         diff, label = _git("log", "-p", "--first-parent", f"--since={a.since}", "HEAD"), f"since {a.since}"
     text = message(label, *parse_diff(diff))

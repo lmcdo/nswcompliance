@@ -83,3 +83,17 @@ def test_a_confirmed_report_exits_0_and_names_every_item(monkeypatch):
     monkeypatch.setattr(vop, "send_telegram", lambda text, *a, **k: sent.append(text) or True)
     assert gw.main(["--range", "a..b"]) == 0
     assert "prior-art-checked" in sent[0] and ".claude/settings.json" in sent[0]
+
+
+def test_deleting_the_ci_plan_check_is_a_guardrail_change():
+    d = ("diff --git a/scripts/check_pr_plan_line.py b/scripts/check_pr_plan_line.py\n"
+         "deleted file mode 100644\n--- a/scripts/check_pr_plan_line.py\n+++ /dev/null\n-x\n")
+    assert "scripts/check_pr_plan_line.py" in gw.parse_diff(d)[0]
+
+
+def test_a_push_is_read_commit_by_commit(monkeypatch):
+    """Changed and reverted inside one push: the endpoint diff is empty, the commits are not."""
+    calls = []
+    monkeypatch.setattr(gw, "_git", lambda *a: calls.append(a) or "")
+    gw.main(["--range", "a..b", "--print-only"])
+    assert calls[0][:3] == ("log", "-p", "--first-parent")

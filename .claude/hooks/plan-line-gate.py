@@ -35,11 +35,18 @@ PIPELINE = (
     "scripts/council_quote_db.py", "scripts/dcp_page_repair.py", "scripts/pipeline_run.py",
     "migrations/",
 )
-WRITES = re.compile(r"(sed\s+-i|>\s*\S|write_text|\.write\(|open\([^)]*['\"][wa]|tee\s|cp\s|mv\s|"
-                    r"Set-Content|Out-File|Add-Content)", re.I)
+# A shell command that names a pipeline file is gated UNLESS every part of it is a known
+# read-only command. A list of "writing" commands always misses one (truncate, perl -pi,
+# dd, git checkout -- ...: Sol review, 2026-11-03), so the list is of SAFE commands instead.
+READ_ONLY = re.compile(r"^\s*(cat|head|tail|grep|rg|wc|less|ls|diff|sed\s+-n|"
+                       r"git\s+(diff|log|show|blame|status|grep|ls-files|ls-tree)|"
+                       r"python3?\s+-m\s+pytest|pytest)\b(?!.*(>|\btee\b))", re.I)
+SEGMENT = re.compile(r"&&|\|\||[;|\n]")
 PLAN_LINE = re.compile(r"^[ 	*>_-]*PLAN:[*_]*\s+(.+)$", re.M)   # a line that IS a plan line, not one quoting it
 PLANS_DIR = Path(os.path.expanduser("~/.claude/plans"))
-TRANSCRIPTS = re.compile(r"[\\/]\.claude[\\/]projects[\\/][^\s'\"]*\.jsonl", re.I)
+# Any path form (absolute, relative, ~): a relative ".claude/projects/..." from the home
+# directory has no slash before ".claude" (Sol review, 2026-11-03).
+TRANSCRIPTS = re.compile(r"\.claude[\\/]projects[\\/][^\s'\"]*\.jsonl", re.I)
 
 
 def _payload() -> dict:
@@ -61,9 +68,12 @@ def touched_pipeline(tool: str, ti: dict) -> list[str]:
         return [p for p in PIPELINE if p in path]
     if tool in ("Bash", "PowerShell"):
         cmd = _norm(ti.get("command") or "")
-        if not WRITES.search(cmd):
+        named = [p for p in PIPELINE if p in cmd]
+        if not named:
             return []
-        return [p for p in PIPELINE if p in cmd]
+        if all(READ_ONLY.match(seg) for seg in SEGMENT.split(cmd) if seg.strip()):
+            return []
+        return named
     return []
 
 

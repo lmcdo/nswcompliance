@@ -119,3 +119,35 @@ def test_a_none_field_does_not_crash_the_gate_open(tmp_path):
     r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
                        capture_output=True, timeout=30)
     assert r.returncode == 2, r.stderr
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("cmd", [
+    "truncate -s 0 scripts/dcp_extract_changed.py",
+    "perl -pi -e 's/a/b/' scripts/dcp_extract_changed.py",
+    "dd if=/dev/null of=scripts/ai_extractor.py",
+    "git checkout -- scripts/dcp_commit_approved.py",
+    "python fix.py scripts/r2_monitor.py",
+    "cat scripts/dcp_extract_changed.py > /tmp/x; cp /tmp/x scripts/dcp_extract_changed.py",
+    "grep x scripts/dcp_extract_changed.py | tee scripts/dcp_extract_changed.py",
+])
+def test_writers_outside_any_list_are_gated(tmp_path, cmd):
+    """Sol review: a list of writing commands always misses one, so only read-only passes."""
+    assert run(tmp_path, [], tool="Bash", tool_input={"command": cmd}).returncode == 2, cmd
+
+
+@pytest.mark.parametrize("cmd", [
+    "grep -n def scripts/dcp_extract_changed.py",
+    "sed -n 1,20p scripts/ai_extractor.py | head -5",
+    "git diff origin/main -- scripts/dcp_extract_changed.py",
+    "python -m pytest tests/test_dcp_extract_all_mode.py && git log -1 -- scripts/r2_monitor.py",
+])
+def test_read_only_looks_are_free(tmp_path, cmd):
+    assert run(tmp_path, [], tool="Bash", tool_input={"command": cmd}).returncode == 0, cmd
+
+
+def test_a_relative_transcript_path_is_blocked_too(tmp_path):
+    cmd = "echo '{}' >> .claude/projects/x/session.jsonl"
+    assert run(tmp_path, [], tool="Bash", tool_input={"command": cmd}).returncode == 2
