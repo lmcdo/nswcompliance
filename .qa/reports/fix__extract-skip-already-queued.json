@@ -1,0 +1,58 @@
+{
+ "tier": "standard",
+ "justification": "The daily extract re-read chapters whose current PDF already had a read waiting in review; it now skips them and prints which",
+ "commit_hash": "b420bbc2",
+ "files": [
+  "scripts/dcp_extract_changed.py",
+  "tests/test_dcp_extract_all_mode.py",
+  "tests/test_dcp_repealed_source_path.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dcp_extract_all_mode.py -k queued",
+  "fails_when": "the daily selection query no longer excludes chapters with a pending batch from the same content hash",
+  "observed_red": "before the change the selection read 8 chapters; dry run on production after it: WOULD READ canterbury_bankstown/chapter-7-6 and sutherland ch2 only, 6 printed as [skip]"
+ },
+ "pre_impl": {
+  "existing_data": "dcp_review_queue.source_content_hash and dcp_chapter_registry.content_hash; 6 of 8 flagged chapters had pending rows from the current hash",
+  "assumption_mismatch": "needs_extraction stays TRUE until commit, so flagged did not mean unread",
+  "new_vs_existing": "adds one NOT EXISTS condition to the existing selection builder and one print of what it skipped"
+ },
+ "functions": [
+  {
+   "name": "fetch_pending_chapters",
+   "file_line": "scripts/dcp_extract_changed.py",
+   "input": "cursor, optional council filter, all-chapters flag and chapter filter",
+   "output": "the chapters to read, after printing the ones skipped as already queued",
+   "if_none": "a chapter with a NULL content hash never matches the queue and is read"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the council publishes a new edition while an old read is still pending review",
+   "what_happens": "the chapter could be skipped and the new edition never read",
+   "mitigated": true,
+   "how": "the match is on content hash, so a new PDF has a new hash and is read",
+   "repro": "python -m pytest tests/test_dcp_extract_all_mode.py -k queued"
+  },
+  {
+   "scenario": "the reader is improved and a chapter must be re-read on purpose",
+   "what_happens": "the skip would stop the deliberate re-read",
+   "mitigated": true,
+   "how": "a named --chapter bypasses the skip",
+   "repro": "python -m pytest tests/test_dcp_extract_all_mode.py -k named_chapter"
+  },
+  {
+   "scenario": "a chapter is skipped and nobody can see why it was not read",
+   "what_happens": "it looks like nothing was flagged",
+   "mitigated": true,
+   "how": "each skipped chapter is printed with the reason",
+   "repro": "python scripts/dcp_extract_changed.py --review --dry-run"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - the next dcp-extract run prints [skip] lines and reads only unqueued chapters"
+ }
+}

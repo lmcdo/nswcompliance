@@ -77,3 +77,28 @@ class TestPendingChaptersSql:
         # path, so it must NOT carry the EXISTS-provisions scope.
         q, _ = _pending_chapters_sql(None, all_chapters=False)
         assert "regulatory_provisions" not in q
+
+
+# ── Skip chapters whose current PDF already has a read waiting in review ─────
+# Measured 2026-11-03: 6 of 8 flagged chapters were re-read every run although a
+# pending batch from the same content hash was already in dcp_review_queue.
+
+def test_daily_run_skips_a_chapter_already_queued_from_its_current_pdf():
+    from dcp_extract_changed import ALREADY_QUEUED
+    q, _ = _pending_chapters_sql(None, all_chapters=False)
+    assert "NOT " + ALREADY_QUEUED in q
+    assert "q.source_content_hash = dcp_chapter_registry.content_hash" in ALREADY_QUEUED
+    assert "q.status = 'pending'" in ALREADY_QUEUED
+
+
+def test_a_named_chapter_is_still_reread_even_if_queued():
+    """--chapter is the deliberate re-read after the reader improves."""
+    from dcp_extract_changed import ALREADY_QUEUED
+    q, p = _pending_chapters_sql("sutherland_shire", all_chapters=False, chapter_filter="ch2")
+    assert ALREADY_QUEUED not in q and p == ["sutherland_shire", "ch2"]
+
+
+def test_the_all_chapters_audit_run_is_not_narrowed():
+    from dcp_extract_changed import ALREADY_QUEUED
+    q, _ = _pending_chapters_sql(None, all_chapters=True)
+    assert ALREADY_QUEUED not in q

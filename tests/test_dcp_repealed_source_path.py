@@ -376,8 +376,9 @@ def test_the_extractor_actually_selects_the_column_the_guard_reads():
     cur.description = [("id",), ("council",), ("chapter_key",), ("chapter_label",),
                        ("r2_current_path",), ("r2_version_label",), ("dcp_name",),
                        ("content_hash",), ("council_url",)]
-    cur.fetchall.return_value = [(1, "woollahra", "chapter-c1", "C1", CLEAN_R2_KEY,
-                                  "v1", "DCP", "hash", REAL_REPEALED_URL)]
+    cur.fetchall.side_effect = [[(1, "woollahra", "chapter-c1", "C1", CLEAN_R2_KEY,
+                                  "v1", "DCP", "hash", REAL_REPEALED_URL)],
+                                []]                 # then the already-queued skip list
     rows = dx.fetch_pending_chapters(cur, None)
     assert rows[0]["council_url"] == REAL_REPEALED_URL
 
