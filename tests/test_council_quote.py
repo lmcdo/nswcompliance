@@ -596,3 +596,10 @@ def test_the_nightly_sweep_rechecks_unproven_rules_weekly():
     assert "quote_status = 'unconfirmed' AND v2_is_actionable" in db.UNCHECKED_SQL   # and unproven SHOWN rules come back
     assert f"interval '{db.RECHECK_DAYS} days'" in db.UNCHECKED_SQL and db.RECHECK_DAYS == 7
     assert "'exact'" not in db.UNCHECKED_SQL and "'recovered'" not in db.UNCHECKED_SQL   # proven rules are not re-judged
+
+
+def test_env_file_does_not_crash_in_the_railway_image():
+    # /app has one parent; parents[2] raised IndexError on every dcp-commit run (2026-11-02).
+    from pathlib import PurePosixPath
+    import council_quote as cq
+    assert cq._env_file(PurePosixPath("/app")) == PurePosixPath("/app/.env")

@@ -1,0 +1,60 @@
+{
+ "tier": "standard",
+ "justification": "Lowers two published coverage counts to the live values after held rules were rolled back",
+ "commit_hash": "5036bf87",
+ "files": [
+  "frontend-nextjs/lib/coverage.ts",
+  "scripts/council_quote.py",
+  "tests/test_council_quote.py",
+  ".claude/regulatory_figure_ledger.json",
+  "tests/test_no_hardcoded_council_counts.py"
+ ],
+ "break_it": [
+  {
+   "scenario": "published count higher than the rules actually served",
+   "what_happens": "the site claims coverage for councils it does not serve",
+   "mitigated": true,
+   "how": "values set from verify_coverage_stats live column",
+   "repro": "python scripts/verify_coverage_stats.py"
+  },
+  {
+   "scenario": "council_quote run from /app in the Railway image",
+   "what_happens": "ROOT.parents[2] raised IndexError and dcp-commit exited 1",
+   "mitigated": true,
+   "how": "_env_file checks len(parents) first",
+   "repro": "python -m pytest tests/test_council_quote.py -k env_file"
+  },
+  {
+   "scenario": "pinned test or figure ledger still names the old count",
+   "what_happens": "CI fails on the honest lower number",
+   "mitigated": true,
+   "how": "ledger and pinned test moved to 22 and 12 together",
+   "repro": "python -m pytest tests/test_lint_hardcoded_regulatory_numbers.py tests/test_no_hardcoded_council_counts.py"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No \u2014 verify_coverage_stats prints current"
+ },
+ "falsifiable_check": {
+  "command": "python scripts/verify_coverage_stats.py",
+  "fails_when": "a published coverage count in coverage.ts differs from the live database count",
+  "observed_red": "before the change: DRIFT DETECTED dcpNumericCouncils published 24 vs live 22, dcpSetbackTripleCouncils published 13 vs live 12"
+ },
+ "pre_impl": {
+  "existing_data": "coverage.ts published counts, checked by verify_coverage_stats against the live tables",
+  "assumption_mismatch": "council_quote assumed the repo always sits three folders below a parent, but the Railway image is /app",
+  "new_vs_existing": "edits existing values, the existing ledger, the existing pinned test and one existing function call; adds one helper"
+ },
+ "functions": [
+  {
+   "name": "_env_file",
+   "file_line": "scripts/council_quote.py",
+   "input": "the repository root folder path object",
+   "output": "path of the .env file to load",
+   "if_none": "a root with fewer than three parents returns root/.env instead of raising IndexError"
+  }
+ ]
+}
