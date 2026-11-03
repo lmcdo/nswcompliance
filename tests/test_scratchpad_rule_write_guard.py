@@ -85,12 +85,17 @@ def test_the_override_is_allowed_and_logged(scratch):
             log.unlink()
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason="git-bash drive paths exist only on Windows")
-def test_git_bash_drive_paths_resolve(scratch):
-    f = scratch / "write_batch1.py"
-    f.write_text(BATCH1, encoding="utf-8")
-    posix = "/" + str(f)[0].lower() + str(f)[2:].replace("\\", "/")
-    assert _run(f"python {posix}", scratch).returncode == 2
+def test_git_bash_drive_paths_become_windows_paths():
+    """/c/Users/... must resolve to C:/Users/... or the hook cannot find the script.
+
+    Tests the conversion itself, so it runs (and can fail) on Linux CI as well.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("rule_write_hook", HOOK)
+    hook = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hook)
+    got = hook._resolve("/c/Users/x/scratchpad/w.py", Path("."))
+    assert str(got).replace("\\", "/") == "C:/Users/x/scratchpad/w.py"
 
 
 def test_the_powershell_tool_is_checked_too(scratch):

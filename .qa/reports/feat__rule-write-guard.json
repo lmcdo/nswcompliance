@@ -36,7 +36,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_rule_write_guard_db.py tests/test_scratchpad_rule_write_guard.py (DB tests in CI job drawdown-verify-write-path, isolated Postgres)",
   "fails_when": "an untagged UPDATE of source_text or a self-stamped verbatim release succeeds in enforce mode, or a real batch writer script is allowed by the hook",
-  "observed_red": "before the posix=False fix, test_the_real_batch1_writer_from_a_scratchpad_is_blocked failed with assert (0 == 2): the hook allowed C:\\Users\\...\\write_batch1.py because shlex posix mode stripped the backslashes"
+  "observed_red": "before the posix=False fix, test_the_real_batch1_writer_from_a_scratchpad_is_blocked failed with assert (0 == 2): the hook allowed C:\\Users\\...\\the batch1 writer because shlex posix mode stripped the backslashes"
  },
  "pre_impl": {
   "existing_data": "dcp_setback_controls 1273 rows, dcp_chapter_registry 822, regulatory_provisions 55k; trigger dcp_setback_hold_unproven_quote trusts the writer-sent quote_status; all connections are the postgres superuser",
