@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Railway rebuilt the monitors image only for a hand-picked file list; the config now watches every file the image copies, enforced by a test",
- "commit_hash": "4181f6f3",
+ "commit_hash": "0337bdba",
  "files": [
   "railway.alerts.toml",
   "railway.dcp-commit.toml",
@@ -49,7 +49,7 @@
    "scenario": "a wider watch list rebuilds more often and a rebuild kills a running cron job",
    "what_happens": "a long dcp-extract run is cut off by an unrelated merge",
    "mitigated": false,
-   "how": "known Railway behaviour; merge outside the 03:00-04:30 UTC extract window",
+   "how": "VERDICT (Sol finding, 2026-11-03): accepted. A killed run delays, it does not corrupt: each chapter is enqueued in one transaction and keeps needs_extraction=TRUE until it finishes, so the next run retries it. Measured: the run cut off by the 2026-11-02 20:31 deploy left 0 partial queue rows. The alternative (fixes that never deploy) left dcp-commit crashing daily. Merge outside 03:00-04:30 UTC.",
    "repro": "merge a change to any watched script while dcp-extract is running"
   }
  ],
