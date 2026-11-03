@@ -42,7 +42,7 @@ READ_ONLY = re.compile(r"^\s*(cat|head|tail|grep|rg|wc|less|ls|diff|sed\s+-n|"
                        r"git\s+(diff|log|show|blame|status|grep|ls-files|ls-tree)|"
                        r"python3?\s+-m\s+pytest|pytest)\b(?!.*(>|\btee\b))", re.I)
 SEGMENT = re.compile(r"&&|\|\||[;|\n]")
-PLAN_LINE = re.compile(r"^[ 	*>_-]*PLAN:[*_]*\s+(.+)$", re.M)   # a line that IS a plan line, not one quoting it
+PLAN_LINE = re.compile(r"^[ 	*_-]*PLAN:[*_]*\s+(.+)$", re.M)   # a line that IS a plan line, not one quoting it
 PLANS_DIR = Path(os.path.expanduser("~/.claude/plans"))
 # Any path form (absolute, relative, ~): a relative ".claude/projects/..." from the home
 # directory has no slash before ".claude" (Sol review, 2026-11-03).
@@ -103,30 +103,46 @@ def _text(e: dict) -> str:
     return ""
 
 
-def _reads(e: dict) -> list[str]:
+def _reads(e: dict) -> dict[str, str]:
+    """{tool_use id: path} for the Read calls in an assistant entry."""
     c = (e.get("message") or {}).get("content")
     if not isinstance(c, list):
-        return []
-    return [_norm((b.get("input") or {}).get("file_path") or "") for b in c
-            if b.get("type") == "tool_use" and b.get("name") == "Read"]
+        return {}
+    return {b.get("id") or "": _norm((b.get("input") or {}).get("file_path") or "") for b in c
+            if b.get("type") == "tool_use" and b.get("name") == "Read"}
+
+
+def _ok_results(e: dict) -> set[str]:
+    """tool_use ids whose result came back WITHOUT an error (a failed Read is not a read)."""
+    c = (e.get("message") or {}).get("content")
+    if not isinstance(c, list):
+        return set()
+    return {b.get("tool_use_id") or "" for b in c
+            if b.get("type") == "tool_result" and not b.get("is_error")}
 
 
 def verdict(transcript: str) -> str | None:
     """None to allow, else the reason to block."""
-    plan, plan_idx, human_after, read = None, -1, False, set()
+    plan, plan_idx, human_after, read, pending = None, -1, False, set(), {}
     for i, e in enumerate(_entries(transcript)):
         if e.get("type") == "assistant":
-            read.update(_reads(e))
+            pending.update(_reads(e))
             for m in PLAN_LINE.finditer(_text(e)):
                 plan, plan_idx, human_after = m.group(1).strip(), i, False
-        elif e.get("type") == "user" and (e.get("origin") or {}).get("kind") == "human" and plan_idx >= 0:
-            human_after = True
+        elif e.get("type") == "user":
+            for tid in _ok_results(e):
+                if tid in pending:
+                    read.add(pending.pop(tid))
+            if (e.get("origin") or {}).get("kind") == "human" and plan_idx >= 0:
+                human_after = True
     if plan is None:
         return "no PLAN: line in this session"
     if not re.match(r"none\b", plan, re.I):
         names = re.findall(r"([\w.-]+\.md)", plan)
         if not names:
             return f"the PLAN: line names no plan file ({plan[:80]!r}); name one, or write PLAN: none"
+        if not any((PLANS_DIR / n).is_file() for n in names):
+            return f"no plan file {', '.join(names)} exists in ~/.claude/plans"
         if not any(_norm(str(PLANS_DIR / n)).lower() in {r.lower() for r in read} or
                    any(r.lower().endswith("/plans/" + n.lower()) for r in read) for n in names):
             return f"the plan named ({', '.join(names)}) was not opened with Read in this session"

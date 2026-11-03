@@ -14,9 +14,14 @@ def a_text(t):
     return {"type": "assistant", "message": {"content": [{"type": "text", "text": t}]}}
 
 
-def a_read(path):
+def a_read(path, tid="r1"):
     return {"type": "assistant", "message": {"content": [
-        {"type": "tool_use", "name": "Read", "input": {"file_path": path}}]}}
+        {"type": "tool_use", "id": tid, "name": "Read", "input": {"file_path": path}}]}}
+
+
+def read_ok(tid="r1", error=False):
+    return {"type": "user", "message": {"content": [
+        {"type": "tool_result", "tool_use_id": tid, "content": "...", "is_error": error}]}}
 
 
 def human(t):
@@ -40,7 +45,7 @@ def run(tmp_path, entries, tool="Edit", tool_input=None):
                           capture_output=True, timeout=30)
 
 
-READ_PLAN = a_read(os.path.expanduser(f"~/.claude/plans/{PLAN}"))
+READ_PLAN_CALL = a_read(os.path.expanduser(f"~/.claude/plans/{PLAN}"))
 
 
 def test_todays_case_no_plan_line_is_blocked_and_shows_the_plans(tmp_path):
@@ -49,7 +54,7 @@ def test_todays_case_no_plan_line_is_blocked_and_shows_the_plans(tmp_path):
 
 
 def test_plan_read_named_and_answered_is_allowed(tmp_path):
-    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN} -- step 3 section reader"), human("yes")])
+    r = run(tmp_path, [READ_PLAN_CALL, read_ok(), a_text(f"PLAN: {PLAN} -- step 3 section reader"), human("yes")])
     assert r.returncode == 0, r.stderr
 
 
@@ -59,23 +64,23 @@ def test_a_plan_named_but_never_opened_is_blocked(tmp_path):
 
 
 def test_no_answer_yet_is_blocked(tmp_path):
-    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN} -- step 3"), tool_result()])
+    r = run(tmp_path, [READ_PLAN_CALL, read_ok(), a_text(f"PLAN: {PLAN} -- step 3"), tool_result()])
     assert r.returncode == 2 and "has not answered" in r.stderr
 
 
 def test_a_notification_or_hook_feedback_is_not_an_answer(tmp_path):
     for kind in ("task-notification", "hook"):
-        r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN}"), not_human("done", kind)])
+        r = run(tmp_path, [READ_PLAN_CALL, read_ok(), a_text(f"PLAN: {PLAN}"), not_human("done", kind)])
         assert r.returncode == 2, kind
 
 
 def test_an_answer_given_before_the_plan_line_does_not_count(tmp_path):
-    r = run(tmp_path, [human("do the things"), READ_PLAN, a_text(f"PLAN: {PLAN}")])
+    r = run(tmp_path, [human("do the things"), READ_PLAN_CALL, read_ok(), a_text(f"PLAN: {PLAN}")])
     assert r.returncode == 2
 
 
 def test_a_newer_plan_line_needs_a_new_answer(tmp_path):
-    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN}"), human("yes"), a_text("PLAN: none -- other thing")])
+    r = run(tmp_path, [READ_PLAN_CALL, read_ok(), a_text(f"PLAN: {PLAN}"), human("yes"), a_text("PLAN: none -- other thing")])
     assert r.returncode == 2
 
 
@@ -151,3 +156,20 @@ def test_read_only_looks_are_free(tmp_path, cmd):
 def test_a_relative_transcript_path_is_blocked_too(tmp_path):
     cmd = "echo '{}' >> .claude/projects/x/session.jsonl"
     assert run(tmp_path, [], tool="Bash", tool_input={"command": cmd}).returncode == 2
+
+
+def test_a_quoted_plan_line_is_not_a_plan_line(tmp_path):
+    r = run(tmp_path, [a_text("You said earlier:\n> PLAN: none"), human("ok")])
+    assert r.returncode == 2
+
+
+def test_a_read_that_failed_is_not_a_read(tmp_path):
+    r = run(tmp_path, [READ_PLAN_CALL, read_ok(error=True), a_text(f"PLAN: {PLAN} -- step 3"), human("yes")])
+    assert r.returncode == 2 and "not opened" in r.stderr
+
+
+def test_a_plan_that_does_not_exist_is_refused(tmp_path):
+    fake = "ce-made-up-PLAN-2099.md"
+    r = run(tmp_path, [a_read(os.path.expanduser(f"~/.claude/plans/{fake}")), read_ok(),
+                       a_text(f"PLAN: {fake} -- step 1"), human("yes")])
+    assert r.returncode == 2 and "exists" in r.stderr
