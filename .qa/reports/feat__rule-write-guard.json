@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "0db8c804",
+ "commit_hash": "7c60fafb",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -144,6 +144,27 @@
    "mitigated": true,
    "how": "Sol round 2: every .py word in the python command is read",
    "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options"
+  },
+  {
+   "scenario": "a tracked repo script is edited to add a rule-table write and run before commit",
+   "what_happens": "the hook trusted any tracked path and the unreviewed write ran",
+   "mitigated": true,
+   "how": "Sol round 3: tracked is trusted only when git diff HEAD shows no change",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k uncommitted"
+  },
+  {
+   "scenario": "the writer file is created and run inside the same shell command",
+   "what_happens": "the file did not exist when the hook looked so it was allowed",
+   "mitigated": true,
+   "how": "Sol round 3: a named .py that does not exist yet blocks when the command carries rule-table SQL",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k made_and_run"
+  },
+  {
+   "scenario": "a scratchpad writer is run directly through its shebang line without python",
+   "what_happens": "no python word in the command so the hook did not look",
+   "mitigated": true,
+   "how": "Sol round 3: a segment that starts with a .py path is read like a python run",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k shebang"
   }
  ],
  "post_merge": {
