@@ -162,6 +162,22 @@ PROFILES = {
             },
         },
     },
+    # Leichhardt DCP 2013 Part C s5 (2026-11-03): the IWLEP 2022 'Inner West Special Entertainment Precinct' polygons
+    # Figures C145-C147 cover (Balmain, Rozelle, Leichhardt north of Parramatta Road), i.e. the layer's Inner West
+    # polygons not already in marrickville_2_26_sep.geojson, unioned. lga/former_council as the 29 Leichhardt tiles.
+    # Points are NSW address register points (NSW_Geocoded_Addressing_Theme), not guesses.
+    "leichhardt": {
+        "lga": "Inner West", "former_council": "Leichhardt",
+        "envelope": (151.14, -33.90, 151.20, -33.84),
+        "files": {
+            "leichhardt_c5_sep.geojson": {
+                "ids": {"Leichhardt C5 entertainment precinct"},
+                "outside_means_not_in_these_ids": True,
+                "outside": {"74 Balmain Rd Leichhardt (off Norton St)": (151.158835, -33.885064)},
+                "inside": {"63 Norton St Leichhardt": (151.157711, -33.885613)},
+            },
+        },
+    },
 }
 
 LOOKUP_SQL = """SELECT precinct_id FROM dcp_precinct_boundaries

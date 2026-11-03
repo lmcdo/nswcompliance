@@ -1510,6 +1510,27 @@
     ],
     "BALMAIN": [
       {
+        "area_id": "leichhardt-c5-sound-category-areas",
+        "council": "leichhardt",
+        "chapter_key": "part-c-s5-entertainment-precincts",
+        "title": "Part C Section 5 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 17,
+        "suburbs": [
+          "BALMAIN",
+          "LEICHHARDT",
+          "ROZELLE"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Part C – Section 5 of this DCP applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures C145 Balmain, C146 Leichhardt (north of Parramatta Road only; south is Marrickville DCP 2.26), C147 Rozelle. Suburbs measured 2026-11-03 from NSW address register points within 150 m of the IWLEP 2022 Special Entertainment Precinct polygons those figures cover: BALMAIN 3,109, LEICHHARDT 1,823, ROZELLE 1,781 (inside the pink: LEICHHARDT 529, BALMAIN 471, ROZELLE 295). Also within 150 m: PETERSHAM 359 (south of Parramatta Road, Marrickville 2.26's land), BIRCHGROVE 14 and LILYFIELD 2 (edge points, not listed). Lots inside the pink are served the rows (outline 'Leichhardt C5 entertainment precinct'); this box covers the rest of these suburbs."
+      },
+      {
         "area_id": "leichhardt-part-g-s3-jane-street",
         "council": "leichhardt",
         "chapter_key": "part-g-s1-site-specific",
@@ -1556,6 +1577,27 @@
     ],
     "LEICHHARDT": [
       {
+        "area_id": "leichhardt-c5-sound-category-areas",
+        "council": "leichhardt",
+        "chapter_key": "part-c-s5-entertainment-precincts",
+        "title": "Part C Section 5 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 17,
+        "suburbs": [
+          "BALMAIN",
+          "LEICHHARDT",
+          "ROZELLE"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Part C – Section 5 of this DCP applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures C145 Balmain, C146 Leichhardt (north of Parramatta Road only; south is Marrickville DCP 2.26), C147 Rozelle. Suburbs measured 2026-11-03 from NSW address register points within 150 m of the IWLEP 2022 Special Entertainment Precinct polygons those figures cover: BALMAIN 3,109, LEICHHARDT 1,823, ROZELLE 1,781 (inside the pink: LEICHHARDT 529, BALMAIN 471, ROZELLE 295). Also within 150 m: PETERSHAM 359 (south of Parramatta Road, Marrickville 2.26's land), BIRCHGROVE 14 and LILYFIELD 2 (edge points, not listed). Lots inside the pink are served the rows (outline 'Leichhardt C5 entertainment precinct'); this box covers the rest of these suburbs."
+      },
+      {
         "area_id": "leichhardt-george-upward-streets",
         "council": "leichhardt",
         "chapter_key": "amendment-1-george-upward-streets",
@@ -1598,6 +1640,29 @@
         "applies_to_quote": "The site is known as 17 Marion Street Leichardt being Lot 25 Sec 1 DP 328",
         "applies_to_page": 116,
         "evidence": "p116 G10.1 lists 6 lots; plan spells the suburb both Leichhardt and Leichardt (typo). Map reference Area 9 in Figure G1."
+      }
+    ],
+    "ROZELLE": [
+      {
+        "area_id": "leichhardt-c5-sound-category-areas",
+        "council": "leichhardt",
+        "chapter_key": "part-c-s5-entertainment-precincts",
+        "title": "Part C Section 5 Special Entertainment Precincts: Sound Category Areas",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 17,
+        "suburbs": [
+          "BALMAIN",
+          "LEICHHARDT",
+          "ROZELLE"
+        ],
+        "postcodes": [],
+        "reason_code": "SOUND_AREA_MAP",
+        "applies_to_quote": "Part C – Section 5 of this DCP applies to land identified as a Sound Category Area in the following maps",
+        "applies_to_page": 1,
+        "evidence": "Figures C145 Balmain, C146 Leichhardt (north of Parramatta Road only; south is Marrickville DCP 2.26), C147 Rozelle. Suburbs measured 2026-11-03 from NSW address register points within 150 m of the IWLEP 2022 Special Entertainment Precinct polygons those figures cover: BALMAIN 3,109, LEICHHARDT 1,823, ROZELLE 1,781 (inside the pink: LEICHHARDT 529, BALMAIN 471, ROZELLE 295). Also within 150 m: PETERSHAM 359 (south of Parramatta Road, Marrickville 2.26's land), BIRCHGROVE 14 and LILYFIELD 2 (edge points, not listed). Lots inside the pink are served the rows (outline 'Leichhardt C5 entertainment precinct'); this box covers the rest of these suburbs."
       }
     ]
   },
