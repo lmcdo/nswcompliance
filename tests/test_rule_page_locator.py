@@ -317,3 +317,26 @@ def test_a_table_page_printing_every_word_out_of_order_keeps_its_link():
     k = len(t) * 2 // 5
     table = " ".join(t[:k]) + " | " + " ".join(reversed(t[k:]))   # cells read out of order
     assert L.locate(rule, [_doc(p3=table, p8=long_body)], stored=3) == (3, "on_page")
+
+
+def test_a_repeated_table_header_does_not_keep_a_row_on_the_wrong_page():
+    """Georges River DCP 2021 6.1.4 (2026-11-03): the summary table runs over three pages, three options a page, each
+    page repeating the header and the common cells. Stored page 45 held most of option 7a's words, which is printed
+    only on page 47; it was kept as on_page. Checked by eye against the PDF."""
+    header = ("Option Footprint indicative only not to scale Housing Type Front setback min Rear setback min Side setback"
+              " Max external wall height Max rec roof pitch Parking")
+    common = ("4.5m to the main building face 5.5m to a garage or other roofed car parking structure Within 20% of the"
+              " average setback of dwellings on adjoining lots 3m ground level and 6m second level 900mm 6m 35 Garage")
+    def page(*rows):
+        return header + " " + " ".join(r + " " + common for r in rows)
+    p45 = page("1 6m frontage Existing single dwelling with rear single storey addition",
+               "2 6m frontage Existing cottage with first floor addition or new 2 storey detached",
+               "3 6m frontage 1 storey detached")
+    p46 = page("4 2 x 6m frontage 1 storey semi-detached", "5 2 x 6m frontage 1 storey habitable roof space",
+               "6 2 x 6m frontage 2 storey attached")
+    p47 = page("7a 3 x 6m frontage Two 2 storey attached dwellings and one 2 storey dwelling",
+               "7b 3 x 6m frontage Two 1.5 storey attached dwellings and one 1.5 storey dwelling",
+               "7c 3 x 6m frontage Two attached 1 storey dwellings and one attached 1 storey dwelling")
+    rule = ("# 6.1.4 Building Envelopes - Summary Table\n" + header
+            + " 7a 3 x 6m frontage Two 2 storey attached dwellings and one 2 storey dwelling " + common)
+    assert L.locate(rule, [_doc(p5=p45, p6=p46, p7=p47)], stored=5) == (7, "moved")
