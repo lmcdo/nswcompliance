@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds three guardrails the assistant cannot satisfy on its own: an off-machine Telegram watcher, a hook that needs a human answer to a plan line, and a CI plan-line check",
- "commit_hash": "c098a053",
+ "commit_hash": "b422e5d5",
  "files": [
   "scripts/guardrail_watch.py",
   "scripts/check_pr_plan_line.py",
@@ -82,6 +82,20 @@
    "mitigated": true,
    "how": "QA gate adversarial rule: every .get(k, '') became .get(k) or ''",
    "repro": "pytest tests/test_plan_line_gate.py -k none_field"
+  },
+  {
+   "scenario": "a pipeline file is wiped with truncate, perl -pi or git checkout instead of sed or an editor",
+   "what_happens": "the old list of writing commands missed them and the gate allowed the edit",
+   "mitigated": true,
+   "how": "Sol round 1: any shell command naming a pipeline file is gated unless every segment is a known read-only command",
+   "repro": "pytest tests/test_plan_line_gate.py -k writers_outside"
+  },
+  {
+   "scenario": "a guardrail is disabled in one commit and restored in the next within the same push",
+   "what_happens": "the endpoint diff is empty and the watcher stayed silent",
+   "mitigated": true,
+   "how": "Sol round 1: the push range is read with git log -p commit by commit",
+   "repro": "pytest tests/test_guardrail_watch.py -k commit_by_commit"
   }
  ],
  "post_merge": {
