@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "47680806",
+ "commit_hash": "0194c845",
  "files": [
   "data/chapter_scope/suburb_unconfirmed_areas.json",
   "data/inner_west_precincts/leichhardt_c5_sep.geojson",
@@ -37,11 +37,11 @@
   {
    "name": "run (outline gate)",
    "file_line": "scripts/derive_precinct_keys.py",
-   "what": "Before writing keys, checks every derived precinct id has a stored outline; otherwise writes nothing for that rule.",
+   "what": "For rules marked needs_stored_outline, checks every derived key has an outline for the rule's own council with a real shape; otherwise writes nothing, rolls back and exits 1.",
    "input": "the rule's pending keyed rows and dcp_precinct_boundaries",
    "output": "keys written only when every outline exists",
    "if_none": "Missing outline prints NO OUTLINE and FAIL-CLOSED; rows stay as they were",
-   "edge_cases": "Marrickville 2.26 with its outline still passes (23 already ok)",
+   "edge_cases": "Opt-in: City of Sydney and others matched via the Planning Portal layer are not blocked (all-councils dry run: only Leichhardt C5 refuses)",
    "failure_mode": "A wrong outline id is caught here instead of hiding rows silently"
   }
  ],
@@ -77,11 +77,13 @@
  ],
  "verified": [
   "tests: gate_rules + derive_precinct_keys + rederive 63 passed",
-  "live dry run: Leichhardt C5 FAIL-CLOSED without outline; Marrickville 2.26 23 already ok"
+  "live all-councils dry run: only Leichhardt C5 fails the outline check; Marrickville 2.26 23 already ok"
  ],
  "gaps": [
   "Sound Category street lines beyond the pink are not drawn; those lots get the may-apply box",
-  "Live writes (outline load + keying) need owner go"
+  "Live writes (outline load + keying) need owner go",
+  "Ten existing rules key areas with no stored outline (City of Sydney, Parramatta 8/9, Leichhardt C2/G, Haberfield, Waverley E6): some are matched another way; not checked in this PR",
+  "Outline must be loaded before merge, or the next Leichhardt re-key fails loudly"
  ],
  "post_merge": {
   "action": "import_cb_centre_boundaries.py --council leichhardt --src data/inner_west_precincts/leichhardt_c5_sep.geojson --commit, then derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts --apply",
