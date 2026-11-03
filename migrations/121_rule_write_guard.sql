@@ -1,6 +1,6 @@
 -- 121: every write to a rule's words, numbers, page or proof says which pipeline run made it.
 --
--- WHY. On 2026-10-29 and 2026-11-02, 122 rows of dcp_setback_controls were rewritten by
+-- WHY. On 2026-10-29 and 2026-11-02, 122 setback rule rows were rewritten by
 -- throwaway scratchpad scripts (batches 1-5) and released. Migration 120 holds any row whose
 -- quote_status is not 'verbatim', but it believes whatever status the writer sends, so a
 -- script that stamps 'verbatim' itself passes. Every connection is the same `postgres` user

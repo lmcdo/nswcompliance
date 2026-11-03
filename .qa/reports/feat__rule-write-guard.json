@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "79d8a85c",
+ "commit_hash": "8450ea3f",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -22,7 +22,8 @@
   ".claude/settings.json",
   "tests/test_rule_write_guard_db.py",
   "tests/test_scratchpad_rule_write_guard.py",
-  "tests/test_hooks_not_silently_dead.py"
+  "tests/test_hooks_not_silently_dead.py",
+  "tests/test_pipeline_run.py"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_rule_write_guard_db.py tests/test_scratchpad_rule_write_guard.py (DB tests in CI job drawdown-verify-write-path, isolated Postgres)",
@@ -39,18 +40,46 @@
  },
  "functions": [
   {
+   "name": "run_id",
+   "file_line": "scripts/pipeline_run.py:36",
+   "input": "the pipeline script name as given by the calling script",
+   "output": "a run id made of script name, twelve-character git sha and a twelve-character random run part",
+   "if_none": "a blank or None script name raises ValueError so no run is ever logged under an empty name"
+  },
+  {
    "name": "tag",
-   "file_line": "scripts/pipeline_run.py",
-   "input": "an open psycopg2 connection and the pipeline script name",
-   "output": "the run id string, after set_config app.pipeline_run on that session",
-   "if_none": "a test double that is not a psycopg2 connection is returned the id without a database call"
+   "file_line": "scripts/pipeline_run.py:46",
+   "input": "an open psycopg2 connection object and the name of the calling pipeline script",
+   "output": "the run id after setting app.pipeline_run and application_name on that database session",
+   "if_none": "a connection that is not psycopg2 gets no SQL at all and the run id is still returned to the caller"
+  },
+  {
+   "name": "_git_sha",
+   "file_line": "scripts/pipeline_run.py:21",
+   "input": "nothing beyond the environment and the checkout this file sits in",
+   "output": "the first twelve characters of the deployed or checked-out git commit hash",
+   "if_none": "with no Railway variable and no git it returns unknown and tag prints a warning on stderr"
   },
   {
    "name": "verdict",
-   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py",
-   "input": "the shell command text, its working directory and the repo root",
-   "output": "None to allow or the reason string to block",
-   "if_none": "a command with no python invocation returns None without reading any file"
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:119",
+   "input": "the shell command text with its working directory and the repository root path",
+   "output": "None to let the command run, or the reason string that makes the hook block it",
+   "if_none": "a command that runs no python and names no .py script returns None without reading any file"
+  },
+  {
+   "name": "_tracked",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:62",
+   "input": "the resolved script path and the repository root used for git commands",
+   "output": "True only when git says the file is tracked and has no uncommitted change",
+   "if_none": "git missing, hung or failing returns False so the file is read rather than trusted"
+  },
+  {
+   "name": "_scripts",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:88",
+   "input": "the full shell command, possibly several commands joined by shell separators",
+   "output": "every .py path that any python invocation or shebang run in the command names",
+   "if_none": "a command with no python and no leading .py word returns an empty list of scripts"
   }
  ],
  "break_it": [
@@ -197,5 +226,12 @@
  "real_layer_exempt": {
   "scripts/pipeline_run.py": "its real-database tests are in tests/test_rule_write_guard_db.py (tag against a real Postgres, autocommit after tag, run id in rule_write_log), run by the CI isolated-DB job",
   "scripts/add_new_chapter.py": "the only change is one pipeline_run.tag call after connect; the tag itself is real-DB tested in tests/test_rule_write_guard_db.py"
+ },
+ "qa_verify": {
+  "strong": 19,
+  "adequate": 6,
+  "weak_rewritten": 1,
+  "mutations_run": "hook: always-allow 13/17 fail, never-match-SQL 13/17, trust-all-tracked 11/17, no-shell-split 1/17, posix-split 8/17, no-shebang 2/17, always-block 5/17. pipeline_run: no-reuse, no-blank-check, no-warn, no-real-check, short-sha each caught. DB tests (CI only): reasoned, not run locally.",
+  "gaps_decided": "TRUNCATE in record mode is not tested on its own (same code path as the enforce test). python -m <scratch module> is not caught by the hook (recorded limit, DB guard covers it). Stub tables carry only the columns the trigger reads; the install-time column check runs again against the real tables when migration 121 is applied."
  }
 }

@@ -93,10 +93,19 @@ def test_git_bash_drive_paths_resolve(scratch):
     assert _run(f"python {posix}", scratch).returncode == 2
 
 
-def test_other_tools_are_ignored():
-    payload = {"tool_name": "Edit", "tool_input": {"file_path": "x"}}
+def test_the_powershell_tool_is_checked_too(scratch):
+    """qa-verify: replaces a test that could not fail. PowerShell runs python as well."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    payload = {"tool_name": "PowerShell", "tool_input": {"command": f"python {f}"}, "cwd": str(scratch)}
     r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
-                       capture_output=True, timeout=30)
+                       capture_output=True, timeout=30,
+                       env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT)})
+    assert r.returncode == 2
+    payload["tool_name"] = "Edit"                 # a tool that runs nothing is not checked
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30,
+                       env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT)})
     assert r.returncode == 0
 
 
