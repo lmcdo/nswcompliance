@@ -1727,7 +1727,8 @@
     "note": "Found 2026-10-08 on the LEP tab for 45 Graham St Greystanes. The yield card showed 'DCP Setbacks Applied - Front: 6m, Side: 0.9m' and 'Buildable footprint 423m2 (74% of lot)'. Both setbacks are Cumberland's own current rows, page 8 of cumberland-part-b-residential.pdf, and the is_current filter correctly rejected its two stale front-setback rows (5.5 m, 4.0 m) - that part works. But Cumberland has no CURRENT rear setback; its only rear row (8.0 m, id 30) is is_current=false, needs_review=true. The formula at services/constraint_arithmetic.py:615-623 is (frontage - 2*side) * (depth - front - rear), and the displayed number is only reachable with rear=0: (18.79-1.8)*(30.9-6-0) = 16.99*24.9 = 423.05 -> '423m2', and 423/573.81 = 73.7% -> '74%'. Zero is the PERMISSIVE direction: it makes the buildable area larger. The card does print 'Calculated from 3 of 6 planning controls', but it still prints the figure - a caveat beside a number is not the same as withholding the number. Clears by extracting the missing control, or - the durable fix - by making the arithmetic refuse to publish a footprint when an input is absent, which closes the class rather than this instance. Not counted here: constraint_arithmetic.py's own STOREY_HEIGHT_M, MIN_DWELLING_GFA_M2 and PARKING_AREA_PER_SPACE_M2 are engineering assumptions, not regulatory values."
   },
   "DQ-143": {
-   "declared": "open",
+   "declared": "fixed",
+   "fixed_2026-11-04": "2026-11-04: `python scripts/dq_probe_live.py --id DQ-143` returns count 0 (was 557 on 2026-10-11) after #1585 kept area-only rules inside their official outline. Scope limit unchanged: heritage-tagged rows still reach every heritage house in the council.",
    "check": [
     "python",
     "scripts/dq_probe_live.py",

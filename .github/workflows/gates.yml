@@ -806,4 +806,4 @@ jobs:
           PYTEST_REAL_DB: "1"
         run: |
           export RULE_GUARD_TEST_DATABASE_URL="postgresql://${PGUSER_TEST}:${PGPASSWORD_TEST}@${PGHOST_TEST}:${PGPORT_TEST}/${PGDATABASE_TEST}"
-          python -m pytest -m database -o addopts= -v tests/test_rule_write_guard_db.py
+          python -m pytest -m database -o addopts= -v tests/test_rule_write_guard_db.py tests/test_extract_refusal_db.py

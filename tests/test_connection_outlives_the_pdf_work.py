@@ -128,9 +128,17 @@ class TestItRunsAtTheBoundaryThatMatters:
         """extract_chapter takes conn as a PARAMETER, so rebinding inside it cannot reach
         main's. Without this the first chapter's hour of PDF work leaves every later
         chapter in the batch holding a dead connection."""
+        # The per-chapter loop moved into run_chapters (2026-11-03): its one-at-a-time
+        # path must revive after each chapter, each parallel worker after each of its
+        # chapters, and main after run_chapters returns.
+        runner = SRC[SRC.index("def run_chapters("):SRC.index("def main(")]
+        seq = runner.index("out.append(extract_chapter(")
+        assert "conn = revive(conn)" in runner[seq:seq + 800]
+        worker = SRC[SRC.index("def _chapter_worker("):SRC.index("def _s3_client(")]
+        assert "c = revive(c)" in worker
         body = SRC[SRC.index("def main("):]
-        call = body.index("ok, review_data = extract_chapter(")
-        assert "conn = revive(conn)" in body[call:call + 800]
+        call = body.index("results = run_chapters(")
+        assert "conn = revive(conn)" in body[call:call + 300]
 
     def test_keepalives_are_kept_as_well(self):
         """Not either/or. Keepalives still prevent the idle reap they were added for;
