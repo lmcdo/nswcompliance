@@ -134,6 +134,13 @@ def case_surface_prior_art_guard(tmp):
     return ({"tool_name": "Artifact", "tool_input": {"file_path": "x.html"}}, tmp, tmp, "block")
 
 
+def case_scratchpad_rule_write_guard(tmp):
+    # The 2026-10-29 batch writer, run from outside the repo.
+    script = tmp / "write_batch1.py"
+    script.write_text("cur.execute('update dcp_setback_controls set source_text=%s where id=%s', (1, 2))")
+    return (_bash(f"python {script}"), tmp, tmp, "block")
+
+
 def case_pr_merge_guard(tmp):
     # An override with a too-short reason is refused before any network call.
     return (_bash('MERGE_GATE_OVERRIDE="x" gh pr merge 1 --squash'), tmp, tmp, "block")
@@ -180,6 +187,7 @@ CASES = {
     "pre-edit-guard.py": case_pre_edit_guard,
     "prior-art-guard.py": case_prior_art_guard,
     "push-retry-needs-full-output.py": case_push_retry_needs_full_output,
+    "scratchpad-rule-write-guard.py": case_scratchpad_rule_write_guard,
     "no-unreferenced-new-file.py": case_no_unreferenced_new_file,
     "surface-prior-art-guard.py": case_surface_prior_art_guard,
     "pr-merge-guard.py": case_pr_merge_guard,

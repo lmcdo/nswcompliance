@@ -12,6 +12,10 @@ transaction: a refusal raises, the caller rolls back and keeps the approval (as 
 from __future__ import annotations
 
 from typing import NamedTuple
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 #: The new version must re-link at least this share of the links the live chapter had.
 KEEP_MIN = 0.9
@@ -308,6 +312,7 @@ def withhold_unkeyed(dpk, council: str) -> "int | None":
 
     try:
         conn = psycopg2.connect(dpk.DATABASE_URL, connect_timeout=10)
+        pipeline_run.tag(conn, "dcp_area_link_guard")
     except Exception as exc:  # noqa: BLE001
         print(f"  [ERROR] could not check {council} for unkeyed precinct rules: {exc}")
         return None

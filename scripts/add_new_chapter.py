@@ -58,6 +58,10 @@ import boto3
 import psycopg2
 import requests
 from dotenv import load_dotenv
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -345,6 +349,7 @@ def main() -> int:
     # ── Connect + pre-flight schema check ─────────────────────────────────────
     print("\n[3/7] Checking registry for existing entry...")
     conn = psycopg2.connect(DATABASE_URL)
+    pipeline_run.tag(conn, "add_new_chapter")
     conn.autocommit = False
 
     missing_cols = preflight_schema_check(conn)

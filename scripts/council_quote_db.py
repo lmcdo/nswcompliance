@@ -9,6 +9,10 @@ import csv
 import os
 from datetime import datetime
 from pathlib import Path
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,6 +31,7 @@ def fetch(council: str | None, ids: list[int] | None, chapter: str | None = None
     import psycopg2
     import dcp_page_repair as dpr
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    pipeline_run.tag(conn, "council_quote")
     try:
         conn.cursor().execute("SET statement_timeout = 30000")
         rows = dpr.fetch(conn, council)
@@ -51,6 +56,7 @@ def write(res: list[dict]) -> int:
     backup = ROOT / "data" / "db_rollback_backups" / f"regulatory_provisions_pre_council_quote_{stamp}.csv"
     backup.parent.mkdir(parents=True, exist_ok=True)
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    pipeline_run.tag(conn, "council_quote")
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = 30000")
