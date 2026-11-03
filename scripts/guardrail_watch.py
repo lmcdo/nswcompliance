@@ -46,17 +46,34 @@ def is_guard_path(path: str) -> bool:
     return any(path == g or path.startswith(g) for g in GUARD_PATHS)
 
 
-#: Places where an escape word is only MENTIONED, never used: tests that check the alarm,
-#: QA reports that quote a line, and this file's own pattern. Reporting them trained the
-#: reader to skim (first alert, 2026-11-03: 6 of 8 lines were mentions).
-MENTION_ONLY_DIRS = ("tests/", ".qa/reports/")
+#: Escape words that are only MENTIONED, never used: QA reports quote lines (JSON text, never
+#: run); tests write them inside strings and comments; this file lists them in BYPASS. The
+#: first alert (2026-11-03) was 6 of 8 such lines. Real use still reports: a test's
+#: `@pytest.mark.skip` or `collect_ignore = [...]` is code, not a mention (Sol review).
+def _own_pattern_lines() -> set[str]:
+    try:
+        src = open(__file__, encoding="utf-8").read()
+    except OSError:
+        return set()
+    block = src[src.index("BYPASS = re.compile("):]
+    block = block[:block.index(", re.I)") + len(", re.I)")]
+    return {ln.strip() for ln in block.splitlines()}
+
+
+_OWN = _own_pattern_lines()
 
 
 def is_mention_only(path: str, line: str) -> bool:
-    if path.startswith(MENTION_ONLY_DIRS):
+    if path.startswith(".qa/reports/"):
         return True
-    # this file's BYPASS pattern: a raw-string line listing the escape words with "|"
-    return path == "scripts/guardrail_watch.py" and line.lstrip().startswith('r"') and "|" in line
+    if path == "scripts/guardrail_watch.py":
+        return line.strip() in _OWN               # exactly the BYPASS declaration, nothing else
+    if path.startswith("tests/"):
+        m = BYPASS.search(line)
+        before = line[:m.start()] if m else line
+        in_string = before.count('"') % 2 == 1 or before.count("'") % 2 == 1
+        return in_string or "#" in before
+    return False
 
 
 def parse_diff(diff: str) -> tuple[list[str], list[tuple[str, str]]]:
