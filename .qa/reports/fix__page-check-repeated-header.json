@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the page check decides a served rule's page. Not Critical: no data written by this PR. Not Minor: page links on served rules.",
- "commit_hash": "10a52db3",
+ "commit_hash": "b0f3782e",
  "files": [
   "scripts/rule_page_locator.py",
   "tests/test_rule_page_locator.py"
@@ -64,9 +64,8 @@
   }
  ],
  "verified": [
-  "tests/test_rule_page_locator.py 43 passed",
-  "header-start, rare-word and span changes each mutation-checked",
-  "live dry run 57,300 rules: 23 page changes, 22 checked word by word"
+  "tests/test_rule_page_locator.py 44 passed",
+  "5 real rules decided correctly against their PDFs (3 moves, 2 kept)"
  ],
  "gaps": [
   "One City of Sydney move (258753, p9->10) has no public PDF link to check by hand"
