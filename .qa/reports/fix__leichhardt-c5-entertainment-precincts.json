@@ -1,0 +1,89 @@
+{
+ "tier": "standard",
+ "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
+ "commit_hash": "c8a4e6d3",
+ "files": [
+  "data/chapter_scope/suburb_unconfirmed_areas.json",
+  "data/inner_west_precincts/leichhardt_c5_sep.geojson",
+  "frontend-nextjs/shared/may-apply-areas.json",
+  "scripts/gate_rules_areas.py",
+  "scripts/import_cb_centre_boundaries.py",
+  "tests/test_gate_rules.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_gate_rules.py -k leichhardt_c5",
+  "fails_when": "Fails if the rule key, layer move, outline ids, inside/outside address anchors or the Marrickville overlap guard change.",
+  "external_authority": "Leichhardt DCP 2013 Part C s5 p1 (applies to land identified as a Sound Category Area, Figures C145-C147); NSW Planning Portal IWLEP 2022 Special Entertainment Precinct layer.",
+  "observed_red": "First run failed with KeyError 'quote': the outline file lacked the boundary_description the importer requires."
+ },
+ "pre_impl": {
+  "existing_data": "DQ-143 listed 17 shown C5 rows typed generic with no area key; chapter_scope already records the chapter as a place.",
+  "assumption_mismatch": "The official layer's Leichhardt polygons were never loaded; only the south-of-Parramatta-Rd ones (Marrickville 2.26) were.",
+  "new_vs_existing": "No new mechanism: AREA_KEY_RULES, AREA_GATE_RULES, importer PROFILES and may-apply areas reused from #1423.",
+  "external_source_error": "The layer or address service failing stops the build script; nothing is written from a partial read."
+ },
+ "functions": [
+  {
+   "name": "leichhardt_c5_entertainment_precincts",
+   "file_line": "scripts/gate_rules_areas.py",
+   "what": "Keys the chapter's rows to the official precinct outline.",
+   "input": "Leichhardt rows of chapter part-c-s5-entertainment-precincts",
+   "output": "v2_precinct_id set to the outline id",
+   "if_none": "A row outside the selector is untouched",
+   "edge_cases": "south of Parramatta Road stays Marrickville 2.26",
+   "failure_mode": "A wrong id would key rows to no outline, hiding them, never widening them"
+  },
+  {
+   "name": "leichhardt_c5_layer",
+   "file_line": "scripts/gate_rules_areas.py",
+   "what": "Moves the chapter's generic rows to the precinct layer.",
+   "input": "Leichhardt C5 rows typed generic",
+   "output": "v2_dcp_layer precinct, so only addresses inside the outline get them",
+   "if_none": "Rows already precinct are skipped",
+   "edge_cases": "rerun after a re-extraction re-applies it",
+   "failure_mode": "If not run, rows stay council-wide as before"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Address on a side street just outside the pink",
+   "what_happens": "Not served the rules; sees the may-apply box",
+   "mitigated": true,
+   "how": "outline contains test plus may-apply suburbs",
+   "repro": "pytest -k leichhardt_c5 (74 Balmain Rd anchor)"
+  },
+  {
+   "scenario": "Address south of Parramatta Rd in Leichhardt suburb",
+   "what_happens": "Gets Marrickville 2.26, not C5",
+   "mitigated": true,
+   "how": "outlines do not overlap",
+   "repro": "pytest overlap assertion"
+  },
+  {
+   "scenario": "The chapter is re-extracted from a new PDF later",
+   "what_happens": "Gate rules re-run after publish restore the key and layer",
+   "mitigated": true,
+   "how": "dcp_commit_approved runs derive_precinct_keys",
+   "repro": "read gate_rules.py header"
+  }
+ ],
+ "verified": [
+  "tests/test_gate_rules.py 31 passed",
+  "dry runs: 18 rows keyed, 17 moved to precinct layer, outline 21.5 ha"
+ ],
+ "gaps": [
+  "Sound Category street lines beyond the pink are not drawn; those lots get the may-apply box",
+  "Live writes (outline load + keying) need owner go"
+ ],
+ "post_merge": {
+  "action": "import_cb_centre_boundaries.py --council leichhardt --src data/inner_west_precincts/leichhardt_c5_sep.geojson --commit; derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts,leichhardt_c5_layer --apply",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "DQ-143 drops by 17; 63 Norton St Leichhardt shows C5 rules, 74 Balmain Rd shows them in may-apply"
+ },
+ "real_layer_exempt": {
+  "scripts/gate_rules_areas.py": "Rules run against the live DB by derive_precinct_keys after merge; dry run measured 18/17",
+  "scripts/import_cb_centre_boundaries.py": "Profile only; dry run against the live DB read 87 Inner West rows"
+ }
+}
