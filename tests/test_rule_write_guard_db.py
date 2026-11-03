@@ -13,8 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 URL = os.environ.get("RULE_GUARD_TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(
-    not URL, reason="needs RULE_GUARD_TEST_DATABASE_URL: a throwaway Postgres (CI job rule-write-guard)")
+# `database` keeps these out of the default run (pytest.ini deselects it), so they are not
+# counted as skips there; the isolated-DB CI job runs them with -m database.
+pytestmark = [pytest.mark.database, pytest.mark.skipif(
+    not URL, reason="needs RULE_GUARD_TEST_DATABASE_URL: a throwaway Postgres (CI isolated-DB job)")]
 
 # Only the columns the trigger and these tests read; the real tables are wider.
 STUBS = """
