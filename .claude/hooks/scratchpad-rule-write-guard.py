@@ -40,10 +40,10 @@ RULE_TABLES = (                # the tables migration 121 guards
     "regulatory_provisions",
     "dcp_chapter_registry",
 )
-TABLES = r"(?:public\.)?(?:" + "|".join(RULE_TABLES) + ")"
+TABLES = r"(?:\"?public\"?\.)?\"?(?:" + "|".join(RULE_TABLES) + r")\"?"   # quoted identifiers too
 WRITE = re.compile(rf"\b(?:update\s+{TABLES}\b|insert\s+into\s+{TABLES}\b|"
                    rf"delete\s+from\s+{TABLES}\b|truncate\s+(?:table\s+)?{TABLES}\b)", re.I)
-PYTHON = re.compile(r"(?:^|[\s;&|(])(?:python3?|py)(?:\.exe)?\s+(.*)", re.I)
+PYTHON = re.compile(r"(?:^|[\s;&|(/\\'\"])(?:python3?(?:\.\d+)?|py)(?:\.exe)?['\"]?\s+(.*)", re.I)  # also venv/abs paths
 OVERRIDE = re.compile(r"RULE_WRITE_OK=(['\"])(.+?)\1")
 
 

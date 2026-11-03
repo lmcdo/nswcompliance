@@ -158,3 +158,15 @@ def test_options_before_dash_c_and_env_before_shebang_are_seen(scratch):
     f = scratch / "write_batch1.py"
     f.write_text("#!/usr/bin/env python3\n" + BATCH1, encoding="utf-8")
     assert _run(f"DATABASE_URL=postgresql://x {f} --apply", scratch).returncode == 2
+
+
+def test_python_by_full_path_and_quoted_table_names_are_seen(scratch):
+    """Sol review round 6: venv/absolute interpreters and "quoted" identifiers."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    for interp in ("/usr/bin/python3", r"C:\venv\Scripts\python.exe", '"C:\Program Files\Python312\python.exe"',
+                   "python3.11"):
+        assert _run(f"{interp} {f}", scratch).returncode == 2, interp
+    q = scratch / "q.py"
+    q.write_text('cur.execute(\'UPDATE "public"."dcp_setback_controls" SET source_text=1\')\n', encoding="utf-8")
+    assert _run(f"python {q}", scratch).returncode == 2
