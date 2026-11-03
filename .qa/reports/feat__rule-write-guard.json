@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "240f40fe",
+ "commit_hash": "705b3540",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -179,5 +179,9 @@
   "secrets": "No",
   "other_repo": "No",
   "manual_verify": "Yes - apply migration 121 to production after a backup (needs the user's go), then confirm rule_write_log fills from the next pipeline run"
+ },
+ "real_layer_exempt": {
+  "scripts/pipeline_run.py": "its real-database tests are in tests/test_rule_write_guard_db.py (tag against a real Postgres, autocommit after tag, run id in rule_write_log), run by the CI isolated-DB job",
+  "scripts/add_new_chapter.py": "the only change is one pipeline_run.tag call after connect; the tag itself is real-DB tested in tests/test_rule_write_guard_db.py"
  }
 }

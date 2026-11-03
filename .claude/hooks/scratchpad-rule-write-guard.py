@@ -35,7 +35,12 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-TABLES = r"(?:public\.)?(?:dcp_setback_controls|regulatory_provisions|dcp_chapter_registry)"
+RULE_TABLES = (                # the tables migration 121 guards
+    "dcp_setback_controls",
+    "regulatory_provisions",
+    "dcp_chapter_registry",
+)
+TABLES = r"(?:public\.)?(?:" + "|".join(RULE_TABLES) + ")"
 WRITE = re.compile(rf"\b(?:update\s+{TABLES}\b|insert\s+into\s+{TABLES}\b|"
                    rf"delete\s+from\s+{TABLES}\b|truncate\s+(?:table\s+)?{TABLES}\b)", re.I)
 PYTHON = re.compile(r"(?:^|[\s;&|(])(?:python3?|py)(?:\.exe)?\s+(.*)", re.I)
