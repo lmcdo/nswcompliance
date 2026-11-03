@@ -182,7 +182,12 @@ def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) 
         if on_stored >= 0.5:
             continue
         for occ in found:
-            if stored not in occ[2] and sum(w in d.words.get(occ[1], ()) for w in rare) / len(rare) >= 0.9:
+            # Only places this same reading produced (found rows end with their reading's index), and the rare
+            # words counted over every page the place spans, so a row running over a page break still counts.
+            if docs[occ[-1]] is not d or stored in occ[2]:
+                continue
+            span_words = set().union(*(d.words.get(pg, set()) for pg in occ[2]))
+            if sum(w in span_words for w in rare) / len(rare) >= 0.9:
                 return True
     return False
 
