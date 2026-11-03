@@ -53,8 +53,7 @@ AREA_GATE_RULES: list[dict] = [
     {"name": "marrickville_2_26_layer", "council": "marrickville",
      "where": _MARRICKVILLE_2_26 + " AND v2_dcp_layer = 'generic'",
      "set": {"v2_dcp_layer": "precinct"}},
-    # Leichhardt C5's 'generic' rows reached every Leichhardt house (DQ-143: 17); they go to the precinct layer.
-    {"name": "leichhardt_c5_layer", "council": "leichhardt",
-     "where": _LEICHHARDT_C5 + " AND v2_dcp_layer = 'generic'",
-     "set": {"v2_dcp_layer": "precinct"}},
+    # Leichhardt C5 has NO separate layer rule: keying (above) already moves each row to the precinct layer, and only
+    # once its outline is stored (derive_precinct_keys outline gate). A layer-only rule could run without the key and
+    # leave the rows reaching no house.
 ]

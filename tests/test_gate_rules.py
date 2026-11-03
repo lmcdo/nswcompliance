@@ -403,9 +403,8 @@ def test_leichhardt_c5_keyed_to_the_sep_outline_and_moved_to_precinct_layer():
     assert rule["council"] == "leichhardt"
     assert rule["where"] == "source_chapter_key = 'part-c-s5-entertainment-precincts'"
     assert rule["strategy"] == {"type": "constant", "precinct_id": "Leichhardt C5 entertainment precinct"}
-    layer = next(r for r in g.GATE_RULES if r["name"] == "leichhardt_c5_layer")
-    assert "part-c-s5-entertainment-precincts" in layer["where"] and "v2_dcp_layer = 'generic'" in layer["where"]
-    assert layer["set"] == {"v2_dcp_layer": "precinct"}
+    # No layer-only rule: it could move the rows without a key, so they would reach no house.
+    assert not any("part-c-s5-entertainment-precincts" in r["where"] for r in g.GATE_RULES)
     prof = imp.PROFILES["leichhardt"]
     assert (prof["lga"], prof["former_council"]) == ("Inner West", "Leichhardt")
     src = Path(__file__).resolve().parent.parent / "data" / "inner_west_precincts" / "leichhardt_c5_sep.geojson"

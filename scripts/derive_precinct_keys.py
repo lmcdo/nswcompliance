@@ -501,6 +501,22 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
                 if validate:
                     validation_failures.append(msg)
 
+        # ── Outline gate: a key with no stored outline reaches no house ────────────
+        # Keying moves a row to the precinct layer, which serves it only inside its outline. If that outline was never
+        # loaded (dcp_precinct_boundaries), the row would silently reach nobody, so FAIL CLOSED: write nothing and say
+        # which ids are missing. Load the outline first, then re-run (Sol on the Leichhardt C5 rule, 2026-11-03).
+        if fp_ok and pending:
+            want = sorted({d for _, _, d, _ in pending})
+            cur.execute("SELECT DISTINCT precinct_id FROM dcp_precinct_boundaries WHERE precinct_id = ANY(%s)", (want,))
+            missing = sorted(set(want) - {r[0] for r in cur.fetchall()})
+            if missing:
+                fp_ok = False
+                msg = f"{rule['name']} NO OUTLINE for {missing}"
+                print(f"  WARNING {msg}")
+                print("     -> keys NOT written (fail-closed): load the outline, then re-run.")
+                if validate:
+                    validation_failures.append(msg)
+
         if apply and fp_ok:
             for row_id, current, derived, layer in pending:
                 backup_rows.append((row_id, current or "", derived, layer or "", rule["name"]))
