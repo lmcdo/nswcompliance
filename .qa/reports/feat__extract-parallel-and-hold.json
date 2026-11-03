@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "Two speed fixes to the daily DCP read: stop re-reading a chapter refused twice on an unchanged PDF, and read two chapters at once in review mode",
+ "commit_hash": "9692eacc",
+ "files": [
+  "migrations/122_chapter_extract_refusals.sql",
+  "scripts/dcp_extract_changed.py",
+  "tests/test_extract_parallel_and_hold.py",
+  "tests/test_extract_refusal_db.py",
+  "tests/test_dcp_repealed_source_path.py",
+  ".github/workflows/gates.yml"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_extract_parallel_and_hold.py (Linux) and tests/test_extract_refusal_db.py (CI isolated DB)",
+  "fails_when": "a chapter refused twice on the same hash is still selected, a credit failure counts as a refusal, results come back out of order, or a dead worker drops its chapters",
+  "observed_red": "first Linux run: 2 errors where the conftest psycopg2 stub had no connect; first Windows run: the crash test hit the sequential path and raised, so it was made fork-only"
+ },
+ "pre_impl": {
+  "existing_data": "no table records extraction outcomes; canterbury_bankstown chapter-7-6 refused 4 times on 2026-11-03 on one content hash",
+  "assumption_mismatch": "threads looked simplest, but extract_pdf_isolated forks and its comment relies on there being no threads, so workers are processes",
+  "new_vs_existing": "three registry columns, a NOT condition in the existing selection builder, and the existing per-chapter loop moved into run_chapters"
+ },
+ "functions": [
+  {
+   "name": "run_chapters",
+   "file_line": "scripts/dcp_extract_changed.py",
+   "input": "the selected chapters, the S3 client and connection, CLI args and an S3 client factory",
+   "output": "one (ok, review_data) per chapter in the chapters' order",
+   "if_none": "a worker that dies leaves its chapters reported as (False, None) and printed, never dropped"
+  },
+  {
+   "name": "is_content_refusal",
+   "file_line": "scripts/dcp_extract_changed.py",
+   "input": "the error string returned by the isolated PDF work",
+   "output": "True only for PageLoss or ChunkLoss",
+   "if_none": "None or an empty error is False, so it never counts toward a hold"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the OpenAI account runs out of credit twice on a chapter that only needs a retry",
+   "what_happens": "the chapter would be held as if its PDF were broken",
+   "mitigated": true,
+   "how": "only PageLoss and ChunkLoss count",
+   "repro": "python -m pytest tests/test_extract_parallel_and_hold.py -k temporary"
+  },
+  {
+   "scenario": "a chapter's content hash is NULL",
+   "what_happens": "NOT(NULL = NULL AND ...) is NULL and the chapter would silently never be read",
+   "mitigated": true,
+   "how": "coalesce(... , false) and a DB test refusing a no-hash chapter three times",
+   "repro": "pytest tests/test_extract_refusal_db.py -k no_hash (CI)"
+  },
+  {
+   "scenario": "the chapter-7-6 worker is killed by Railway for memory halfway through a review run",
+   "what_happens": "its chapters could vanish from the summary and look like nothing was flagged",
+   "mitigated": true,
+   "how": "missing results are printed and returned as failed",
+   "repro": "pytest tests/test_extract_parallel_and_hold.py -k dies (Linux)"
+  },
+  {
+   "scenario": "two chapters read at once double the peak memory of the PDF children",
+   "what_happens": "Railway could kill a child for memory, which the extractor reports as a failed chapter",
+   "mitigated": false,
+   "how": "DCP_EXTRACT_PARALLEL=1 restores one at a time; measured peak was 726 MB for one chapter",
+   "repro": "set DCP_EXTRACT_PARALLEL=1 on the dcp-extract service"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - apply migration 122 to production BEFORE merging (the new selection reads its columns), then check the next run prints [held] for chapter-7-6 after its second refusal and reads 2 chapters at once"
+ }
+}
