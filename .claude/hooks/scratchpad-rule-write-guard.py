@@ -60,6 +60,14 @@ def _repo() -> Path:
 
 
 def _tracked(path: Path, repo: Path) -> bool:
+    """False whenever it cannot tell: an unknown file is read, never trusted."""
+    try:
+        return _tracked_unchanged(path, repo)
+    except (OSError, subprocess.SubprocessError):
+        return False                       # git missing or hung: read the file instead
+
+
+def _tracked_unchanged(path: Path, repo: Path) -> bool:
     try:
         rel = path.resolve().relative_to(repo)
     except ValueError:

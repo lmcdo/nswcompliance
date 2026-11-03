@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -51,6 +52,9 @@ def tag(conn, script: str) -> str:
     so each connection must set it itself.
     """
     rid = os.environ.get(ENV) or run_id(script)
+    if "@unknown:" in rid:
+        print(f"[pipeline_run] WARNING: no git sha for {rid}; set RAILWAY_GIT_COMMIT_SHA",
+              file=sys.stderr)
     os.environ[ENV] = rid
     try:
         import psycopg2.extensions as _ext
@@ -62,6 +66,9 @@ def tag(conn, script: str) -> str:
     idle = conn.get_transaction_status() == _ext.TRANSACTION_STATUS_IDLE
     cur = conn.cursor()
     cur.execute("SELECT set_config('app.pipeline_run', %s, false)", (rid,))
+    # The run id is inherited by child processes on purpose; application_name names the
+    # script that is ACTUALLY connected, so an inherited id cannot hide who wrote.
+    cur.execute("SELECT set_config('application_name', %s, false)", (script.strip()[:60],))
     cur.close()
     if idle and not conn.autocommit:
         # End the transaction this SELECT opened, or a caller's next `conn.autocommit = ...`

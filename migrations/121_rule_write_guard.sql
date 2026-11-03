@@ -134,3 +134,24 @@ CREATE TRIGGER zz_rule_write_guard_truncate BEFORE TRUNCATE ON regulatory_provis
 DROP TRIGGER IF EXISTS zz_rule_write_guard_truncate ON dcp_chapter_registry;
 CREATE TRIGGER zz_rule_write_guard_truncate BEFORE TRUNCATE ON dcp_chapter_registry
     FOR EACH STATEMENT EXECUTE FUNCTION rule_write_guard_truncate();
+
+-- A protected column that does not exist compares NULL to NULL and is never "changed": it
+-- would be silently unprotected (renamed or misspelt). Refuse to install in that state.
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN SELECT c.relname AS tbl, m[1] AS col
+               FROM pg_trigger t
+               JOIN pg_class c ON c.oid = t.tgrelid
+               CROSS JOIN LATERAL regexp_matches(pg_get_triggerdef(t.oid),
+                                                 $re$'([a-z0-9_]+)'$re$, 'g') AS m
+              WHERE t.tgname = 'zz_rule_write_guard'
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                        WHERE table_name = r.tbl AND column_name = r.col) THEN
+            RAISE EXCEPTION 'rule_write_guard: % has no column % -- it would be unprotected', r.tbl, r.col;
+        END IF;
+    END LOOP;
+END;
+$$;

@@ -170,3 +170,14 @@ def test_python_by_full_path_and_quoted_table_names_are_seen(scratch):
     q = scratch / "q.py"
     q.write_text('cur.execute(\'UPDATE "public"."dcp_setback_controls" SET source_text=1\')\n', encoding="utf-8")
     assert _run(f"python {q}", scratch).returncode == 2
+
+
+def test_git_unavailable_still_blocks_the_writer_rather_than_crashing_open(scratch):
+    """qa-break: a crashed hook exits 1, which does NOT block -- so it must not crash."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    payload = {"tool_name": "Bash", "tool_input": {"command": f"python {f}"}, "cwd": str(scratch)}
+    env = {**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT), "PATH": str(scratch)}  # no git
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30, env=env)
+    assert r.returncode == 2, r.stderr

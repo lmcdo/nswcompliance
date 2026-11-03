@@ -181,3 +181,27 @@ def test_a_missing_mode_row_fails_closed(db):
     cur.execute("DELETE FROM rule_write_guard")
     with pytest.raises(psycopg2.errors.InsufficientPrivilege):
         cur.execute("UPDATE dcp_setback_controls SET source_text = 'x' WHERE id = 1")
+
+
+def test_a_misspelt_protected_column_refuses_to_install(db):
+    """qa-break: a column that does not exist compares NULL=NULL and is silently unprotected."""
+    import psycopg2
+    _, cur = db
+    sql = (ROOT / "migrations" / "121_rule_write_guard.sql").read_text(encoding="utf-8")
+    with pytest.raises(psycopg2.errors.RaiseException, match="source_txt"):
+        cur.execute(sql.replace("'source_text', 'value_min'", "'source_txt', 'value_min'"))
+
+
+def test_an_inherited_run_id_still_names_the_script_actually_writing(db, monkeypatch):
+    """qa-break: PIPELINE_RUN_ID is inherited on purpose; application_name shows the real writer."""
+    import psycopg2
+    import pipeline_run
+    monkeypatch.setenv(pipeline_run.ENV, "dcp_extract_changed@abc:123")
+    conn = psycopg2.connect(URL)
+    conn.autocommit = True
+    pipeline_run.tag(conn, "scratch_writer")
+    c2 = conn.cursor()
+    c2.execute("UPDATE dcp_setback_controls SET source_text = 'x' WHERE id = 1")
+    c2.execute("SELECT run_id, app_name FROM rule_write_log ORDER BY id DESC LIMIT 1")
+    assert c2.fetchone() == ("dcp_extract_changed@abc:123", "scratch_writer")
+    conn.close()
