@@ -14,8 +14,8 @@ export const MAY_APPLY_REASONS: Record<string, string> = {
     "We know where the entertainment precinct itself is, but the plan's noise (sound category) areas also cover " +
     'streets around it, which we have not mapped.',
   NEAR_MAPPED_AREA:
-    "The plan's rules cover land next to an area on the council's official map. Your property is close to that " +
-    'area but outside it, so check the map to see whether it counts as next to it.',
+    "The plan's rules cover land next to an area on the council's official map, and part of that area is in your " +
+    'suburb. Check the map to see whether your property is next to it.',
   PART_MAPPED: 'We check this from the map for most land, but not for the part the plan describes here.',
   NOT_YET_MAPPED: 'The plan names this area, but we have not drawn it on the map yet.',
   LOT_LIST_UNPROVEN: 'The plan lists the lots in this area, but we could not match that list to the official lot records.',
