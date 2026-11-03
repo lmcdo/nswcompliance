@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Two speed fixes to the daily DCP read: stop re-reading a chapter refused twice on an unchanged PDF, and read two chapters at once in review mode",
- "commit_hash": "d7d65275",
+ "commit_hash": "50dd89f0",
  "files": [
   "migrations/122_chapter_extract_refusals.sql",
   "scripts/dcp_extract_changed.py",
