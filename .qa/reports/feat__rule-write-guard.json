@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "0f55e347",
+ "commit_hash": "79d8a85c",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -179,6 +179,13 @@
    "mitigated": true,
    "how": "Sol round 5: options allowed before -c and -, VAR=x words skipped",
    "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options_before"
+  },
+  {
+   "scenario": "python is called by a venv or absolute path, or the SQL quotes the table name",
+   "what_happens": "the interpreter or the table did not match and the writer ran",
+   "mitigated": true,
+   "how": "Sol round 6: path separators and quotes accepted before python, quoted identifiers matched; python -m on a scratch module is a recorded limit covered by the DB guard",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k full_path"
   }
  ],
  "post_merge": {
