@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds three guardrails the assistant cannot satisfy on its own: an off-machine Telegram watcher, a hook that needs a human answer to a plan line, and a CI plan-line check",
- "commit_hash": "c46d90ee",
+ "commit_hash": "2dad6a27",
  "files": [
   "scripts/guardrail_watch.py",
   "scripts/check_pr_plan_line.py",
