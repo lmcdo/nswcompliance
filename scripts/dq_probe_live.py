@@ -262,6 +262,17 @@ _REACHES_NOBODY = (
     "((rp.v2_dcp_layer = 'condition'"
     "  AND COALESCE(rp.v2_site_condition_required, '') NOT IN ('flood', 'bushfire', 'acid_sulfate', 'riparian', 'greenweb', 'rail_or_busy_road', 'state_road', 'classified_road'))"
     " OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NULL)"
+    # A precinct key the page can never produce: the page gets a key only from a stored outline
+    # (dcp_precinct_boundaries) or a suburb name (dcp_precinct_localities), and the route serves a key
+    # through a stored child outline (8.1.1 via 8.1.1.1). None of the three = shown to no house.
+    # Measured 2026-11-04: ~2,440 rules (Parramatta 9.10.x, Leichhardt G2-G12, Marrickville 43_/48_ ...).
+    # Floor: an outline with the same id in ANOTHER council counts as reachable. left() not LIKE:
+    # Marrickville keys contain '_', a LIKE wildcard.
+    " OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL"
+    "     AND NOT EXISTS (SELECT 1 FROM dcp_precinct_boundaries b WHERE b.boundary IS NOT NULL"
+    "                     AND (b.precinct_id = rp.v2_precinct_id"
+    "                          OR left(b.precinct_id, length(rp.v2_precinct_id) + 1) = rp.v2_precinct_id || '.'))"
+    "     AND NOT EXISTS (SELECT 1 FROM dcp_precinct_localities l WHERE l.precinct_id = rp.v2_precinct_id))"
     " OR COALESCE(rp.v2_dcp_layer, '') NOT IN ('generic', 'use_specific', 'condition', 'precinct'))"
     " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"
 )  # widened 2026-10-11: 33 C-B rows sat in v2_dcp_layer 'heritage', a layer no query reads

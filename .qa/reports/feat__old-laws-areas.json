@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "Read-only probe change. DQ-146 counted a precinct rule as reachable whenever it had an area key, even when no outline, child outline or suburb mapping exists for that key, so 2,570 rules the page can never show read as 0. No served data or route code changes.",
+ "commit_hash": "6bb4476e",
+ "files": [
+  "scripts/dq_probe_live.py",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/dq_probe_live.py --id DQ-146",
+  "fails_when": "Measured both ways 2026-11-04 on production: without the new clause the probe printed 0 (tracker, 2026-10-17 onward); with it, 2,570, matching an independent per-rule-set outline scan (Parramatta 1,131, Leichhardt 1,004, Marrickville 184, Ashfield 111, Waverley 84, City of Sydney 44, C-B 12). Known-right side: Balmain 4/260 Darling St resolves live to C2.2.2.1, which has an outline, and is not counted.",
+  "observed_red": "Ran on production 2026-11-04 with the clause: count 2,570 (red). Without it the same probe read 0 (tracker value since 2026-10-17)."
+ },
+ "pre_impl": {
+  "existing_data": "dcp_precinct_boundaries (outlines), dcp_precinct_localities (suburb->key), regulatory_provisions v2_precinct_id. Per-rule-set scan of derive_precinct_keys RULES: 25 Parramatta keys, 20 Leichhardt, 2 Marrickville, 3 Ashfield, 1 Waverley, 14 CoS lack an exact outline.",
+  "assumption_mismatch": "Assumed exact-outline absence meant hidden; false for keys served via a stored child outline (Parramatta 8.1.1 via 8.1.1.x, CoS 2.x via 2.x.y) or suburb name (Haberfield). The clause excludes both.",
+  "new_vs_existing": "No new file. One OR-branch added to the existing _REACHES_NOBODY used by DQ-146 (and excluded in DQ-144).",
+  "external_source_error": "None: reads the database only."
+ },
+ "functions": [
+  {
+   "name": "run",
+   "file_line": "scripts/dq_probe_live.py:3022",
+   "what": "Executes the DQ-146 SQL, whose _REACHES_NOBODY predicate gained the no-outline branch",
+   "input": "a DQ id string such as DQ-146, read against the production database",
+   "output": "prints the count of rules shown to no house and returns an exit code",
+   "if_none": "NULL key handled by the existing IS NULL branch",
+   "edge_cases": "Marrickville keys with '_' (left() not LIKE); key with an outline in another council counts as reachable (floor)",
+   "failure_mode": "Undercounts on cross-council id collisions, never overcounts a reachable key"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Key reachable only via child outline (Parramatta 8.1.1)",
+   "what_happens": "The rule is excluded from the count, because a child outline serves it",
+   "mitigated": true,
+   "how": "prefix-with-dot match on boundaries",
+   "repro": "8.1.1 absent from breakdown"
+  },
+  {
+   "scenario": "Key reachable only via suburb name (Haberfield)",
+   "what_happens": "The rule is excluded from the count, because the suburb name serves it",
+   "mitigated": true,
+   "how": "NOT EXISTS on dcp_precinct_localities",
+   "repro": "ashfield breakdown lists only Part 5/Part 11"
+  },
+  {
+   "scenario": "Underscore key 48_ matched as LIKE wildcard to 480_",
+   "what_happens": "Equality and left() compare literally, so no wildcard match happens",
+   "mitigated": true,
+   "how": "left()/equality, no LIKE",
+   "repro": "48_:164 counted"
+  },
+  {
+   "scenario": "Same id outlined for another council (CoS 2.4 vs C-B)",
+   "what_happens": "The rule is counted as reachable, so the total is a floor",
+   "mitigated": false,
+   "how": "stated as floor in comment",
+   "repro": "n/a"
+  }
+ ],
+ "verified": [
+  "325 probe tests pass",
+  "breakdown equals independent outline scan for the 10 listed rule sets plus G13 and C-B 7.2.7"
+ ],
+ "gaps": [
+  "Cross-council id collisions undercount"
+ ],
+ "post_merge": {
+  "db_reset": "None, read-only.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/dq_probe_live.py --id DQ-146 prints 2570 or less."
+ }
+}
