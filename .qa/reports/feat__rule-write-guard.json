@@ -1,8 +1,9 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "16df9d46",
+ "commit_hash": "62d6088e",
  "files": [
+  ".claude/dq_checks.json",
   ".claude/hooks/scratchpad-rule-write-guard.py",
   ".claude/settings.json",
   ".github/workflows/gates.yml",
