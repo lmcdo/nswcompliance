@@ -40,7 +40,8 @@ RASTER_IDS = {"centres_7_2.geojson": {"7.2", *(f"7.2.{n}" for n in range(2, 14))
 #: Site files: any subset of these ids (refused sites are simply absent; there is no union).
 SITE_IDS = {"site_plans_8_3.geojson": {"8.3.5", "8.3.7", "8.3.8"}, "site_plans_11_4.geojson": {"11.4"},
             "lep_area1_7_4.geojson": {"7.4"},  # 7.4: the LEP's own Area 1 polygons (69 centres, one union)
-            "lep_riverwood_11_14.geojson": {"11.14"},  # 11.14: the LEP's FSR 2.2 polygon of the 2024 Riverwood amendment
+            "lep_riverwood_11_14.geojson": {"11.14"},
+            "lep_hazard_area_2_4.geojson": {"2.4"},  # 2.4: the LEP Hazard Area Map's Areas 1 and 2 (pipeline corridor)  # 11.14: the LEP's FSR 2.2 polygon of the 2024 Riverwood amendment
             # 11.5 Riverlands, 11.6 Potts Hill: the figure fitted to the cadastre (fit_site_plans.py site_map mode)
             "site_map_11_5.geojson": {"11.5"}, "site_map_11_6.geojson": {"11.6"}}
 #: Former-council halves (ABS ASGS 2015, scripts/build in the file's own 'source'). They tile the whole LGA, so the
@@ -159,6 +160,22 @@ PROFILES = {
                 "outside_means_not_in_these_ids": True,
                 "outside": {"7 Phillip St Newtown (side street off Enmore Rd)": (151.173976, -33.898147)},
                 "inside": {"89 Enmore Rd Newtown": (151.174588, -33.898498)},
+            },
+        },
+    },
+    # Leichhardt DCP 2013 Part C s5 (2026-11-03): the IWLEP 2022 'Inner West Special Entertainment Precinct' polygons
+    # Figures C145-C147 cover (Balmain, Rozelle, Leichhardt north of Parramatta Road), i.e. the layer's Inner West
+    # polygons not already in marrickville_2_26_sep.geojson, unioned. lga/former_council as the 29 Leichhardt tiles.
+    # Points are NSW address register points (NSW_Geocoded_Addressing_Theme), not guesses.
+    "leichhardt": {
+        "lga": "Inner West", "former_council": "Leichhardt",
+        "envelope": (151.14, -33.90, 151.20, -33.84),
+        "files": {
+            "leichhardt_c5_sep.geojson": {
+                "ids": {"Leichhardt C5 entertainment precinct"},
+                "outside_means_not_in_these_ids": True,
+                "outside": {"74 Balmain Rd Leichhardt (off Norton St)": (151.158835, -33.885064)},
+                "inside": {"63 Norton St Leichhardt": (151.157711, -33.885613)},
             },
         },
     },

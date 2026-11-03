@@ -5,6 +5,7 @@ prior-art-checked: same rule shapes as gate_rules.GATE_RULES / EXTRA_KEY_RULES; 
 from __future__ import annotations
 
 _MARRICKVILLE_2_26 = "source_chapter_key = 'part2-s26-entertainment-precincts'"
+_LEICHHARDT_C5 = "source_chapter_key = 'part-c-s5-entertainment-precincts'"
 
 #: Precinct-keying rules (spliced into EXTRA_KEY_RULES).
 AREA_KEY_RULES: list[dict] = [
@@ -14,8 +15,26 @@ AREA_KEY_RULES: list[dict] = [
     # a lot inside the pink is served the section for sure; other houses in the figures' suburbs see it in the
     # "may apply" box (area marrickville-2-26-sound-category-areas, SOUND_AREA_MAP) -- the street lines are not drawn.
     {"name": "marrickville_2_26_entertainment_precincts", "council": "marrickville", "validate": False,
+     "needs_stored_outline": True,
      "where": _MARRICKVILLE_2_26,
      "strategy": {"type": "constant", "precinct_id": "Marrickville 2.26 entertainment precinct"}},
+    # C-B DCP 2023 Ch 2.4 Pipeline Corridors: "development on land adjacent to the pipeline corridor" (p4) and control
+    # 1.2 "land identified as 'Area 2' on the Hazard Area Map" (p5). Outline = the LEP 2023 Hazard Area Map's Activity
+    # Hazard Areas 1 and 2 (lep_hazard_area_2_4.geojson, Planning Portal, 8 polygons, union). Rules naming Area 2 keep
+    # that condition in their own words.
+    {"name": "cb_2_4_pipeline_corridor", "council": "canterbury_bankstown", "validate": False,
+     "needs_stored_outline": True,
+     "where": "source_chapter_key = 'chapter-2-4-pipeline-corridors'",
+     "strategy": {"type": "constant", "precinct_id": "2.4"}},
+    # Leichhardt DCP 2013 Part C s5: "Part C - Section 5 of this DCP applies to land identified as a Sound Category Area
+    # in the following maps" (p1: Figures C145 Balmain, C146 Leichhardt -- north of Parramatta Road only, C147 Rozelle).
+    # Outline = the IWLEP 2022 SEP polygons those figures cover (leichhardt_c5_sep.geojson, 46 polygons). Same split as
+    # Marrickville 2.26: inside the pink is served; the rest of Balmain/Leichhardt/Rozelle sees the "may apply" box
+    # (area leichhardt-c5-sound-category-areas, SOUND_AREA_MAP).
+    {"name": "leichhardt_c5_entertainment_precincts", "council": "leichhardt", "validate": False,
+     "needs_stored_outline": True,
+     "where": _LEICHHARDT_C5,
+     "strategy": {"type": "constant", "precinct_id": "Leichhardt C5 entertainment precinct"}},
     # C-B DCP Ch 6.2 Section 6.8 "KS8- 212 South Terrace" (p182 only; KS9 starts p183): "The 212 South Terrace key site
     # is situated at the eastern edge of the City Centre, at the corner of South Terrace and Stacey Street" (p182).
     # Outline = the parcel under the register's 212 SOUTH TERRACE BANKSTOWN point (7,629 m2), matched to the red key
@@ -44,4 +63,7 @@ AREA_GATE_RULES: list[dict] = [
     {"name": "marrickville_2_26_layer", "council": "marrickville",
      "where": _MARRICKVILLE_2_26 + " AND v2_dcp_layer = 'generic'",
      "set": {"v2_dcp_layer": "precinct"}},
+    # Leichhardt C5 has NO separate layer rule: keying (above) already moves each row to the precinct layer, and only
+    # once its outline is stored (derive_precinct_keys outline gate). A layer-only rule could run without the key and
+    # leave the rows reaching no house.
 ]

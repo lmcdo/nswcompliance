@@ -392,3 +392,49 @@ def test_road_gate_writes_only_the_gate_columns():
     assert {(c[1], c[3]) for c in changes} == {("v2_dcp_layer", "condition"),
                                                ("v2_site_condition_required", "classified_road")}
     assert len(cur.updates) == 1 and "provision_text" not in cur.updates[0][0]
+
+
+def test_leichhardt_c5_keyed_to_the_sep_outline_and_moved_to_precinct_layer():
+    import json
+    from pathlib import Path
+    from shapely.geometry import Point, shape
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in dpk.RULES if r["name"] == "leichhardt_c5_entertainment_precincts")
+    assert rule["council"] == "leichhardt"
+    assert rule["where"] == "source_chapter_key = 'part-c-s5-entertainment-precincts'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "Leichhardt C5 entertainment precinct"}
+    assert rule["needs_stored_outline"] is True  # keying refuses until the outline is loaded
+    # No layer-only rule: it could move the rows without a key, so they would reach no house.
+    assert not any("part-c-s5-entertainment-precincts" in r["where"] for r in g.GATE_RULES)
+    prof = imp.PROFILES["leichhardt"]
+    assert (prof["lga"], prof["former_council"]) == ("Inner West", "Leichhardt")
+    src = Path(__file__).resolve().parent.parent / "data" / "inner_west_precincts" / "leichhardt_c5_sep.geojson"
+    rows = imp.load_rows(src, prof)  # aborts unless the file holds exactly the profile's ids
+    assert [r["precinct_id"] for r in rows] == ["Leichhardt C5 entertainment precinct"]
+    assert 200_000 < rows[0]["area_sqm"] < 230_000
+    poly = shape(json.loads(src.read_text(encoding="utf-8"))["features"][0]["geometry"])
+    spec = prof["files"][src.name]
+    assert all(poly.contains(Point(*xy)) for xy in spec["inside"].values())
+    assert not any(poly.contains(Point(*xy)) for xy in spec["outside"].values())
+    # South of Parramatta Road is Marrickville 2.26's land (Figure C146 caption): the two outlines never overlap.
+    mar = shape(json.loads((src.parent / "marrickville_2_26_sep.geojson").read_text(encoding="utf-8"))["features"][0]["geometry"])
+    assert poly.intersection(mar).area < 1e-10
+
+
+def test_cb_2_4_pipeline_keyed_to_the_lep_hazard_area_map():
+    import json
+    from pathlib import Path
+    from shapely.geometry import Point, shape
+    import import_cb_centre_boundaries as imp
+    rule = next(r for r in dpk.RULES if r["name"] == "cb_2_4_pipeline_corridor")
+    assert rule["council"] == "canterbury_bankstown" and rule["needs_stored_outline"] is True
+    assert rule["where"] == "source_chapter_key = 'chapter-2-4-pipeline-corridors'"
+    assert rule["strategy"] == {"type": "constant", "precinct_id": "2.4"}
+    src = Path(__file__).resolve().parent.parent / "data" / "canterbury_bankstown_precincts" / "lep_hazard_area_2_4.geojson"
+    rows = imp.load_rows(src)  # aborts unless the file holds exactly the SITE_IDS ids
+    assert [r["precinct_id"] for r in rows] == ["2.4"]
+    assert 500_000 < rows[0]["area_sqm"] < 600_000
+    poly = shape(json.loads(src.read_text(encoding="utf-8"))["features"][0]["geometry"])
+    # NSW address register points, 2026-11-03.
+    assert poly.contains(Point(151.031472, -33.952465))  # 65 Howard Rd Padstow
+    assert not poly.contains(Point(151.029458, -33.942452))  # 10 Gwandalan Rd Padstow

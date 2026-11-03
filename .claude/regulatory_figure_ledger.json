@@ -1737,6 +1737,20 @@
    "fate": "not_regulatory",
    "count": 1,
    "reason": "screening tolerance for a lot that only touches a flood map line (measured slivers 2026-10-29), not a planning figure"
+  },
+  {
+   "file": "frontend-nextjs/shared/may-apply-areas.json",
+   "text": "\"Figures C145 Balmain, C146 Leichhardt (north of Parramatta Road only; south is Marrickville DCP 2.26), C147 Rozelle. Suburbs measured 2026-11-03 from NSW address register points within 150 m of the IWLEP 2022 Special Entertainment Precinct polygons those figures cover: BALMAIN 3,109, LEICHHARDT 1,823, ROZELLE 1,781 (inside the pink: LEICHHARDT 529, BALMAIN 471, ROZELLE 295). Also within 150 m: PETERSHAM 359 (south of Parramatta Road, Marrickville 2.26'",
+   "fate": "not_regulatory",
+   "reason": "measurement provenance for a may-apply suburb list (address counts, distance band), not a planning figure",
+   "count": 3
+  },
+  {
+   "file": "frontend-nextjs/shared/may-apply-areas.json",
+   "text": "' (p4), which the map may not fully cover. Suburbs measured 2026-11-03 from the NSW Administrative Boundaries suburb layer against the map plus a 150 m band: PADSTOW (35% of map, 30% of band), REVESBY (32%, 26%), PANANIA (23%, 27%), EAST HILLS (10%, 17%).\"",
+   "fate": "not_regulatory",
+   "reason": "measurement provenance for a may-apply suburb list (address counts, distance band), not a planning figure",
+   "count": 4
   }
  ]
 }
