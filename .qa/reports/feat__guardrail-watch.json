@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds three guardrails the assistant cannot satisfy on its own: an off-machine Telegram watcher, a hook that needs a human answer to a plan line, and a CI plan-line check",
- "commit_hash": "93395078",
+ "commit_hash": "c098a053",
  "files": [
   "scripts/guardrail_watch.py",
   "scripts/check_pr_plan_line.py",
@@ -75,6 +75,13 @@
    "mitigated": false,
    "how": "recorded limit in the workflow header; the weekly digest from main lists the workflow change",
    "repro": "git log --since=7.days -- .github/workflows/guardrail-watch.yml"
+  },
+  {
+   "scenario": "Claude Code passes a tool field as None to the plan-line gate",
+   "what_happens": "the hook crashed with exit 1, which does not block, so the edit went through",
+   "mitigated": true,
+   "how": "QA gate adversarial rule: every .get(k, '') became .get(k) or ''",
+   "repro": "pytest tests/test_plan_line_gate.py -k none_field"
   }
  ],
  "post_merge": {
