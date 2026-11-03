@@ -18,6 +18,14 @@ AREA_KEY_RULES: list[dict] = [
      "needs_stored_outline": True,
      "where": _MARRICKVILLE_2_26,
      "strategy": {"type": "constant", "precinct_id": "Marrickville 2.26 entertainment precinct"}},
+    # C-B DCP 2023 Ch 2.4 Pipeline Corridors: "development on land adjacent to the pipeline corridor" (p4) and control
+    # 1.2 "land identified as 'Area 2' on the Hazard Area Map" (p5). Outline = the LEP 2023 Hazard Area Map's Activity
+    # Hazard Areas 1 and 2 (lep_hazard_area_2_4.geojson, Planning Portal, 8 polygons, union). Rules naming Area 2 keep
+    # that condition in their own words.
+    {"name": "cb_2_4_pipeline_corridor", "council": "canterbury_bankstown", "validate": False,
+     "needs_stored_outline": True,
+     "where": "source_chapter_key = 'chapter-2-4-pipeline-corridors'",
+     "strategy": {"type": "constant", "precinct_id": "2.4"}},
     # Leichhardt DCP 2013 Part C s5: "Part C - Section 5 of this DCP applies to land identified as a Sound Category Area
     # in the following maps" (p1: Figures C145 Balmain, C146 Leichhardt -- north of Parramatta Road only, C147 Rozelle).
     # Outline = the IWLEP 2022 SEP polygons those figures cover (leichhardt_c5_sep.geojson, 46 polygons). Same split as
