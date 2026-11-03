@@ -122,7 +122,7 @@ def verdict(command: str, cwd: Path, repo: Path) -> str | None:
     if not PYTHON.search(command) and not scripts:
         return None
     # options may come first: `python -u -c "..."`, `python -I - <<EOF`
-    inline = re.search(r"(?:python3?|py)(?:\.exe)?\s+(?:-[A-Za-z]\S*\s+)*?(?:-\s|-c\b|-\s*<<|-$)",
+    inline = re.search(r"(?:python3?(?:\.\d+)?|py)(?:\.exe)?['\"]?\s+(?:-[A-Za-z]\S*\s+)*?(?:-\s|-c\b|-\s*<<|-$)",
                        command, re.I | re.M)
     if inline and WRITE.search(command):   # `python - <<EOF` / `python -c` carrying the SQL
         return "inline Python in this command writes a rule table"

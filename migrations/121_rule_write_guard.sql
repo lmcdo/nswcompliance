@@ -149,7 +149,8 @@ BEGIN
               WHERE t.tgname = 'zz_rule_write_guard'
     LOOP
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
-                        WHERE table_name = r.tbl AND column_name = r.col) THEN
+                        WHERE table_schema = 'public' AND table_name = r.tbl
+                          AND column_name = r.col) THEN
             RAISE EXCEPTION 'rule_write_guard: % has no column % -- it would be unprotected', r.tbl, r.col;
         END IF;
     END LOOP;

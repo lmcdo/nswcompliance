@@ -190,3 +190,9 @@ def test_git_unavailable_still_blocks_the_writer_rather_than_crashing_open(scrat
     r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
                        capture_output=True, timeout=30, env=env)
     assert r.returncode == 2, r.stderr
+
+
+def test_a_versioned_interpreter_running_inline_code_is_blocked(scratch):
+    """Sol review after qa-verify: python3.11 -c was not seen as inline."""
+    assert _run('python3.11 -c "cur.execute(\'UPDATE dcp_setback_controls SET source_text=1\')"',
+                scratch).returncode == 2
