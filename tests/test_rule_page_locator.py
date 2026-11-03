@@ -360,3 +360,13 @@ def test_a_repeated_table_row_running_over_a_page_break_still_leaves_the_wrong_p
     rule = "# 6.1.4 Building Envelopes - Summary Table\n" + header + " " + row + " " + common
     page_, verdict = L.locate(rule, [_doc(p5=p5, p6=p6, p7=p7, p8=p8)], stored=5)
     assert verdict == "moved" and page_ in (7, 8)
+
+
+def test_one_readings_veto_does_not_drop_a_stored_page_the_other_reading_holds():
+    """Cross-review: reading A prints the rule only on page 7, reading B prints it on stored page 5. B keeps it."""
+    t = L.tokens(BODY)
+    a = _doc(p7=BODY)        # stored page 5 is filler in this reading
+    b = _doc(p5=BODY)        # the other reading order holds the rule on its stored page
+    found = [(1.0, 7, {7}, 0, 0)]
+    assert L._better_elsewhere(t, found, [a], stored=5) is True      # alone, A would move it
+    assert L._better_elsewhere(t, found, [a, b], stored=5) is False  # B keeps it

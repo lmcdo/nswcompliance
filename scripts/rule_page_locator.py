@@ -173,14 +173,16 @@ def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) 
     and a page that only reorders a table's cells holds every word, so both are still kept.
     """
     words = set(rt)
+    verdicts = []  # one per reading that can judge; any reading that keeps the stored page keeps it
     for d in docs:
         pages_of = {w: sum(w in d.words.get(p, ()) for p in d.words) for w in words}
         rare = [w for w, n in pages_of.items() if 0 < n <= 2]
         if len(rare) < 2:
             continue
-        on_stored = sum(w in d.words.get(stored, ()) for w in rare) / len(rare)
-        if on_stored >= 0.5:
+        if sum(w in d.words.get(stored, ()) for w in rare) / len(rare) >= 0.5:
+            verdicts.append(False)
             continue
+        elsewhere = False
         for occ in found:
             # Only places this same reading produced (found rows end with their reading's index), and the rare
             # words counted over every page the place spans, so a row running over a page break still counts.
@@ -188,8 +190,12 @@ def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) 
                 continue
             span_words = set().union(*(d.words.get(pg, set()) for pg in occ[2]))
             if sum(w in span_words for w in rare) / len(rare) >= 0.9:
-                return True
-    return False
+                elsewhere = True
+                break
+        verdicts.append(elsewhere)
+    # The stored page is left only when every reading that can judge says so (cross-review: one reading's veto
+    # must not override another reading's good match on the stored page).
+    return bool(verdicts) and all(verdicts)
 
 
 def locate(text: str | None, docs: list[Doc], stored: int | None = None,
