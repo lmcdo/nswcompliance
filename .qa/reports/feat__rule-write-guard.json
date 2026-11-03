@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "80b11cc2",
+ "commit_hash": "019ff333",
  "files": [
   ".claude/DATA_QUALITY_TRACKER.md",
   ".claude/dq_checks.json",
