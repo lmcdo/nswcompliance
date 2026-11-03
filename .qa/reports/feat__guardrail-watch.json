@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds three guardrails the assistant cannot satisfy on its own: an off-machine Telegram watcher, a hook that needs a human answer to a plan line, and a CI plan-line check",
- "commit_hash": "b422e5d5",
+ "commit_hash": "05c39ac1",
  "files": [
   "scripts/guardrail_watch.py",
   "scripts/check_pr_plan_line.py",
@@ -96,6 +96,13 @@
    "mitigated": true,
    "how": "Sol round 1: the push range is read with git log -p commit by commit",
    "repro": "pytest tests/test_guardrail_watch.py -k commit_by_commit"
+  },
+  {
+   "scenario": "a Read of a plan file fails or the named plan does not exist",
+   "what_happens": "the failed call still counted as having read the plan",
+   "mitigated": true,
+   "how": "Sol round 2: only Read calls with an error-free tool_result count, and the plan file must exist",
+   "repro": "pytest tests/test_plan_line_gate.py -k failed"
   }
  ],
  "post_merge": {
