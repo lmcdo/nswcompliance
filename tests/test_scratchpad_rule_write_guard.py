@@ -85,6 +85,7 @@ def test_the_override_is_allowed_and_logged(scratch):
             log.unlink()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="git-bash drive paths exist only on Windows")
 def test_git_bash_drive_paths_resolve(scratch):
     f = scratch / "write_batch1.py"
     f.write_text(BATCH1, encoding="utf-8")
@@ -107,3 +108,11 @@ def test_a_writer_second_in_a_chain_is_blocked(scratch):
     bad.write_text(BATCH1, encoding="utf-8")
     for sep in ("; ", " && ", "\n", " || "):
         assert _run(f"python {ok}{sep}python {bad}", scratch).returncode == 2, repr(sep)
+
+
+def test_options_that_take_a_value_do_not_hide_the_script(scratch):
+    """Sol review 2026-11-03: `python -W ignore x.py` read `ignore` as the script."""
+    bad = scratch / "write_batch1.py"
+    bad.write_text(BATCH1, encoding="utf-8")
+    for opts in ("-W ignore", "-X dev", "-u -W ignore::DeprecationWarning", "-I"):
+        assert _run(f"python {opts} {bad}", scratch).returncode == 2, opts

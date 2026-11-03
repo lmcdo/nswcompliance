@@ -18,6 +18,8 @@
 -- only once `SELECT count(*) FROM rule_write_log WHERE run_id IS NULL AND at > now() - '7 days'`
 -- is 0 for writes the pipeline makes.
 --
+-- FAILS CLOSED. If the rule_write_guard row is missing, the mode reads as 'enforce'.
+--
 -- LIMIT. A superuser can disable triggers or set the variable by hand. This catches accidents
 -- and leaves a record; it is not access control.
 
@@ -71,7 +73,7 @@ BEGIN
         RETURN NEW;                       -- nothing protected changed (UPDATE only)
     END IF;
 
-    IF run IS NULL AND (SELECT mode FROM rule_write_guard) = 'enforce' THEN
+    IF run IS NULL AND coalesce((SELECT mode FROM rule_write_guard), 'enforce') = 'enforce' THEN
         RAISE EXCEPTION 'rule_write_guard: % row % on % changes % with no pipeline run (set app.pipeline_run via scripts/pipeline_run.py)',
             TG_OP, (new_j ->> 'id'), TG_TABLE_NAME, changed
             USING ERRCODE = 'insufficient_privilege';
@@ -92,7 +94,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     run text := nullif(current_setting('app.pipeline_run', true), '');
 BEGIN
-    IF run IS NULL AND (SELECT mode FROM rule_write_guard) = 'enforce' THEN
+    IF run IS NULL AND coalesce((SELECT mode FROM rule_write_guard), 'enforce') = 'enforce' THEN
         RAISE EXCEPTION 'rule_write_guard: TRUNCATE % with no pipeline run', TG_TABLE_NAME
             USING ERRCODE = 'insufficient_privilege';
     END IF;

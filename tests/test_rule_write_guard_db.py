@@ -172,3 +172,12 @@ def test_tag_leaves_no_open_transaction_so_autocommit_can_be_set(db):
         cur.execute("SELECT current_setting('app.pipeline_run', true)")
         assert cur.fetchone()[0].startswith("dcp_extract_changed@")
         conn.close()
+
+
+def test_a_missing_mode_row_fails_closed(db):
+    """Sol review 2026-11-03: a deleted config row read as NULL and let everything through."""
+    import psycopg2
+    _, cur = db
+    cur.execute("DELETE FROM rule_write_guard")
+    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+        cur.execute("UPDATE dcp_setback_controls SET source_text = 'x' WHERE id = 1")

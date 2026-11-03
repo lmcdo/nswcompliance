@@ -79,12 +79,10 @@ def _scripts(command: str) -> list[str]:
             words = shlex.split(m.group(1), posix=False)
         except ValueError:
             words = m.group(1).split()
-        for w in (x.strip("'\"") for x in words):
-            if w.startswith("-"):
-                continue
-            if w.lower().endswith(".py"):
-                found.append(w)
-            break                          # only the first operand is the script
+        # Every .py named, not just the first operand: options that take a value
+        # (`-W ignore`, `-X dev`) made "the first non-option word" the wrong word. Reading an
+        # extra file costs nothing; missing the script is the failure this hook exists for.
+        found += [w for w in (x.strip("'\"") for x in words) if w.lower().endswith(".py")]
     return found
 
 
