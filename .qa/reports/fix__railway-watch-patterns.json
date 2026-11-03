@@ -1,0 +1,62 @@
+{
+ "tier": "standard",
+ "justification": "Railway rebuilt the monitors image only for a hand-picked file list; the config now watches every file the image copies, enforced by a test",
+ "commit_hash": "eb05940b",
+ "files": [
+  "railway.alerts.toml",
+  "railway.dcp-commit.toml",
+  "railway.dcp-extract-all.toml",
+  "railway.dcp-extract.toml",
+  "railway.dcp-monitor.toml",
+  "railway.monitors.toml",
+  "tests/test_dockerfile_monitors_imports.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dockerfile_monitors_imports.py -k watches",
+  "fails_when": "a file Dockerfile.monitors copies is missing from any monitors service watchPatterns list",
+  "observed_red": "with scripts/council_quote.py removed from railway.dcp-commit.toml: railway.dcp-commit.toml does not watch scripts/council_quote.py, 1 failed"
+ },
+ "pre_impl": {
+  "existing_data": "Railway serviceInstance.watchPatterns for dcp-commit and dcp-extract: 21 hand-picked paths, council_quote.py absent; deploy 2026-11-03 04:42 SKIPPED",
+  "assumption_mismatch": "merging a fix to a copied script was assumed to redeploy the job; it does not unless the path is watched",
+  "new_vs_existing": "moves the watch list from the dashboard into the existing toml files; extends the existing image test file"
+ },
+ "functions": [
+  {
+   "name": "test_every_monitors_service_watches_what_the_image_copies",
+   "file_line": "tests/test_dockerfile_monitors_imports.py",
+   "input": "Dockerfile.monitors COPY lines and every railway toml that builds it",
+   "output": "assertion naming each copied path a service does not watch",
+   "if_none": "asserts at least 20 COPY sources and at least one toml so it cannot pass vacuously"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "a new script is COPYd into the image but not added to watchPatterns",
+   "what_happens": "fixes to it merge and never deploy",
+   "mitigated": true,
+   "how": "the test fails naming the missing path",
+   "repro": "add a COPY line to Dockerfile.monitors and run pytest tests/test_dockerfile_monitors_imports.py -k watches"
+  },
+  {
+   "scenario": "the Dockerfile COPY form changes and the regex finds nothing",
+   "what_happens": "the test would pass with no check",
+   "mitigated": true,
+   "how": "asserts more than 20 sources found",
+   "repro": "python -m pytest tests/test_dockerfile_monitors_imports.py -k watches"
+  },
+  {
+   "scenario": "a wider watch list rebuilds more often and a rebuild kills a running cron job",
+   "what_happens": "a long dcp-extract run is cut off by an unrelated merge",
+   "mitigated": false,
+   "how": "known Railway behaviour; merge outside the 03:00-04:30 UTC extract window",
+   "repro": "merge a change to any watched script while dcp-extract is running"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - confirm dcp-commit rebuilds from this merge and its next run exits 0"
+ }
+}
