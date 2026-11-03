@@ -41,11 +41,15 @@ def run(tmp_path, entries, tool="Edit", tool_input=None):
     t.write_text("\n".join(json.dumps(e) for e in entries), encoding="utf-8")
     payload = {"tool_name": tool, "transcript_path": str(t),
                "tool_input": tool_input or {"file_path": str(ROOT / "scripts" / "dcp_extract_changed.py")}}
+    plans = tmp_path / "plans"                       # CI has no ~/.claude/plans: bring our own
+    plans.mkdir(exist_ok=True)
+    (plans / PLAN).write_text("# test plan\n", encoding="utf-8")
+    env = {**os.environ, "CLAUDE_PLANS_DIR": str(plans)}
     return subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
-                          capture_output=True, timeout=30)
+                          capture_output=True, timeout=30, env=env)
 
 
-READ_PLAN_CALL = a_read(os.path.expanduser(f"~/.claude/plans/{PLAN}"))
+READ_PLAN_CALL = a_read(f"/tmp/whatever/plans/{PLAN}")   # matched by name under a /plans/ folder
 
 
 def test_todays_case_no_plan_line_is_blocked_and_shows_the_plans(tmp_path):

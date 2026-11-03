@@ -43,7 +43,7 @@ READ_ONLY = re.compile(r"^\s*(cat|head|tail|grep|rg|wc|less|ls|diff|sed\s+-n|"
                        r"python3?\s+-m\s+pytest|pytest)\b(?!.*(>|\btee\b))", re.I)
 SEGMENT = re.compile(r"&&|\|\||[;|\n]")
 PLAN_LINE = re.compile(r"^[ 	*_-]*PLAN:[*_]*\s+(.+)$", re.M)   # a line that IS a plan line, not one quoting it
-PLANS_DIR = Path(os.path.expanduser("~/.claude/plans"))
+PLANS_DIR = Path(os.path.expanduser(os.environ.get("CLAUDE_PLANS_DIR") or "~/.claude/plans"))   # tests point it elsewhere
 # Any path form (absolute, relative, ~): a relative ".claude/projects/..." from the home
 # directory has no slash before ".claude" (Sol review, 2026-11-03).
 TRANSCRIPTS = re.compile(r"\.claude[\\/]projects[\\/][^\s'\"]*\.jsonl", re.I)
