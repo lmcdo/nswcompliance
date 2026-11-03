@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the page check decides a served rule's page. Not Critical: no data written by this PR. Not Minor: page links on served rules.",
- "commit_hash": "9b6fbd59",
+ "commit_hash": "10a52db3",
  "files": [
   "scripts/rule_page_locator.py",
   "tests/test_rule_page_locator.py"
@@ -64,7 +64,7 @@
   }
  ],
  "verified": [
-  "tests/test_rule_page_locator.py 42 passed",
+  "tests/test_rule_page_locator.py 43 passed",
   "header-start, rare-word and span changes each mutation-checked",
   "live dry run 57,300 rules: 23 page changes, 22 checked word by word"
  ],
