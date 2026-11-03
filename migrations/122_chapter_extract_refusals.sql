@@ -7,10 +7,12 @@
 -- every run tried again.
 --
 -- dcp_extract_changed.py counts refusals per content hash. After 2 on the same hash the
--- daily run holds the chapter and prints it; a new PDF (new hash) ends the hold; a
+-- daily run holds the chapter for 7 days and prints it, then tries once more (the
+-- watchdog's >48h needs_extraction alarm keeps a held chapter visible meanwhile); a new PDF (new hash) ends the hold; a
 -- named --chapter re-read bypasses it.
 
 ALTER TABLE dcp_chapter_registry
     ADD COLUMN IF NOT EXISTS extract_refusals integer NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS extract_refused_hash text,
-    ADD COLUMN IF NOT EXISTS extract_refused_reason text;
+    ADD COLUMN IF NOT EXISTS extract_refused_reason text,
+    ADD COLUMN IF NOT EXISTS extract_refused_at timestamptz;

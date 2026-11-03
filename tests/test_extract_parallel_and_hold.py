@@ -101,3 +101,27 @@ def test_a_worker_that_dies_reports_its_chapters_as_failed_not_dropped(monkeypat
     monkeypatch.setattr(dx, "extract_chapter", fake_extract)
     out = dx.run_chapters(CHAPTERS[:2], object(), fake_db, ARGS, s3_factory=object)
     assert out[1] == (False, None) and out[0][0] is True
+
+
+def test_a_hold_is_bounded_not_forever():
+    """Sol review: a held chapter keeps serving the previous PDF, so it is tried again."""
+    assert f"interval '{dx.HOLD_DAYS} days'" in dx.HELD_FOR_REFUSALS and dx.HOLD_DAYS == 7
+    assert "extract_refused_at = now()" in dx._record_refusal_sql()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="fork only: Windows takes the one-at-a-time path")
+def test_a_finished_chapter_survives_its_worker_dying_on_the_next_one(monkeypatch, fake_db):
+    """Measured on Linux 2026-11-03: with a Queue, k0's result died with the worker that
+    went on to crash on k2. Worker A: k0 (fast) then k2 (dies); worker B: k1 (slow)."""
+    import os
+    import time
+    def fake_extract(chapter, s3, conn, **kw):
+        key = chapter["chapter_key"]
+        if key == "k1":
+            time.sleep(1.5)
+        if key == "k2":
+            os._exit(9)
+        return True, {"key": key}
+    monkeypatch.setattr(dx, "extract_chapter", fake_extract)
+    out = dx.run_chapters(CHAPTERS[:3], object(), fake_db, ARGS, s3_factory=object)
+    assert out[0] == (True, {"key": "k0"}) and out[1] == (True, {"key": "k1"}) and out[2] == (False, None)

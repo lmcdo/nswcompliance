@@ -63,3 +63,11 @@ def test_a_new_pdf_restarts_the_count_and_is_read(cur):
 def test_a_chapter_with_no_hash_is_never_held(cur):
     _refuse(cur, "nohash"); _refuse(cur, "nohash"); _refuse(cur, "nohash")
     assert "nohash" in _selected(cur)
+
+
+def test_a_hold_ends_after_seven_days(cur):
+    _refuse(cur, "ch7-6"); _refuse(cur, "ch7-6")
+    assert "ch7-6" not in _selected(cur)
+    cur.execute("UPDATE dcp_chapter_registry SET extract_refused_at = now() - interval '8 days' "
+                "WHERE chapter_key = 'ch7-6'")
+    assert "ch7-6" in _selected(cur)                 # tried once more after the hold

@@ -2613,11 +2613,16 @@ ALREADY_QUEUED = (
 
 #: Refusals of the SAME current PDF after which the daily run holds a chapter (migration 122).
 HOLD_AFTER_REFUSALS = 2
+#: Days a held chapter waits before one more try.
+HOLD_DAYS = 7
 #: Refused HOLD_AFTER_REFUSALS times on its current content hash. coalesce: a NULL hash on
 #: either side means "never refused this file", so the chapter is read, never held.
 HELD_FOR_REFUSALS = (
     "(coalesce(dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash, false) "
-    f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS})"
+    f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS} "
+    # Bounded: a hold lasts HOLD_DAYS from the last refusal, then the chapter is tried once
+    # more. Not forever -- a held chapter keeps serving the previous PDF's rules (Sol review).
+    f"AND dcp_chapter_registry.extract_refused_at > now() - interval '{HOLD_DAYS} days')"
 )
 #: Errors that will recur on the same file: content the reader keeps leaving out. A spent
 #: credit, a timeout or a dead connection is not one -- counting those would hold a chapter
@@ -2634,7 +2639,8 @@ def _record_refusal_sql() -> str:
     return ("UPDATE dcp_chapter_registry SET "
             "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM content_hash "
             "THEN extract_refusals + 1 ELSE 1 END, "
-            "extract_refused_hash = content_hash, extract_refused_reason = %s "
+            "extract_refused_hash = content_hash, extract_refused_reason = %s, "
+            "extract_refused_at = now() "
             "WHERE id = %s")
 
 
@@ -5964,11 +5970,18 @@ class _PrefixedStdout:
     """Prefix each line with a tag, so two chapters read side by side can be told apart."""
 
     def __init__(self, inner, tag):
-        self.inner, self.tag = inner, tag
+        self.inner, self.tag, self.at_line_start = inner, tag, True
 
     def write(self, text):
-        return self.inner.write("".join((self.tag + line) if line.strip() else line
-                                        for line in text.splitlines(keepends=True)))
+        # print() writes a line in pieces ("a", " ", "b", newline): tag only the first piece
+        # of each line, or one line reads "<k0> a<k0>  <k0> b".
+        out = []
+        for piece in text.splitlines(keepends=True):
+            if self.at_line_start and piece.strip():
+                out.append(self.tag)
+            out.append(piece)
+            self.at_line_start = piece.endswith("\n")
+        return self.inner.write("".join(out))
 
     def flush(self):
         self.inner.flush()
@@ -5977,7 +5990,7 @@ class _PrefixedStdout:
         return getattr(self.inner, name)
 
 
-def _chapter_worker(tasks, results, chapters, s3_factory, args):
+def _chapter_worker(tasks, sender, chapters, s3_factory, args):
     """One worker PROCESS: read chapters off the task queue on its own tagged connection.
 
     A process, not a thread: extract_pdf_isolated forks its own child, and forking while
@@ -6007,7 +6020,11 @@ def _chapter_worker(tasks, results, chapters, s3_factory, args):
             sys.stdout.flush()
             sys.stdout = real
         c = revive(c)
-        results.put((idx, out))
+        # A direct pipe, not a Queue: Queue.put hands off to a feeder thread, so a worker
+        # that dies on its NEXT chapter could take an already-finished result with it
+        # (measured on Linux 2026-11-03). send() returns once the bytes are written.
+        sender.send((idx, out))
+    sender.close()
     c.close()
 
 
@@ -6042,7 +6059,8 @@ def run_chapters(chapters, s3, conn, args, s3_factory=None) -> list[tuple[bool, 
         return out
 
     ctx = multiprocessing.get_context("fork")
-    tasks, results = ctx.Queue(), ctx.Queue()
+    from multiprocessing.connection import wait
+    tasks = ctx.Queue()
     n = min(REVIEW_PARALLEL, len(chapters))
     for i in range(len(chapters)):
         tasks.put(i)
@@ -6050,22 +6068,28 @@ def run_chapters(chapters, s3, conn, args, s3_factory=None) -> list[tuple[bool, 
         tasks.put(None)
     sys.stdout.flush()
     print(f"Reading {len(chapters)} chapter(s), {n} at a time (review mode)", flush=True)
-    procs = [ctx.Process(target=_chapter_worker, args=(tasks, results, chapters, s3_factory, args))
-             for _ in range(n)]          # NOT daemon: each worker starts its own PDF child
-    for pr in procs:
-        pr.start()
+    readers, procs = [], []
+    for _ in range(n):
+        reader, sender = ctx.Pipe(duplex=False)
+        pr = ctx.Process(target=_chapter_worker, args=(tasks, sender, chapters, s3_factory, args))
+        pr.start()                       # NOT daemon: each worker starts its own PDF child
+        sender.close()                   # parent keeps only the reading end
+        readers.append(reader)
+        procs.append(pr)
     got: dict[int, tuple] = {}
-    # Read BEFORE join: a large review payload can fill the pipe (same reason as
-    # extract_pdf_isolated). A worker that dies leaves its chapters unanswered: they are
-    # reported as failed, never silently dropped.
-    while len(got) < len(chapters) and (any(pr.is_alive() for pr in procs) or not results.empty()):
-        try:
-            idx, out = results.get(timeout=30)
-            got[idx] = out
-        except Exception:  # noqa: BLE001 -- queue.Empty: check the workers again
-            continue
+    # Read until every pipe is closed (worker finished or died). Reading before join keeps a
+    # large review payload from blocking a worker on a full pipe.
+    open_readers = list(readers)
+    while open_readers:
+        for r in wait(open_readers, timeout=60):
+            try:
+                idx, out = r.recv()
+                got[idx] = out
+            except EOFError:
+                open_readers.remove(r)
     for pr in procs:
         pr.join(30)
+    # A worker that died leaves its chapters unanswered: reported as failed, never dropped.
     missing = [chapters[i]["chapter_key"] for i in range(len(chapters)) if i not in got]
     if missing:
         print(f"  [ERROR] no result for {len(missing)} chapter(s) (worker died): {missing}")
