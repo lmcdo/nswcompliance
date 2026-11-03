@@ -46,6 +46,36 @@ def is_guard_path(path: str) -> bool:
     return any(path == g or path.startswith(g) for g in GUARD_PATHS)
 
 
+#: Escape words that are only MENTIONED, never used: QA reports quote lines (JSON text, never
+#: run); tests write them inside strings and comments; this file lists them in BYPASS. The
+#: first alert (2026-11-03) was 6 of 8 such lines. Real use still reports: a test's
+#: `@pytest.mark.skip` or `collect_ignore = [...]` is code, not a mention (Sol review).
+def _own_pattern_lines() -> set[str]:
+    try:
+        src = open(__file__, encoding="utf-8").read()
+    except OSError:
+        return set()
+    block = src[src.index("BYPASS = re.compile("):]
+    block = block[:block.index(", re.I)") + len(", re.I)")]
+    return {ln.strip() for ln in block.splitlines()}
+
+
+_OWN = _own_pattern_lines()
+
+
+def is_mention_only(path: str, line: str) -> bool:
+    if path.startswith(".qa/reports/"):
+        return True
+    if path == "scripts/guardrail_watch.py":
+        return line.strip() in _OWN               # exactly the BYPASS declaration, nothing else
+    if path.startswith("tests/"):
+        m = BYPASS.search(line)
+        before = line[:m.start()] if m else line
+        in_string = before.count('"') % 2 == 1 or before.count("'") % 2 == 1
+        return in_string or "#" in before
+    return False
+
+
 def parse_diff(diff: str) -> tuple[list[str], list[tuple[str, str]]]:
     """(changed guard files, [(file, added bypass line)]) from `git diff` / `git log -p` text."""
     guards: list[str] = []
@@ -64,7 +94,7 @@ def parse_diff(diff: str) -> tuple[list[str], list[tuple[str, str]]]:
             if m and is_guard_path(m.group(2)) and m.group(2) not in guards:
                 guards.append(m.group(2))     # catches deletions, where +++ is /dev/null
         elif line.startswith("+") and not line.startswith("+++") and current:
-            if BYPASS.search(line):
+            if BYPASS.search(line) and not is_mention_only(current, line[1:]):
                 bypasses.append((current, line[1:].strip()[:160]))
     return guards, bypasses
 

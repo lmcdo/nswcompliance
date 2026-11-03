@@ -1,0 +1,31 @@
+{
+ "tier": "minor",
+ "justification": "The guardrail alert stops reporting escape words that are only mentioned in tests, QA reports and its own pattern",
+ "commit_hash": "ab95d2b9",
+ "files": [
+  "scripts/guardrail_watch.py",
+  "tests/test_guardrail_watch.py"
+ ],
+ "break_it": [
+  {
+   "scenario": "a real escape line is added in scripts/",
+   "what_happens": "it must still be reported",
+   "mitigated": true,
+   "how": "only tests/, .qa/reports/ and the watcher pattern lines are skipped",
+   "repro": "python -m pytest tests/test_guardrail_watch.py -k mentions"
+  },
+  {
+   "scenario": "a test file adds @pytest.mark.skip or collect_ignore",
+   "what_happens": "a whole-directory exemption would hide a real loosened guard",
+   "mitigated": true,
+   "how": "in tests/ only matches inside strings or comments are skipped",
+   "repro": "python -m pytest tests/test_guardrail_watch.py -k real_skip"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No - the next alert lists only real lines"
+ }
+}

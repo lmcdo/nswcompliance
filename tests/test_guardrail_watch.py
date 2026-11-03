@@ -97,3 +97,32 @@ def test_a_push_is_read_commit_by_commit(monkeypatch):
     monkeypatch.setattr(gw, "_git", lambda *a: calls.append(a) or "")
     gw.main(["--range", "a..b", "--print-only"])
     assert calls[0][:3] == ("log", "-p", "--first-parent")
+
+
+def test_mentions_in_tests_reports_and_the_pattern_are_not_reported_but_real_use_is():
+    """First alert (2026-11-03): 6 of 8 lines were mentions. Real use must still show."""
+    def one(path, text):
+        return f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n+{text}\n"
+    d = (one("tests/test_x.py", "# prior-art-checked: example in a test")
+         + one(".qa/reports/feat__x.json", '"observed_red": "prior-art-checked: quoted"')
+         + one("scripts/guardrail_watch.py",
+               "    " + next(x for x in gw._OWN if x.startswith('r"prior-art-checked:')))
+         + one("scripts/dcp_extract_changed.py", "# prior-art-checked: reuse not viable"))
+    _, bypasses = gw.parse_diff(d)
+    assert bypasses == [("scripts/dcp_extract_changed.py", "# prior-art-checked: reuse not viable")]
+
+
+def _one(path, text):
+    return "diff --git a/%s b/%s\n--- a/%s\n+++ b/%s\n+%s\n" % (path, path, path, path, text)
+
+
+def test_a_real_skip_or_ignore_in_tests_is_still_reported():
+    """Sol review: a test-directory skip IS a loosened guard, not a mention."""
+    d = _one("tests/test_y.py", "@pytest.mark.skip(reason='flaky')") + _one("tests/conftest.py", "collect_ignore = ['test_z.py']")
+    _, bypasses = gw.parse_diff(d)
+    assert [f for f, _ in bypasses] == ["tests/test_y.py", "tests/conftest.py"]
+
+
+def test_only_the_exact_pattern_lines_of_the_watcher_are_skipped():
+    d = _one("scripts/guardrail_watch.py", '    r"RULE_WRITE_OK=|something_new",')
+    assert gw.parse_diff(d)[1]                    # a new raw string with a token is reported
