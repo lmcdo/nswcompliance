@@ -1,8 +1,9 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "b2b47ead",
+ "commit_hash": "b78ff8ba",
  "files": [
+  "data/canterbury_bankstown_precincts/lep_hazard_area_2_4.geojson",
   "data/chapter_scope/suburb_unconfirmed_areas.json",
   "data/inner_west_precincts/leichhardt_c5_sep.geojson",
   "frontend-nextjs/shared/may-apply-areas.json",
@@ -73,11 +74,20 @@
    "mitigated": true,
    "how": "dcp_precinct_boundaries lookup per rule",
    "repro": "derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts (before import)"
+  },
+  {
+   "scenario": "A Padstow house just outside the pipeline hazard area",
+   "what_happens": "Not shown the pipeline rules",
+   "mitigated": true,
+   "how": "keyed to the LEP Hazard Area Map outline",
+   "repro": "pytest -k cb_2_4 (10 Gwandalan Rd anchor)"
   }
  ],
  "verified": [
   "tests: gate_rules + derive_precinct_keys + rederive 63 passed",
-  "live all-councils dry run: only Leichhardt C5 fails the outline check; Marrickville 2.26 23 already ok"
+  "live all-councils dry run: only Leichhardt C5 fails the outline check; Marrickville 2.26 23 already ok",
+  "tests/test_gate_rules.py 32 passed",
+  "pipeline outline loaded live; importer checks passed"
  ],
  "gaps": [
   "Sound Category street lines beyond the pink are not drawn; those lots get the may-apply box",
@@ -86,7 +96,7 @@
   "Outline must be loaded before merge, or the next Leichhardt re-key fails loudly"
  ],
  "post_merge": {
-  "action": "import_cb_centre_boundaries.py --council leichhardt --src data/inner_west_precincts/leichhardt_c5_sep.geojson --commit, then derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts --apply",
+  "action": "derive_precinct_keys.py --council canterbury_bankstown --only cb_2_4_pipeline_corridor --apply (outline already loaded)",
   "db_reset": "None",
   "secrets": "None",
   "other_repo": "None",
