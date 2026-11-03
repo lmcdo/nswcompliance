@@ -1,11 +1,12 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "c8a4e6d3",
+ "commit_hash": "47680806",
  "files": [
   "data/chapter_scope/suburb_unconfirmed_areas.json",
   "data/inner_west_precincts/leichhardt_c5_sep.geojson",
   "frontend-nextjs/shared/may-apply-areas.json",
+  "scripts/derive_precinct_keys.py",
   "scripts/gate_rules_areas.py",
   "scripts/import_cb_centre_boundaries.py",
   "tests/test_gate_rules.py"
@@ -34,14 +35,14 @@
    "failure_mode": "A wrong id would key rows to no outline, hiding them, never widening them"
   },
   {
-   "name": "leichhardt_c5_layer",
-   "file_line": "scripts/gate_rules_areas.py",
-   "what": "Moves the chapter's generic rows to the precinct layer.",
-   "input": "Leichhardt C5 rows typed generic",
-   "output": "v2_dcp_layer precinct, so only addresses inside the outline get them",
-   "if_none": "Rows already precinct are skipped",
-   "edge_cases": "rerun after a re-extraction re-applies it",
-   "failure_mode": "If not run, rows stay council-wide as before"
+   "name": "run (outline gate)",
+   "file_line": "scripts/derive_precinct_keys.py",
+   "what": "Before writing keys, checks every derived precinct id has a stored outline; otherwise writes nothing for that rule.",
+   "input": "the rule's pending keyed rows and dcp_precinct_boundaries",
+   "output": "keys written only when every outline exists",
+   "if_none": "Missing outline prints NO OUTLINE and FAIL-CLOSED; rows stay as they were",
+   "edge_cases": "Marrickville 2.26 with its outline still passes (23 already ok)",
+   "failure_mode": "A wrong outline id is caught here instead of hiding rows silently"
   }
  ],
  "break_it": [
@@ -65,18 +66,25 @@
    "mitigated": true,
    "how": "dcp_commit_approved runs derive_precinct_keys",
    "repro": "read gate_rules.py header"
+  },
+  {
+   "scenario": "Keys run before the outline is loaded",
+   "what_happens": "Outline gate refuses; nothing written; rows stay as before",
+   "mitigated": true,
+   "how": "dcp_precinct_boundaries lookup per rule",
+   "repro": "derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts (before import)"
   }
  ],
  "verified": [
-  "tests/test_gate_rules.py 31 passed",
-  "dry runs: 18 rows keyed, 17 moved to precinct layer, outline 21.5 ha"
+  "tests: gate_rules + derive_precinct_keys + rederive 63 passed",
+  "live dry run: Leichhardt C5 FAIL-CLOSED without outline; Marrickville 2.26 23 already ok"
  ],
  "gaps": [
   "Sound Category street lines beyond the pink are not drawn; those lots get the may-apply box",
   "Live writes (outline load + keying) need owner go"
  ],
  "post_merge": {
-  "action": "import_cb_centre_boundaries.py --council leichhardt --src data/inner_west_precincts/leichhardt_c5_sep.geojson --commit; derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts,leichhardt_c5_layer --apply",
+  "action": "import_cb_centre_boundaries.py --council leichhardt --src data/inner_west_precincts/leichhardt_c5_sep.geojson --commit, then derive_precinct_keys.py --council leichhardt --only leichhardt_c5_entertainment_precincts --apply",
   "db_reset": "None",
   "secrets": "None",
   "other_repo": "None",
