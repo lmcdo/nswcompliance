@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Lowers two published coverage counts to the live values after held rules were rolled back",
- "commit_hash": "d745039e",
+ "commit_hash": "09db4f32",
  "files": [
   "frontend-nextjs/lib/coverage.ts",
   "scripts/council_quote.py",

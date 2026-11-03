@@ -123,7 +123,7 @@ def test_the_two_council_figures_are_not_interchangeable():
     ts = (ROOT / "frontend-nextjs" / "lib" / "coverage.ts").read_text(encoding="utf-8")
     m = re.search(r"dcpNumericCouncils:\s*(\d+)", ts)
     assert m, "dcpNumericCouncils not found in coverage.ts"
-    assert m.group(1) == "24", (
+    assert m.group(1) == "22", (
         f"dcpNumericCouncils is {m.group(1)}. If it is now 27 it has been set to the "
         f"LABEL count, which counts Inner West three times and claims two councils "
         f"that do not exist."
