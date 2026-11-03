@@ -1371,7 +1371,7 @@
   },
   "DQ-113": {
    "declared": "fixed",
-   "fixed_2026-11-03": "2026-11-03: `python scripts/dcp_page_repair.py --check` exits 0 against production: 0 served rules never checked or judged on a superseded PDF (193 unresolved, 93 not_found, 52 too_short, 4 moved). The ledger ratchet flagged it as passing-but-open on PR #1584.",
+   "fixed_2026-11-03": "2026-11-03: the PAGE-LINK check passes against production (dcp_page_repair.py --check exit 0: every served rule's page was judged against its chapter's current PDF). NOT fixed: ~1,093 served rules of canterbury_bankstown 1.1/7.3/7.6 (registry 596/637/643) still carry WORDS read from the superseded editions; the re-reads are in dcp_review_queue (pending) and clear only through review -> dcp-commit.",
    "reopened_2026-10-22": "2026-10-22: r2_monitor found new editions of canterbury_bankstown 1.1, 7.3, 7.6 (registry 596/637/643) and uploaded them; the 974 served rules from those chapters were read from the old files. Measured read-only: every offending row is one of those 3 chapters. Clears when they are re-extracted, reviewed and committed (dcp-extract -> /internal/dcp-review -> dcp-commit), then dcp_page_repair.py --apply.",
    "check": [
     "python",
