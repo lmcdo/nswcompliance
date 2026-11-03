@@ -295,3 +295,28 @@ def test_each_worker_imports_from_the_image_file_set(tmp_path, module):
         if root and not (REPO / "scripts" / f"{root}.py").exists() and root not in _ROOT_PACKAGES:
             pytest.skip(f"third-party package not installed here: {root}")
         pytest.fail(f"{module} does not import from the Dockerfile.monitors file set: {last}")
+
+
+def test_every_monitors_service_watches_what_the_image_copies():
+    """A COPYd file that no watch pattern names never triggers a rebuild.
+
+    Railway's dashboard watch list was hand-picked and left out council_quote.py,
+    so the 2026-11-03 fix for its crash merged and never deployed: dcp-commit
+    stayed on the crashing image. Every service built from Dockerfile.monitors
+    must watch every COPY source (directories as dir/**) and its own toml.
+    """
+    import tomllib
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    sources = {s + "**" if s.endswith("/") else s
+               for s in re.findall(r"^COPY\s+(?!--)(\S+)\s+\S+", docker, re.M)}
+    assert len(sources) > 20, "COPY lines not found -- has the Dockerfile form changed?"
+    tomls = [t for t in sorted(REPO.glob("railway*.toml"))
+             if "Dockerfile.monitors" in t.read_text(encoding="utf-8")]
+    assert tomls, "no railway toml builds Dockerfile.monitors"
+    problems = []
+    for t in tomls:
+        watch = set(tomllib.loads(t.read_text(encoding="utf-8")).get("build", {}).get("watchPatterns", []))
+        for need in sorted(sources | {"Dockerfile.monitors", t.name}):
+            if need not in watch:
+                problems.append(f"{t.name} does not watch {need}")
+    assert not problems, "\n  ".join(["watchPatterns out of step with Dockerfile.monitors:"] + problems)
