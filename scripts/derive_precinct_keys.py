@@ -129,6 +129,14 @@ _WOOLLAHRA_D1_RULES = [
      "strategy": {"type": "page_range", "ranges": _WOOLLAHRA_D1_PAGES}},
 ]
 
+# Parramatta DCP 2023 9.10 site sections: the page each site's title is printed on, read from the live PDF
+# (parramatta/v1.1-2026-04-27/parramatta-dcp-2023-full.pdf) on 2026-11-04. Interior pages only (title pages
+# excluded both ends) feed `page_overrides`; the closing 1469 is one past the last 9.10 row (p1468).
+_PARRAMATTA_9_10_TITLES = [1274, 1287, 1298, 1303, 1317, 1323, 1329, 1333, 1337, 1343, 1362, 1365, 1372, 1379,
+                           1390, 1402, 1414, 1424, 1432, 1437, 1469]
+_PARRAMATTA_9_10_INTERIOR = [(f"9.10.{n}", _PARRAMATTA_9_10_TITLES[n - 1] + 1, _PARRAMATTA_9_10_TITLES[n] - 1)
+                             for n in range(1, 21)]
+
 RULES: list[dict] = [
     {
         "name": "marrickville_part9",
@@ -236,6 +244,7 @@ RULES: list[dict] = [
             "type": "ref_components",
             "components_map": {"7": 3, "8": 3, "9.10": 3, "9": 1},
             "max_top_digits": 1,
+            "page_overrides": _PARRAMATTA_9_10_INTERIOR,
         },
         "validate": True,
     },
@@ -389,7 +398,17 @@ def _derive(strategy: dict, row: dict) -> str | None:
         # corpus today, but the map is general) would derive "7.10.1B" instead of the
         # correct "7B.10.1".
         trimmed = comps[:match]
-        return trimmed[0] + letter + ("." + ".".join(trimmed[1:]) if len(trimmed) > 1 else "")
+        key = trimmed[0] + letter + ("." + ".".join(trimmed[1:]) if len(trimmed) > 1 else "")
+        # `page_overrides`: pages that lie WHOLLY inside one section (its title page and the next title page
+        # excluded, since a page can hold the end of one section and the start of the next). A row on such a
+        # page belongs to that section whatever its ref says: the reader sometimes keeps the previous
+        # section's number after a new site title (Parramatta 9.10, 2026-11-04 -- e.g. a rule printed under
+        # "9.10.14.1" keyed 9.10.13). Only overrides a key in the same family (same parent prefix).
+        p = row.get("pdf_page")
+        for pid, lo, hi in strategy.get("page_overrides") or ():
+            if p is not None and lo <= p <= hi and key != pid and key.rsplit(".", 1)[0] == pid.rsplit(".", 1)[0]:
+                return pid
+        return key
     if t == "text_heading":
         # Content anchor: the precinct number in the provision's own leading markdown
         # heading (e.g. "# 5.1.1.4 ..."). Travels WITH the text, so it survives
