@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "866812be",
+ "commit_hash": "16df9d46",
  "files": [
   ".claude/hooks/scratchpad-rule-write-guard.py",
   ".claude/settings.json",
@@ -239,5 +239,9 @@
   "weak_rewritten": 1,
   "mutations_run": "hook: always-allow 13/17 fail, never-match-SQL 13/17, trust-all-tracked 11/17, no-shell-split 1/17, posix-split 8/17, no-shebang 2/17, always-block 5/17. pipeline_run: no-reuse, no-blank-check, no-warn, no-real-check, short-sha each caught. DB tests (CI only): reasoned, not run locally.",
   "gaps_decided": "TRUNCATE in record mode is not tested on its own (same code path as the enforce test). python -m <scratch module> is not caught by the hook (recorded limit, DB guard covers it). Stub tables carry only the columns the trigger reads; the install-time column check runs again against the real tables when migration 121 is applied."
- }
+ },
+ "review_verdicts": [
+  "pipeline_run.py:71 'tag may commit caller work' -- REJECTED: tag commits only when the connection was IDLE before its own SELECT, so no caller work is pending; a commit persists, it never discards.",
+  "121:70 'missing mode row should default to record' -- REJECTED: fail-closed is the design (Sol round 2); a deleted config row must not switch the guard off. Documented in the migration header."
+ ]
 }
