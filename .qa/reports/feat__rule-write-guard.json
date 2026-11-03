@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "f7128f25",
+ "commit_hash": "0db8c804",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -130,6 +130,20 @@
    "mitigated": true,
    "how": "Sol finding 5: tag commits the transaction its own SELECT opened",
    "repro": "pytest tests/test_rule_write_guard_db.py -k autocommit (CI)"
+  },
+  {
+   "scenario": "the singleton rule_write_guard row is deleted after enforce is switched on",
+   "what_happens": "the mode read as NULL and untagged writes went through unrefused",
+   "mitigated": true,
+   "how": "Sol round 2: coalesce(mode,'enforce') so a missing row fails closed",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k missing_mode (CI)"
+  },
+  {
+   "scenario": "python is called with an option that takes a value such as -W ignore",
+   "what_happens": "the hook took the option value as the script and allowed the writer",
+   "mitigated": true,
+   "how": "Sol round 2: every .py word in the python command is read",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options"
   }
  ],
  "post_merge": {
