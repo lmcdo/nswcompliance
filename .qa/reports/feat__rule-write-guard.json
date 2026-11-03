@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "705b3540",
+ "commit_hash": "0f55e347",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -172,6 +172,13 @@
    "mitigated": false,
    "how": "VERDICT on Sol round 4 findings 2-3: out of scope. The hook catches accidental scratchpad writes (all 8 real ones blocked); it reads commands and cannot defeat deliberate obfuscation. The control for that is migration 121 in enforce mode, which refuses any untagged write whatever produced it. Round 4 finding 1 is the record-mode decision already recorded.",
    "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
+  },
+  {
+   "scenario": "python gets an option before -c, or VAR=x comes before a shebang script",
+   "what_happens": "the inline or shebang check did not match and the writer ran",
+   "mitigated": true,
+   "how": "Sol round 5: options allowed before -c and -, VAR=x words skipped",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options_before"
   }
  ],
  "post_merge": {
