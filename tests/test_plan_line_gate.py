@@ -1,0 +1,110 @@
+"""plan-line-gate hook, driven like Claude Code drives it, against made-up transcripts."""
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+HOOK = ROOT / ".claude" / "hooks" / "plan-line-gate.py"
+PLAN = "ce-dcp-section-updater-PLAN-2026-10-26.md"
+
+
+def a_text(t):
+    return {"type": "assistant", "message": {"content": [{"type": "text", "text": t}]}}
+
+
+def a_read(path):
+    return {"type": "assistant", "message": {"content": [
+        {"type": "tool_use", "name": "Read", "input": {"file_path": path}}]}}
+
+
+def human(t):
+    return {"type": "user", "origin": {"kind": "human"}, "message": {"content": t}}
+
+
+def not_human(t, kind="task-notification"):
+    return {"type": "user", "origin": {"kind": kind}, "message": {"content": t}}
+
+
+def tool_result():
+    return {"type": "user", "message": {"content": [{"type": "tool_result", "content": "ok"}]}}
+
+
+def run(tmp_path, entries, tool="Edit", tool_input=None):
+    t = tmp_path / "t.jsonl"
+    t.write_text("\n".join(json.dumps(e) for e in entries), encoding="utf-8")
+    payload = {"tool_name": tool, "transcript_path": str(t),
+               "tool_input": tool_input or {"file_path": str(ROOT / "scripts" / "dcp_extract_changed.py")}}
+    return subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                          capture_output=True, timeout=30)
+
+
+READ_PLAN = a_read(os.path.expanduser(f"~/.claude/plans/{PLAN}"))
+
+
+def test_todays_case_no_plan_line_is_blocked_and_shows_the_plans(tmp_path):
+    r = run(tmp_path, [human("make it quicker"), a_text("building a skip")])
+    assert r.returncode == 2 and "no PLAN: line" in r.stderr
+
+
+def test_plan_read_named_and_answered_is_allowed(tmp_path):
+    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN} -- step 3 section reader"), human("yes")])
+    assert r.returncode == 0, r.stderr
+
+
+def test_a_plan_named_but_never_opened_is_blocked(tmp_path):
+    r = run(tmp_path, [a_text(f"PLAN: {PLAN} -- step 3"), human("yes")])
+    assert r.returncode == 2 and "not opened with Read" in r.stderr
+
+
+def test_no_answer_yet_is_blocked(tmp_path):
+    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN} -- step 3"), tool_result()])
+    assert r.returncode == 2 and "has not answered" in r.stderr
+
+
+def test_a_notification_or_hook_feedback_is_not_an_answer(tmp_path):
+    for kind in ("task-notification", "hook"):
+        r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN}"), not_human("done", kind)])
+        assert r.returncode == 2, kind
+
+
+def test_an_answer_given_before_the_plan_line_does_not_count(tmp_path):
+    r = run(tmp_path, [human("do the things"), READ_PLAN, a_text(f"PLAN: {PLAN}")])
+    assert r.returncode == 2
+
+
+def test_a_newer_plan_line_needs_a_new_answer(tmp_path):
+    r = run(tmp_path, [READ_PLAN, a_text(f"PLAN: {PLAN}"), human("yes"), a_text("PLAN: none -- other thing")])
+    assert r.returncode == 2
+
+
+def test_plan_none_answered_is_allowed(tmp_path):
+    assert run(tmp_path, [a_text("**PLAN: none** -- guardrails"), human("y")]).returncode == 0
+
+
+def test_mentioning_a_plan_line_in_a_sentence_is_not_a_plan_line(tmp_path):
+    r = run(tmp_path, [a_text("I will post a `PLAN:` line first."), human("ok")])
+    assert r.returncode == 2 and "no PLAN: line" in r.stderr
+
+
+def test_a_bash_write_to_a_pipeline_file_is_gated_too(tmp_path):
+    r = run(tmp_path, [], tool="Bash",
+            tool_input={"command": "sed -i 's/a/b/' scripts/dcp_extract_changed.py"})
+    assert r.returncode == 2
+
+
+def test_reading_a_pipeline_file_is_not_gated(tmp_path):
+    r = run(tmp_path, [], tool="Bash", tool_input={"command": "grep -n def scripts/dcp_extract_changed.py"})
+    assert r.returncode == 0
+
+
+def test_touching_the_transcript_is_blocked(tmp_path):
+    cmd = "echo '{}' >> ~/.claude/projects/x/abc.jsonl"
+    r = run(tmp_path, [], tool="Bash", tool_input={"command": cmd})
+    assert r.returncode == 2 and "transcripts" in r.stderr
+
+
+def test_a_non_pipeline_edit_is_free(tmp_path):
+    r = run(tmp_path, [], tool_input={"file_path": str(ROOT / "README.md")})
+    assert r.returncode == 0

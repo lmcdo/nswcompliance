@@ -1,0 +1,46 @@
+# Telegram the owner whenever a guardrail is changed or bypassed on main.
+#
+# Runs on GitHub-hosted runners (not the self-hosted WSL runners on the dev PC) against
+# merged history, so what it reports cannot be edited away on the machine where the hooks
+# live. Per push: the push's own range. Weekly: a digest of the last 7 days, so a quiet
+# week is shown as quiet rather than assumed.
+#
+# Known limit: a push that edits THIS file runs the edited copy. Such a push is itself a
+# change under .github/workflows/, which the previous run of this job cannot see -- the
+# weekly digest (run from main) lists it.
+name: guardrail-watch
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 22 * * 0"        # Monday 09:00 AEDT
+  workflow_dispatch: {}
+concurrency:
+  group: guardrail-watch-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Report guardrail changes and bypasses
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="${AFTER}^"
+            fi
+            python scripts/guardrail_watch.py --range "${BEFORE}..${AFTER}"
+          else
+            python scripts/guardrail_watch.py --since "7 days ago"
+          fi

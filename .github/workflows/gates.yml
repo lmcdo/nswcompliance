@@ -439,6 +439,14 @@ jobs:
         run: |
           BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
           python scripts/check_commit_authors.py --range "$BASE..HEAD"
+      # PR only: a PR that changes a pipeline file must name the approved plan it implements
+      # (or "Plan: none"); the owner reads it before "merge". Added 2026-11-03 after a pipeline
+      # change was built while the approved plan sat unread.
+      - name: Pipeline PR names its plan
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+          python scripts/check_pr_plan_line.py --base "$BASE"
       # PR only — see the note above the job. The liability scan below still
       # runs on main; only THIS check is unanswerable after a squash merge.
       - name: QA report validation

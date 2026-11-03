@@ -134,6 +134,15 @@ def case_surface_prior_art_guard(tmp):
     return ({"tool_name": "Artifact", "tool_input": {"file_path": "x.html"}}, tmp, tmp, "block")
 
 
+def case_plan_line_gate(tmp):
+    # 2026-11-03: a pipeline edit with no PLAN: line answered by the owner.
+    t = tmp / "t.jsonl"
+    t.write_text("")
+    return ({"tool_name": "Edit", "transcript_path": str(t),
+             "tool_input": {"file_path": str(tmp / "scripts" / "dcp_extract_changed.py")}},
+            tmp, tmp, "block")
+
+
 def case_scratchpad_rule_write_guard(tmp):
     # The 2026-10-29 batch writer, run from outside the repo.
     script = tmp / "write_batch1.py"
@@ -188,6 +197,7 @@ CASES = {
     "prior-art-guard.py": case_prior_art_guard,
     "push-retry-needs-full-output.py": case_push_retry_needs_full_output,
     "scratchpad-rule-write-guard.py": case_scratchpad_rule_write_guard,
+    "plan-line-gate.py": case_plan_line_gate,
     "no-unreferenced-new-file.py": case_no_unreferenced_new_file,
     "surface-prior-art-guard.py": case_surface_prior_art_guard,
     "pr-merge-guard.py": case_pr_merge_guard,
