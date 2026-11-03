@@ -35,7 +35,7 @@ def test_the_real_batch1_writer_from_a_scratchpad_is_blocked(scratch):
     f = scratch / "write_batch1.py"
     f.write_text(BATCH1, encoding="utf-8")
     r = _run(f"python {f}", scratch)
-    assert r.returncode == 2 and "not a tracked repo script" in r.stderr
+    assert r.returncode == 2 and "not a tracked, unchanged repo script" in r.stderr
 
 
 def test_a_read_only_scratchpad_script_is_allowed(scratch):
@@ -116,3 +116,36 @@ def test_options_that_take_a_value_do_not_hide_the_script(scratch):
     bad.write_text(BATCH1, encoding="utf-8")
     for opts in ("-W ignore", "-X dev", "-u -W ignore::DeprecationWarning", "-I"):
         assert _run(f"python {opts} {bad}", scratch).returncode == 2, opts
+
+
+def test_a_writer_made_and_run_in_one_command_is_blocked(scratch):
+    """Sol review round 3: the file did not exist yet when the hook looked."""
+    f = scratch / "new_writer.py"
+    cmd = f"printf 'cur.execute(\"UPDATE dcp_setback_controls SET source_text=1\")' > {f} && python {f}"
+    assert _run(cmd, scratch).returncode == 2
+
+
+def test_a_script_run_through_its_shebang_is_read(scratch):
+    """Sol review round 3: `./write_batch.py` has no `python` in the command."""
+    f = scratch / "write_batch1.py"
+    f.write_text("#!/usr/bin/env python3\n" + BATCH1, encoding="utf-8")
+    assert _run(f"{f} --apply", scratch).returncode == 2
+
+
+def test_an_uncommitted_edit_to_a_tracked_script_is_read(tmp_path):
+    """Sol review round 3: tracked was trusted even with an unreviewed edit."""
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    run = lambda *a: subprocess.run(a, cwd=repo, capture_output=True, text=True, check=True)
+    run("git", "init", "-q"); run("git", "config", "user.email", "t@t"); run("git", "config", "user.name", "t")
+    util = repo / "scripts" / "util.py"
+    util.write_text(READ_ONLY, encoding="utf-8")
+    run("git", "add", "."); run("git", "commit", "-qm", "x")
+    hook = lambda: subprocess.run(
+        [sys.executable, str(HOOK)], text=True, capture_output=True, timeout=30,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "python scripts/util.py"},
+                          "cwd": str(repo)}),
+        env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(repo)})
+    assert hook().returncode == 0                 # committed, read-only
+    util.write_text(READ_ONLY + BATCH1, encoding="utf-8")
+    assert hook().returncode == 2                 # same file, unreviewed write added

@@ -61,7 +61,12 @@ def _tracked(path: Path, repo: Path) -> bool:
         return False                       # outside the repo: never reviewed code
     r = subprocess.run(["git", "ls-files", "--error-unmatch", str(rel)], cwd=repo,
                        capture_output=True, text=True, timeout=10)
-    return r.returncode == 0
+    if r.returncode != 0:
+        return False
+    # Tracked is only trusted UNCHANGED: an uncommitted edit is unreviewed code (Sol, 2026-11-03).
+    d = subprocess.run(["git", "diff", "--quiet", "HEAD", "--", str(rel)], cwd=repo,
+                       capture_output=True, text=True, timeout=10)
+    return d.returncode == 0
 
 
 SEGMENT = re.compile(r"&&|\|\||[;|\n]")
@@ -74,6 +79,10 @@ def _scripts(command: str) -> list[str]:
     only the first `python x.py` of `python a.py; python b.py` (Sol review, 2026-11-03).
     """
     found = []
+    for seg in SEGMENT.split(command):
+        first = seg.strip().split(maxsplit=1)
+        if first and first[0].strip("'\"").lower().endswith(".py"):
+            found.append(first[0].strip("'\""))      # ./x.py run through its #! line
     for m in (m for seg in SEGMENT.split(command) for m in [PYTHON.search(seg)] if m):
         try:   # posix=False: posix mode eats the backslashes in C:\Users\... paths
             words = shlex.split(m.group(1), posix=False)
@@ -96,21 +105,26 @@ def _resolve(word: str, cwd: Path) -> Path:
 
 def verdict(command: str, cwd: Path, repo: Path) -> str | None:
     """None to allow, else the reason to block."""
-    if not PYTHON.search(command):
+    scripts = _scripts(command)
+    if not PYTHON.search(command) and not scripts:
         return None
     inline = re.search(r"(?:python3?|py)(?:\.exe)?\s+(?:-\s|-c\b|-\s*<<|-$)", command, re.I | re.M)
     if inline and WRITE.search(command):   # `python - <<EOF` / `python -c` carrying the SQL
         return "inline Python in this command writes a rule table"
-    for word in _scripts(command):
+    for word in scripts:
         path = _resolve(word, cwd)
-        if not path.is_file() or _tracked(path, repo):
+        if not path.is_file():
+            if WRITE.search(command):          # written and run in this same command
+                return f"{path} does not exist yet and this command carries rule-table SQL"
+            continue
+        if _tracked(path, repo):
             continue
         try:
             src = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
         if WRITE.search(src):
-            return f"{path} is not a tracked repo script and it writes a rule table"
+            return f"{path} is not a tracked, unchanged repo script and it writes a rule table"
     return None
 
 
