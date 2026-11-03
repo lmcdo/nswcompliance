@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "7c60fafb",
+ "commit_hash": "240f40fe",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -165,6 +165,13 @@
    "mitigated": true,
    "how": "Sol round 3: a segment that starts with a .py path is read like a python run",
    "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k shebang"
+  },
+  {
+   "scenario": "a writer is hidden on purpose, base64-decoded or loaded with exec(open(...)) inside python -c",
+   "what_happens": "the hook sees no SQL and no readable script and allows it",
+   "mitigated": false,
+   "how": "VERDICT on Sol round 4 findings 2-3: out of scope. The hook catches accidental scratchpad writes (all 8 real ones blocked); it reads commands and cannot defeat deliberate obfuscation. The control for that is migration 121 in enforce mode, which refuses any untagged write whatever produced it. Round 4 finding 1 is the record-mode decision already recorded.",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
   }
  ],
  "post_merge": {
