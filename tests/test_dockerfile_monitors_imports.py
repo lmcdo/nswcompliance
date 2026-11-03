@@ -295,3 +295,35 @@ def test_each_worker_imports_from_the_image_file_set(tmp_path, module):
         if root and not (REPO / "scripts" / f"{root}.py").exists() and root not in _ROOT_PACKAGES:
             pytest.skip(f"third-party package not installed here: {root}")
         pytest.fail(f"{module} does not import from the Dockerfile.monitors file set: {last}")
+
+
+def test_every_monitors_service_watches_what_the_image_copies():
+    """A COPYd file that no watch pattern names never triggers a rebuild.
+
+    Railway's dashboard watch list was hand-picked and left out council_quote.py,
+    so the 2026-11-03 fix for its crash merged and never deployed: dcp-commit
+    stayed on the crashing image. Every service built from Dockerfile.monitors
+    must watch every COPY source (directories as dir/**) and its own toml.
+    """
+    import tomllib
+    docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
+    sources = set()
+    for line in re.findall(r"^COPY\s+(.*)$", docker, re.M):
+        assert not line.lstrip().startswith("["), f"JSON-form COPY not parsed: {line}"
+        tokens = [t for t in line.split() if not t.startswith("--")]
+        assert len(tokens) >= 2, f"COPY line not understood: {line}"
+        if any(t.startswith("--from") for t in line.split()):
+            continue                       # copies from another stage, not the repo
+        for src in tokens[:-1]:            # every source; the last token is the destination
+            sources.add(src + "**" if src.endswith("/") else src)
+    assert len(sources) > 20, "COPY lines not found -- has the Dockerfile form changed?"
+    tomls = [t for t in sorted(REPO.glob("railway*.toml"))
+             if "Dockerfile.monitors" in t.read_text(encoding="utf-8")]
+    assert tomls, "no railway toml builds Dockerfile.monitors"
+    problems = []
+    for t in tomls:
+        watch = set(tomllib.loads(t.read_text(encoding="utf-8")).get("build", {}).get("watchPatterns", []))
+        for need in sorted(sources | {"Dockerfile.monitors", t.name}):
+            if need not in watch:
+                problems.append(f"{t.name} does not watch {need}")
+    assert not problems, "\n  ".join(["watchPatterns out of step with Dockerfile.monitors:"] + problems)
