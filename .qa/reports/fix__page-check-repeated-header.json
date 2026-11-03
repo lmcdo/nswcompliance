@@ -1,0 +1,84 @@
+{
+ "tier": "standard",
+ "justification": "Changes how the page check decides a served rule's page. Not Critical: no data written by this PR. Not Minor: page links on served rules.",
+ "commit_hash": "11536f86",
+ "files": [
+  "scripts/rule_page_locator.py",
+  "tests/test_rule_page_locator.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_rule_page_locator.py",
+  "fails_when": "Fails if a row printed on a later page of a repeated table is kept on the first page, or if reordered table cells or a near-identical copy lose their stored page.",
+  "external_authority": "Georges River DCP 2021 Part 6.1 Building Envelope Summary Table: options 7a/7b printed on PDF page 47, checked by eye 2026-11-03.",
+  "observed_red": "Turning off either change (header starts or rare-word check) fails the new test (1 failed)."
+ },
+ "pre_impl": {
+  "existing_data": "Rule 170845 was on_page at p45 though printed on p47; 2 Canterbury-Bankstown figure rules were unresolved on wrong pages.",
+  "assumption_mismatch": "Repeated cells chained the whole table into one stretch, so only the first page was ever scored.",
+  "new_vs_existing": "No new file; one helper and one extra candidate rule in the existing locator.",
+  "external_source_error": "None: reads cached PDFs; an unreadable PDF stays no_source."
+ },
+ "functions": [
+  {
+   "name": "_better_elsewhere",
+   "file_line": "scripts/rule_page_locator.py",
+   "what": "Says whether the stored page holds only a rule's common words while another place holds its rare ones.",
+   "input": "rule tokens, found places, document readings, stored page",
+   "output": "True when the stored page should not be kept",
+   "if_none": "Fewer than two rare words: returns False, old behaviour",
+   "edge_cases": "Vaucluse near-copy and reordered table cells still kept (existing tests)",
+   "failure_mode": "A false True moves a page; every move is listed in the dry-run CSV before --apply"
+  },
+  {
+   "name": "occurrences (opening-piece starts)",
+   "file_line": "scripts/rule_page_locator.py",
+   "what": "Each place the rule's opening piece is printed also opens a candidate stretch.",
+   "input": "rule tokens and one document reading",
+   "output": "places with share, page and pages",
+   "if_none": "No hits: empty list as before",
+   "edge_cases": "overlapping stretches still merge",
+   "failure_mode": "More candidates can make a rule unresolved instead of moved, never silently moved"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A row printed on page 3 of a 3-page table, stored on page 1",
+   "what_happens": "The row's page link moves to page 3",
+   "mitigated": true,
+   "how": "opening-piece starts + rare-word check",
+   "repro": "pytest -k repeated_table_header"
+  },
+  {
+   "scenario": "A table row whose cells are printed out of order on its own page",
+   "what_happens": "The row keeps its own stored page",
+   "mitigated": true,
+   "how": "existing test unchanged and passing",
+   "repro": "pytest -k table_page_printing_every_word"
+  },
+  {
+   "scenario": "Two sections with nearly identical wording on different pages",
+   "what_happens": "Each copy keeps its own stored page",
+   "mitigated": true,
+   "how": "rare words are on both copies",
+   "repro": "pytest -k near_identical"
+  }
+ ],
+ "verified": [
+  "tests/test_rule_page_locator.py 41 passed",
+  "both changes mutation-checked",
+  "live dry run 57,300 rules: 23 page changes, 22 checked word by word"
+ ],
+ "gaps": [
+  "One City of Sydney move (258753, p9->10) has no public PDF link to check by hand"
+ ],
+ "post_merge": {
+  "action": "python scripts/dcp_page_repair.py --apply (backs up; writes 129 rows, 23 page changes)",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "dcp_page_repair.py --check prints OK; rule 170845 stays on page 47"
+ },
+ "real_layer_exempt": {
+  "scripts/rule_page_locator.py": "Exercised against the live PDFs in the dry run above; writes nothing"
+ }
+}
