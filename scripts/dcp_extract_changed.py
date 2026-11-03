@@ -2611,6 +2611,33 @@ ALREADY_QUEUED = (
 )
 
 
+#: Refusals of the SAME current PDF after which the daily run holds a chapter (migration 122).
+HOLD_AFTER_REFUSALS = 2
+#: Refused HOLD_AFTER_REFUSALS times on its current content hash. coalesce: a NULL hash on
+#: either side means "never refused this file", so the chapter is read, never held.
+HELD_FOR_REFUSALS = (
+    "(coalesce(dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash, false) "
+    f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS})"
+)
+#: Errors that will recur on the same file: content the reader keeps leaving out. A spent
+#: credit, a timeout or a dead connection is not one -- counting those would hold a chapter
+#: that only needed a retry (Sutherland ch2 failed twice on 2026-11-03 for credit alone).
+CONTENT_REFUSALS = ("PageLoss", "ChunkLoss")
+
+
+def is_content_refusal(err) -> bool:
+    return bool(err) and str(err).lstrip().startswith(CONTENT_REFUSALS)
+
+
+def _record_refusal_sql() -> str:
+    """Count a refusal of this chapter's current PDF; a new hash starts the count again."""
+    return ("UPDATE dcp_chapter_registry SET "
+            "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM content_hash "
+            "THEN extract_refusals + 1 ELSE 1 END, "
+            "extract_refused_hash = content_hash, extract_refused_reason = %s "
+            "WHERE id = %s")
+
+
 def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False,
                           chapter_filter: str | None = None) -> tuple[str, list]:
     """Build the chapter-selection query (pure, testable).
@@ -2657,6 +2684,7 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
         # until commit, so "flagged" alone cannot tell them apart. A named --chapter
         # still re-reads (reader improved); a NULL hash never matches, so it is read.
         conds.append("NOT " + ALREADY_QUEUED)
+        conds.append("NOT " + HELD_FOR_REFUSALS)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
         "r2_current_path, r2_version_label, dcp_name, content_hash, "
@@ -2687,6 +2715,16 @@ def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool =
             [council_filter] if council_filter else [])
         for council, key in cur.fetchall():
             print(f"  [skip] {council}/{key}: a read of its current PDF is already waiting in review")
+        cur.execute(
+            "SELECT council, chapter_key, extract_refusals, extract_refused_reason "
+            "FROM dcp_chapter_registry "
+            "WHERE needs_extraction = TRUE AND is_active = TRUE AND r2_current_path IS NOT NULL "
+            "AND " + HELD_FOR_REFUSALS + (" AND council = %s" if council_filter else "")
+            + " ORDER BY council, sort_order",
+            [council_filter] if council_filter else [])
+        for council, key, n, why in cur.fetchall():
+            print(f"  [held] {council}/{key}: refused {n}x on this same PDF ({(why or '')[:90]}); "
+                  f"needs a fix, or re-read it by name with --chapter")
     return chapters
 
 
@@ -4868,6 +4906,12 @@ def extract_chapter(
             chapter_pages=chapter_pages)
         if result is None:
             print(f"    [ERROR] {err}")
+            if is_content_refusal(err):
+                conn = revive(conn)
+                rcur = conn.cursor()
+                rcur.execute(_record_refusal_sql(), (str(err)[:300], chapter["id"]))
+                conn.commit()
+                rcur.close()
             cur.close()
             return False, None
 
@@ -5910,6 +5954,124 @@ def run_fidelity_gate(
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
+#: Chapters read at the same time in --review mode (queue only, nothing goes live). A run
+#: then takes about as long as its longest chapter, not the sum. Live commits stay one at a
+#: time. 2, per the long-jobs rule (memory: feedback-long-jobs-must-print-progress).
+REVIEW_PARALLEL = max(1, int(os.getenv("DCP_EXTRACT_PARALLEL", "2")))
+
+
+class _PrefixedStdout:
+    """Prefix each line with a tag, so two chapters read side by side can be told apart."""
+
+    def __init__(self, inner, tag):
+        self.inner, self.tag = inner, tag
+
+    def write(self, text):
+        return self.inner.write("".join((self.tag + line) if line.strip() else line
+                                        for line in text.splitlines(keepends=True)))
+
+    def flush(self):
+        self.inner.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
+def _chapter_worker(tasks, results, chapters, s3_factory, args):
+    """One worker PROCESS: read chapters off the task queue on its own tagged connection.
+
+    A process, not a thread: extract_pdf_isolated forks its own child, and forking while
+    another thread holds a lock (stdout, SSL, libpq) can leave that child hung until its
+    budget expires. Each worker is single-threaded, so its fork stays safe.
+    """
+    s3 = s3_factory()
+    c = psycopg2.connect(DATABASE_URL, keepalives=1, keepalives_idle=30,
+                         keepalives_interval=10, keepalives_count=5)
+    pipeline_run.tag(c, "dcp_extract_changed")
+    real = sys.stdout
+    while True:
+        idx = tasks.get()
+        if idx is None:
+            break
+        chapter = chapters[idx]
+        sys.stdout = _PrefixedStdout(real, f"<{chapter['chapter_key'][:28]}> ")
+        try:
+            out = extract_chapter(
+                chapter, s3, c, dry_run=args.dry_run, review=args.review,
+                allow_section_loss=frozenset(args.allow_section_loss),
+                allow_area_link_loss=frozenset(args.allow_area_link_loss))
+        except Exception as exc:  # noqa: BLE001 -- one chapter must not take the batch
+            print(f"    [ERROR] chapter failed: {type(exc).__name__}: {exc}")
+            out = (False, None)
+        finally:
+            sys.stdout.flush()
+            sys.stdout = real
+        c = revive(c)
+        results.put((idx, out))
+    c.close()
+
+
+def _s3_client():
+    """A fresh R2 client. Each chapter worker makes its own: a client is not shared across a fork."""
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY_ID,
+        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
+
+
+def run_chapters(chapters, s3, conn, args, s3_factory=None) -> list[tuple[bool, dict | None]]:
+    """Read every chapter; in --review mode up to REVIEW_PARALLEL at once. Results come back
+    in the chapters' order. Live commits, a single chapter, or no fork: one at a time."""
+    import multiprocessing
+    parallel = (args.review and REVIEW_PARALLEL > 1 and len(chapters) > 1
+                and s3_factory is not None and "fork" in multiprocessing.get_all_start_methods())
+    if not parallel:
+        out = []
+        for chapter in chapters:
+            out.append(extract_chapter(
+                chapter, s3, conn, dry_run=args.dry_run, review=args.review,
+                allow_section_loss=frozenset(args.allow_section_loss),
+                allow_area_link_loss=frozenset(args.allow_area_link_loss)))
+            # extract_chapter takes conn as a PARAMETER, so its own revive cannot
+            # reach this one. Without this the first chapter's hour of PDF work
+            # leaves every later chapter in the batch holding a dead connection.
+            conn = revive(conn)
+        return out
+
+    ctx = multiprocessing.get_context("fork")
+    tasks, results = ctx.Queue(), ctx.Queue()
+    n = min(REVIEW_PARALLEL, len(chapters))
+    for i in range(len(chapters)):
+        tasks.put(i)
+    for _ in range(n):
+        tasks.put(None)
+    sys.stdout.flush()
+    print(f"Reading {len(chapters)} chapter(s), {n} at a time (review mode)", flush=True)
+    procs = [ctx.Process(target=_chapter_worker, args=(tasks, results, chapters, s3_factory, args))
+             for _ in range(n)]          # NOT daemon: each worker starts its own PDF child
+    for pr in procs:
+        pr.start()
+    got: dict[int, tuple] = {}
+    # Read BEFORE join: a large review payload can fill the pipe (same reason as
+    # extract_pdf_isolated). A worker that dies leaves its chapters unanswered: they are
+    # reported as failed, never silently dropped.
+    while len(got) < len(chapters) and (any(pr.is_alive() for pr in procs) or not results.empty()):
+        try:
+            idx, out = results.get(timeout=30)
+            got[idx] = out
+        except Exception:  # noqa: BLE001 -- queue.Empty: check the workers again
+            continue
+    for pr in procs:
+        pr.join(30)
+    missing = [chapters[i]["chapter_key"] for i in range(len(chapters)) if i not in got]
+    if missing:
+        print(f"  [ERROR] no result for {len(missing)} chapter(s) (worker died): {missing}")
+    return [got.get(i, (False, None)) for i in range(len(chapters))]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="DCP chapter extraction pipeline")
     parser.add_argument("--council", help="Filter to specific council")
@@ -5947,13 +6109,7 @@ def main() -> None:
 
     require_r2()
     require_database_url()
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT,
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
+    s3 = _s3_client()
     # Keepalives because the PDF work now takes an hour, not a minute. Measured
     # 2026-09-19: the first real OCR run reached diff_provisions and died with
     # "server closed the connection unexpectedly" — the connection is opened once
@@ -5998,19 +6154,9 @@ def main() -> None:
     review_chapters: list[dict] = []
     published_councils: set[str] = set()   # councils whose rows this run wrote live
 
-    for chapter in chapters:
-        ok, review_data = extract_chapter(
-            chapter, s3, conn,
-            dry_run=args.dry_run,
-            review=args.review,
-            allow_section_loss=frozenset(args.allow_section_loss),
-            allow_area_link_loss=frozenset(args.allow_area_link_loss),
-        )
-        # extract_chapter takes conn as a PARAMETER, so its own revive cannot
-        # reach this one. Without this the first chapter's hour of PDF work
-        # leaves every later chapter in the batch holding a dead connection --
-        # and the summary and registry updates below would fail too.
-        conn = revive(conn)
+    results = run_chapters(chapters, s3, conn, args, s3_factory=_s3_client)
+    conn = revive(conn)
+    for chapter, (ok, review_data) in zip(chapters, results):
         if ok:
             succeeded += 1
             if review_data is not None:
