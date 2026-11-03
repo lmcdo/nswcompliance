@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "0194c845",
+ "commit_hash": "b2b47ead",
  "files": [
   "data/chapter_scope/suburb_unconfirmed_areas.json",
   "data/inner_west_precincts/leichhardt_c5_sep.geojson",
