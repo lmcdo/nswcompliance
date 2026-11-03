@@ -1,0 +1,106 @@
+{
+ "tier": "critical",
+ "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
+ "commit_hash": "a850121c",
+ "files": [
+  "migrations/121_rule_write_guard.sql",
+  "scripts/pipeline_run.py",
+  "scripts/dcp_extract_changed.py",
+  "scripts/dcp_commit_approved.py",
+  "scripts/council_quote_db.py",
+  "scripts/r2_monitor.py",
+  "scripts/dcp_page_repair.py",
+  "scripts/derive_precinct_keys.py",
+  "scripts/dcp_citation_status.py",
+  "scripts/dcp_setback_citation_status.py",
+  "scripts/dcp_area_link_guard.py",
+  "scripts/verifyops_classify.py",
+  "scripts/add_new_chapter.py",
+  "Dockerfile.monitors",
+  ".github/workflows/gates.yml",
+  ".claude/hooks/scratchpad-rule-write-guard.py",
+  ".claude/settings.json",
+  "tests/test_rule_write_guard_db.py",
+  "tests/test_scratchpad_rule_write_guard.py",
+  "tests/test_hooks_not_silently_dead.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_rule_write_guard_db.py tests/test_scratchpad_rule_write_guard.py (DB tests in CI job drawdown-verify-write-path, isolated Postgres)",
+  "fails_when": "an untagged UPDATE of source_text or a self-stamped verbatim release succeeds in enforce mode, or a real batch writer script is allowed by the hook",
+  "observed_red": "before the posix=False fix, test_the_real_batch1_writer_from_a_scratchpad_is_blocked failed with assert (0 == 2): the hook allowed C:\\Users\\...\\write_batch1.py because shlex posix mode stripped the backslashes"
+ },
+ "pre_impl": {
+  "existing_data": "dcp_setback_controls 1273 rows, dcp_chapter_registry 822, regulatory_provisions 55k; trigger dcp_setback_hold_unproven_quote trusts the writer-sent quote_status; all connections are the postgres superuser",
+  "assumption_mismatch": "PGOPTIONS would have tagged every connection in one place, but the Supabase pooler drops startup options (measured: current_setting returned None), so each connect site tags itself",
+  "new_vs_existing": "adds one trigger function and two tables; reuses the existing isolated Postgres CI job and the existing hook registration and hook-health test",
+  "external_source_error": "if set_config fails the connect site raises and the pipeline run stops before any write, which is loud rather than an untagged write",
+  "frontend_type": "none: no API or UI reads rule_write_log or rule_write_guard in this change",
+  "user_failure_mode": "in record mode nothing is refused, so a missed writer shows up as run_id IS NULL rows in rule_write_log rather than as a broken job"
+ },
+ "functions": [
+  {
+   "name": "tag",
+   "file_line": "scripts/pipeline_run.py",
+   "input": "an open psycopg2 connection and the pipeline script name",
+   "output": "the run id string, after set_config app.pipeline_run on that session",
+   "if_none": "a test double that is not a psycopg2 connection is returned the id without a database call"
+  },
+  {
+   "name": "verdict",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py",
+   "input": "the shell command text, its working directory and the repo root",
+   "output": "None to allow or the reason string to block",
+   "if_none": "a command with no python invocation returns None without reading any file"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "scratchpad script UPDATEs source_text directly, as batches 1-5 did",
+   "what_happens": "the rule text changes with no run behind it",
+   "mitigated": true,
+   "how": "hook blocks the run; in enforce mode the trigger refuses it; in record mode it is logged with run_id NULL",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k scratchpad (CI) and tests/test_scratchpad_rule_write_guard.py -k batch1"
+  },
+  {
+   "scenario": "script stamps quote_status verbatim and needs_review false on its own row",
+   "what_happens": "migration 120 trusts the stamp and the row is served",
+   "mitigated": true,
+   "how": "enforce mode refuses the change with no run",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k stamping"
+  },
+  {
+   "scenario": "extractor reconnects mid-run or commit job starts council_quote as a child",
+   "what_happens": "the second connection would carry a different or no run id",
+   "mitigated": true,
+   "how": "tag reuses PIPELINE_RUN_ID from the environment for the whole process tree",
+   "repro": "python -c \"import sys;sys.path.insert(0,'scripts');import pipeline_run,os;print(pipeline_run.tag(object(),'a')==pipeline_run.tag(object(),'b'))\""
+  },
+  {
+   "scenario": "a script sets app.pipeline_run to an empty string before writing",
+   "what_happens": "an empty tag would count as a tagged pipeline write and pass",
+   "mitigated": true,
+   "how": "nullif treats empty as no run",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k empty_tag"
+  },
+  {
+   "scenario": "the scratchpad script path is given with Windows backslashes or a git-bash drive",
+   "what_happens": "the hook could not find the file and allowed it",
+   "mitigated": true,
+   "how": "shlex posix=False plus git-bash drive path conversion; tested on 8 real scripts",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k git_bash"
+  },
+  {
+   "scenario": "a tracked repo script that is not pipeline writes the tables",
+   "what_happens": "the hook allows it and the write lands with no run named",
+   "mitigated": false,
+   "how": "by design: tracked code is reviewed, and the trigger logs it with run_id NULL; enforce mode will refuse it after the record week",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - apply migration 121 to production after a backup (needs the user's go), then confirm rule_write_log fills from the next pipeline run"
+ }
+}
