@@ -15,6 +15,7 @@ AREA_KEY_RULES: list[dict] = [
     # a lot inside the pink is served the section for sure; other houses in the figures' suburbs see it in the
     # "may apply" box (area marrickville-2-26-sound-category-areas, SOUND_AREA_MAP) -- the street lines are not drawn.
     {"name": "marrickville_2_26_entertainment_precincts", "council": "marrickville", "validate": False,
+     "needs_stored_outline": True,
      "where": _MARRICKVILLE_2_26,
      "strategy": {"type": "constant", "precinct_id": "Marrickville 2.26 entertainment precinct"}},
     # Leichhardt DCP 2013 Part C s5: "Part C - Section 5 of this DCP applies to land identified as a Sound Category Area
@@ -23,6 +24,7 @@ AREA_KEY_RULES: list[dict] = [
     # Marrickville 2.26: inside the pink is served; the rest of Balmain/Leichhardt/Rozelle sees the "may apply" box
     # (area leichhardt-c5-sound-category-areas, SOUND_AREA_MAP).
     {"name": "leichhardt_c5_entertainment_precincts", "council": "leichhardt", "validate": False,
+     "needs_stored_outline": True,
      "where": _LEICHHARDT_C5,
      "strategy": {"type": "constant", "precinct_id": "Leichhardt C5 entertainment precinct"}},
     # C-B DCP Ch 6.2 Section 6.8 "KS8- 212 South Terrace" (p182 only; KS9 starts p183): "The 212 South Terrace key site

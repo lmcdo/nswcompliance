@@ -403,6 +403,7 @@ def test_leichhardt_c5_keyed_to_the_sep_outline_and_moved_to_precinct_layer():
     assert rule["council"] == "leichhardt"
     assert rule["where"] == "source_chapter_key = 'part-c-s5-entertainment-precincts'"
     assert rule["strategy"] == {"type": "constant", "precinct_id": "Leichhardt C5 entertainment precinct"}
+    assert rule["needs_stored_outline"] is True  # keying refuses until the outline is loaded
     # No layer-only rule: it could move the rows without a key, so they would reach no house.
     assert not any("part-c-s5-entertainment-precincts" in r["where"] for r in g.GATE_RULES)
     prof = imp.PROFILES["leichhardt"]

@@ -420,6 +420,14 @@ def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -
     return reasons
 
 
+#: Outline gate: the rule's own council (former_council, else lga, slugged as the rules spell councils) and a real shape.
+OUTLINE_SQL = (
+    "SELECT DISTINCT precinct_id FROM dcp_precinct_boundaries WHERE boundary IS NOT NULL"
+    " AND (lower(regexp_replace(coalesce(former_council, ''), '[^A-Za-z0-9]+', '_', 'g')) = %s"
+    "      OR lower(regexp_replace(coalesce(lga, ''), '[^A-Za-z0-9]+', '_', 'g')) = %s)"
+    " AND precinct_id = ANY(%s)")
+
+
 def run(council: str | None, apply: bool, validate: bool, only: set[str] | None = None) -> int:
     conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
     conn.autocommit = not apply
@@ -428,6 +436,7 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
     backup_rows: list[tuple] = []
     total_new = total_changed = total_ok = total_none = 0
     validation_failures: list[str] = []
+    outline_failures: list[str] = []  # a key with no stored outline for its council: fails the run
 
     for rule in RULES:
         if (council and rule["council"] != council) or (only and rule["name"] not in only):
@@ -505,17 +514,19 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
         # Keying moves a row to the precinct layer, which serves it only inside its outline. If that outline was never
         # loaded (dcp_precinct_boundaries), the row would silently reach nobody, so FAIL CLOSED: write nothing and say
         # which ids are missing. Load the outline first, then re-run (Sol on the Leichhardt C5 rule, 2026-11-03).
-        if fp_ok and pending:
-            want = sorted({d for _, _, d, _ in pending})
-            cur.execute("SELECT DISTINCT precinct_id FROM dcp_precinct_boundaries WHERE precinct_id = ANY(%s)", (want,))
-            missing = sorted(set(want) - {r[0] for r in cur.fetchall()})
+        # Every key this rule derives (not only the pending ones), so a deleted outline is reported on a re-run too.
+        # Opt-in (`needs_stored_outline`): some councils' areas are matched by other means (City of Sydney via the
+        # Planning Portal layer), so a missing dcp_precinct_boundaries row is not an error for every rule.
+        derived_all = sorted({k for k in (_derive(rule["strategy"], r) for r in rows) if k is not None})
+        if derived_all and rule.get("needs_stored_outline"):
+            cur.execute(OUTLINE_SQL, (rule["council"], rule["council"], derived_all))
+            missing = sorted(set(derived_all) - {r[0] for r in cur.fetchall()})
             if missing:
                 fp_ok = False
                 msg = f"{rule['name']} NO OUTLINE for {missing}"
                 print(f"  WARNING {msg}")
                 print("     -> keys NOT written (fail-closed): load the outline, then re-run.")
-                if validate:
-                    validation_failures.append(msg)
+                outline_failures.append(msg)
 
         if apply and fp_ok:
             for row_id, current, derived, layer in pending:
@@ -527,6 +538,15 @@ def run(council: str | None, apply: bool, validate: bool, only: set[str] | None 
         print(f"  {rule['name']:<34} rows={len(rows):<5} new={r_new} changed={r_changed} "
               f"already-ok={r_ok} no-derivation={r_none} never-serve-skipped={r_never}{gate}")
         total_new += r_new; total_changed += r_changed; total_ok += r_ok; total_none += r_none
+
+    if outline_failures:
+        conn.rollback()
+        print()
+        print(f"OUTLINE CHECK FAILED -- {len(outline_failures)} rule(s) key an area with no stored outline; nothing written:")
+        for v in outline_failures:
+            print("   ", v)
+        conn.close()
+        return 1
 
     gate_backup = apply_gate_rules(cur, council, apply, only)
 
