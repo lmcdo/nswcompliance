@@ -88,7 +88,7 @@ def _git(*args: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "x").strip().splitlines()[0])
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--range", help="before..after")
     g.add_argument("--since", help='e.g. "7 days ago"')

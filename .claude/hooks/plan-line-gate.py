@@ -57,10 +57,10 @@ def _norm(p: str) -> str:
 def touched_pipeline(tool: str, ti: dict) -> list[str]:
     """Pipeline files this tool call would change."""
     if tool in ("Edit", "Write", "NotebookEdit"):
-        path = _norm(ti.get("file_path", ""))
+        path = _norm(ti.get("file_path") or "")
         return [p for p in PIPELINE if p in path]
     if tool in ("Bash", "PowerShell"):
-        cmd = _norm(ti.get("command", ""))
+        cmd = _norm(ti.get("command") or "")
         if not WRITES.search(cmd):
             return []
         return [p for p in PIPELINE if p in cmd]
@@ -68,7 +68,7 @@ def touched_pipeline(tool: str, ti: dict) -> list[str]:
 
 
 def touches_transcript(tool: str, ti: dict) -> bool:
-    text = ti.get("command", "") if tool in ("Bash", "PowerShell") else ti.get("file_path", "")
+    text = ti.get("command") or "" if tool in ("Bash", "PowerShell") else ti.get("file_path") or ""
     return bool(TRANSCRIPTS.search(text or ""))
 
 
@@ -89,7 +89,7 @@ def _text(e: dict) -> str:
     if isinstance(c, str):
         return c
     if isinstance(c, list):
-        return "\n".join(b.get("text", "") for b in c if b.get("type") == "text")
+        return "\n".join(b.get("text") or "" for b in c if b.get("type") == "text")
     return ""
 
 
@@ -97,7 +97,7 @@ def _reads(e: dict) -> list[str]:
     c = (e.get("message") or {}).get("content")
     if not isinstance(c, list):
         return []
-    return [_norm((b.get("input") or {}).get("file_path", "")) for b in c
+    return [_norm((b.get("input") or {}).get("file_path") or "") for b in c
             if b.get("type") == "tool_use" and b.get("name") == "Read"]
 
 
@@ -139,7 +139,7 @@ def plans_naming(files: list[str]) -> list[str]:
 
 def main() -> int:
     data = _payload()
-    tool, ti = data.get("tool_name", ""), data.get("tool_input") or {}
+    tool, ti = data.get("tool_name") or "", data.get("tool_input") or {}
     if touches_transcript(tool, ti):
         print("BLOCKED (plan-line-gate): commands and edits may not touch the session transcripts "
               "(.claude/projects/*.jsonl). The owner's answers live there.", file=sys.stderr)
@@ -147,7 +147,7 @@ def main() -> int:
     files = touched_pipeline(tool, ti)
     if not files:
         return 0
-    reason = verdict(data.get("transcript_path", ""))
+    reason = verdict(data.get("transcript_path") or "")
     if reason is None:
         return 0
     plans = plans_naming(files)

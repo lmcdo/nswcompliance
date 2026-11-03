@@ -108,3 +108,14 @@ def test_touching_the_transcript_is_blocked(tmp_path):
 def test_a_non_pipeline_edit_is_free(tmp_path):
     r = run(tmp_path, [], tool_input={"file_path": str(ROOT / "README.md")})
     assert r.returncode == 0
+
+
+def test_a_none_field_does_not_crash_the_gate_open(tmp_path):
+    """A crashed hook exits 1, which does NOT block. None in a field must still block."""
+    t = tmp_path / "t.jsonl"
+    t.write_text("")
+    payload = {"tool_name": "Bash", "transcript_path": None,
+               "tool_input": {"command": "sed -i 's/a/b/' scripts/dcp_extract_changed.py", "file_path": None}}
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30)
+    assert r.returncode == 2, r.stderr

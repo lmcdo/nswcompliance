@@ -35,7 +35,7 @@ def has_plan_line(body: str | None) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "x").strip().splitlines()[0])
     ap.add_argument("--base", required=True)
     a = ap.parse_args(argv)
     files = subprocess.run(["git", "diff", "--name-only", f"{a.base}..HEAD"], capture_output=True,
