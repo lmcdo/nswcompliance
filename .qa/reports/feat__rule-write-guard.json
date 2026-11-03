@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
- "commit_hash": "a850121c",
+ "commit_hash": "f7128f25",
  "files": [
   "migrations/121_rule_write_guard.sql",
   "scripts/pipeline_run.py",
@@ -95,6 +95,41 @@
    "mitigated": false,
    "how": "by design: tracked code is reviewed, and the trigger logs it with run_id NULL; enforce mode will refuse it after the record week",
    "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
+  },
+  {
+   "scenario": "an untagged script deletes or truncates rule rows instead of updating them",
+   "what_happens": "the rule disappears from served results with no log line",
+   "mitigated": true,
+   "how": "Sol finding 1: DELETE row trigger logs by OLD and TRUNCATE statement trigger; both refused in enforce",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k delete (CI)"
+  },
+  {
+   "scenario": "a scratchpad writer is the second python command in a chained shell line",
+   "what_happens": "the hook read only the first python and allowed the writer",
+   "mitigated": true,
+   "how": "Sol finding 2: split on ; && || | and newline, read every invocation",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k chain"
+  },
+  {
+   "scenario": "the migration ships in record mode so an untagged release still succeeds",
+   "what_happens": "a bad write is logged with run_id NULL but not stopped for the record week",
+   "mitigated": false,
+   "how": "VERDICT on Sol finding 3: kept. Enforcing before measuring would break unknown jobs among 137 writer files; record mode is no weaker than today; the hook blocks the session route that made batches 1-5. Enforce after rule_write_log shows 0 untagged pipeline writes for 7 days",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL AND at > now() - interval '7 days'"
+  },
+  {
+   "scenario": "an untagged writer rewrites plain_summary that users read",
+   "what_happens": "user-facing wording changes with no log and no refusal",
+   "mitigated": true,
+   "how": "Sol finding 4: plain_summary added to the protected columns",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k plain_summary (CI)"
+  },
+  {
+   "scenario": "tag leaves a transaction open and the extractor then sets conn.autocommit",
+   "what_happens": "psycopg2 raises and the extract run dies at start-up",
+   "mitigated": true,
+   "how": "Sol finding 5: tag commits the transaction its own SELECT opened",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k autocommit (CI)"
   }
  ],
  "post_merge": {
