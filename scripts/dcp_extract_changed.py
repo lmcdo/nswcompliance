@@ -5968,6 +5968,8 @@ def run_fidelity_gate(
 #: then takes about as long as its longest chapter, not the sum. Live commits stay one at a
 #: time. 2, per the long-jobs rule (memory: feedback-long-jobs-must-print-progress).
 REVIEW_PARALLEL = max(1, int(os.getenv("DCP_EXTRACT_PARALLEL", "2")))
+#: How often the parent wakes to see whether a worker has finished or died (not a network timeout).
+WORKER_POLL_SECONDS = 60
 
 
 class _PrefixedStdout:
@@ -6085,7 +6087,7 @@ def run_chapters(chapters, s3, conn, args, s3_factory=None) -> list[tuple[bool, 
     # large review payload from blocking a worker on a full pipe.
     open_readers = list(readers)
     while open_readers:
-        for r in wait(open_readers, timeout=60):
+        for r in wait(open_readers, timeout=WORKER_POLL_SECONDS):
             try:
                 idx, out = r.recv()
                 got[idx] = out

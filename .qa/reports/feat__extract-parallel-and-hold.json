@@ -1,14 +1,17 @@
 {
  "tier": "standard",
  "justification": "Two speed fixes to the daily DCP read: stop re-reading a chapter refused twice on an unchanged PDF, and read two chapters at once in review mode",
- "commit_hash": "50dd89f0",
+ "commit_hash": "be834a96",
  "files": [
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".claude/dq_checks.json",
+  ".github/workflows/gates.yml",
   "migrations/122_chapter_extract_refusals.sql",
   "scripts/dcp_extract_changed.py",
-  "tests/test_extract_parallel_and_hold.py",
-  "tests/test_extract_refusal_db.py",
+  "tests/test_connection_outlives_the_pdf_work.py",
   "tests/test_dcp_repealed_source_path.py",
-  ".github/workflows/gates.yml"
+  "tests/test_extract_parallel_and_hold.py",
+  "tests/test_extract_refusal_db.py"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_extract_parallel_and_hold.py (Linux) and tests/test_extract_refusal_db.py (CI isolated DB)",
