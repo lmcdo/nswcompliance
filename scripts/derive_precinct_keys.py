@@ -422,7 +422,7 @@ def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -
 
 #: Outline gate: the rule's own council (former_council, else lga, slugged as the rules spell councils) and a real shape.
 OUTLINE_SQL = (
-    "SELECT DISTINCT precinct_id FROM dcp_precinct_boundaries WHERE boundary IS NOT NULL"
+    "SELECT DISTINCT precinct_id FROM dcp_precinct_boundaries WHERE boundary IS NOT NULL AND NOT ST_IsEmpty(boundary) AND ST_Area(boundary) > 0"
     " AND (lower(regexp_replace(coalesce(former_council, ''), '[^A-Za-z0-9]+', '_', 'g')) = %s"
     "      OR lower(regexp_replace(coalesce(lga, ''), '[^A-Za-z0-9]+', '_', 'g')) = %s)"
     " AND precinct_id = ANY(%s)")
