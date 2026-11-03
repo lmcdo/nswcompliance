@@ -699,6 +699,30 @@
         "evidence": "Section 6 Earlwood Local Centre. Rows p17-19."
       }
     ],
+    "EAST HILLS": [
+      {
+        "area_id": "cb-2-4-near-pipeline-hazard-area",
+        "council": "canterbury_bankstown",
+        "chapter_key": "chapter-2-4-pipeline-corridors",
+        "title": "Chapter 2.4 Pipeline Corridors: land next to the Moomba to Sydney Ethane Pipeline",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 7,
+        "suburbs": [
+          "EAST HILLS",
+          "PADSTOW",
+          "PANANIA",
+          "REVESBY"
+        ],
+        "postcodes": [],
+        "reason_code": "NEAR_MAPPED_AREA",
+        "applies_to_quote": "development on land adjacent to the pipeline corridor",
+        "applies_to_page": 4,
+        "evidence": "Rules are shown on lots inside the LEP 2023 Hazard Area Map's Activity Hazard Areas 1 and 2 (outline '2.4'). The chapter also speaks of land 'adjacent to the pipeline corridor' (p4), which the map may not fully cover. Suburbs measured 2026-11-03 from the NSW Administrative Boundaries suburb layer against the map plus a 150 m band: PADSTOW (35% of map, 30% of band), REVESBY (32%, 26%), PANANIA (23%, 27%), EAST HILLS (10%, 17%)."
+      }
+    ],
     "GREENACRE": [
       {
         "area_id": "cb-8-3-s5-139-159-hume-hwy",
@@ -1004,6 +1028,54 @@
         "evidence": "Section 9 Narwee Village Centre. Rows p23-25."
       }
     ],
+    "PADSTOW": [
+      {
+        "area_id": "cb-2-4-near-pipeline-hazard-area",
+        "council": "canterbury_bankstown",
+        "chapter_key": "chapter-2-4-pipeline-corridors",
+        "title": "Chapter 2.4 Pipeline Corridors: land next to the Moomba to Sydney Ethane Pipeline",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 7,
+        "suburbs": [
+          "EAST HILLS",
+          "PADSTOW",
+          "PANANIA",
+          "REVESBY"
+        ],
+        "postcodes": [],
+        "reason_code": "NEAR_MAPPED_AREA",
+        "applies_to_quote": "development on land adjacent to the pipeline corridor",
+        "applies_to_page": 4,
+        "evidence": "Rules are shown on lots inside the LEP 2023 Hazard Area Map's Activity Hazard Areas 1 and 2 (outline '2.4'). The chapter also speaks of land 'adjacent to the pipeline corridor' (p4), which the map may not fully cover. Suburbs measured 2026-11-03 from the NSW Administrative Boundaries suburb layer against the map plus a 150 m band: PADSTOW (35% of map, 30% of band), REVESBY (32%, 26%), PANANIA (23%, 27%), EAST HILLS (10%, 17%)."
+      }
+    ],
+    "PANANIA": [
+      {
+        "area_id": "cb-2-4-near-pipeline-hazard-area",
+        "council": "canterbury_bankstown",
+        "chapter_key": "chapter-2-4-pipeline-corridors",
+        "title": "Chapter 2.4 Pipeline Corridors: land next to the Moomba to Sydney Ethane Pipeline",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 7,
+        "suburbs": [
+          "EAST HILLS",
+          "PADSTOW",
+          "PANANIA",
+          "REVESBY"
+        ],
+        "postcodes": [],
+        "reason_code": "NEAR_MAPPED_AREA",
+        "applies_to_quote": "development on land adjacent to the pipeline corridor",
+        "applies_to_page": 4,
+        "evidence": "Rules are shown on lots inside the LEP 2023 Hazard Area Map's Activity Hazard Areas 1 and 2 (outline '2.4'). The chapter also speaks of land 'adjacent to the pipeline corridor' (p4), which the map may not fully cover. Suburbs measured 2026-11-03 from the NSW Administrative Boundaries suburb layer against the map plus a 150 m band: PADSTOW (35% of map, 30% of band), REVESBY (32%, 26%), PANANIA (23%, 27%), EAST HILLS (10%, 17%)."
+      }
+    ],
     "PICNIC POINT": [
       {
         "area_id": "cb-2-2-carinya-road-flood",
@@ -1240,6 +1312,30 @@
         "applies_to_quote": "Section 10 applies to land shown in Figure 10a.",
         "applies_to_page": 26,
         "evidence": "Section 10 Punchbowl Village Centre. Rows p26-31."
+      }
+    ],
+    "REVESBY": [
+      {
+        "area_id": "cb-2-4-near-pipeline-hazard-area",
+        "council": "canterbury_bankstown",
+        "chapter_key": "chapter-2-4-pipeline-corridors",
+        "title": "Chapter 2.4 Pipeline Corridors: land next to the Moomba to Sydney Ethane Pipeline",
+        "row_selector": {
+          "pdf_page_from": 1,
+          "pdf_page_to": 6
+        },
+        "rows_withheld": 7,
+        "suburbs": [
+          "EAST HILLS",
+          "PADSTOW",
+          "PANANIA",
+          "REVESBY"
+        ],
+        "postcodes": [],
+        "reason_code": "NEAR_MAPPED_AREA",
+        "applies_to_quote": "development on land adjacent to the pipeline corridor",
+        "applies_to_page": 4,
+        "evidence": "Rules are shown on lots inside the LEP 2023 Hazard Area Map's Activity Hazard Areas 1 and 2 (outline '2.4'). The chapter also speaks of land 'adjacent to the pipeline corridor' (p4), which the map may not fully cover. Suburbs measured 2026-11-03 from the NSW Administrative Boundaries suburb layer against the map plus a 150 m band: PADSTOW (35% of map, 30% of band), REVESBY (32%, 26%), PANANIA (23%, 27%), EAST HILLS (10%, 17%)."
       }
     ],
     "ROSELANDS": [

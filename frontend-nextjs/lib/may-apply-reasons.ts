@@ -10,7 +10,12 @@ export const MAY_APPLY_REASONS: Record<string, string> = {
   MAP_NOT_PUBLISHED: "The council's plan refers to a map of this area, but the map is not in the published plan.",
   DRAWING_NOT_MATCHED: 'The plan shows this area only on a drawing we could not match to real streets.',
   WORDS_ONLY: 'The plan describes this area in words only, with no map.',
-  SOUND_AREA_MAP: 'The plan shows this area only on its noise (sound category) maps, which we have not mapped.',
+  SOUND_AREA_MAP:
+    "We know where the entertainment precinct itself is, but the plan's noise (sound category) areas also cover " +
+    'streets around it, which we have not mapped.',
+  NEAR_MAPPED_AREA:
+    "The plan's rules cover land next to an area on the council's official map. Your property is close to that " +
+    'area but outside it, so check the map to see whether it counts as next to it.',
   PART_MAPPED: 'We check this from the map for most land, but not for the part the plan describes here.',
   NOT_YET_MAPPED: 'The plan names this area, but we have not drawn it on the map yet.',
   LOT_LIST_UNPROVEN: 'The plan lists the lots in this area, but we could not match that list to the official lot records.',
