@@ -55,6 +55,10 @@ from scripts.dcp_supersede_guard import enforce as enforce_section_loss  # noqa:
 from scripts.dcp_supersede_guard import snapshot as section_snapshot  # noqa: E402
 from scripts.dcp_supersede_guard import enforce_fidelity, enforce_legibility  # noqa: E402
 from scripts import dcp_area_link_guard as area_links  # noqa: E402
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 
 def find_committable_chapters(cur) -> list[dict]:
@@ -473,6 +477,7 @@ def main() -> int:
     allowed_area = frozenset(args.allow_area_link_loss)
 
     conn = psycopg2.connect(dx.DATABASE_URL)
+    pipeline_run.tag(conn, "dcp_commit_approved")
     conn.autocommit = False
     cur = conn.cursor()
 

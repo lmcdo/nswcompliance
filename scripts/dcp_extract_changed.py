@@ -60,6 +60,10 @@ from scripts.dcp_supersede_guard import snapshot as section_snapshot
 from scripts import dcp_area_link_guard as area_links
 # reviewed rules that must stay switched off (data/chapter_scope/never_serve.json)
 from scripts import never_serve
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -4476,9 +4480,11 @@ def revive(conn):
         except Exception:
             pass
         print("    [db] connection did not survive the PDF work -- reconnecting")
-        return psycopg2.connect(
+        conn = psycopg2.connect(
             DATABASE_URL, keepalives=1, keepalives_idle=30,
             keepalives_interval=10, keepalives_count=5)
+        pipeline_run.tag(conn, "dcp_extract_changed")
+        return conn
 
 
 def extract_pdf_isolated(pdf_path, document_id, council, page_ranges,
@@ -5926,6 +5932,7 @@ def main() -> None:
     conn = psycopg2.connect(
         DATABASE_URL, keepalives=1, keepalives_idle=30,
         keepalives_interval=10, keepalives_count=5)
+    pipeline_run.tag(conn, "dcp_extract_changed")
     conn.autocommit = False
 
     print("=" * 60)

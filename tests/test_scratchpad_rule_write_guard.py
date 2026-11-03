@@ -1,0 +1,203 @@
+"""The scratchpad rule-write hook, driven the way Claude Code drives it (JSON on stdin).
+
+The block case is the real line from write_batch1.py (2026-10-29), the script whose 65
+rows were rolled back on 2026-11-03.
+"""
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+HOOK = ROOT / ".claude" / "hooks" / "scratchpad-rule-write-guard.py"
+
+BATCH1 = ("import psycopg2\ncur = None\n"
+          "cur.execute('update dcp_setback_controls set source_text=%s where id=%s and is_current',"
+          "(r['new_quote'],int(r['id'])))\n")
+READ_ONLY = "cur.execute(\"select count(*) from dcp_setback_controls where is_current\")\n"
+
+
+def _run(command: str, cwd: Path) -> subprocess.CompletedProcess:
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)}
+    return subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                          capture_output=True, timeout=30,
+                          env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT)})
+
+
+@pytest.fixture()
+def scratch(tmp_path):
+    return tmp_path
+
+
+def test_the_real_batch1_writer_from_a_scratchpad_is_blocked(scratch):
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    r = _run(f"python {f}", scratch)
+    assert r.returncode == 2 and "not a tracked, unchanged repo script" in r.stderr
+
+
+def test_a_read_only_scratchpad_script_is_allowed(scratch):
+    f = scratch / "measure.py"
+    f.write_text(READ_ONLY, encoding="utf-8")
+    assert _run(f'python "{f}" --dry', scratch).returncode == 0
+
+
+def test_inline_heredoc_write_is_blocked(scratch):
+    cmd = "python - <<'EOF'\ncur.execute(\"UPDATE regulatory_provisions SET council_quote='x' WHERE id=1\")\nEOF"
+    assert _run(cmd, scratch).returncode == 2
+
+
+def test_insert_and_delete_and_registry_are_caught(scratch):
+    for sql in ("INSERT INTO dcp_setback_controls (lga) VALUES ('x')",
+                "delete from public.regulatory_provisions where id=1",
+                "update dcp_chapter_registry set page_start=146"):
+        f = scratch / "w.py"
+        f.write_text(f'cur.execute("{sql}")\n', encoding="utf-8")
+        assert _run(f"python3 {f}", scratch).returncode == 2, sql
+
+
+def test_a_tracked_pipeline_script_is_allowed():
+    assert _run("python scripts/dcp_extract_changed.py --review --council x", ROOT).returncode == 0
+
+
+def test_grepping_for_the_sql_while_running_unrelated_python_is_allowed(scratch):
+    f = scratch / "measure.py"
+    f.write_text(READ_ONLY, encoding="utf-8")
+    cmd = f"grep -n 'UPDATE dcp_setback_controls' scripts/*.py; python {f}"
+    assert _run(cmd, scratch).returncode == 0
+
+
+def test_the_override_is_allowed_and_logged(scratch):
+    f = scratch / "restore.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    log = ROOT / ".claude" / ".rule-write-overrides.log"
+    before = log.read_text(encoding="utf-8") if log.exists() else ""
+    try:
+        r = _run(f'RULE_WRITE_OK="test restore" python {f}', scratch)
+        assert r.returncode == 0
+        assert "test restore" in log.read_text(encoding="utf-8")[len(before):]
+    finally:
+        if before:
+            log.write_text(before, encoding="utf-8")
+        elif log.exists():
+            log.unlink()
+
+
+def test_git_bash_drive_paths_become_windows_paths():
+    """/c/Users/... must resolve to C:/Users/... or the hook cannot find the script.
+
+    Tests the conversion itself, so it runs (and can fail) on Linux CI as well.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("rule_write_hook", HOOK)
+    hook = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hook)
+    got = hook._resolve("/c/Users/x/scratchpad/w.py", Path("."))
+    assert str(got).replace("\\", "/") == "C:/Users/x/scratchpad/w.py"
+
+
+def test_the_powershell_tool_is_checked_too(scratch):
+    """qa-verify: replaces a test that could not fail. PowerShell runs python as well."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    payload = {"tool_name": "PowerShell", "tool_input": {"command": f"python {f}"}, "cwd": str(scratch)}
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30,
+                       env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT)})
+    assert r.returncode == 2
+    payload["tool_name"] = "Edit"                 # a tool that runs nothing is not checked
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30,
+                       env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT)})
+    assert r.returncode == 0
+
+
+def test_a_writer_second_in_a_chain_is_blocked(scratch):
+    """Sol review 2026-11-03: only the first python of a chain was read."""
+    ok = scratch / "read.py"
+    ok.write_text(READ_ONLY, encoding="utf-8")
+    bad = scratch / "write_batch1.py"
+    bad.write_text(BATCH1, encoding="utf-8")
+    for sep in ("; ", " && ", "\n", " || "):
+        assert _run(f"python {ok}{sep}python {bad}", scratch).returncode == 2, repr(sep)
+
+
+def test_options_that_take_a_value_do_not_hide_the_script(scratch):
+    """Sol review 2026-11-03: `python -W ignore x.py` read `ignore` as the script."""
+    bad = scratch / "write_batch1.py"
+    bad.write_text(BATCH1, encoding="utf-8")
+    for opts in ("-W ignore", "-X dev", "-u -W ignore::DeprecationWarning", "-I"):
+        assert _run(f"python {opts} {bad}", scratch).returncode == 2, opts
+
+
+def test_a_writer_made_and_run_in_one_command_is_blocked(scratch):
+    """Sol review round 3: the file did not exist yet when the hook looked."""
+    f = scratch / "new_writer.py"
+    cmd = f"printf 'cur.execute(\"UPDATE dcp_setback_controls SET source_text=1\")' > {f} && python {f}"
+    assert _run(cmd, scratch).returncode == 2
+
+
+def test_a_script_run_through_its_shebang_is_read(scratch):
+    """Sol review round 3: `./write_batch.py` has no `python` in the command."""
+    f = scratch / "write_batch1.py"
+    f.write_text("#!/usr/bin/env python3\n" + BATCH1, encoding="utf-8")
+    assert _run(f"{f} --apply", scratch).returncode == 2
+
+
+def test_an_uncommitted_edit_to_a_tracked_script_is_read(tmp_path):
+    """Sol review round 3: tracked was trusted even with an unreviewed edit."""
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    run = lambda *a: subprocess.run(a, cwd=repo, capture_output=True, text=True, check=True)
+    run("git", "init", "-q"); run("git", "config", "user.email", "t@t"); run("git", "config", "user.name", "t")
+    util = repo / "scripts" / "util.py"
+    util.write_text(READ_ONLY, encoding="utf-8")
+    run("git", "add", "."); run("git", "commit", "-qm", "x")
+    hook = lambda: subprocess.run(
+        [sys.executable, str(HOOK)], text=True, capture_output=True, timeout=30,
+        input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "python scripts/util.py"},
+                          "cwd": str(repo)}),
+        env={**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(repo)})
+    assert hook().returncode == 0                 # committed, read-only
+    util.write_text(READ_ONLY + BATCH1, encoding="utf-8")
+    assert hook().returncode == 2                 # same file, unreviewed write added
+
+
+def test_options_before_dash_c_and_env_before_shebang_are_seen(scratch):
+    """Sol review round 5."""
+    assert _run('python -u -c "cur.execute(\'UPDATE dcp_setback_controls SET source_text=1\')"',
+                scratch).returncode == 2
+    f = scratch / "write_batch1.py"
+    f.write_text("#!/usr/bin/env python3\n" + BATCH1, encoding="utf-8")
+    assert _run(f"DATABASE_URL=postgresql://x {f} --apply", scratch).returncode == 2
+
+
+def test_python_by_full_path_and_quoted_table_names_are_seen(scratch):
+    """Sol review round 6: venv/absolute interpreters and "quoted" identifiers."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    for interp in ("/usr/bin/python3", r"C:\venv\Scripts\python.exe", '"C:\Program Files\Python312\python.exe"',
+                   "python3.11"):
+        assert _run(f"{interp} {f}", scratch).returncode == 2, interp
+    q = scratch / "q.py"
+    q.write_text('cur.execute(\'UPDATE "public"."dcp_setback_controls" SET source_text=1\')\n', encoding="utf-8")
+    assert _run(f"python {q}", scratch).returncode == 2
+
+
+def test_git_unavailable_still_blocks_the_writer_rather_than_crashing_open(scratch):
+    """qa-break: a crashed hook exits 1, which does NOT block -- so it must not crash."""
+    f = scratch / "write_batch1.py"
+    f.write_text(BATCH1, encoding="utf-8")
+    payload = {"tool_name": "Bash", "tool_input": {"command": f"python {f}"}, "cwd": str(scratch)}
+    env = {**__import__("os").environ, "CLAUDE_PROJECT_DIR": str(ROOT), "PATH": str(scratch)}  # no git
+    r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
+                       capture_output=True, timeout=30, env=env)
+    assert r.returncode == 2, r.stderr
+
+
+def test_a_versioned_interpreter_running_inline_code_is_blocked(scratch):
+    """Sol review after qa-verify: python3.11 -c was not seen as inline."""
+    assert _run('python3.11 -c "cur.execute(\'UPDATE dcp_setback_controls SET source_text=1\')"',
+                scratch).returncode == 2

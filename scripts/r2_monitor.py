@@ -54,6 +54,10 @@ from hub_scrapers import HUB_SCRAPERS, HubScrapeError
 # "not checked", so a missing module must fail loudly here rather than run blind.
 from verifyops_classify import classify_pending
 from verifyops_record import Recorder, decide_fetch, is_spot_check
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 
 class WAFBlockError(Exception):
@@ -1777,6 +1781,7 @@ def main():
         region_name="auto",
     )
     conn = psycopg2.connect(DATABASE_URL)
+    pipeline_run.tag(conn, "r2_monitor")
     conn.autocommit = False
 
     print("=" * 60)

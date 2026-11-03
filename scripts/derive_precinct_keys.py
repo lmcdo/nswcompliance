@@ -55,6 +55,10 @@ import psycopg2
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gate_rules import EXTRA_KEY_RULES, apply_gate_rules  # noqa: E402
 import never_serve  # noqa: E402
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 REPO = Path(__file__).resolve().parent.parent
 DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
@@ -422,6 +426,7 @@ def _fingerprint_reasons(fp: dict, pdf_pages: list, n_none: int, n_total: int) -
 
 def run(council: str | None, apply: bool, validate: bool, only: set[str] | None = None) -> int:
     conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
+    pipeline_run.tag(conn, "derive_precinct_keys")
     conn.autocommit = not apply
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '60s'")

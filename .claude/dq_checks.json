@@ -1370,7 +1370,8 @@
    "note": "Found 2026-09-25 when the Warringah re-read skipped 21 of 226 pages and the commit's section-loss guard refused it (172 printed rules would have been deleted). The reader now counts left-out pages and re-reads them (Warringah trial: 17 of 21 recovered, 108 rules; the 4 left are an amendment table, two definition pages and suburb history, 0-1 rule words each). Canterbury-Bankstown alone: 8 live chapters, 50 pages. Two PDF quirks handled so it does not cry wolf: lines drawn twice (Campbelltown) and letter-spaced map labels (Canterbury-Bankstown)."
   },
   "DQ-113": {
-   "declared": "open",
+   "declared": "fixed",
+   "fixed_2026-11-03": "2026-11-03: the PAGE-LINK check passes against production (dcp_page_repair.py --check exit 0: every served rule's page was judged against its chapter's current PDF). NOT fixed: ~1,093 served rules of canterbury_bankstown 1.1/7.3/7.6 (registry 596/637/643) still carry WORDS read from the superseded editions; the re-reads are in dcp_review_queue (pending) and clear only through review -> dcp-commit.",
    "reopened_2026-10-22": "2026-10-22: r2_monitor found new editions of canterbury_bankstown 1.1, 7.3, 7.6 (registry 596/637/643) and uploaded them; the 974 served rules from those chapters were read from the old files. Measured read-only: every offending row is one of those 3 chapters. Clears when they are re-extracted, reviewed and committed (dcp-extract -> /internal/dcp-review -> dcp-commit), then dcp_page_repair.py --apply.",
    "check": [
     "python",

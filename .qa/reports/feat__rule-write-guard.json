@@ -1,0 +1,249 @@
+{
+ "tier": "critical",
+ "justification": "Adds a production trigger on the three rule tables that logs every protected change with its pipeline run, tags the eleven pipeline writers, and blocks scratchpad scripts that write rule tables",
+ "commit_hash": "019ff333",
+ "files": [
+  ".claude/DATA_QUALITY_TRACKER.md",
+  ".claude/dq_checks.json",
+  ".claude/hooks/scratchpad-rule-write-guard.py",
+  ".claude/settings.json",
+  ".github/workflows/gates.yml",
+  "Dockerfile.monitors",
+  "migrations/121_rule_write_guard.sql",
+  "railway.alerts.toml",
+  "railway.dcp-commit.toml",
+  "railway.dcp-extract-all.toml",
+  "railway.dcp-extract.toml",
+  "railway.dcp-monitor.toml",
+  "railway.monitors.toml",
+  "scripts/add_new_chapter.py",
+  "scripts/council_quote_db.py",
+  "scripts/dcp_area_link_guard.py",
+  "scripts/dcp_citation_status.py",
+  "scripts/dcp_commit_approved.py",
+  "scripts/dcp_extract_changed.py",
+  "scripts/dcp_page_repair.py",
+  "scripts/dcp_setback_citation_status.py",
+  "scripts/derive_precinct_keys.py",
+  "scripts/pipeline_run.py",
+  "scripts/r2_monitor.py",
+  "scripts/verifyops_classify.py",
+  "tests/test_hooks_not_silently_dead.py",
+  "tests/test_pipeline_run.py",
+  "tests/test_rule_write_guard_db.py",
+  "tests/test_scratchpad_rule_write_guard.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_rule_write_guard_db.py tests/test_scratchpad_rule_write_guard.py (DB tests in CI job drawdown-verify-write-path, isolated Postgres)",
+  "fails_when": "an untagged UPDATE of source_text or a self-stamped verbatim release succeeds in enforce mode, or a real batch writer script is allowed by the hook",
+  "observed_red": "before the posix=False fix, test_the_real_batch1_writer_from_a_scratchpad_is_blocked failed with assert (0 == 2): the hook allowed C:\\Users\\...\\the batch1 writer because shlex posix mode stripped the backslashes"
+ },
+ "pre_impl": {
+  "existing_data": "dcp_setback_controls 1273 rows, dcp_chapter_registry 822, regulatory_provisions 55k; trigger dcp_setback_hold_unproven_quote trusts the writer-sent quote_status; all connections are the postgres superuser",
+  "assumption_mismatch": "PGOPTIONS would have tagged every connection in one place, but the Supabase pooler drops startup options (measured: current_setting returned None), so each connect site tags itself",
+  "new_vs_existing": "adds one trigger function and two tables; reuses the existing isolated Postgres CI job and the existing hook registration and hook-health test",
+  "external_source_error": "if set_config fails the connect site raises and the pipeline run stops before any write, which is loud rather than an untagged write",
+  "frontend_type": "none: no API or UI reads rule_write_log or rule_write_guard in this change",
+  "user_failure_mode": "in record mode nothing is refused, so a missed writer shows up as run_id IS NULL rows in rule_write_log rather than as a broken job"
+ },
+ "functions": [
+  {
+   "name": "run_id",
+   "file_line": "scripts/pipeline_run.py:36",
+   "input": "the pipeline script name as given by the calling script",
+   "output": "a run id made of script name, twelve-character git sha and a twelve-character random run part",
+   "if_none": "a blank or None script name raises ValueError so no run is ever logged under an empty name"
+  },
+  {
+   "name": "tag",
+   "file_line": "scripts/pipeline_run.py:46",
+   "input": "an open psycopg2 connection object and the name of the calling pipeline script",
+   "output": "the run id after setting app.pipeline_run and application_name on that database session",
+   "if_none": "a connection that is not psycopg2 gets no SQL at all and the run id is still returned to the caller"
+  },
+  {
+   "name": "_git_sha",
+   "file_line": "scripts/pipeline_run.py:21",
+   "input": "nothing beyond the environment and the checkout this file sits in",
+   "output": "the first twelve characters of the deployed or checked-out git commit hash",
+   "if_none": "with no Railway variable and no git it returns unknown and tag prints a warning on stderr"
+  },
+  {
+   "name": "verdict",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:119",
+   "input": "the shell command text with its working directory and the repository root path",
+   "output": "None to let the command run, or the reason string that makes the hook block it",
+   "if_none": "a command that runs no python and names no .py script returns None without reading any file"
+  },
+  {
+   "name": "_tracked",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:62",
+   "input": "the resolved script path and the repository root used for git commands",
+   "output": "True only when git says the file is tracked and has no uncommitted change",
+   "if_none": "git missing, hung or failing returns False so the file is read rather than trusted"
+  },
+  {
+   "name": "_scripts",
+   "file_line": ".claude/hooks/scratchpad-rule-write-guard.py:88",
+   "input": "the full shell command, possibly several commands joined by shell separators",
+   "output": "every .py path that any python invocation or shebang run in the command names",
+   "if_none": "a command with no python and no leading .py word returns an empty list of scripts"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "scratchpad script UPDATEs source_text directly, as batches 1-5 did",
+   "what_happens": "the rule text changes with no run behind it",
+   "mitigated": true,
+   "how": "hook blocks the run; in enforce mode the trigger refuses it; in record mode it is logged with run_id NULL",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k scratchpad (CI) and tests/test_scratchpad_rule_write_guard.py -k batch1"
+  },
+  {
+   "scenario": "script stamps quote_status verbatim and needs_review false on its own row",
+   "what_happens": "migration 120 trusts the stamp and the row is served",
+   "mitigated": true,
+   "how": "enforce mode refuses the change with no run",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k stamping"
+  },
+  {
+   "scenario": "extractor reconnects mid-run or commit job starts council_quote as a child",
+   "what_happens": "the second connection would carry a different or no run id",
+   "mitigated": true,
+   "how": "tag reuses PIPELINE_RUN_ID from the environment for the whole process tree",
+   "repro": "python -c \"import sys;sys.path.insert(0,'scripts');import pipeline_run,os;print(pipeline_run.tag(object(),'a')==pipeline_run.tag(object(),'b'))\""
+  },
+  {
+   "scenario": "a script sets app.pipeline_run to an empty string before writing",
+   "what_happens": "an empty tag would count as a tagged pipeline write and pass",
+   "mitigated": true,
+   "how": "nullif treats empty as no run",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k empty_tag"
+  },
+  {
+   "scenario": "the scratchpad script path is given with Windows backslashes or a git-bash drive",
+   "what_happens": "the hook could not find the file and allowed it",
+   "mitigated": true,
+   "how": "shlex posix=False plus git-bash drive path conversion; tested on 8 real scripts",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k git_bash"
+  },
+  {
+   "scenario": "a tracked repo script that is not pipeline writes the tables",
+   "what_happens": "the hook allows it and the write lands with no run named",
+   "mitigated": false,
+   "how": "by design: tracked code is reviewed, and the trigger logs it with run_id NULL; enforce mode will refuse it after the record week",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
+  },
+  {
+   "scenario": "an untagged script deletes or truncates rule rows instead of updating them",
+   "what_happens": "the rule disappears from served results with no log line",
+   "mitigated": true,
+   "how": "Sol finding 1: DELETE row trigger logs by OLD and TRUNCATE statement trigger; both refused in enforce",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k delete (CI)"
+  },
+  {
+   "scenario": "a scratchpad writer is the second python command in a chained shell line",
+   "what_happens": "the hook read only the first python and allowed the writer",
+   "mitigated": true,
+   "how": "Sol finding 2: split on ; && || | and newline, read every invocation",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k chain"
+  },
+  {
+   "scenario": "the migration ships in record mode so an untagged release still succeeds",
+   "what_happens": "a bad write is logged with run_id NULL but not stopped for the record week",
+   "mitigated": false,
+   "how": "VERDICT on Sol finding 3: kept. Enforcing before measuring would break unknown jobs among 137 writer files; record mode is no weaker than today; the hook blocks the session route that made batches 1-5. Enforce after rule_write_log shows 0 untagged pipeline writes for 7 days",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL AND at > now() - interval '7 days'"
+  },
+  {
+   "scenario": "an untagged writer rewrites plain_summary that users read",
+   "what_happens": "user-facing wording changes with no log and no refusal",
+   "mitigated": true,
+   "how": "Sol finding 4: plain_summary added to the protected columns",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k plain_summary (CI)"
+  },
+  {
+   "scenario": "tag leaves a transaction open and the extractor then sets conn.autocommit",
+   "what_happens": "psycopg2 raises and the extract run dies at start-up",
+   "mitigated": true,
+   "how": "Sol finding 5: tag commits the transaction its own SELECT opened",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k autocommit (CI)"
+  },
+  {
+   "scenario": "the singleton rule_write_guard row is deleted after enforce is switched on",
+   "what_happens": "the mode read as NULL and untagged writes went through unrefused",
+   "mitigated": true,
+   "how": "Sol round 2: coalesce(mode,'enforce') so a missing row fails closed",
+   "repro": "pytest tests/test_rule_write_guard_db.py -k missing_mode (CI)"
+  },
+  {
+   "scenario": "python is called with an option that takes a value such as -W ignore",
+   "what_happens": "the hook took the option value as the script and allowed the writer",
+   "mitigated": true,
+   "how": "Sol round 2: every .py word in the python command is read",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options"
+  },
+  {
+   "scenario": "a tracked repo script is edited to add a rule-table write and run before commit",
+   "what_happens": "the hook trusted any tracked path and the unreviewed write ran",
+   "mitigated": true,
+   "how": "Sol round 3: tracked is trusted only when git diff HEAD shows no change",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k uncommitted"
+  },
+  {
+   "scenario": "the writer file is created and run inside the same shell command",
+   "what_happens": "the file did not exist when the hook looked so it was allowed",
+   "mitigated": true,
+   "how": "Sol round 3: a named .py that does not exist yet blocks when the command carries rule-table SQL",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k made_and_run"
+  },
+  {
+   "scenario": "a scratchpad writer is run directly through its shebang line without python",
+   "what_happens": "no python word in the command so the hook did not look",
+   "mitigated": true,
+   "how": "Sol round 3: a segment that starts with a .py path is read like a python run",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k shebang"
+  },
+  {
+   "scenario": "a writer is hidden on purpose, base64-decoded or loaded with exec(open(...)) inside python -c",
+   "what_happens": "the hook sees no SQL and no readable script and allows it",
+   "mitigated": false,
+   "how": "VERDICT on Sol round 4 findings 2-3: out of scope. The hook catches accidental scratchpad writes (all 8 real ones blocked); it reads commands and cannot defeat deliberate obfuscation. The control for that is migration 121 in enforce mode, which refuses any untagged write whatever produced it. Round 4 finding 1 is the record-mode decision already recorded.",
+   "repro": "SELECT count(*) FROM rule_write_log WHERE run_id IS NULL"
+  },
+  {
+   "scenario": "python gets an option before -c, or VAR=x comes before a shebang script",
+   "what_happens": "the inline or shebang check did not match and the writer ran",
+   "mitigated": true,
+   "how": "Sol round 5: options allowed before -c and -, VAR=x words skipped",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k options_before"
+  },
+  {
+   "scenario": "python is called by a venv or absolute path, or the SQL quotes the table name",
+   "what_happens": "the interpreter or the table did not match and the writer ran",
+   "mitigated": true,
+   "how": "Sol round 6: path separators and quotes accepted before python, quoted identifiers matched; python -m on a scratch module is a recorded limit covered by the DB guard",
+   "repro": "pytest tests/test_scratchpad_rule_write_guard.py -k full_path"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - apply migration 121 to production after a backup (needs the user's go), then confirm rule_write_log fills from the next pipeline run"
+ },
+ "real_layer_exempt": {
+  "scripts/pipeline_run.py": "its real-database tests are in tests/test_rule_write_guard_db.py (tag against a real Postgres, autocommit after tag, run id in rule_write_log), run by the CI isolated-DB job",
+  "scripts/add_new_chapter.py": "the only change is one pipeline_run.tag call after connect; the tag itself is real-DB tested in tests/test_rule_write_guard_db.py"
+ },
+ "qa_verify": {
+  "strong": 19,
+  "adequate": 6,
+  "weak_rewritten": 1,
+  "mutations_run": "hook: always-allow 13/17 fail, never-match-SQL 13/17, trust-all-tracked 11/17, no-shell-split 1/17, posix-split 8/17, no-shebang 2/17, always-block 5/17. pipeline_run: no-reuse, no-blank-check, no-warn, no-real-check, short-sha each caught. DB tests (CI only): reasoned, not run locally.",
+  "gaps_decided": "TRUNCATE in record mode is not tested on its own (same code path as the enforce test). python -m <scratch module> is not caught by the hook (recorded limit, DB guard covers it). Stub tables carry only the columns the trigger reads; the install-time column check runs again against the real tables when migration 121 is applied."
+ },
+ "review_verdicts": [
+  "pipeline_run.py:71 'tag may commit caller work' -- REJECTED: tag commits only when the connection was IDLE before its own SELECT, so no caller work is pending; a commit persists, it never discards.",
+  "121:70 'missing mode row should default to record' -- REJECTED: fail-closed is the design (Sol round 2); a deleted config row must not switch the guard off. Documented in the migration header."
+ ]
+}

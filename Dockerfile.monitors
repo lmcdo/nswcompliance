@@ -38,6 +38,8 @@ COPY scripts/probe_blocked_councils.py ./scripts/probe_blocked_councils.py
 # which dcp_extract_changed imports.
 COPY scripts/dcp_extract_changed.py ./scripts/dcp_extract_changed.py
 COPY scripts/dcp_commit_approved.py ./scripts/dcp_commit_approved.py
+# Every pipeline writer tags its connection with the run (migration 121).
+COPY scripts/pipeline_run.py ./scripts/pipeline_run.py
 # dcp_commit_approved RUNS council_quote.py (subprocess, after every commit and as the
 # unchecked sweep), which imports the other three lazily. Missing, every daily run
 # from 2026-10-30 exited 1 with "can't open file '/app/scripts/council_quote.py'".

@@ -31,6 +31,10 @@ from datetime import date
 from urllib.parse import urlsplit
 
 from extract_dcp_stated_dates import MONTHS, _STATEMENTS, _to_year
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 COVER_CHARS = 600
 COVER_END = re.compile(r"table of contents|amendment history|\bcontents\b", re.I)
@@ -232,5 +236,6 @@ if __name__ == "__main__":  # pragma: no cover - manual run: python scripts/veri
         return r.content
 
     c = psycopg2.connect(os.environ["DATABASE_URL"], options="-c statement_timeout=30000")
+    pipeline_run.tag(c, "verifyops_classify")
     print(classify_pending(c, _fetch, date.today(), dry_run="--apply" not in sys.argv))
     c.close()

@@ -46,6 +46,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import rule_page_locator as rpl  # noqa: E402
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 BATCH = 500
 MARGIN = 0.08
@@ -316,6 +320,7 @@ def main() -> int:
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
+    pipeline_run.tag(conn, "dcp_page_repair")
     try:
         conn.cursor().execute("SET statement_timeout = '30000'")
         if (args.check or args.apply) and not has_079(conn):

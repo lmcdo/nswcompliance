@@ -34,6 +34,10 @@ import sys
 import tempfile
 from collections import Counter, defaultdict
 from pathlib import Path
+try:  # migration 121: every rule write names its pipeline run
+    import pipeline_run
+except ImportError:  # imported as scripts.<module>
+    from scripts import pipeline_run
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -148,6 +152,7 @@ def main() -> int:
     cache.mkdir(parents=True, exist_ok=True)
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=30)
+    pipeline_run.tag(conn, "dcp_setback_citation_status")
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = '30000'")
