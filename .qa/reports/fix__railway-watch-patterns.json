@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Railway rebuilt the monitors image only for a hand-picked file list; the config now watches every file the image copies, enforced by a test",
- "commit_hash": "eb05940b",
+ "commit_hash": "4181f6f3",
  "files": [
   "railway.alerts.toml",
   "railway.dcp-commit.toml",

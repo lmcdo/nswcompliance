@@ -307,8 +307,15 @@ def test_every_monitors_service_watches_what_the_image_copies():
     """
     import tomllib
     docker = (REPO / "Dockerfile.monitors").read_text(encoding="utf-8")
-    sources = {s + "**" if s.endswith("/") else s
-               for s in re.findall(r"^COPY\s+(?!--)(\S+)\s+\S+", docker, re.M)}
+    sources = set()
+    for line in re.findall(r"^COPY\s+(.*)$", docker, re.M):
+        assert not line.lstrip().startswith("["), f"JSON-form COPY not parsed: {line}"
+        tokens = [t for t in line.split() if not t.startswith("--")]
+        assert len(tokens) >= 2, f"COPY line not understood: {line}"
+        if any(t.startswith("--from") for t in line.split()):
+            continue                       # copies from another stage, not the repo
+        for src in tokens[:-1]:            # every source; the last token is the destination
+            sources.add(src + "**" if src.endswith("/") else src)
     assert len(sources) > 20, "COPY lines not found -- has the Dockerfile form changed?"
     tomls = [t for t in sorted(REPO.glob("railway*.toml"))
              if "Dockerfile.monitors" in t.read_text(encoding="utf-8")]
