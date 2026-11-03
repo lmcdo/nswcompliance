@@ -71,3 +71,10 @@ def test_a_hold_ends_after_seven_days(cur):
     cur.execute("UPDATE dcp_chapter_registry SET extract_refused_at = now() - interval '8 days' "
                 "WHERE chapter_key = 'ch7-6'")
     assert "ch7-6" in _selected(cur)                 # tried once more after the hold
+
+
+def test_a_null_refusal_time_reads_as_not_held(cur):
+    """Sol review: NULL anywhere must not drop the chapter from both lists."""
+    _refuse(cur, "ch7-6"); _refuse(cur, "ch7-6")
+    cur.execute("UPDATE dcp_chapter_registry SET extract_refused_at = NULL WHERE chapter_key = 'ch7-6'")
+    assert "ch7-6" in _selected(cur)

@@ -40,7 +40,7 @@ def test_the_daily_run_holds_a_chapter_refused_twice_on_its_current_pdf():
 
 def test_a_null_hash_is_never_held():
     """coalesce(..., false): NULL = NULL must read as 'not refused', or NOT(...) drops the row."""
-    assert dx.HELD_FOR_REFUSALS.startswith("(coalesce(") and ", false)" in dx.HELD_FOR_REFUSALS
+    assert dx.HELD_FOR_REFUSALS.startswith("coalesce((") and dx.HELD_FOR_REFUSALS.endswith("), false)")
 
 
 def test_a_named_chapter_and_the_audit_run_ignore_the_hold():

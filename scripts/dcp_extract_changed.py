@@ -2618,11 +2618,15 @@ HOLD_DAYS = 7
 #: Refused HOLD_AFTER_REFUSALS times on its current content hash. coalesce: a NULL hash on
 #: either side means "never refused this file", so the chapter is read, never held.
 HELD_FOR_REFUSALS = (
-    "(coalesce(dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash, false) "
+    # The WHOLE test is wrapped in coalesce(..., false): any NULL (hash, time) must read as
+    # "not held", or NOT(NULL) drops the chapter from both the read list and the held list.
+    "coalesce(("
+    "dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash "
     f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS} "
     # Bounded: a hold lasts HOLD_DAYS from the last refusal, then the chapter is tried once
     # more. Not forever -- a held chapter keeps serving the previous PDF's rules (Sol review).
-    f"AND dcp_chapter_registry.extract_refused_at > now() - interval '{HOLD_DAYS} days')"
+    f"AND dcp_chapter_registry.extract_refused_at > now() - interval '{HOLD_DAYS} days'"
+    "), false)"
 )
 #: Errors that will recur on the same file: content the reader keeps leaving out. A spent
 #: credit, a timeout or a dead connection is not one -- counting those would hold a chapter
