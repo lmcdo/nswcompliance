@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which properties 17 served rules reach. Not Critical: same pattern as #1423, no new mechanism. Not Minor: user-facing rule applicability.",
- "commit_hash": "23ad793c",
+ "commit_hash": "3124b4f0",
  "files": [
   "data/canterbury_bankstown_precincts/lep_hazard_area_2_4.geojson",
   "data/chapter_scope/suburb_unconfirmed_areas.json",
