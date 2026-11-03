@@ -370,3 +370,16 @@ def test_one_readings_veto_does_not_drop_a_stored_page_the_other_reading_holds()
     found = [(1.0, 7, {7}, 0, 0)]
     assert L._better_elsewhere(t, found, [a], stored=5) is True      # alone, A would move it
     assert L._better_elsewhere(t, found, [a, b], stored=5) is False  # B keeps it
+
+
+def test_a_long_rule_running_on_from_its_stored_page_is_not_moved_to_where_it_ends():
+    """Parramatta 220432 / Woollahra 166209 (2026-11-04): the rule starts on its stored page and runs on to the next;
+    its opening uses words printed on many pages, its rare words are only on the next page. The start is kept."""
+    opening = ("Development must comply with the objectives and controls of this part and the general"
+               " provisions of this plan including parking landscaping and design excellence")
+    rest = ("Verandahs balustrades and pergolas may encroach into the Macarthur Street setback by 1.2m where"
+            " the heritage curtilage of the Wesleyan chapel is retained and interpreted")
+    rule = "# 8.2.5 Controls\n" + opening + " " + rest
+    pages = {f"p{i}": opening + " other controls apply here" for i in (1, 2, 3, 6, 7)}
+    doc = _doc(**pages, p4=opening, p5=rest)
+    assert L.locate(rule, [doc], stored=4) == (4, "on_page")

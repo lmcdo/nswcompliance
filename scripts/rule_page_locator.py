@@ -172,8 +172,13 @@ def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) 
     one or two pages. A real copy of the text (Woollahra B1.11.1 Vaucluse East vs West) holds those rare words too,
     and a page that only reorders a table's cells holds every word, so both are still kept.
     """
+    # A stored page holding a near-complete match is never moved off (the rule's own principle, below): only a
+    # stored page with a clearly weaker match can lose to a better place (Wollongong 211213 holds the whole rule).
+    at_stored = max((occ[0] for occ in found if stored in occ[2]), default=0.0)
+    if found and at_stored >= TIE * max(occ[0] for occ in found):
+        return False
     words = set(rt)
-    verdicts = []  # one per reading that can judge; any reading that keeps the stored page keeps it
+    verdicts = []  # False: this reading holds the rule's rare words on the stored page; True: it finds them elsewhere
     for d in docs:
         pages_of = {w: sum(w in d.words.get(p, ()) for p in d.words) for w in words}
         rare = [w for w, n in pages_of.items() if 0 < n <= 2]
@@ -192,7 +197,8 @@ def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) 
             if sum(w in span_words for w in rare) / len(rare) >= 0.9:
                 elsewhere = True
                 break
-        verdicts.append(elsewhere)
+        if elsewhere:  # a reading that finds no better place has no evidence either way: it does not vote
+            verdicts.append(True)
     # The stored page is left only when every reading that can judge says so (cross-review: one reading's veto
     # must not override another reading's good match on the stored page).
     return bool(verdicts) and all(verdicts)
