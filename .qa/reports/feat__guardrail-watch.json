@@ -1,0 +1,114 @@
+{
+ "tier": "standard",
+ "justification": "Adds three guardrails the assistant cannot satisfy on its own: an off-machine Telegram watcher, a hook that needs a human answer to a plan line, and a CI plan-line check",
+ "commit_hash": "2dad6a27",
+ "files": [
+  "scripts/guardrail_watch.py",
+  "scripts/check_pr_plan_line.py",
+  ".github/workflows/guardrail-watch.yml",
+  ".github/workflows/gates.yml",
+  ".claude/hooks/plan-line-gate.py",
+  ".claude/settings.json",
+  "tests/test_guardrail_watch.py",
+  "tests/test_plan_line_gate.py",
+  "tests/test_plan_line_gate_ci.py",
+  "tests/test_hooks_not_silently_dead.py"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/guardrail_watch.py --since '1 day ago' --print-only; python -m pytest tests/test_plan_line_gate.py",
+  "fails_when": "the escape line written 2026-11-03 in dcp_extract_changed.py is not reported, or a pipeline edit with no answered PLAN: line is allowed",
+  "observed_red": "run on real history: lists 'scripts/dcp_extract_changed.py: # prior-art-checked: reuse not viable ...' and the hook/settings changes; hook test with no PLAN line exits 2"
+ },
+ "pre_impl": {
+  "existing_data": "Telegram secrets and a tested sender already used by freshness-alarm on GitHub-hosted runners; transcript marks human messages origin.kind=human",
+  "assumption_mismatch": "an escape line naming a plan can be typed without reading it, so the hook checks a Read call and a later human message instead",
+  "new_vs_existing": "reuses verifyops_outside_ping.send_telegram, the existing QA CI job and hook registration"
+ },
+ "functions": [
+  {
+   "name": "verdict",
+   "file_line": ".claude/hooks/plan-line-gate.py",
+   "input": "the session transcript path given by Claude Code to the hook",
+   "output": "None to allow the pipeline edit or the reason to block it",
+   "if_none": "a missing or unreadable transcript has no PLAN line, so the edit is blocked"
+  },
+  {
+   "name": "parse_diff",
+   "file_line": "scripts/guardrail_watch.py",
+   "input": "git diff or git log -p text for the pushed range",
+   "output": "changed guardrail files and added escape or override lines",
+   "if_none": "an empty diff gives two empty lists and nothing is sent"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the assistant names a plan file in the PLAN line without opening it",
+   "what_happens": "the gate would accept a typed name as if the plan had been read",
+   "mitigated": true,
+   "how": "a Read tool call on that plan must appear in the transcript",
+   "repro": "pytest tests/test_plan_line_gate.py -k never_opened"
+  },
+  {
+   "scenario": "a task notification or hook feedback arrives after the PLAN line",
+   "what_happens": "it could be taken as the owner's answer",
+   "mitigated": true,
+   "how": "only origin.kind == human counts",
+   "repro": "pytest tests/test_plan_line_gate.py -k notification"
+  },
+  {
+   "scenario": "the assistant appends a forged human line to the transcript file",
+   "what_happens": "the gate would see a fake answer",
+   "mitigated": true,
+   "how": "commands and edits touching .claude/projects/*.jsonl are blocked",
+   "repro": "pytest tests/test_plan_line_gate.py -k transcript"
+  },
+  {
+   "scenario": "a push changes a hook but Telegram is down or the secret missing",
+   "what_happens": "the owner would never hear about it",
+   "mitigated": true,
+   "how": "the job exits 1 and shows red on GitHub when Telegram does not confirm",
+   "repro": "pytest tests/test_guardrail_watch.py -k fails_loudly"
+  },
+  {
+   "scenario": "a push edits the guardrail-watch workflow itself to drop the alert",
+   "what_happens": "that push runs the edited copy and may stay silent",
+   "mitigated": false,
+   "how": "recorded limit in the workflow header; the weekly digest from main lists the workflow change",
+   "repro": "git log --since=7.days -- .github/workflows/guardrail-watch.yml"
+  },
+  {
+   "scenario": "Claude Code passes a tool field as None to the plan-line gate",
+   "what_happens": "the hook crashed with exit 1, which does not block, so the edit went through",
+   "mitigated": true,
+   "how": "QA gate adversarial rule: every .get(k, '') became .get(k) or ''",
+   "repro": "pytest tests/test_plan_line_gate.py -k none_field"
+  },
+  {
+   "scenario": "a pipeline file is wiped with truncate, perl -pi or git checkout instead of sed or an editor",
+   "what_happens": "the old list of writing commands missed them and the gate allowed the edit",
+   "mitigated": true,
+   "how": "Sol round 1: any shell command naming a pipeline file is gated unless every segment is a known read-only command",
+   "repro": "pytest tests/test_plan_line_gate.py -k writers_outside"
+  },
+  {
+   "scenario": "a guardrail is disabled in one commit and restored in the next within the same push",
+   "what_happens": "the endpoint diff is empty and the watcher stayed silent",
+   "mitigated": true,
+   "how": "Sol round 1: the push range is read with git log -p commit by commit",
+   "repro": "pytest tests/test_guardrail_watch.py -k commit_by_commit"
+  },
+  {
+   "scenario": "a Read of a plan file fails or the named plan does not exist",
+   "what_happens": "the failed call still counted as having read the plan",
+   "mitigated": true,
+   "how": "Sol round 2: only Read calls with an error-free tool_result count, and the plan file must exist",
+   "repro": "pytest tests/test_plan_line_gate.py -k failed"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - the first push to main after merge should Telegram a guardrail-watch message listing this PR's own hook and workflow changes"
+ }
+}
