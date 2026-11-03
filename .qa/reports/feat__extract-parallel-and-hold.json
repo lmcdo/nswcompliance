@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Two speed fixes to the daily DCP read: stop re-reading a chapter refused twice on an unchanged PDF, and read two chapters at once in review mode",
- "commit_hash": "9692eacc",
+ "commit_hash": "d7d65275",
  "files": [
   "migrations/122_chapter_extract_refusals.sql",
   "scripts/dcp_extract_changed.py",
@@ -64,6 +64,20 @@
    "mitigated": false,
    "how": "DCP_EXTRACT_PARALLEL=1 restores one at a time; measured peak was 726 MB for one chapter",
    "repro": "set DCP_EXTRACT_PARALLEL=1 on the dcp-extract service"
+  },
+  {
+   "scenario": "a chapter is held after two refusals and the council never changes the PDF",
+   "what_happens": "the chapter would never be read again and keep serving the previous edition",
+   "mitigated": true,
+   "how": "Sol review: the hold lasts 7 days from the last refusal, then one more try; the watchdog 48h alarm shows it meanwhile",
+   "repro": "pytest tests/test_extract_refusal_db.py -k seven_days (CI)"
+  },
+  {
+   "scenario": "worker A finishes chapter k0 then is killed on chapter k2 before its queue thread flushed",
+   "what_happens": "k0's finished review read was lost and reported as failed",
+   "mitigated": true,
+   "how": "measured on Linux; each worker now sends on its own pipe and send() completes before the next chapter",
+   "repro": "pytest tests/test_extract_parallel_and_hold.py -k survives (Linux)"
   }
  ],
  "post_merge": {
