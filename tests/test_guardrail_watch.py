@@ -97,3 +97,15 @@ def test_a_push_is_read_commit_by_commit(monkeypatch):
     monkeypatch.setattr(gw, "_git", lambda *a: calls.append(a) or "")
     gw.main(["--range", "a..b", "--print-only"])
     assert calls[0][:3] == ("log", "-p", "--first-parent")
+
+
+def test_mentions_in_tests_reports_and_the_pattern_are_not_reported_but_real_use_is():
+    """First alert (2026-11-03): 6 of 8 lines were mentions. Real use must still show."""
+    def one(path, text):
+        return f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n+{text}\n"
+    d = (one("tests/test_x.py", "# prior-art-checked: example in a test")
+         + one(".qa/reports/feat__x.json", '"observed_red": "prior-art-checked: quoted"')
+         + one("scripts/guardrail_watch.py", '    r"prior-art-checked:|RULE_WRITE_OK=|"')
+         + one("scripts/dcp_extract_changed.py", "# prior-art-checked: reuse not viable"))
+    _, bypasses = gw.parse_diff(d)
+    assert bypasses == [("scripts/dcp_extract_changed.py", "# prior-art-checked: reuse not viable")]

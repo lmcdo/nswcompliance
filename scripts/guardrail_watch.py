@@ -46,6 +46,19 @@ def is_guard_path(path: str) -> bool:
     return any(path == g or path.startswith(g) for g in GUARD_PATHS)
 
 
+#: Places where an escape word is only MENTIONED, never used: tests that check the alarm,
+#: QA reports that quote a line, and this file's own pattern. Reporting them trained the
+#: reader to skim (first alert, 2026-11-03: 6 of 8 lines were mentions).
+MENTION_ONLY_DIRS = ("tests/", ".qa/reports/")
+
+
+def is_mention_only(path: str, line: str) -> bool:
+    if path.startswith(MENTION_ONLY_DIRS):
+        return True
+    # this file's BYPASS pattern: a raw-string line listing the escape words with "|"
+    return path == "scripts/guardrail_watch.py" and line.lstrip().startswith('r"') and "|" in line
+
+
 def parse_diff(diff: str) -> tuple[list[str], list[tuple[str, str]]]:
     """(changed guard files, [(file, added bypass line)]) from `git diff` / `git log -p` text."""
     guards: list[str] = []
@@ -64,7 +77,7 @@ def parse_diff(diff: str) -> tuple[list[str], list[tuple[str, str]]]:
             if m and is_guard_path(m.group(2)) and m.group(2) not in guards:
                 guards.append(m.group(2))     # catches deletions, where +++ is /dev/null
         elif line.startswith("+") and not line.startswith("+++") and current:
-            if BYPASS.search(line):
+            if BYPASS.search(line) and not is_mention_only(current, line[1:]):
                 bypasses.append((current, line[1:].strip()[:160]))
     return guards, bypasses
 
