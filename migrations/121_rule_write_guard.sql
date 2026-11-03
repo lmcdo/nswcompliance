@@ -48,9 +48,14 @@ DECLARE
     run      text := nullif(current_setting('app.pipeline_run', true), '');
     changed  text[] := '{}';
     col      text;
-    new_j    jsonb := to_jsonb(NEW);
+    new_j    jsonb;
     old_j    jsonb;
 BEGIN
+    IF TG_OP = 'DELETE' THEN
+        new_j := to_jsonb(OLD);           -- a removed rule is logged by the row it was
+    ELSE
+        new_j := to_jsonb(NEW);
+    END IF;
     IF TG_OP = 'UPDATE' THEN
         old_j := to_jsonb(OLD);
         FOREACH col IN ARRAY TG_ARGV LOOP
@@ -63,7 +68,7 @@ BEGIN
     END IF;
 
     IF cardinality(changed) = 0 THEN
-        RETURN NEW;                       -- nothing protected changed
+        RETURN NEW;                       -- nothing protected changed (UPDATE only)
     END IF;
 
     IF run IS NULL AND (SELECT mode FROM rule_write_guard) = 'enforce' THEN
@@ -74,26 +79,56 @@ BEGIN
 
     INSERT INTO rule_write_log (table_name, row_id, op, columns, run_id)
     VALUES (TG_TABLE_NAME, (new_j ->> 'id')::bigint, TG_OP, changed, run);
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
     RETURN NEW;
+END;
+$$;
+
+-- TRUNCATE has no rows: one log line for the whole table, refused the same way.
+CREATE OR REPLACE FUNCTION rule_write_guard_truncate() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+    run text := nullif(current_setting('app.pipeline_run', true), '');
+BEGIN
+    IF run IS NULL AND (SELECT mode FROM rule_write_guard) = 'enforce' THEN
+        RAISE EXCEPTION 'rule_write_guard: TRUNCATE % with no pipeline run', TG_TABLE_NAME
+            USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    INSERT INTO rule_write_log (table_name, row_id, op, columns, run_id)
+    VALUES (TG_TABLE_NAME, NULL, 'TRUNCATE', '{*}', run);
+    RETURN NULL;
 END;
 $$;
 
 -- Named zz_ so it runs after the BEFORE triggers that adjust NEW (120's hold) and logs the
 -- values actually written.
 DROP TRIGGER IF EXISTS zz_rule_write_guard ON dcp_setback_controls;
-CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE ON dcp_setback_controls
+CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE OR DELETE ON dcp_setback_controls
     FOR EACH ROW EXECUTE FUNCTION rule_write_guard(
         'source_text', 'value_min', 'value_max', 'unit', 'pdf_page', 'section_ref', 'lga',
-        'source_chapter_key', 'quote_status', 'needs_review', 'review_reason', 'is_current');
+        'source_chapter_key', 'quote_status', 'needs_review', 'review_reason', 'is_current',
+        'plain_summary');
 
 DROP TRIGGER IF EXISTS zz_rule_write_guard ON regulatory_provisions;
-CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE ON regulatory_provisions
+CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE OR DELETE ON regulatory_provisions
     FOR EACH ROW EXECUTE FUNCTION rule_write_guard(
         'provision_text', 'council_quote', 'quote_status', 'quote_page', 'pdf_page',
         'source_council', 'source_chapter_key', 'is_current', 'v2_is_actionable');
 
 DROP TRIGGER IF EXISTS zz_rule_write_guard ON dcp_chapter_registry;
-CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE ON dcp_chapter_registry
+CREATE TRIGGER zz_rule_write_guard BEFORE INSERT OR UPDATE OR DELETE ON dcp_chapter_registry
     FOR EACH ROW EXECUTE FUNCTION rule_write_guard(
         'r2_current_path', 'content_hash', 'page_start', 'page_end', 'needs_extraction',
         'is_active', 'council_url', 'chapter_key');
+
+DROP TRIGGER IF EXISTS zz_rule_write_guard_truncate ON dcp_setback_controls;
+CREATE TRIGGER zz_rule_write_guard_truncate BEFORE TRUNCATE ON dcp_setback_controls
+    FOR EACH STATEMENT EXECUTE FUNCTION rule_write_guard_truncate();
+DROP TRIGGER IF EXISTS zz_rule_write_guard_truncate ON regulatory_provisions;
+CREATE TRIGGER zz_rule_write_guard_truncate BEFORE TRUNCATE ON regulatory_provisions
+    FOR EACH STATEMENT EXECUTE FUNCTION rule_write_guard_truncate();
+DROP TRIGGER IF EXISTS zz_rule_write_guard_truncate ON dcp_chapter_registry;
+CREATE TRIGGER zz_rule_write_guard_truncate BEFORE TRUNCATE ON dcp_chapter_registry
+    FOR EACH STATEMENT EXECUTE FUNCTION rule_write_guard_truncate();

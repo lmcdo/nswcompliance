@@ -64,10 +64,17 @@ def _tracked(path: Path, repo: Path) -> bool:
     return r.returncode == 0
 
 
+SEGMENT = re.compile(r"&&|\|\||[;|\n]")
+
+
 def _scripts(command: str) -> list[str]:
-    """The .py paths a command hands to Python."""
+    """The .py paths a command hands to Python -- every invocation, not just the first.
+
+    Split on shell separators first: PYTHON is greedy to end of line, so on its own it saw
+    only the first `python x.py` of `python a.py; python b.py` (Sol review, 2026-11-03).
+    """
     found = []
-    for m in PYTHON.finditer(command):
+    for m in (m for seg in SEGMENT.split(command) for m in [PYTHON.search(seg)] if m):
         try:   # posix=False: posix mode eats the backslashes in C:\Users\... paths
             words = shlex.split(m.group(1), posix=False)
         except ValueError:

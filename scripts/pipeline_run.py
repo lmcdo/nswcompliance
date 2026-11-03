@@ -59,7 +59,13 @@ def tag(conn, script: str) -> str:
         real = False
     if not real:
         return rid                        # a test double is not a database; nothing to tag
+    idle = conn.get_transaction_status() == _ext.TRANSACTION_STATUS_IDLE
     cur = conn.cursor()
     cur.execute("SELECT set_config('app.pipeline_run', %s, false)", (rid,))
     cur.close()
+    if idle and not conn.autocommit:
+        # End the transaction this SELECT opened, or a caller's next `conn.autocommit = ...`
+        # raises (psycopg2 refuses set_session inside a transaction). The setting is
+        # session-level, so it survives the commit. Nothing of the caller's is pending.
+        conn.commit()
     return rid

@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS dcp_setback_controls, regulatory_provisions, dcp_chapter_re
 CREATE TABLE dcp_setback_controls (id serial PRIMARY KEY, lga text, source_text text,
     value_min numeric, value_max numeric, unit text, pdf_page int, section_ref text,
     source_chapter_key text, quote_status text, needs_review boolean, review_reason text,
-    is_current boolean DEFAULT true, plain_summary text);
+    is_current boolean DEFAULT true, plain_summary text, citation_checked_at timestamptz);
 CREATE TABLE regulatory_provisions (id serial PRIMARY KEY, provision_text text, council_quote text,
     quote_status text, quote_page int, pdf_page int, source_council text, source_chapter_key text,
     is_current boolean DEFAULT true, v2_is_actionable boolean, v2_topic text);
@@ -100,7 +100,7 @@ def test_a_tagged_pipeline_write_passes_and_names_its_run(db, monkeypatch):
 def test_an_unprotected_column_is_neither_refused_nor_logged(db):
     _, cur = db
     _mode(cur, "enforce")
-    cur.execute("UPDATE dcp_setback_controls SET plain_summary = 'x' WHERE id = 1")
+    cur.execute("UPDATE dcp_setback_controls SET citation_checked_at = now() WHERE id = 1")
     assert _log(cur) == []
 
 
@@ -130,3 +130,45 @@ def test_the_migration_ships_in_record_mode(db):
     _, cur = db
     cur.execute("SELECT mode FROM rule_write_guard")
     assert cur.fetchone()[0] == "record"
+
+
+def test_enforce_refuses_an_untagged_delete_and_truncate(db):
+    """Sol review 2026-11-03: removing a rule is as serious as rewriting it."""
+    import psycopg2
+    _, cur = db
+    _mode(cur, "enforce")
+    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+        cur.execute("DELETE FROM dcp_setback_controls WHERE id = 1")
+    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+        cur.execute("TRUNCATE dcp_setback_controls")
+    cur.execute("SELECT count(*) FROM dcp_setback_controls")
+    assert cur.fetchone()[0] == 1
+
+
+def test_record_mode_logs_a_delete_by_the_row_it_was(db):
+    _, cur = db
+    cur.execute("DELETE FROM dcp_setback_controls WHERE id = 1")
+    cur.execute("SELECT row_id, op FROM rule_write_log")
+    assert cur.fetchall() == [(1, "DELETE")]
+
+
+def test_plain_summary_is_protected(db):
+    import psycopg2
+    _, cur = db
+    _mode(cur, "enforce")
+    with pytest.raises(psycopg2.errors.InsufficientPrivilege):
+        cur.execute("UPDATE dcp_setback_controls SET plain_summary = 'changed words' WHERE id = 1")
+
+
+def test_tag_leaves_no_open_transaction_so_autocommit_can_be_set(db):
+    """Sol review 2026-11-03: the extractor sets autocommit right after connecting."""
+    import psycopg2
+    import pipeline_run
+    for value in (False, True):
+        conn = psycopg2.connect(URL)
+        pipeline_run.tag(conn, "dcp_extract_changed")
+        conn.autocommit = value                    # raised before the fix
+        cur = conn.cursor()
+        cur.execute("SELECT current_setting('app.pipeline_run', true)")
+        assert cur.fetchone()[0].startswith("dcp_extract_changed@")
+        conn.close()

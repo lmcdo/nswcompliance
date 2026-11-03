@@ -97,3 +97,13 @@ def test_other_tools_are_ignored():
     r = subprocess.run([sys.executable, str(HOOK)], input=json.dumps(payload), text=True,
                        capture_output=True, timeout=30)
     assert r.returncode == 0
+
+
+def test_a_writer_second_in_a_chain_is_blocked(scratch):
+    """Sol review 2026-11-03: only the first python of a chain was read."""
+    ok = scratch / "read.py"
+    ok.write_text(READ_ONLY, encoding="utf-8")
+    bad = scratch / "write_batch1.py"
+    bad.write_text(BATCH1, encoding="utf-8")
+    for sep in ("; ", " && ", "\n", " || "):
+        assert _run(f"python {ok}{sep}python {bad}", scratch).returncode == 2, repr(sep)
