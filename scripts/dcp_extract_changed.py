@@ -2601,6 +2601,16 @@ def resolve_document_id(cur, council: str, chapter_key: str, dcp_name: str) -> s
 # fetch_pending_chapters/diff_provisions detector (the only DCP provision-diff in the
 # repo); the guard's matches (shadow_detector, transport_proximity_detector) are
 # unrelated satellite products sharing only generic words.
+#: A pending review batch was read from this chapter's current PDF (same content hash).
+ALREADY_QUEUED = (
+    "EXISTS (SELECT 1 FROM dcp_review_queue q "
+    "WHERE q.council = dcp_chapter_registry.council "
+    "AND q.chapter_key = dcp_chapter_registry.chapter_key "
+    "AND q.status = 'pending' "
+    "AND q.source_content_hash = dcp_chapter_registry.content_hash)"
+)
+
+
 def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False,
                           chapter_filter: str | None = None) -> tuple[str, list]:
     """Build the chapter-selection query (pure, testable).
@@ -2639,6 +2649,14 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
     if chapter_filter:
         conds.append("chapter_key = %s")
         params.append(chapter_filter)
+    elif not all_chapters:
+        # The daily run re-read every flagged chapter, including ones whose CURRENT PDF
+        # already has a read waiting in review: measured 2026-11-03, 6 of 8 flagged
+        # chapters, ~75% of each run's time and model credit (twice it ran out of credit
+        # before reaching the chapter that needed reading). needs_extraction stays TRUE
+        # until commit, so "flagged" alone cannot tell them apart. A named --chapter
+        # still re-reads (reader improved); a NULL hash never matches, so it is read.
+        conds.append("NOT " + ALREADY_QUEUED)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
         "r2_current_path, r2_version_label, dcp_name, content_hash, "
@@ -2656,7 +2674,20 @@ def fetch_pending_chapters(cur, council_filter: str | None, all_chapters: bool =
     query, params = _pending_chapters_sql(council_filter, all_chapters, chapter_filter)
     cur.execute(query, params)
     cols = [d[0] for d in cur.description]
-    return [dict(zip(cols, row)) for row in cur.fetchall()]
+    chapters = [dict(zip(cols, row)) for row in cur.fetchall()]
+    if not all_chapters and not chapter_filter:
+        # Say what was skipped: a chapter left out silently looks like "nothing flagged".
+        # prior-art-checked: reuse not viable because this reports this function's own
+        # ALREADY_QUEUED filter; the guard's matches are unrelated monitors and UI.
+        cur.execute(
+            "SELECT council, chapter_key FROM dcp_chapter_registry "
+            "WHERE needs_extraction = TRUE AND is_active = TRUE AND r2_current_path IS NOT NULL "
+            "AND " + ALREADY_QUEUED + (" AND council = %s" if council_filter else "")
+            + " ORDER BY council, sort_order",
+            [council_filter] if council_filter else [])
+        for council, key in cur.fetchall():
+            print(f"  [skip] {council}/{key}: a read of its current PDF is already waiting in review")
+    return chapters
 
 
 # ── Provision diff ──────────────────────────────────────────────────────────
