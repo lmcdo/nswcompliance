@@ -317,3 +317,69 @@ def test_a_table_page_printing_every_word_out_of_order_keeps_its_link():
     k = len(t) * 2 // 5
     table = " ".join(t[:k]) + " | " + " ".join(reversed(t[k:]))   # cells read out of order
     assert L.locate(rule, [_doc(p3=table, p8=long_body)], stored=3) == (3, "on_page")
+
+
+def test_a_repeated_table_header_does_not_keep_a_row_on_the_wrong_page():
+    """Georges River DCP 2021 6.1.4 (2026-11-03): the summary table runs over three pages, three options a page, each
+    page repeating the header and the common cells. Stored page 45 held most of option 7a's words, which is printed
+    only on page 47; it was kept as on_page. Checked by eye against the PDF."""
+    header = ("Option Footprint indicative only not to scale Housing Type Front setback min Rear setback min Side setback"
+              " Max external wall height Max rec roof pitch Parking")
+    common = ("4.5m to the main building face 5.5m to a garage or other roofed car parking structure Within 20% of the"
+              " average setback of dwellings on adjoining lots 3m ground level and 6m second level 900mm 6m 35 Garage")
+    def page(*rows):
+        return header + " " + " ".join(r + " " + common for r in rows)
+    p45 = page("1 6m frontage Existing single dwelling with rear single storey addition",
+               "2 6m frontage Existing cottage with first floor addition or new 2 storey detached",
+               "3 6m frontage 1 storey detached")
+    p46 = page("4 2 x 6m frontage 1 storey semi-detached", "5 2 x 6m frontage 1 storey habitable roof space",
+               "6 2 x 6m frontage 2 storey attached")
+    p47 = page("7a 3 x 6m frontage Two 2 storey attached dwellings and one 2 storey dwelling",
+               "7b 3 x 6m frontage Two 1.5 storey attached dwellings and one 1.5 storey dwelling",
+               "7c 3 x 6m frontage Two attached 1 storey dwellings and one attached 1 storey dwelling")
+    rule = ("# 6.1.4 Building Envelopes - Summary Table\n" + header
+            + " 7a 3 x 6m frontage Two 2 storey attached dwellings and one 2 storey dwelling " + common)
+    assert L.locate(rule, [_doc(p5=p45, p6=p46, p7=p47)], stored=5) == (7, "moved")
+
+
+def test_a_repeated_table_row_running_over_a_page_break_still_leaves_the_wrong_page():
+    """Cross-review on the fix above: the real row starts at the foot of page 7 and ends on page 8. Its rare words are
+    split over both pages, so they are counted over every page the place spans."""
+    header = ("Option Footprint indicative only not to scale Housing Type Front setback min Rear setback min Side setback"
+              " Max external wall height Max rec roof pitch Parking")
+    common = ("4.5m to the main building face 5.5m to a garage or other roofed car parking structure Within 20% of the"
+              " average setback of dwellings on adjoining lots 3m ground level and 6m second level 900mm 6m 35 Garage")
+    def page(*rows):
+        return header + " " + " ".join(r + " " + common for r in rows)
+    p5 = page("1 6m frontage Existing single dwelling with rear single storey addition",
+              "2 6m frontage Existing cottage with first floor addition or new 2 storey detached")
+    p6 = page("4 2 x 6m frontage 1 storey semi-detached", "5 2 x 6m frontage 1 storey habitable roof space")
+    row = "7a 3 x 6m frontage Two 2 storey attached dwellings and one 2 storey dwelling"
+    p7 = page("6 2 x 6m frontage 2 storey attached") + " " + header + " " + row[:30]
+    p8 = row[30:] + " " + common + " lorem ipsum terrace corner verandah balustrade"
+    rule = "# 6.1.4 Building Envelopes - Summary Table\n" + header + " " + row + " " + common
+    page_, verdict = L.locate(rule, [_doc(p5=p5, p6=p6, p7=p7, p8=p8)], stored=5)
+    assert verdict == "moved" and page_ in (7, 8)
+
+
+def test_one_readings_veto_does_not_drop_a_stored_page_the_other_reading_holds():
+    """Cross-review: reading A prints the rule only on page 7, reading B prints it on stored page 5. B keeps it."""
+    t = L.tokens(BODY)
+    a = _doc(p7=BODY)        # stored page 5 is filler in this reading
+    b = _doc(p5=BODY)        # the other reading order holds the rule on its stored page
+    found = [(1.0, 7, {7}, 0, 0)]
+    assert L._better_elsewhere(t, found, [a], stored=5) is True      # alone, A would move it
+    assert L._better_elsewhere(t, found, [a, b], stored=5) is False  # B keeps it
+
+
+def test_a_long_rule_running_on_from_its_stored_page_is_not_moved_to_where_it_ends():
+    """Parramatta 220432 / Woollahra 166209 (2026-11-04): the rule starts on its stored page and runs on to the next;
+    its opening uses words printed on many pages, its rare words are only on the next page. The start is kept."""
+    opening = ("Development must comply with the objectives and controls of this part and the general"
+               " provisions of this plan including parking landscaping and design excellence")
+    rest = ("Verandahs balustrades and pergolas may encroach into the Macarthur Street setback by 1.2m where"
+            " the heritage curtilage of the Wesleyan chapel is retained and interpreted")
+    rule = "# 8.2.5 Controls\n" + opening + " " + rest
+    pages = {f"p{i}": opening + " other controls apply here" for i in (1, 2, 3, 6, 7)}
+    doc = _doc(**pages, p4=opening, p5=rest)
+    assert L.locate(rule, [doc], stored=4) == (4, "on_page")

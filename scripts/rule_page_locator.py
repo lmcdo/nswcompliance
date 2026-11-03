@@ -129,6 +129,11 @@ def occurrences(rule_tokens: list[str], doc: Doc) -> list[tuple[float, int, set,
         if last is None or k - last > gap:
             starts.append(k)
         last = k
+    # A multi-page table repeats its header and common cells, so hits run on with no gap and only the first page
+    # opened a stretch (Georges River 6.1.4: option 7a on page 47 was never scored). Each place the rule's
+    # OPENING piece is printed also opens one.
+    first = min(o for o, _g in pieces)
+    starts = sorted(set(starts) | {k for k, o in hits if o == first})
     places = []
     for k0 in starts:
         inside = [(k, o) for k, o in hits if k0 <= k <= k0 + span]
@@ -158,6 +163,47 @@ def _by_heading(text: str | None, top: list, docs: list[Doc]) -> list:
     return [occ for occ, s in zip(top, score) if s == best] if best else top
 
 
+def _better_elsewhere(rt: list[str], found: list, docs: list[Doc], stored: int) -> bool:
+    """True when the stored page holds only the rule's COMMON words and another place holds its RARE ones.
+
+    A multi-page table repeats its header and common cells on every page, so the stored page can hold most of a
+    row printed on a later page (Georges River 6.1.4 options 7a/7b: stored page 45, printed on 47; checked by eye
+    2026-11-03). What tells them apart is the row's own words ("7a", "two 2 storey attached dwellings"), printed on
+    one or two pages. A real copy of the text (Woollahra B1.11.1 Vaucluse East vs West) holds those rare words too,
+    and a page that only reorders a table's cells holds every word, so both are still kept.
+    """
+    # A stored page holding a near-complete match is never moved off (the rule's own principle, below): only a
+    # stored page with a clearly weaker match can lose to a better place (Wollongong 211213 holds the whole rule).
+    at_stored = max((occ[0] for occ in found if stored in occ[2]), default=0.0)
+    if found and at_stored >= TIE * max(occ[0] for occ in found):
+        return False
+    words = set(rt)
+    verdicts = []  # False: this reading holds the rule's rare words on the stored page; True: it finds them elsewhere
+    for d in docs:
+        pages_of = {w: sum(w in d.words.get(p, ()) for p in d.words) for w in words}
+        rare = [w for w, n in pages_of.items() if 0 < n <= 2]
+        if len(rare) < 2:
+            continue
+        if sum(w in d.words.get(stored, ()) for w in rare) / len(rare) >= 0.5:
+            verdicts.append(False)
+            continue
+        elsewhere = False
+        for occ in found:
+            # Only places this same reading produced (found rows end with their reading's index), and the rare
+            # words counted over every page the place spans, so a row running over a page break still counts.
+            if docs[occ[-1]] is not d or stored in occ[2]:
+                continue
+            span_words = set().union(*(d.words.get(pg, set()) for pg in occ[2]))
+            if sum(w in span_words for w in rare) / len(rare) >= 0.9:
+                elsewhere = True
+                break
+        if elsewhere:  # a reading that finds no better place has no evidence either way: it does not vote
+            verdicts.append(True)
+    # The stored page is left only when every reading that can judge says so (cross-review: one reading's veto
+    # must not override another reading's good match on the stored page).
+    return bool(verdicts) and all(verdicts)
+
+
 def locate(text: str | None, docs: list[Doc], stored: int | None = None,
            window: range | None = None) -> tuple[int | None, str]:
     """-> (page, verdict). verdict: on_page | moved | unresolved | not_found | too_short.
@@ -185,7 +231,7 @@ def locate(text: str | None, docs: list[Doc], stored: int | None = None,
     # a page break is on both pages), or any strong one -- Woollahra B1.11.1 "Vaucluse East" was
     # on its stored page 41 and scored a little lower than the near-identical "Vaucluse West"
     keep = [occ for occ in found if occ[0] >= min(HOLD, TIE * best)]
-    if stored is not None and any(stored in occ[2] for occ in keep):
+    if stored is not None and any(stored in occ[2] for occ in keep) and not _better_elsewhere(rt, found, docs, stored):
         return stored, "on_page"
     # A table prints a rule's cells out of order, so its stored page can hold only a third of
     # it in order yet every word of it (27 moves left such a page). A page holding just the
@@ -193,7 +239,7 @@ def locate(text: str | None, docs: list[Doc], stored: int | None = None,
     # stored page, only with part of it in order, and only with nearly all its words, is kept.
     partial = [occ for occ in found if occ[0] >= WEAK_HOLD]
     if stored is not None and any(stored in occ[2] for occ in partial) and any(
-            d.share(content(rt), stored) >= TABLE_SHARE for d in docs):
+            d.share(content(rt), stored) >= TABLE_SHARE for d in docs) and not _better_elsewhere(rt, found, docs, stored):
         return stored, "on_page"
     if len({occ[1] for occ in top}) > 1:
         top = _by_heading(text, top, docs)
