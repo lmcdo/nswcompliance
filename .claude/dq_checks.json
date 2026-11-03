@@ -1821,7 +1821,7 @@
    "note": "Fixed in production 2026-10-22 (user-approved; backups data/db_rollback_backups/carinya_road_withhold_pre_2026-10-22T201544.json and carinya_road_unkey_pre_2026-10-22T205445.json). derive_precinct_keys, gate_rules, enrichment, dcp_extract_changed, rerun_actionable_classifier and sync_v2_to_supabase skip listed ids. Probe reads 0."
   },
   "DQ-146": {
-   "declared": "fixed",
+   "declared": "open",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
@@ -1830,7 +1830,7 @@
    ],
    "passes_when": "exit 0 - no current, actionable rule sits where no for-property query returns it (condition layer without flood/bushfire condition or heritage marker).",
    "red_when": "a rule written for some houses is shown to none. Read 905 on 2026-10-11; 0 after the gate-rule write the same day (scripts/apply_dq146_gates.sh). REOPENED 2026-10-15 at 2,945: the precinct layer now fails closed, so 2,827 precinct rules with no precinct key (C-B 1,953, Ku-ring-gai 858, Parramatta 16) reach no house instead of every house. Cleared by keying each to its precinct outline.",
-   "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows. FIXED 2026-10-17 (#1312): KRG 14G outline loaded; unmapped C-B/KRG/Parramatta area rules are listed as not covered. Probe reads 0."
+   "note": "Proved live on 17 Etham Avenue Darling Point (1 of 64 B2 rules shown). Cleared by gate rules and precinct keys, never by deleting rows. FIXED 2026-10-17 (#1312): KRG 14G outline loaded; unmapped C-B/KRG/Parramatta area rules are listed as not covered. Probe reads 0. REOPENED 2026-11-04 at 2,570 (#1590): now also counts area rules whose area has no outline, child outline or suburb mapping; 2,389 after the 9.10.20 outline load."
   },
   "DQ-147": {
    "declared": "fixed",
