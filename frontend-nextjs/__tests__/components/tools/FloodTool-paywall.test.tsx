@@ -324,6 +324,37 @@ describe('FloodTool — when a source or the request fails', () => {
   });
 });
 
+describe('FloodTool — a council whose flood planning map we do not hold', () => {
+  // Broken Hill, live 2026-11-04: state overlay "none", council map not held.
+  const NO_MAP_REASON =
+    "we do not hold this council's flood planning map for this area For this council, its flood studies are listed at https://data.nsw.gov.au/data/dataset/fdp-final-report_vol1.";
+  const noMap = {
+    ...NONE_RESULT,
+    address: '260 Blende Street Broken Hill NSW 2880',
+    outputs: { ...NONE_RESULT.outputs, ses_in_flood_planning_area: null, flood_map_reason: NO_MAP_REASON },
+  };
+
+  it('never shows a green "Not mapped as flood-prone" row', async () => {
+    await runFloodCheck(noMap as unknown as typeof ELEVATED_RESULT);
+    expect(screen.queryByText('Not mapped as flood-prone')).toBeNull();
+    expect(screen.getByText('Not in the state overlay')).toBeInTheDocument();
+  });
+
+  it("shows why, and where the council's own studies are", async () => {
+    await runFloodCheck(noMap as unknown as typeof ELEVATED_RESULT);
+    expect(screen.getByText('Council flood planning map')).toBeInTheDocument();
+    expect(screen.getByText(/We do not hold this council's flood planning map/)).toBeInTheDocument();
+    expect(screen.getByText(/data\.nsw\.gov\.au/)).toBeInTheDocument();
+  });
+
+  it('still shows the clear overlay row where we hold the map and the lot is off it', async () => {
+    const held = { ...NONE_RESULT, outputs: { ...NONE_RESULT.outputs, ses_in_flood_planning_area: false } };
+    await runFloodCheck(held as unknown as typeof ELEVATED_RESULT);
+    expect(screen.getByText('Not mapped as flood-prone')).toBeInTheDocument();
+    expect(screen.queryByText('Council flood planning map')).toBeNull();
+  });
+});
+
 describe('FloodTool — a "none" without the overlay', () => {
   it('is shown as not enough data, never as no mapped flood risk', async () => {
     const partial = {
