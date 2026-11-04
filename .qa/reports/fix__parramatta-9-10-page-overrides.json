@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds page_overrides to the Parramatta ref_components keying so a rule printed inside one 9.10 site section is keyed to that section. Applied to production 2026-11-04: 17 rows re-keyed (9 in 9.10, 8 older in Parts 7/8), each matching the PDF section or the row's own heading. No route code changes.",
- "commit_hash": "b4dff502",
+ "commit_hash": "6c517662",
  "files": [
   "scripts/derive_precinct_keys.py"
  ],
