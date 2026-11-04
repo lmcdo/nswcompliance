@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "User-facing wording on the public flood tool (36 runs in the last 30 days, PostHog 2026-11-04). Frontend only: no backend, no DB, no new data. Not Minor because the old row read as a clear flood result where none was checked.",
-  "commit_hash": "c2aac94e",
+  "commit_hash": "6fa8f71a",
   "files": [
     "frontend-nextjs/components/tools/FloodTool.tsx",
     "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
