@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "The fidelity checker skipped 4,952 waiting rows the pipeline serves as rules; adds a real-PDF answer set, the fix, and the word-for-word approver moved into the repo",
- "commit_hash": "93c99740",
+ "commit_hash": "a5cbeb35",
  "files": [
   "enrichment/extractors/actionable_classifier.py",
   "scripts/dcp_fidelity_gate.py",
