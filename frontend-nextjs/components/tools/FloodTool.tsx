@@ -560,7 +560,16 @@ function FloodCard({ result }: { result: FloodResult }) {
       detail: 'This property is not in a gazetted flood zone, but other data sources in this report indicate flood exposure. The EPI overlay does not cover all flood-affected areas — absence from the overlay is not clearance.',
       severity: 'amber',
     });
-  } else if (epiClass === 'none' && o.ses_in_flood_planning_area !== false) {
+  } else if (epiClass === 'none' && o.ses_in_flood_planning_area === true) {
+    // The council's own map says yes (its red row follows); the state
+    // overlay's "none" must not read as clear or as "not checked".
+    findings.push({
+      label: 'Government flood overlay',
+      value: 'Not in the state overlay',
+      detail: 'The state planning flood overlay does not show this property, but the council\'s own flood planning map does (see the council flood study row).',
+      severity: 'amber',
+    });
+  } else if (epiClass === 'none' && o.ses_in_flood_planning_area == null) {
     // We do not hold (or could not check) the council's own flood planning
     // map. Most councils left the state overlay in 2023, so its "none" here
     // is not a result: 167 of 310 checks (2026-10-28) were in such councils.
