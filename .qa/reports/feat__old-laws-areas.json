@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Read-only probe change. DQ-146 counted a precinct rule as reachable whenever it had an area key, even when no outline, child outline or suburb mapping exists for that key, so 2,570 rules the page can never show read as 0. No served data or route code changes.",
- "commit_hash": "6bb4476e",
+ "commit_hash": "b4dff502",
  "files": [
   "scripts/dq_probe_live.py",
   ".claude/DATA_QUALITY_TRACKER.md"

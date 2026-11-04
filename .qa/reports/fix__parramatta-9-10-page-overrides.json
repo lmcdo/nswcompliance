@@ -1,0 +1,66 @@
+{
+ "tier": "standard",
+ "justification": "Adds page_overrides to the Parramatta ref_components keying so a rule printed inside one 9.10 site section is keyed to that section. Applied to production 2026-11-04: 17 rows re-keyed (9 in 9.10, 8 older in Parts 7/8), each matching the PDF section or the row's own heading. No route code changes.",
+ "commit_hash": "b4dff502",
+ "files": [
+  "scripts/derive_precinct_keys.py"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/derive_precinct_keys.py --council parramatta",
+  "observed_red": "Before the apply the dry run printed changed=17; after, it prints changed=0 for parramatta_ref_components.",
+  "fails_when": "A 9.10 row on a page wholly inside another site's section keeps the wrong key. Without page_overrides the dry run moved 8 rows (the older Part 7/8 ones only); with it, 17."
+ },
+ "pre_impl": {
+  "existing_data": "regulatory_provisions Parramatta 9.10 rows, 20 sections; section title pages read from the live PDF v1.1-2026-04-27.",
+  "assumption_mismatch": "Assumed the ref number always names the site; the reader sometimes kept the previous site's number after a new site title.",
+  "new_vs_existing": "One optional strategy field on the existing ref_components rule; no new file.",
+  "external_source_error": "None."
+ },
+ "functions": [
+  {
+   "name": "_derive",
+   "file_line": "scripts/derive_precinct_keys.py:333",
+   "what": "Derives a precinct key from a row; ref_components now also applies page_overrides",
+   "input": "a strategy dict and a regulatory_provisions row with ref_number and pdf_page",
+   "output": "the precinct id string or None when nothing derives",
+   "if_none": "Returns None when the ref has no usable number, as before",
+   "edge_cases": "Override only replaces a key with the same parent prefix; title pages excluded",
+   "failure_mode": "A wrong title page list would mis-key rows; list read from the PDF"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Row on a title page shared by two sites",
+   "what_happens": "Page is excluded from the override range so the ref decides",
+   "mitigated": true,
+   "how": "interior pages only",
+   "repro": "p1299 vs title 1298"
+  },
+  {
+   "scenario": "Row whose pdf_page is empty in the database",
+   "what_happens": "Override skipped and the ref key stands",
+   "mitigated": true,
+   "how": "p is None check",
+   "repro": "pdf_page NULL"
+  },
+  {
+   "scenario": "Key from another family such as 9.1",
+   "what_happens": "Not overridden because the parent prefix differs",
+   "mitigated": true,
+   "how": "parent prefix compare",
+   "repro": "key 9 vs 9.10.x"
+  }
+ ],
+ "verified": [
+  "dry run changed=17 then changed=0 after apply"
+ ],
+ "gaps": [
+  "Title pages hand-listed for 20 sections of one PDF edition"
+ ],
+ "post_merge": {
+  "db_reset": "Restore from data/db_rollback_backups/precinct_keying_derived_2026-11-03.csv",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/derive_precinct_keys.py --council parramatta prints changed=0 for parramatta_ref_components"
+ }
+}
