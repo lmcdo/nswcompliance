@@ -59,14 +59,19 @@ Full method: `docs/qa/audit-method.md`. In short:
 
 | Figure | Value 2026-11-04 | Command |
 |---|---|---|
-| Labelled runs in the 30-day window | 3 | `python scripts/audit_rate_check.py` |
-| Rules shown / addresses | 830 / 83 | same |
-| Rules read by a person | 190 | same |
-| Serious (severe 6, unsure 3) | 9 | same |
-| Upper 95% bound per 100 rules shown | 1.89 (severe only 1.43) | same |
-| Newest labelled run | 19 days old (lapses 2026-11-15) | same |
+| Labelled runs in the 30-day window | 4 | `python scripts/audit_rate_check.py` |
+| Rules shown / addresses | 1,120 / 112 | same |
+| Rules read by a person | 275 | same |
+| Serious (severe 14, unsure 5) | 19 | same |
+| Upper 95% bound per 100 rules shown | **2.49** (severe only 1.95) | same |
+| Newest labelled run | 18 days old | same |
 
-What this number is: **no worse than 1.89 serious errors per 100 rules shown, at the audited addresses, by this method.**
+Runs 6 to 8 alone gave 1.89 (9 serious in 830 rules). Run 9 was labelled on 2026-11-04 and alone gave 10 serious in 290 rules.
+Adding it takes the bound above the 2.0 limit the outreach claim OC-18 states, so **that claim does not hold on today's evidence.**
+Run 9's labels are one reader's (no second reader). Three of its serious labels rest on the property record showing no
+matching area (Pipeline corridor, Pound Road, Hornsby Town Centre). Dropping those three still gives 2.17.
+
+What this number is: **no worse than 2.49 serious errors per 100 rules shown, at the audited addresses, by this method.**
 It is not a statement that the other rules are correct.
 
 ## 4. Known limits
@@ -77,7 +82,7 @@ It is not a statement that the other rules are correct.
 - **Citations not proven by a script:** 248 served rules. `python scripts/dq_probe_live.py --id DQ-145`
 - **Heritage-tagged rows.** The area gate for these has a recorded scope limit (`scripts/dq_probe_live.py`, the `_ALL_HERITAGE` rule). The DQ-146 query leaves heritage-marked rows out (`LOWER(v2_marker) <> 'heritage'`), so 2,245 is a floor. DQ-143 to DQ-145 were not checked for the same exclusion.
 - **The audit's first pass.** See the first limit in `docs/qa/audit-method.md`: the three labelled runs were read from a first pass that flagged fewer rules than the code now committed. The recorded rate stands for that pass.
-- **Outreach claims.** 16 of 21 pass; 4 not yet; 1 not checkable from here (OC-9); 0 contradicted. `python scripts/dq_check.py --outreach`
+- **Outreach claims.** 16 of 21 passed before run 9 was labelled (4 not yet, 1 not checkable from here, 0 contradicted). OC-18 now fails the 2.0 limit; re-run for the current count. `python scripts/dq_check.py --outreach`
 
 ## 5. What we do not do
 

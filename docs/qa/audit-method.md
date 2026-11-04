@@ -16,7 +16,7 @@ Tooling: `scripts/address_audit/`. Evidence: `data/address_audit/<date>-<run>/`.
    | 2026-10-16-run6 | 270 | 62 | 165 |
    | 2026-10-16-run7 | 290 | 70 | 191 |
    | 2026-10-16-run8 | 270 | 58 | 185 |
-   | 2026-10-17-run9 | 290 | 0 (not read) | 198 |
+   | 2026-10-17-run9 | 290 | 85 (read 2026-11-04) | 198 |
 
    Every rule flagged then is still flagged now (run8: 31 of 31). The extra flags are almost all "rule names a place"
    (110 on run8) and "page heading names a place" (51 on run8 against 5 recorded). The committed file differs from the
@@ -25,7 +25,7 @@ Tooling: `scripts/address_audit/`. Evidence: `data/address_audit/<date>-<run>/`.
    now flags would test more rules.
 3. **Unread rules count as passing.** Of 830 rules, 190 were read. The bound divides by all 830. It is a bound on errors
    the code pass or the person found.
-4. **Run 9 (290 rules, 85 to read) has no labels**, so it is outside the figure.
+4. **Run 9 (290 rules, 85 read) was labelled 2026-11-04** by one reader. Its first pass was also the looser one (85 read; the committed pass flags 198). With run 9 the pooled bound is 2.49 per 100, not 1.89.
 
 How to reproduce: the first-pass step re-runs from saved packets (it is deterministic given the packets and the code
 version). The draw step re-runs only if the seed and the date are recorded. Section "Going forward" fixes the second.
@@ -84,13 +84,16 @@ page open in front of both, and the label stays `unsure` (counted as serious) un
 
 `upper_bound_per_100(k, n) = chi2.ppf(0.95, 2(k+1)) / 2 / n * 100`, with k = severe + unsure, n = all rules in the pooled runs.
 Pass (exit 0) only if rules >= 500, addresses >= 50, newest run <= 30 days old, bound < 2.0.
-Current: `python scripts/audit_rate_check.py` prints 830 rules, 83 addresses, severe 6, unsure 3, bound 1.89.
+Current: `python scripts/audit_rate_check.py` prints 1,120 rules, 112 addresses, severe 14, unsure 5, bound 2.49 (fails the 2.0 pass rule).
 A pass means no worse than the recorded baseline. It does not mean the rules are correct.
 
-## Going forward (proposed, needs the owner's yes: a code change)
+## Going forward
 
-- `build_packets.py` writes `seed`, the script's git hash, the date and the council list into `summary.json`.
-- `flag_packets.py` writes its git hash and the flag counts into the run folder.
-- A re-draw check: same seed and same hash reproduces the address list; the rules drawn are compared as a set and any
-  difference is listed.
-- Run 9 is read, and the three older runs are re-read where the committed first pass now flags a rule they did not read.
+Done 2026-11-04 (code): `build_packets.py` now writes a `run_meta` entry into `summary.json` (seed, code hash, date, council list,
+rules per address). `flag_packets.py` now writes `flag_meta.json` (code hash, its random seed 7, counts) into the run folder.
+Both apply to runs built after this change; runs 6 to 9 carry neither.
+
+Still open:
+- A re-draw check: same seed and same hash reproduces the address list; the rules drawn are compared as a set and any difference listed.
+- Re-read runs 6 to 8 where the committed first pass flags a rule they did not read (541 rules).
+- A second reader on run 9's `severe` and `unsure` rules.

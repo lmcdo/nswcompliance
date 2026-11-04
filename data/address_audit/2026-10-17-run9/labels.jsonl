@@ -1,0 +1,85 @@
+{"rule_key": "000:212058", "label": "ok", "reason": ""}
+{"rule_key": "000:212241", "label": "ok", "reason": ""}
+{"rule_key": "000:212971", "label": "ok", "reason": "use-specific chapter (boarding houses) shown at a dwelling house; not an area or words error"}
+{"rule_key": "000:213231", "label": "ok", "reason": "use-specific chapter (sex services premises) shown at a dwelling house; not an area or words error"}
+{"rule_key": "001:213316", "label": "ok", "reason": "conditional: C.19 limited by its own words to floodplain development; house not mapped in flood"}
+{"rule_key": "001:212403", "label": "ok", "reason": ""}
+{"rule_key": "001:213704", "label": "ok", "reason": ""}
+{"rule_key": "002:152136", "label": "ok", "reason": ""}
+{"rule_key": "002:187421", "label": "ok", "reason": ""}
+{"rule_key": "002:165868", "label": "ok", "reason": ""}
+{"rule_key": "002:199732", "label": "ok", "reason": ""}
+{"rule_key": "002:199696", "label": "ok", "reason": ""}
+{"rule_key": "003:184918", "label": "ok", "reason": ""}
+{"rule_key": "003:143259", "label": "severe", "reason": "Canterbury-Bankstown 2.4 Pipeline Corridors covers land adjacent to the Moomba-Sydney pipeline (live R2 PDF p4); no sign in the property record that 57 Edward St Bankstown is adjacent", "category": "wrong-area"}
+{"rule_key": "003:152129", "label": "ok", "reason": ""}
+{"rule_key": "003:160358", "label": "ok", "reason": ""}
+{"rule_key": "004:239412", "label": "ok", "reason": ""}
+{"rule_key": "004:189659", "label": "ok", "reason": ""}
+{"rule_key": "004:178400", "label": "ok", "reason": ""}
+{"rule_key": "004:190006", "label": "severe", "reason": "Sydney DCP 3.16.12.8 Pitt Street Mall signage precinct control (1)-(6) served to an Alexandria house", "category": "wrong-area"}
+{"rule_key": "006:172580", "label": "ok", "reason": ""}
+{"rule_key": "006:206561", "label": "minor", "reason": "heading only, no control text"}
+{"rule_key": "007:207357", "label": "ok", "reason": ""}
+{"rule_key": "007:207325", "label": "ok", "reason": ""}
+{"rule_key": "007:207074", "label": "ok", "reason": ""}
+{"rule_key": "007:207382", "label": "ok", "reason": ""}
+{"rule_key": "007:207079", "label": "ok", "reason": ""}
+{"rule_key": "007:207070", "label": "ok", "reason": ""}
+{"rule_key": "007:166191", "label": "ok", "reason": ""}
+{"rule_key": "008:240885", "label": "ok", "reason": ""}
+{"rule_key": "008:163576", "label": "ok", "reason": ""}
+{"rule_key": "009:249541", "label": "minor", "reason": "list fragment cut mid-list ('f. ... ii. Bins/containers greater than 240L')"}
+{"rule_key": "009:161703", "label": "minor", "reason": "list fragment ends 'ix.'"}
+{"rule_key": "009:210209", "label": "ok", "reason": ""}
+{"rule_key": "010:249481", "label": "minor", "reason": "table flattened, readable"}
+{"rule_key": "010:124119", "label": "minor", "reason": "heading only"}
+{"rule_key": "010:206339", "label": "ok", "reason": ""}
+{"rule_key": "011:249446", "label": "ok", "reason": ""}
+{"rule_key": "011:160650", "label": "ok", "reason": ""}
+{"rule_key": "011:249499", "label": "ok", "reason": ""}
+{"rule_key": "011:160670", "label": "ok", "reason": ""}
+{"rule_key": "011:249457", "label": "ok", "reason": ""}
+{"rule_key": "012:164991", "label": "minor", "reason": "template table headers, readable"}
+{"rule_key": "012:186643", "label": "ok", "reason": "conditional: heritage item / HCA wording; house not heritage"}
+{"rule_key": "012:187009", "label": "ok", "reason": ""}
+{"rule_key": "012:106029", "label": "minor", "reason": "rule runs onto next page; running header 'PART B - 19' inside"}
+{"rule_key": "012:186056", "label": "unsure", "reason": "Leichhardt C1.11.1 parking table: rule reads 'Single dwelling 2 spaces per', page reads 'Single dwelling house Nil 2 spaces per dwelling house'; header order and 'Nil' differ"}
+{"rule_key": "013:250397", "label": "ok", "reason": ""}
+{"rule_key": "014:165145", "label": "ok", "reason": "conditional: new lot on land with no bush fire hazard; house bushfire prone"}
+{"rule_key": "014:196471", "label": "severe", "reason": "Ku-ring-gai Part 7A.4 p14: objective 2 words spliced into the controls cell ('Up to 4th Storey 2 To ensure that new i) 12.0m')", "category": "wrong-words"}
+{"rule_key": "014:197380", "label": "severe", "reason": "Ku-ring-gai Part 8 p8: objective 2 words interleaved with control 2 ('To ensure detailed design i) building location ... decisions are founded')", "category": "wrong-words"}
+{"rule_key": "015:205198", "label": "ok", "reason": ""}
+{"rule_key": "015:197052", "label": "severe", "reason": "Ku-ring-gai Part 8A.5 p13: objective word 'developments.' inside '(see Figure developments. 8A.5-1)' plus figure caption words appended", "category": "wrong-words"}
+{"rule_key": "016:226255", "label": "ok", "reason": ""}
+{"rule_key": "016:225528", "label": "ok", "reason": ""}
+{"rule_key": "016:225619", "label": "ok", "reason": ""}
+{"rule_key": "016:226359", "label": "ok", "reason": ""}
+{"rule_key": "017:225401", "label": "ok", "reason": ""}
+{"rule_key": "018:192322", "label": "ok", "reason": ""}
+{"rule_key": "018:191976", "label": "ok", "reason": ""}
+{"rule_key": "018:191100", "label": "ok", "reason": ""}
+{"rule_key": "020:211144", "label": "ok", "reason": ""}
+{"rule_key": "020:211336", "label": "ok", "reason": ""}
+{"rule_key": "020:249347", "label": "unsure", "reason": "Wollongong E3 p28 parking table flattened: cells from different rows/columns run together ('spaces practitioner plus 1 car parking | 5 practitioners space per 2 employees plus')"}
+{"rule_key": "020:211261", "label": "ok", "reason": ""}
+{"rule_key": "021:249426", "label": "minor", "reason": "species table flattened with pipes; Y columns readable"}
+{"rule_key": "021:138381", "label": "ok", "reason": ""}
+{"rule_key": "023:249594", "label": "minor", "reason": "table flattened, readable"}
+{"rule_key": "023:202516", "label": "ok", "reason": ""}
+{"rule_key": "023:249710", "label": "ok", "reason": ""}
+{"rule_key": "024:248825", "label": "ok", "reason": ""}
+{"rule_key": "025:248861", "label": "ok", "reason": ""}
+{"rule_key": "025:248836", "label": "minor", "reason": "table cell 'Articulated Vehicle' missing"}
+{"rule_key": "025:248908", "label": "ok", "reason": ""}
+{"rule_key": "026:181814", "label": "ok", "reason": ""}
+{"rule_key": "026:170663", "label": "ok", "reason": ""}
+{"rule_key": "027:182249", "label": "minor", "reason": "rule continues onto next page; shown page = start"}
+{"rule_key": "028:244719", "label": "minor", "reason": "word 'for' dropped ('Guidelines Development Applications')"}
+{"rule_key": "028:248368", "label": "severe", "reason": "Hornsby 3.5.4 'Within the Pound Road Precinct' podium control served to 20 Lodge St (property record has no precinct)", "category": "wrong-area"}
+{"rule_key": "028:244792", "label": "severe", "reason": "Hornsby 1.3.2.1 control limited to 'the Hornsby Town Centre' served to an R2 house with no centre/precinct in its record", "category": "wrong-area"}
+{"rule_key": "028:248357", "label": "ok", "reason": ""}
+{"rule_key": "029:244956", "label": "minor", "reason": "applicability matrix flattened to a list; asterisks lost"}
+{"rule_key": "029:248258", "label": "severe", "reason": "Hornsby 3.4 'Beecroft Heritage Precinct' fence controls served to Galston house that is not heritage", "category": "wrong-area"}
+{"rule_key": "029:248013", "label": "ok", "reason": ""}
+{"rule_key": "029:247847", "label": "ok", "reason": ""}
