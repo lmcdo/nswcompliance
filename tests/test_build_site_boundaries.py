@@ -85,3 +85,23 @@ def test_en_dash_range():
 def test_a_section_does_not_leak_to_the_next_lot():
     text = "Lot 25 Sec 1 DP 328, Lot A DP 377714"
     assert b.parse_lots(text) == ["25/1/DP328", "A//DP377714"]
+
+
+# --- Sol cross-review 2026-11-04: a range that cannot be expanded must fail visibly, never drop lots ---
+
+def test_a_descending_range_is_refused_not_dropped():
+    import pytest
+    with pytest.raises(ValueError, match="range"):
+        b.parse_lots("Lots 58 and 78 to 67 DP 4844")
+
+
+def test_a_letter_range_is_refused_not_made_into_one_odd_id():
+    import pytest
+    with pytest.raises(ValueError, match="range"):
+        b.parse_lots("Lots A to C DP 123")
+
+
+def test_a_dashed_letter_range_is_refused_too():
+    import pytest
+    with pytest.raises(ValueError, match="range"):
+        b.parse_lots("Lots A-C DP 123")

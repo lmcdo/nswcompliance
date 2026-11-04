@@ -62,6 +62,10 @@ def parse_lots(text: str) -> list[str]:
     for ids, sec, dp in _LOT_RE.findall(text):
         for part in re.split(r"\s*(?:,|and)\s*", ids.strip()):
             m = re.fullmatch(rf"(\d+){_RANGE}(\d+)", part, re.I)
+            if m and int(m.group(2)) < int(m.group(1)):
+                raise ValueError(f"descending lot range {part!r} in {text!r}: lots would be dropped")
+            if not m and re.fullmatch(rf"{_ID}{_RANGE}{_ID}", part, re.I):
+                raise ValueError(f"lot range {part!r} in {text!r} has non-numeric ends; cannot expand")
             numbers = [str(n) for n in range(int(m.group(1)), int(m.group(2)) + 1)] if m else [part]
             out.extend(f"{n.upper()}/{sec.upper()}/DP{dp}" for n in numbers if n)
     return list(dict.fromkeys(out))
