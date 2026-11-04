@@ -1,0 +1,78 @@
+{
+  "tier": "standard",
+  "justification": "The lot reader that proves a single-site outline against the NSW cadastre silently dropped any lot written with a section (\"Lot 3 Sec D DP 119\"), because its pattern needed \"Lot N, DP\" with nothing between. A site could then be built, or fail, on fewer lots than the council names. Leichhardt Part G (G6, G7, G9, G10) writes lots this way, and G7 and G12 use \"67 to 78\" and en-dash ranges. This change teaches parse_lots those forms. It changes no database row and loads no outline.",
+  "commit_hash": "22015538",
+  "files": [
+    "scripts/build_site_boundaries.py",
+    "tests/test_build_site_boundaries.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_build_site_boundaries.py -q",
+    "observed_red": "Before the fix, on this branch, the six new tests failed: 6 failed / 7 passed. test_section_letter_is_part_of_the_lot_id failed with 'At index 0 diff: 2//DP234045 != 3/D/DP119', which is the section lot being dropped without a message.",
+    "fails_when": "parse_lots stops reading a section, a 'to' range or an en-dash range. Measured on this branch: with the old parse_lots and the six new tests, 6 failed / 7 passed (the first failure shows 'Lot 3 Sec D DP 119' dropped: index 0 was '2//DP234045', not '3/D/DP119'). With the new parse_lots, 13 passed. After the pre-push Sol cross-review found two real defects (a descending range such as '78 to 67' expanded to nothing and silently dropped lots; a letter range such as 'A to C' became one malformed id), three more tests were added and failed first (2 failed / 13 passed), then 16 passed once ranges that cannot be expanded raise ValueError. Related tests (-k site_boundar or site_figure or site_address): 28 passed.",
+    "external_authority": "The NSW cadastre table nsw_cadastre_lots decides what a lot id looks like. Read on 2026-11-04: lots with a section are stored as lot/section/DPnnn ('3/D/DP119', '3/1/DP328'), lots without one as lot//DPnnn ('59//DP4844'). The tests take their wording from the council's own Leichhardt Part G PDF pages 31, 65, 105, 116 and 139, not from the reader's output."
+  },
+  "pre_impl": {
+    "existing_data": "scripts/build_site_boundaries.py already holds the lot reader, the five proof checks and the load step; tests/test_build_site_boundaries.py already tests ranges and 'and' lists. Nothing parallel was built. The cadastre id format was read from nsw_cadastre_lots (columns lotnumber, sectionnumber, plannumber exist).",
+    "new_vs_existing": "Existing: the lot reader, the five proof checks and the load step in scripts/build_site_boundaries.py, reused unchanged. New: only the lot pattern and the id it builds, so a section, a 'to' range and an en or em dash range are read. No new script, table or file was added.",
+    "assumption_mismatch": "I assumed the eight Leichhardt site lists (G6 to G13) could be dry-run with the existing reader. They could not: four use a section word, G7 uses 'to', G12 an en dash. A dry run of G11 and G8 earlier the same day showed the proof checks work but could not cover the other six, which is what this change fixes."
+  },
+  "functions": [
+    {
+      "name": "parse_lots",
+      "file_line": "scripts/build_site_boundaries.py:57",
+      "input": "the lot sentence copied from a chapter page, e.g. 'Lot 3 Sec D DP 119 , Lot 2 DP 234045'",
+      "output": "a de-duplicated list of cadastre lot ids, 'lot/section/DPnnn', section empty when none is written",
+      "if_none": "text with no 'Lot ... DP nnn' returns an empty list; the caller (prove) then fails check 2_lots because the lot list is empty, so a site is never built from nothing"
+    }
+  ],
+  "values": [
+    {
+      "value": "old parse_lots with the 6 new tests: 6 failed / 7 passed",
+      "read_at": "python -m pytest tests/test_build_site_boundaries.py -q before the fix, 2026-11-04",
+      "if_missing": "without it there is no evidence the new tests catch the dropped section lot"
+    },
+    {
+      "value": "new parse_lots: 13 passed; 11 of 11 sites in lot_sites.json parse identically to origin/main",
+      "read_at": "python comparing origin/main's parse_lots against this branch over every lots_verbatim in lot_sites.json, 2026-11-04",
+      "if_missing": "the change could silently alter a lot list for a site already loaded in production"
+    },
+    {
+      "value": "real Leichhardt wording: G6 3 lots, G9 6, G10 6, G12 7, G7 16 (3 + 13)",
+      "read_at": "parse_lots over the sentences on council PDF pages 31, 105, 116, 139 and 65, 2026-11-04",
+      "if_missing": "the tests could pass on invented wording that the council does not use"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A section word leaks onto the next lot, so 'Lot 25 Sec 1 DP 328, Lot A DP 377714' returns A/1/DP377714.",
+      "what_happens": "The lot would not be found in the cadastre, and check 2_lots would refuse to build the site. It cannot pass silently.",
+      "mitigated": true,
+      "how": "test_a_section_does_not_leak_to_the_next_lot asserts ['25/1/DP328', 'A//DP377714'].",
+      "repro": "python -m pytest tests/test_build_site_boundaries.py -q"
+    },
+    {
+      "scenario": "The section is written in lower case or the same lot is named twice, so the id differs from the cadastre's or appears twice.",
+      "what_happens": "A lower-case section would give an id the cadastre does not hold and check 2_lots would refuse the site; a duplicate would be counted twice in lots_listed.",
+      "mitigated": true,
+      "how": "Measured on 2026-11-04: 'Lot 3 sec d DP 119' returns ['3/D/DP119'], and the same lot named twice returns it once.",
+      "repro": "python -c \"import sys;sys.path.insert(0,'scripts');import build_site_boundaries as b;print(b.parse_lots('Lot 3 sec d DP 119'))\""
+    },
+    {
+      "scenario": "The word 'to' inside ordinary prose is read as a range, for example 'Lot 2 to the north DP 5'.",
+      "what_happens": "A range needs an id on both sides of 'to'. Measured: parse_lots('Lot 2 to the north DP 5') returns [] (no lot is read at all, and check 2_lots then refuses the site), and 'Lot 2 to 4 DP 5' returns lots 2, 3 and 4.",
+      "mitigated": true,
+      "how": "Measured on 2026-11-04 with the two strings above; the 11 existing sites all parse identically to before.",
+      "repro": "python -m pytest tests/test_build_site_boundaries.py -q"
+    }
+  ],
+  "mutation_analysis": "One mutation, run rather than described: the old parse_lots against the new tests gives 6 failed / 7 passed, so each of the six new tests fails when the behaviour is missing. I did not run a second mutation that breaks only the range separator, so a defect in 'to' alone relies on test_to_makes_a_range_and_is_not_a_lot, which asserts 13 lots with exact first, second and last ids.",
+  "residual_risk": "The reader still depends on the sentence being copied verbatim from the page; a lot written in a form not covered (measured: 'Lot 4, Section 2, DP 99' reads as 4/2/DP99, but 'Lot 4 in DP 99 Sec 2' returns []) would be dropped without a message, as before. No Leichhardt outline is loaded by this change; G8's lot 1 DP 632522 is not in the cadastre and G7's lots 67 to 78 appear missing, so those sites still need another source.",
+  "post_merge": {
+    "db_reset": "No. Code and tests only; nothing is written to any table.",
+    "secrets": "None.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No. The next step is a dry run of Leichhardt G6 to G13 with build_site_boundaries.py, which writes nothing live."
+  }
+}

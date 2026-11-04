@@ -42,19 +42,32 @@ UA = {"User-Agent": "Mozilla/5.0 (build_site_boundaries)"}
 AREA_TOLERANCE = 0.10
 FALLBACK_M = 500
 
+# A lot id, and the ways a chapter writes a range: "6-9", an en or em dash, or "67 to 78".
+_ID = r"[0-9A-Z]{1,4}"
+_RANGE = r"\s*(?:-|–|—|to)\s*"
+_ITEM = rf"{_ID}(?:{_RANGE}{_ID})?"
+# Optional section between the lot list and "DP": "Sec D", "Section 3", "in Sec 13". The cadastre writes such a
+# lot as lot/section/DPnnn ('3/D/DP119'); a lot with no section is lot//DPnnn.
 _LOT_RE = re.compile(
-    r"Lots?\s+((?:[0-9A-Z]{1,4}(?:\s*-\s*[0-9A-Z]{1,4})?)(?:\s*(?:,|and)\s*[0-9A-Z]{1,4}(?:\s*-\s*[0-9A-Z]{1,4})?)*?)"
-    r"\s*,?\s*DP\s*(\d+)\b", re.I)
+    rf"Lots?\s+({_ITEM}(?:\s*(?:,|and)\s*{_ITEM})*?)"
+    r"\s*,?\s*(?:(?:in\s+)?Sec(?:tion)?\.?\s*([0-9A-Z]{1,3})\s*,?\s*)?DP\s*(\d+)\b", re.I)
 
 
 def parse_lots(text: str) -> list[str]:
-    """'Lot 6-9, DP79950 Lots A and B, DP 355656' -> ['6//DP79950', ..., 'A//DP355656', 'B//DP355656']."""
+    """'Lot 6-9, DP79950 Lots A and B, DP 355656' -> ['6//DP79950', ..., 'A//DP355656', 'B//DP355656'].
+
+    'Lot 3 Sec D DP 119' -> '3/D/DP119'; 'Lots 58 and 67 to 78 DP 4844' and 'Lots 2-4, DP 1257743' (en dash)
+    expand their ranges. Before 2026-11-04 a section lot matched nothing and was dropped without a message."""
     out: list[str] = []
-    for ids, dp in _LOT_RE.findall(text):
+    for ids, sec, dp in _LOT_RE.findall(text):
         for part in re.split(r"\s*(?:,|and)\s*", ids.strip()):
-            m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+            m = re.fullmatch(rf"(\d+){_RANGE}(\d+)", part, re.I)
+            if m and int(m.group(2)) < int(m.group(1)):
+                raise ValueError(f"descending lot range {part!r} in {text!r}: lots would be dropped")
+            if not m and re.fullmatch(rf"{_ID}{_RANGE}{_ID}", part, re.I):
+                raise ValueError(f"lot range {part!r} in {text!r} has non-numeric ends; cannot expand")
             numbers = [str(n) for n in range(int(m.group(1)), int(m.group(2)) + 1)] if m else [part]
-            out.extend(f"{n.upper()}//DP{dp}" for n in numbers if n)
+            out.extend(f"{n.upper()}/{sec.upper()}/DP{dp}" for n in numbers if n)
     return list(dict.fromkeys(out))
 
 
