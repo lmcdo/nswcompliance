@@ -37,6 +37,10 @@ interface FloodOutputs {
   jrc_data_year: number | null;
   dea_wofs_frequency_pct: number | null;
   ses_in_flood_planning_area: boolean | null;
+  // Why ses_in_flood_planning_area is null (e.g. "we do not hold this
+  // council's flood planning map for this area", plus where the council's
+  // own studies are). From services/flood_planning.py.
+  flood_map_reason?: string | null;
   ses_flood_class: string | null;
   ses_aep_tiers: string[] | null;
   ses_study_name: string | null;
@@ -556,6 +560,16 @@ function FloodCard({ result }: { result: FloodResult }) {
       detail: 'This property is not in a gazetted flood zone, but other data sources in this report indicate flood exposure. The EPI overlay does not cover all flood-affected areas — absence from the overlay is not clearance.',
       severity: 'amber',
     });
+  } else if (epiClass === 'none' && o.ses_in_flood_planning_area !== false) {
+    // We do not hold (or could not check) the council's own flood planning
+    // map. Most councils left the state overlay in 2023, so its "none" here
+    // is not a result: 167 of 310 checks (2026-10-28) were in such councils.
+    findings.push({
+      label: 'Government flood overlay',
+      value: 'Not in the state overlay',
+      detail: 'The state planning flood overlay does not cover every council, and we could not check this council\'s own flood planning map. This is not a result either way.',
+      severity: 'amber',
+    });
   } else if (epiClass === 'none') {
     findings.push({
       label: 'Government flood overlay',
@@ -587,6 +601,14 @@ function FloodCard({ result }: { result: FloodResult }) {
       value: 'Outside mapped flood extent',
       detail: 'The council flood model does not show this property within the flood planning area.',
       severity: 'green',
+    });
+  } else if (typeof o.flood_map_reason === 'string' && o.flood_map_reason.trim()) {
+    const reason = o.flood_map_reason.trim();
+    findings.push({
+      label: 'Council flood planning map',
+      value: 'Not checked',
+      detail: reason.charAt(0).toUpperCase() + reason.slice(1),
+      severity: 'amber',
     });
   }
 

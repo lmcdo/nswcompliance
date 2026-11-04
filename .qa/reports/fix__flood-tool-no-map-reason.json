@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "User-facing wording on the public flood tool (36 runs in the last 30 days, PostHog 2026-11-04). Frontend only: no backend, no DB, no new data. Not Minor because the old row read as a clear flood result where none was checked.",
+  "commit_hash": "c2aac94e",
+  "files": [
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPatterns=FloodTool",
+    "fails_when": "Mutation 1 (overlay branch condition made unreachable): 1 failed / 19 passed. Mutation 2 (flood_map_reason row disabled): 1 failed / 19 passed. Clean: 20 passed.",
+    "external_authority": "Live production response of POST canibuildit.com.au/api/satellite/flood for 260 Blende Street Broken Hill, 2026-11-04: epi_flood_class 'none', ses_in_flood_planning_area null, flood_map_reason \"we do not hold this council's flood planning map ...\". The fixture copies that response.",
+    "observed_red": "Measured on this branch 2026-11-04 by sed: overlay branch disabled -> 1 failed / 19 passed ('never shows a green Not mapped as flood-prone row'); reason row disabled -> 1 failed / 19 passed ('shows why, and where the council's own studies are'). Restored: 20 passed."
+  },
+  "pre_impl": {
+    "existing_data": "No table touched. Reads outputs.flood_map_reason, already returned by services/flood_truth.py (from services/flood_planning.py, #1539) but never rendered by the tool.",
+    "assumption_mismatch": "ses_in_flood_planning_area is three-state. Only false means we hold the council map and the lot is off it; null (not held, near the edge, unknown council, check failed) now gets the amber row. Older cached results without flood_map_reason simply show no council-map row.",
+    "new_vs_existing": "Applies to every render, including cached results."
+  },
+  "functions": [
+    {
+      "name": "FloodCard",
+      "file_line": "frontend-nextjs/components/tools/FloodTool.tsx",
+      "input": "result.outputs JSON from POST /api/satellite/flood, cast to FloodResult",
+      "output": "findings rows rendered in the flood result card",
+      "if_none": "flood_map_reason missing or blank -> no council-map row; overlay row stays amber unless ses_in_flood_planning_area === false"
+    }
+  ],
+  "values": [
+    {
+      "value": "flood_map_reason",
+      "read_at": "FloodTool.tsx FloodCard council-study block",
+      "nullable": "yes",
+      "guard_at": "typeof === 'string' && trim()",
+      "if_missing": "no council-map row"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Council map held, lot clear (ses false) but the overlay row turns amber anyway, hiding a real negative.",
+      "what_happens": "User loses a real 'not on the map' result.",
+      "mitigated": true,
+      "how": "Branch only fires when ses_in_flood_planning_area !== false; test 'still shows the clear overlay row where we hold the map' covers it.",
+      "repro": "npx jest --testPathPatterns=FloodTool"
+    },
+    {
+      "scenario": "Elevated or moderate signal with overlay none and map not held.",
+      "what_happens": "Existing amber 'Not in statutory flood overlay' row must still win.",
+      "mitigated": true,
+      "how": "New branch placed after the moderate/elevated branch.",
+      "repro": "read FloodCard branch order"
+    },
+    {
+      "scenario": "Backend reason text is lower-case and contains a raw URL, so it reads oddly or the link is not clickable.",
+      "what_happens": "User sees a plain-text URL to the council's studies; still readable and correct.",
+      "mitigated": true,
+      "how": "First letter capitalised; URL left as text on purpose (no new link component). Test checks the URL text is shown.",
+      "repro": "npx jest --testPathPatterns=FloodTool"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: run the live tool on 260 Blende Street Broken Hill and confirm the two amber rows."
+  }
+}
