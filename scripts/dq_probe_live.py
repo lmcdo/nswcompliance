@@ -271,7 +271,7 @@ _REACHES_NOBODY = (
     " OR (rp.v2_dcp_layer = 'precinct' AND rp.v2_precinct_id IS NOT NULL"
     "     AND NOT EXISTS (SELECT 1 FROM dcp_precinct_boundaries b WHERE b.boundary IS NOT NULL"
     "                     AND (b.precinct_id = rp.v2_precinct_id"
-    "                          OR left(b.precinct_id, length(rp.v2_precinct_id) + 1) = rp.v2_precinct_id || '.'))"
+    "                          OR left(b.precinct_id, length(rp.v2_precinct_id) + 1) IN (rp.v2_precinct_id || '.', rp.v2_precinct_id || '-')))"
     "     AND NOT EXISTS (SELECT 1 FROM dcp_precinct_localities l WHERE l.precinct_id = rp.v2_precinct_id))"
     " OR COALESCE(rp.v2_dcp_layer, '') NOT IN ('generic', 'use_specific', 'condition', 'precinct'))"
     " AND LOWER(COALESCE(rp.v2_marker, '')) <> 'heritage'"

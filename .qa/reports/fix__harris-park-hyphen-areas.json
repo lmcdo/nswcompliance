@@ -1,0 +1,69 @@
+{
+ "tier": "standard",
+ "justification": "The route matched a child outline to its parent key only when joined by a dot. Harris Park 8.3.2 outlines are named 8.3.2-football-estate etc., so its 44 rules reached no house. The join now accepts a hyphen too. DQ-146 probe updated the same way (2,245 -> 2,201, exactly 44).",
+ "commit_hash": "38547ef1",
+ "files": [
+  "frontend-nextjs/lib/precinct-service.ts",
+  "scripts/dq_probe_live.py",
+  "frontend-nextjs/__tests__/lib/precinct-provisions-lookup.test.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/precinct-provisions-lookup.test.ts",
+  "observed_red": "Ran the changed SQL on production: 8.3.2-football-estate resolves to key 8.3.2 with 44 rules; before the change the dot-only join returned no key.",
+  "fails_when": "The hyphen join is removed: the new test fails on the a.k || '-' assertion."
+ },
+ "pre_impl": {
+  "existing_data": "dcp_precinct_boundaries holds 8.3.2-football-estate, 8.3.2-national-significance, 8.3.2-river-area (council shapefile); regulatory_provisions holds 44 current rules keyed 8.3.2.",
+  "assumption_mismatch": "Assumed child ids always join the parent with a dot; the shapefile loader suffixed with a hyphen on purpose (non-unique PART_REF).",
+  "new_vs_existing": "One SQL predicate widened in the existing query; no new file.",
+  "external_source_error": "None."
+ },
+ "functions": [
+  {
+   "name": "getPrecinctProvisions",
+   "file_line": "frontend-nextjs/lib/precinct-service.ts:631",
+   "what": "Reads served rules for a precinct id, resolving a child id to the nearest ancestor key that has rules",
+   "input": "a precinct id string, a council name and an optional former council",
+   "output": "an array of provision rows, empty when nothing matches",
+   "if_none": "Returns an empty array when no council or id is given",
+   "edge_cases": "Marrickville ids contain an underscore so left() is used, not LIKE; hyphen added to dot",
+   "failure_mode": "A key containing a hyphen could match as a parent of a longer id"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Id 8.3.1 exact match with its own rules",
+   "what_happens": "Exact key wins and no ancestor is used",
+   "mitigated": true,
+   "how": "COALESCE exact first",
+   "repro": "8.3.1 returns 70"
+  },
+  {
+   "scenario": "Epping child id 8.1.1.1 dotted join",
+   "what_happens": "Still resolves to key 8.1.1 as before",
+   "mitigated": true,
+   "how": "dot join kept",
+   "repro": "8.1.1.1 returns 421"
+  },
+  {
+   "scenario": "Council with no rules for the parent",
+   "what_happens": "No key resolves and nothing is returned",
+   "mitigated": true,
+   "how": "council filter in avail",
+   "repro": "avail empty"
+  }
+ ],
+ "verified": [
+  "SQL run on production for four ids",
+  "probe fell by exactly 44"
+ ],
+ "gaps": [
+  "All three Harris Park areas get the same 44 rules because they share one parent key"
+ ],
+ "post_merge": {
+  "db_reset": "None, no data written.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "python scripts/dq_probe_live.py --id DQ-146 prints 2201 or less."
+ }
+}

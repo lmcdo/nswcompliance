@@ -48,7 +48,8 @@ describe('ancestor-key resolution is present in the served query', () => {
     await getPrecinctProvisions('8.1.1.1', 'City of Parramatta', 'Parramatta');
     const sql = mockQuery.mock.calls[0][0] as string;
 
-    expect(sql).toContain("left(r.id, length(a.k) + 1) = a.k || '.'");
+    // A child joins its parent with '.' (Epping 8.1.1.1) or '-' (Harris Park 8.3.2-football-estate).
+    expect(sql).toContain("left(r.id, length(a.k) + 1) IN (a.k || '.', a.k || '-')");
     expect(sql).not.toMatch(/LIKE\s+a\.k/i);
   });
 

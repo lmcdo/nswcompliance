@@ -654,6 +654,8 @@ export async function getPrecinctProvisions(
     // because serving a property controls it is not subject to is worse than
     // serving none, and it is the direction that looks like success.
     //
+    // A child id joins its parent with '.' or, for Harris Park 8.3.2 (8.3.2-football-estate, council shapefile
+    // names), with '-': 44 rules were keyed 8.3.2 and reached no house (2026-11-04).
     // left(id, length(k)+1) = k || '.' rather than LIKE k || '.%': Marrickville
     // ids such as '47_' contain an underscore, which LIKE reads as a wildcard.
     //
@@ -677,7 +679,7 @@ export async function getPrecinctProvisions(
         SELECT DISTINCT COALESCE(
           (SELECT a.k FROM avail a WHERE a.k = r.id),
           (SELECT a.k FROM avail a
-            WHERE left(r.id, length(a.k) + 1) = a.k || '.'
+            WHERE left(r.id, length(a.k) + 1) IN (a.k || '.', a.k || '-')
             ORDER BY length(a.k) DESC
             LIMIT 1)
         ) AS k
