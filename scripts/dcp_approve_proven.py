@@ -106,7 +106,7 @@ def main() -> None:
     # main() leaves through sys.exit on several paths; close the connection on every one.
     # prior-art-checked: PLAN ce-council-words-PLAN-2026-10-12.md lines 301-307 -- closes the
     # script's existing connection (push gate: connection leak); no new data source.
-    atexit.register(conn.close)
+    atexit.register(lambda: conn.close())
     cur = conn.cursor()
     cur.execute("SET lock_timeout = '5s'")
     cur.execute("SET statement_timeout = '30s'")
