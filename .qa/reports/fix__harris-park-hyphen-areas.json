@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "The route matched a child outline to its parent key only when joined by a dot. Harris Park 8.3.2 outlines are named 8.3.2-football-estate etc., so its 44 rules reached no house. The join now accepts a hyphen too. DQ-146 probe updated the same way (2,245 -> 2,201, exactly 44).",
- "commit_hash": "c657451c",
+ "commit_hash": "38547ef1",
  "files": [
   "frontend-nextjs/lib/precinct-service.ts",
   "scripts/dq_probe_live.py",
