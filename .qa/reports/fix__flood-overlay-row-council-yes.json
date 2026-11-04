@@ -1,0 +1,68 @@
+{
+  "tier": "standard",
+  "justification": "Follow-up to #1598 from its late cross-review. Frontend wording on the public flood tool only; no backend, no DB.",
+  "commit_hash": "2a318ecf",
+  "files": [
+    "frontend-nextjs/components/tools/FloodTool.tsx",
+    "frontend-nextjs/__tests__/components/tools/FloodTool-paywall.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPatterns=FloodTool",
+    "fails_when": "The ses_in_flood_planning_area === true branch is made unreachable: 1 failed / 20 passed (measured 2026-11-04). Restored: 21 passed.",
+    "external_authority": "gpt-5.6-sol cross-review of PR 1598, finding 1 (MEDIUM, FloodTool.tsx:563), 2026-11-04.",
+    "observed_red": "sed made the true branch unreachable on this branch: 1 failed / 20 passed; restored 21 passed."
+  },
+  "pre_impl": {
+    "existing_data": "No table. Reads outputs.ses_in_flood_planning_area (three-state) from /api/satellite/flood.",
+    "assumption_mismatch": "#1598 assumed true never reached this branch because the signal would be moderate or elevated; the reviewer showed a true with a low or none signal does reach it.",
+    "new_vs_existing": "Applies to every render, including cached results."
+  },
+  "functions": [
+    {
+      "name": "FloodCard",
+      "file_line": "frontend-nextjs/components/tools/FloodTool.tsx",
+      "input": "result.outputs JSON from POST /api/satellite/flood, cast to FloodResult",
+      "output": "findings rows rendered in the flood result card",
+      "if_none": "null keeps the not-checked row; false keeps the green row; true gets the new amber row"
+    }
+  ],
+  "values": [
+    {
+      "value": "ses_in_flood_planning_area",
+      "read_at": "FloodTool.tsx FloodCard overlay block",
+      "nullable": "yes",
+      "guard_at": "=== true / == null / else",
+      "if_missing": "treated as null: not-checked row"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Council map says yes, state overlay says none, signal low.",
+      "what_happens": "Before: row said we could not check the council map. Now amber row points to the council yes.",
+      "mitigated": true,
+      "how": "=== true branch before the null branch",
+      "repro": "npx jest --testPathPatterns=FloodTool"
+    },
+    {
+      "scenario": "Council map not held (null).",
+      "what_happens": "Must still say not checked.",
+      "mitigated": true,
+      "how": "== null branch unchanged; existing Broken Hill test",
+      "repro": "npx jest --testPathPatterns=FloodTool"
+    },
+    {
+      "scenario": "Council map held, lot off it (false).",
+      "what_happens": "Must still show the green clear row.",
+      "mitigated": true,
+      "how": "falls to the existing epiClass none branch; existing test",
+      "repro": "npx jest --testPathPatterns=FloodTool"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

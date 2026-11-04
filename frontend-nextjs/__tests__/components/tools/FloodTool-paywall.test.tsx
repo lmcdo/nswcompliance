@@ -347,6 +347,14 @@ describe('FloodTool — a council whose flood planning map we do not hold', () =
     expect(screen.getByText(/data\.nsw\.gov\.au/)).toBeInTheDocument();
   });
 
+  it("never says 'could not check' when the council's own map says yes", async () => {
+    const yes = { ...NONE_RESULT, outputs: { ...NONE_RESULT.outputs, ses_in_flood_planning_area: true } };
+    await runFloodCheck(yes as unknown as typeof ELEVATED_RESULT);
+    expect(screen.queryByText('Not mapped as flood-prone')).toBeNull();
+    expect(screen.queryByText(/could not check this council/i)).toBeNull();
+    expect(screen.getByText(/the council's own flood planning map does/i)).toBeInTheDocument();
+  });
+
   it('still shows the clear overlay row where we hold the map and the lot is off it', async () => {
     const held = { ...NONE_RESULT, outputs: { ...NONE_RESULT.outputs, ses_in_flood_planning_area: false } };
     await runFloodCheck(held as unknown as typeof ELEVATED_RESULT);
