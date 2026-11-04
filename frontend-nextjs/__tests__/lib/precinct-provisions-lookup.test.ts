@@ -88,6 +88,15 @@ describe('getPrecinctProvisions', () => {
     expect(sql).not.toContain('dcp_precinct_provisions');
   });
 
+  test('a child area joins its parent with a dot or a hyphen (Harris Park 8.3.2-football-estate)', async () => {
+    // 44 Harris Park rules are keyed 8.3.2 while the council shapefile names its three areas 8.3.2-football-estate,
+    // 8.3.2-national-significance and 8.3.2-river-area. Dot-only matching served them to no house (2026-11-04).
+    await getPrecinctProvisions('8.3.2-football-estate', 'City of Parramatta', 'Parramatta');
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("a.k || '-'");
+    expect(sql).toContain("a.k || '.'");
+  });
+
   test('scopes to ONE council, keyed by v2_precinct_id', async () => {
     await getPrecinctProvisions('8.2.6', 'City of Parramatta', 'Parramatta');
     const [sql, params] = mockQuery.mock.calls[0];
