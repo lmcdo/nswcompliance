@@ -1,77 +1,81 @@
 {
- "tier": "standard",
- "justification": "The fidelity checker skipped 4,952 waiting rows the pipeline serves as rules; adds a real-PDF answer set, the fix, and the word-for-word approver moved into the repo",
- "commit_hash": "e31b9ae1",
- "files": [
-  "enrichment/extractors/actionable_classifier.py",
-  "scripts/dcp_fidelity_gate.py",
-  "scripts/build_rule_answer_set.py",
-  "scripts/dcp_approve_proven.py",
-  "tests/fixtures/rule_answer_set.json",
-  "tests/test_dcp_fidelity_gate.py",
-  "tests/test_dcp_approve_proven.py",
-  "tests/test_rule_answer_set.py"
- ],
- "falsifiable_check": {
-  "command": "python -m pytest tests/test_dcp_fidelity_gate.py -k GradesWhatThePipeline",
-  "fails_when": "gate_chapter calls classify_provision without document_id",
-  "observed_red": "2026-11-04: with classify_provision(new_text) restored, test_dcp_table_row_is_graded_not_skipped FAILED (1 failed, 57 deselected); with the fix, 1 passed"
- },
- "pre_impl": {
-  "existing_data": "dcp_review_queue.document_id exists and is set on all 8,637 pending non-removed rows (0 NULL, measured 2026-11-04); enrichment/pipeline.py:127 already passes it when it sets v2_is_actionable",
-  "assumption_mismatch": "the checker assumed classify_provision(text) gives the same answer as the pipeline's classify_provision(text, document_id); it does not for DCP rows -- 4,952 rows differ",
-  "new_vs_existing": "no new classifier: the checker now makes the pipeline's existing call; the approver is the existing 2026-10-12 probe script moved into scripts/ with logic unchanged"
- },
- "functions": [
-  {
-   "name": "gate_chapter",
-   "file_line": "scripts/dcp_fidelity_gate.py:623",
-   "input": "a cursor, an R2 client, council, chapter_key and the chapter's R2 path",
-   "output": "(grounded, flagged, skipped) counts; writes a fidelity verdict on each graded pending row",
-   "if_none": "a row whose document_id is NULL is judged by the unknown-document bar, as before this change"
-  },
-  {
-   "name": "plain_approvable",
-   "file_line": "scripts/dcp_approve_proven.py:76",
-   "input": "the council_quote judge status and the rule body",
-   "output": "True only for an exact, at least 25-character rule starting a sentence and not an orphan lead-in",
-   "if_none": "an empty body is under 25 characters, so it is not approved"
-  },
-  {
-   "name": "_span",
-   "file_line": "scripts/build_rule_answer_set.py:57",
-   "input": "a live PDF page's text and the answer key's first and last words",
-   "output": "the rule's full text on that page, or None",
-   "if_none": "None leaves the rule out and counts it as words_not_on_live_page -- never guessed"
-  }
- ],
- "break_it": [
-  {
-   "scenario": "the checker is called without the row's document id again",
-   "what_happens": "DCP table rows such as 'Side | 1.5m' are skipped and left 'ok' while the pipeline serves them",
-   "mitigated": true,
-   "how": "test fails when document_id is dropped (checked by undoing the fix: 1 failed)",
-   "repro": "python -m pytest tests/test_dcp_fidelity_gate.py -k GradesWhatThePipeline"
-  },
-  {
-   "scenario": "a change to the sorting step loses rules on real council text",
-   "what_happens": "real council rules are hidden from users without any error",
-   "mitigated": true,
-   "how": "ratchet on 857 real rows: rules found >= 572, non-rules called rules <= 49, fixture size pinned",
-   "repro": "python -m pytest tests/test_rule_answer_set.py"
-  },
-  {
-   "scenario": "the approver is changed to approve every row",
-   "what_happens": "words never proven on the page would reach users as council rules",
-   "mitigated": true,
-   "how": "always-approve mutation fails four rejection tests",
-   "repro": "python -m pytest tests/test_dcp_approve_proven.py"
-  }
- ],
- "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Yes - re-run dcp_fidelity_gate on pending chapters so the 4,952 rows get a real grade"
- }
+    "tier":  "standard",
+    "justification":  "The fidelity checker skipped 4,952 waiting rows the pipeline serves as rules; adds a real-PDF answer set, the fix, and the word-for-word approver moved into the repo",
+    "commit_hash": "5ea68e11",
+    "files":  [
+                  "enrichment/extractors/actionable_classifier.py",
+                  "scripts/dcp_fidelity_gate.py",
+                  "scripts/build_rule_answer_set.py",
+                  "scripts/dcp_approve_proven.py",
+                  "tests/fixtures/rule_answer_set.json",
+                  "tests/test_dcp_fidelity_gate.py",
+                  "tests/test_dcp_approve_proven.py",
+                  "tests/test_rule_answer_set.py",
+                  "tests/test_dcp_approve_proven_real_db.py"
+              ],
+    "falsifiable_check":  {
+                              "command":  "python -m pytest tests/test_dcp_fidelity_gate.py -k GradesWhatThePipeline",
+                              "fails_when":  "gate_chapter calls classify_provision without document_id",
+                              "observed_red":  "2026-11-04: with classify_provision(new_text) restored, test_dcp_table_row_is_graded_not_skipped FAILED (1 failed, 57 deselected); with the fix, 1 passed"
+                          },
+    "pre_impl":  {
+                     "existing_data":  "dcp_review_queue.document_id exists and is set on all 8,637 pending non-removed rows (0 NULL, measured 2026-11-04); enrichment/pipeline.py:127 already passes it when it sets v2_is_actionable",
+                     "assumption_mismatch":  "the checker assumed classify_provision(text) gives the same answer as the pipeline\u0027s classify_provision(text, document_id); it does not for DCP rows -- 4,952 rows differ",
+                     "new_vs_existing":  "no new classifier: the checker now makes the pipeline\u0027s existing call; the approver is the existing 2026-10-12 probe script moved into scripts/ with logic unchanged"
+                 },
+    "functions":  [
+                      {
+                          "name":  "gate_chapter",
+                          "file_line":  "scripts/dcp_fidelity_gate.py:623",
+                          "input":  "a cursor, an R2 client, council, chapter_key and the chapter\u0027s R2 path",
+                          "output":  "(grounded, flagged, skipped) counts; writes a fidelity verdict on each graded pending row",
+                          "if_none":  "a row whose document_id is NULL is judged by the unknown-document bar, as before this change"
+                      },
+                      {
+                          "name":  "plain_approvable",
+                          "file_line":  "scripts/dcp_approve_proven.py:76",
+                          "input":  "the council_quote judge status and the rule body",
+                          "output":  "True only for an exact, at least 25-character rule starting a sentence and not an orphan lead-in",
+                          "if_none":  "an empty body is under 25 characters, so it is not approved"
+                      },
+                      {
+                          "name":  "_span",
+                          "file_line":  "scripts/build_rule_answer_set.py:57",
+                          "input":  "a live PDF page\u0027s text and the answer key\u0027s first and last words",
+                          "output":  "the rule\u0027s full text on that page, or None",
+                          "if_none":  "None leaves the rule out and counts it as words_not_on_live_page -- never guessed"
+                      }
+                  ],
+    "break_it":  [
+                     {
+                         "scenario":  "the checker is called without the row\u0027s document id again",
+                         "what_happens":  "DCP table rows such as \u0027Side | 1.5m\u0027 are skipped and left \u0027ok\u0027 while the pipeline serves them",
+                         "mitigated":  true,
+                         "how":  "test fails when document_id is dropped (checked by undoing the fix: 1 failed)",
+                         "repro":  "python -m pytest tests/test_dcp_fidelity_gate.py -k GradesWhatThePipeline"
+                     },
+                     {
+                         "scenario":  "a change to the sorting step loses rules on real council text",
+                         "what_happens":  "real council rules are hidden from users without any error",
+                         "mitigated":  true,
+                         "how":  "ratchet on 857 real rows: rules found \u003e= 572, non-rules called rules \u003c= 49, fixture size pinned",
+                         "repro":  "python -m pytest tests/test_rule_answer_set.py"
+                     },
+                     {
+                         "scenario":  "the approver is changed to approve every row",
+                         "what_happens":  "words never proven on the page would reach users as council rules",
+                         "mitigated":  true,
+                         "how":  "always-approve mutation fails four rejection tests",
+                         "repro":  "python -m pytest tests/test_dcp_approve_proven.py"
+                     }
+                 ],
+    "post_merge":  {
+                       "db_reset":  "No",
+                       "secrets":  "No",
+                       "other_repo":  "No",
+                       "manual_verify":  "Yes - re-run dcp_fidelity_gate on pending chapters so the 4,952 rows get a real grade"
+                   },
+    "real_layer_exempt":  {
+                              "scripts/build_rule_answer_set.py":  "a one-off, read-only fixture builder run by hand; its output is pinned by tests/test_rule_answer_set.py (857 rows, 782 rules), so a regression in what it reads shows up as a fixture size failure"
+                          }
 }
