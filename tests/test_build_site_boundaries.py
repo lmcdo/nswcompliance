@@ -45,3 +45,43 @@ def test_copy_check_keeps_the_separators_that_change_meaning():
     assert b._norm("Lot 1-2 DP 214260") != b._norm("Lot 12 DP 214260")
     assert b._norm("Lot 1/2 DP 214260") != b._norm("Lot 12 DP 214260")
     assert b._norm("Lots A and B, DP 355656") == b._norm("Lots A and B,\nDP 355656")
+
+
+# --- Leichhardt Part G wording (council PDF pages 31, 65, 105, 116, 139, 2026-11-04) ---
+# The cadastre writes a lot with a section as lot/section/DPnnn ('3/D/DP119'); without one,
+# lot//DPnnn. Before this, a section lot was dropped without any message: the pattern
+# needed "Lot N, DP" and a section word in between matched nothing.
+
+def test_section_letter_is_part_of_the_lot_id():
+    # G6 p31
+    text = "Lot 3 Sec D DP 119 , Lot 2 DP 234045 and Lot 1 DP 540118"
+    assert b.parse_lots(text) == ["3/D/DP119", "2//DP234045", "1//DP540118"]
+
+
+def test_section_number_written_in_full():
+    # G9 p105
+    text = "Lot 1 DP 1119151, Lot 3 Section 3 DP 328, Lot 4 Section 3 DP 328"
+    assert b.parse_lots(text) == ["1//DP1119151", "3/3/DP328", "4/3/DP328"]
+
+
+def test_one_section_covers_every_lot_named_before_it():
+    # G7 p65: "Lots 1, 2 and 3 in Sec 13 DP 638"
+    assert b.parse_lots("Lots 1, 2 and 3 in Sec 13 DP 638") == ["1/13/DP638", "2/13/DP638", "3/13/DP638"]
+
+
+def test_to_makes_a_range_and_is_not_a_lot():
+    # G7 p65: "Lots 58 and 67 to 78 DP 4844"
+    lots = b.parse_lots("Lots 58 and 67 to 78 DP 4844")
+    assert lots[0] == "58//DP4844" and lots[1] == "67//DP4844" and lots[-1] == "78//DP4844"
+    assert len(lots) == 13
+
+
+def test_en_dash_range():
+    # G12 p139: "Lots 2–4, DP 1257743"
+    assert b.parse_lots("Lots 2–4, DP 1257743, Lots 1 and 2, DP 529451") == [
+        "2//DP1257743", "3//DP1257743", "4//DP1257743", "1//DP529451", "2//DP529451"]
+
+
+def test_a_section_does_not_leak_to_the_next_lot():
+    text = "Lot 25 Sec 1 DP 328, Lot A DP 377714"
+    assert b.parse_lots(text) == ["25/1/DP328", "A//DP377714"]
