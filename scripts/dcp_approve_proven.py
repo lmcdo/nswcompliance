@@ -17,6 +17,7 @@ usage: python scripts/dcp_approve_proven.py --chapters c/k,c/k [--removals c/k,.
 from __future__ import annotations
 
 import argparse
+import atexit
 import csv
 import collections
 import os
@@ -102,6 +103,10 @@ def main() -> None:
     removals = {tuple(x.split("/")) for x in a.removals.split(",") if x}
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    # main() leaves through sys.exit on several paths; close the connection on every one.
+    # prior-art-checked: PLAN ce-council-words-PLAN-2026-10-12.md lines 301-307 -- closes the
+    # script's existing connection (push gate: connection leak); no new data source.
+    atexit.register(conn.close)
     cur = conn.cursor()
     cur.execute("SET lock_timeout = '5s'")
     cur.execute("SET statement_timeout = '30s'")

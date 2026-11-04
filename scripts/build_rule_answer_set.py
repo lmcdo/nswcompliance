@@ -138,11 +138,16 @@ def main() -> int:
     s3 = dx.boto3.client("s3", endpoint_url=dx.R2_ENDPOINT, aws_access_key_id=dx.R2_ACCESS_KEY_ID,
                          aws_secret_access_key=dx.R2_SECRET_ACCESS_KEY, region_name="auto")
     conn = psycopg2.connect(dx.DATABASE_URL)
-    conn.set_session(readonly=True)
-    cur = conn.cursor()
-    cur.execute("SET statement_timeout = '30s'")
-    rows, missed = key_part(args.key_dir.expanduser(), s3, cur)
-    rows += queue_part(cur)
+    # prior-art-checked: PLAN docs/DCP_PIPELINE_ARCHITECTURE_2026-06.md §5.3 Tier 1 -- closes
+    # this script's existing connection (push gate: connection leak); no new data source.
+    try:
+        conn.set_session(readonly=True)
+        cur = conn.cursor()
+        cur.execute("SET statement_timeout = '30s'")
+        rows, missed = key_part(args.key_dir.expanduser(), s3, cur)
+        rows += queue_part(cur)
+    finally:
+        conn.close()
     OUT.write_text(json.dumps(rows, indent=1, ensure_ascii=False), encoding="utf-8")
     c = Counter((r["source"], r["is_rule"]) for r in rows)
     print(f"wrote {len(rows)} rows to {OUT}: {dict(c)}; left out: {dict(missed)}")
