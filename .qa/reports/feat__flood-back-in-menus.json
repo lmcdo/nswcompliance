@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Puts flood back in six navigation surfaces and lifts its noindex. Not Critical: no data or answer logic changes. Not Minor: user-facing menus and copy on every page.",
- "commit_hash": "3320656e",
+ "commit_hash": "a60fdcfe",
  "files": [
   "frontend-nextjs/__tests__/lib/hidden-products-not-linked.test.ts",
   "frontend-nextjs/app/(tools)/layout.tsx",
