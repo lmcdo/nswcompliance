@@ -5,6 +5,7 @@ import Link from 'next/link';
 const TOOL_LINKS = [
   { label: 'Conveyancing Disclosure', href: '/reports/conveyancing' },
   { label: 'Granny Flat Yield', href: '/reports/granny-flat' },
+  { label: 'Flood Check', href: '/reports/flood' },
   { label: 'Threat Radar', href: '/reports/threat-radar' },
   { label: 'Pre-DA Site History', href: '/reports/pre-da-history' },
 ];

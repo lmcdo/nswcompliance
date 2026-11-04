@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { href: '/reports/intelligence-brief', label: 'Site Report' },
   { href: '/reports/threat-radar', label: 'Development Monitoring' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
+  { href: '/reports/flood', label: 'Flood' },
   { href: '/reports/pre-da-history', label: 'Site History' },
   { href: '/reports/conveyancing', label: 'Conveyancing' },
 ];

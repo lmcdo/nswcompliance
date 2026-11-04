@@ -25,6 +25,14 @@ const TOOLS = [
     badge: 'Free + $49',
   },
   {
+    href: '/reports/flood',
+    title: 'Flood Check',
+    tagline: "Is this lot on the council's flood planning map?",
+    description:
+      "Checks the whole lot against the council's flood planning map, lists each mapped flood level, and says where the council publishes its own flood information.",
+    badge: 'Free',
+  },
+  {
     href: '/reports/pre-da-history',
     title: 'Prior Development Activity',
     tagline: 'What happened on this land before you got here?',
