@@ -430,7 +430,8 @@ class TestGateChapterScopesToActionableRows:
         "printed" = every row's code printed above it; None = lines unreadable."""
         from unittest.mock import MagicMock, patch
         cur = MagicMock()
-        cur.fetchall.return_value = rows
+        # document_id None: these cases test the actionable filter on its own, as before.
+        cur.fetchall.return_value = [(*r, None) for r in rows]
         lines = cls._readings_printing(rows) if readings == "printed" else readings
         side = OSError("lines unreadable") if lines is None else None
         with patch.object(_gate.vf, "_page_text_for_chapter", return_value=pages), \
@@ -639,3 +640,42 @@ class TestStraddleRescue:
         that merely follows a comma in a list."""
         text = "sizes of 3, 5 and 7 metres apply"
         assert _gate._straddle_grounded("5", text, text) is True
+
+
+class TestGateGradesWhatThePipelineServes:
+    """gate_chapter() must decide 'is this a rule?' the way enrichment/pipeline.py does --
+    with the row's document id. Without it a DCP table row such as "Side | 1.5m" was judged
+    by the unknown-document bar, skipped, and left fidelity_status 'ok' while the pipeline
+    served it as a rule: 4,952 pending rows on 2026-11-04."""
+
+    class _Cur:
+        def __init__(self, rows):
+            self.rows, self.updates = rows, []
+
+        def execute(self, sql, params=None):
+            if sql.lstrip().upper().startswith("UPDATE"):
+                self.updates.append(params)
+
+        def fetchall(self):
+            return self.rows
+
+    def _run(self, monkeypatch, text, document_id):
+        monkeypatch.setattr(_gate.vf, "_page_text_for_chapter", lambda *a: {1: "side 1.5m"})
+        monkeypatch.setattr(_gate, "_citation_readings", lambda *a: None)
+        cur = self._Cur([(1, "2.2", text, document_id)])
+        return _gate.gate_chapter(cur, None, "sutherland_shire", "ch2", "x.pdf"), cur
+
+    def test_dcp_table_row_is_graded_not_skipped(self, monkeypatch):
+        (g, f, skipped), cur = self._run(
+            monkeypatch, "# 2.2 Side Table 1: Setbacks\n\nSide | 1.5m", "Sutherland_Shire_DCP_2015__sutherland_dcp_2015_ch2_dwelling_houses")  # row 428929's real id
+        assert skipped == 0 and g + f == 1 and len(cur.updates) == 1
+
+    def test_gate_and_pipeline_agree_on_every_answer_set_rule(self):
+        """Same call as enrichment/pipeline.py:127 for every real queue row in the answer set."""
+        import json
+        from enrichment.extractors.actionable_classifier import classify_provision
+        path = os.path.join(os.path.dirname(__file__), "fixtures", "rule_answer_set.json")
+        rows = [r for r in json.load(open(path, encoding="utf-8")) if r["source"] == "queue"]
+        assert len(rows) == 92
+        missed = [r["id"] for r in rows if not classify_provision(r["text"], r["document_id"])[0]]
+        assert missed == []

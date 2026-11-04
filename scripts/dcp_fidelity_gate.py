@@ -647,14 +647,18 @@ def gate_chapter(cur, s3, council: str, chapter_key: str, r2_path: str) -> tuple
         print(f"    [warn] {council}/{chapter_key}: cannot read PDF lines ({lines_error}); "
               f"every row flagged, citation unchecked.")
     cur.execute(
-        "SELECT id, ref_number, new_text FROM dcp_review_queue "
+        "SELECT id, ref_number, new_text, document_id FROM dcp_review_queue "
         "WHERE council=%s AND chapter_key=%s AND status IN ('pending','in_progress') "
         "AND change_type <> 'removed' AND new_text IS NOT NULL",
         (council, chapter_key),
     )
     grounded = flagged = skipped = 0
-    for row_id, ref_number, new_text in cur.fetchall():
-        is_actionable, _reason = classify_provision(new_text)
+    for row_id, ref_number, new_text, document_id in cur.fetchall():
+        # The document id is what enrichment/pipeline.py passes when it marks a rule for
+        # users. Without it every DCP row was judged by the stricter unknown-document bar,
+        # so 4,952 rows the pipeline serves as rules were skipped here and left 'ok'
+        # (measured 2026-11-04). The two calls must agree or this gate checks the wrong set.
+        is_actionable, _reason = classify_provision(new_text, document_id)
         if not is_actionable:
             skipped += 1
             continue
