@@ -151,3 +151,32 @@ class TestShrinkUnderLock:
         sql = [str(c.args[0]) for c in cur.execute.call_args_list]
         assert not any(s.startswith("DELETE") for s in sql)
         cur.connection.rollback.assert_called_once()
+
+
+class TestUpdateNeedsReviewControls:
+    """A one-off with hand-typed May setback values: it must never write again,
+    because no guard can prove a row is still the one those values were for."""
+
+    def _run(self, monkeypatch, argv):
+        cur = mock.MagicMock()
+        cur.fetchone.return_value = None
+        conn = mock.MagicMock(cursor=mock.MagicMock(return_value=cur))
+        connect = mock.MagicMock(return_value=conn)
+        monkeypatch.setitem(sys.modules, "psycopg2", mock.MagicMock(connect=connect))
+        monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+        mod = _load("scripts/update_needs_review_controls.py", f"nrc_{len(argv)}")
+        monkeypatch.setattr(sys, "argv", ["x", *argv])
+        rc = mod.main()
+        sql = " ".join(str(c.args[0]) for c in cur.execute.call_args_list)
+        return rc, sql, conn, connect
+
+    def test_report_is_read_only(self, monkeypatch):
+        rc, sql, conn, _ = self._run(monkeypatch, [])
+        assert rc == 0 and "UPDATE dcp_setback_controls" not in sql
+        conn.set_session.assert_called_once_with(readonly=True)
+        conn.commit.assert_not_called()
+
+    def test_apply_is_refused_before_connecting(self, monkeypatch):
+        rc, sql, conn, connect = self._run(monkeypatch, ["--apply"])
+        assert rc == 1 and sql == ""
+        connect.assert_not_called()
