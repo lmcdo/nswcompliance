@@ -815,7 +815,7 @@
    "note": "OPENS CLEAN AT 0, AND WHAT IT DID NOT FIND IS THE POINT. #968 recorded as out of scope: 'values already persisted in v2_extracted_rules by the broken alternation are NOT re-derived here, so they stay wrong until a re-extraction runs.' Measured 2026-08-17 across EVERY version: 1,101 rules carry both a length value and the text it came from and all 1,101 agree, 0 misreads. The 21 known bad values were in dcp_setback_controls and were repaired there; this column either never took them or was already re-derived. So the re-derivation that sentence implies would have rewritten 19,957 rows to fix nothing, and is not being done. CURRENT-AIM's 'sixth instance of: right check, scoped to one slice' is now closed by scope rather than by repair - validate_control_source_values.py does this for dcp_setback_controls (1,069 rows) and this does it for v2_extracted_rules. THE FIRST VERSION OF THIS CHECK WAS WRONG AND IT IS RECORDED IN THE SCRIPT: comparing the stored UNIT against the unit in the text flagged 29 rows and every one was a legitimate conversion ('350mm wide' stored as 0.35 m). A flag list where most entries are fine trains you to ignore it, which is the failure validate_control_source_values.py's own docstring warns about. The discriminating test is arithmetic - convert both sides to metres - so a conversion agrees and a misread cannot. COVERAGE IS STATED, NOT IMPLIED: only 432 of 8,340 served rules carry both a value and a raw_match and are checkable at all; the rest are not evidence of correctness and the run prints the denominator so a future run over zero rows cannot read as a pass."
   },
   "DQ-86": {
-   "declared": "open",
+   "declared": "fixed",
    "check": [
     "python",
     "scripts/dq_probe_live.py",
