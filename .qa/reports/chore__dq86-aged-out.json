@@ -1,0 +1,44 @@
+{
+  "tier": "minor",
+  "justification": "Two status words and one tracker sentence: DQ-86 moves from open to fixed in the ledger. No code changes and nothing the product serves changes. The ledger check itself reported 'declared OPEN but the check PASSES', which fails the data-quality step on every open PR (seen on #1600, run 41950447528).",
+  "commit_hash": "5dcab59a",
+  "files": [
+    ".claude/DATA_QUALITY_TRACKER.md",
+    ".claude/dq_checks.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_probe_live.py --id DQ-86",
+    "observed_red": "Before the change, the CI ledger step on PR #1600 printed 'RED DQ-86: declared OPEN but the check PASSES - it appears to be fixed and the ledger never caught up' and 'DQ-CHECK: FAILED' (run 41950447528, 2026-11-05).",
+    "fails_when": "Any cached flood report inside the 90-day window predates the council lookup. Measured 2026-11-05 on the live database: count 0, CLEAN. The tracker row said it would be 81 of 109 on 2026-08-24 and 'falls to 0 as the cache window rolls'; 2026-08-24 is more than 90 days before 2026-11-05.",
+    "external_authority": "The property_reports table and the 90-day run_date window decide the count; the probe reads them from outside this change. dq_check.py decides the ledger verdict and printed the red above."
+  },
+  "break_it": [
+    {
+      "scenario": "DQ-86 is marked fixed but later regenerates a stale report and the count rises again.",
+      "what_happens": "The ledger would show declared FIXED and the check FAILS, which dq_check.py reports as RED, so a regression cannot hide.",
+      "mitigated": true,
+      "how": "The ledger enforces both directions: declared fixed with a failing check is red.",
+      "repro": "python scripts/dq_check.py"
+    },
+    {
+      "scenario": "The row is marked fixed although a code defect remains and only the data aged out.",
+      "what_happens": "A future report written without the council key could be missed, because the cause was never changed.",
+      "mitigated": true,
+      "how": "The tracker text says the row was not fixed by a code change. The cause (reports written before #897) was fixed in #897; the live check covers new reports, since it counts any report in the window without the key.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-86"
+    },
+    {
+      "scenario": "The tracker and dq_checks.json disagree, one saying fixed and the other open.",
+      "what_happens": "dq_check.py flags a mismatch between the markdown row and the declared status.",
+      "mitigated": true,
+      "how": "Both were changed in this commit: the tracker row now starts with the green check and FIXED, and dq_checks.json declares fixed. The diff is one line in each file.",
+      "repro": "git show --stat HEAD"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No database is written.",
+    "secrets": "None.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No. Open pull requests should pass the ledger step after they are rebased on main."
+  }
+}
