@@ -1,0 +1,47 @@
+{
+  "tier": "minor",
+  "justification": "Dependency lower bounds and GitHub Action versions only, no application code. It redoes four Dependabot PRs (#1190, #1194, #1195) on a normal branch because Dependabot PRs cannot pass the gates here (no secrets, no QA report). Nothing the product serves changes.",
+  "commit_hash": "7e0fc6d9",
+  "files": [
+    ".github/workflows/deploy-api.yml",
+    ".github/workflows/freshness-alarm.yml",
+    ".github/workflows/guardrail-watch.yml",
+    "requirements-test.txt",
+    "scripts/requirements-maintenance.txt"
+  ],
+  "falsifiable_check": {
+    "command": "grep -rhoE \"actions/(checkout|setup-python)@v[0-9]+\" .github/workflows | sort | uniq -c",
+    "observed_red": "Before the change, on origin/main 2026-11-05: 3 uses of actions/checkout@v4 and 3 of actions/setup-python@v5 remained across deploy-api.yml, freshness-alarm.yml and guardrail-watch.yml.",
+    "fails_when": "Any workflow still names checkout@v4 or setup-python@v5. After the change: 10 checkout@v7 and 9 setup-python@v7 and no older versions. The three edited workflows still parse as YAML (python yaml.safe_load, jobs deploy / freshness / watch). pip install --dry-run -r scripts/requirements-maintenance.txt resolves; the same for requirements-test.txt failed locally on 'numpy>=2.5.3', a line this change does not touch, because the local Python is 3.11. CI runs 3.12 and is the real check for that file.",
+    "external_authority": "PyPI decides which versions exist: pip index versions pytest printed 9.2.0 and hypothesis 6.170.14, both at or above the new lower bounds (9.1.1 and 6.168.3). The Action versions already in use on main (checkout@v7 and setup-python@v7 in 7 and 6 other workflow uses) are the precedent."
+  },
+  "break_it": [
+    {
+      "scenario": "The deploy-api workflow breaks because checkout@v7 or setup-python@v7 behaves differently from v4 and v5.",
+      "what_happens": "The Railway API deploy job would fail on a push to main, and the deploy would not run.",
+      "mitigated": true,
+      "how": "The same two actions at v7 are already used by 10 and 9 other uses in the gates and alarm workflows that run on every push, so v7 is exercised on this runner already. The edited file parses as YAML.",
+      "repro": "python -c \"import yaml;print(list(yaml.safe_load(open('.github/workflows/deploy-api.yml',encoding='utf-8'))['jobs']))\""
+    },
+    {
+      "scenario": "Raising the pytest lower bound to 9.1.1 forces a version that does not exist or cannot install on the CI Python.",
+      "what_happens": "The Python tests job fails at install time, visibly, on this PR.",
+      "mitigated": true,
+      "how": "pip index versions pytest shows 9.2.0 exists. The gates run on this PR installs the file on the CI Python 3.12 before merge.",
+      "repro": "pip index versions pytest"
+    },
+    {
+      "scenario": "A lower bound change leaves an older pin elsewhere that now conflicts, for example scripts/requirements-maintenance.txt still saying pytest>=8.0.",
+      "what_happens": "Two files would ask for different pytest ranges and one environment could resolve differently from the other.",
+      "mitigated": true,
+      "how": "Both files were changed to pytest>=9.1.1 and hypothesis>=6.168.3 together; grep for the old bounds finds none.",
+      "repro": "grep -rn \"pytest>=\\|hypothesis>=\" requirements-test.txt scripts/requirements-maintenance.txt"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No. No database is touched.",
+    "secrets": "None.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "No. Watch the next push to main: the deploy-api workflow should still run (it is the one workflow whose success the PR gates cannot show)."
+  }
+}
