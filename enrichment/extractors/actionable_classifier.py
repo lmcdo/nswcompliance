@@ -71,7 +71,9 @@ class ActionableClassifier:
         r'\b(prohibited|permitted|permissible)\b',
 
         # Numeric controls
-        r'\d+\.?\d*\s*(m|metres?|m2|m²|storeys?|%)',
+        # spaces: a parking rate ("1 space per dwelling") is a control; without it a short
+        # parking-table row had no indicator and was sorted "not a rule" (Bayside 427229).
+        r'\d+\.?\d*\s*(m|metres?|m2|m²|storeys?|%|spaces?\b)',
         r'\d+:\d+',  # FSR ratios
 
         # Objective language
