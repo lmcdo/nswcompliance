@@ -1,0 +1,42 @@
+[
+  {
+    "severity": "P1",
+    "category": "error handling",
+    "file": "scripts/r2_monitor.py",
+    "line": 1101,
+    "what": "A network exception from any hub scraper is not caught: only HubScrapeError is handled, while the scrapers call requests.get directly.",
+    "why": "One transient timeout can terminate the entire daily monitor before later councils receive their per-chapter checks. Amendments can therefore remain unflagged and stale planning controls can continue to be served until another run succeeds.",
+    "fix": "Catch requests.RequestException alongside HubScrapeError, record one hub error, and fall through to the existing per-chapter checks. Add a test with a scraper raising requests.Timeout that proves its chapters and later councils are still checked.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "error handling",
+    "file": "scripts/r2_monitor.py",
+    "line": 1185,
+    "what": "A 403 returned by the initial HEAD request is recorded as waf_blocked but also increments results['failed'], making it a real monitor failure.",
+    "why": "This contradicts the documented WAF policy and the download-path handling: an expected access block pages as a data/extraction error and exits 1, creating misleading operational failures.",
+    "fix": "Remove the results['failed'] increment in this branch and append the same WAF detail used by the WAFBlockError path; retain council_failed so verified_at is not stamped. Add an end-to-end branch test asserting a HEAD 403 produces exit-0 classification with a WAF record.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "error handling",
+    "file": "scripts/r2_monitor.py",
+    "line": 1207,
+    "what": "A HEAD transport failure is converted by head_request into status None, then raised as RuntimeError and counted as a real failure rather than TransientFetchError.",
+    "why": "Timeouts and network blips are explicitly intended to retry quietly, but a transient HEAD failure instead sends an error alert and exits 1. With many council hosts this will recur regularly and obscures real content failures.",
+    "fix": "When head_request returns an error/status None, raise TransientFetchError before the non-200 RuntimeError branch. Add a test where SESSION.head raises requests.Timeout and assert the chapter is recorded as transient, not failed.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P3",
+    "category": "correctness bug",
+    "file": "scripts/r2_monitor.py",
+    "line": 957,
+    "what": "The discovery digest reads hub_last_pdf_count from council_chapters[0] instead of the selected hub_row; hub_last_count is computed but unused.",
+    "why": "For councils such as Cumberland, whose hub URL and count are on a sibling rather than the first sorted row, every digest can report a first scan instead of the real link-count delta. This weakens the monitor's operational diagnostics.",
+    "fix": "Use previous_count = hub_last_count. Add a unit test with the count only on the row selected by pick_hub_row and assert the digest receives that count.",
+    "intentional": "accidental"
+  }
+]

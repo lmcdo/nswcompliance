@@ -1,0 +1,82 @@
+[
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/property/[address]/route.ts",
+    "line": 66,
+    "what": "The active address route asks the Planning Portal for one fuzzy-search result and unconditionally treats result 0 as the requested property.",
+    "why": "Several report and satellite routes call this endpoint. A fuzzy Portal result can therefore attach a neighbour's lot, zoning, height, FSR, and downstream rules to the entered address. The newer lookup deliberately prevents this with exact address-number/street matching.",
+    "fix": "Request multiple candidates and apply the existing filterToAskedProperty helper before selecting a result; return not-found when none matches. Add a route test with a nearest-but-different street number.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/lib/site-specific-part6-mapping.ts",
+    "line": 143,
+    "what": "Site-specific LEP clauses are matched with a raw substring check on an address string.",
+    "why": "This can attach a rule for 1 Chester Street to 11 Chester Street, and punctuation differences can also prevent a genuine match. PropertyDataService calls this matcher to populate the live Local Provisions card, so a property can be shown a site-only LEP rule that does not apply, or miss one that does.",
+    "fix": "Normalise punctuation and compare parsed street-number and street/locality tokens exactly (prefer the available Lot/DP when present). Add tests for 1 versus 11 and comma/no-comma Portal address formats.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/lib/database/specialized/provision-search-client.ts",
+    "line": 82,
+    "what": "The provision-search query has no is_current or v2_is_actionable filter.",
+    "why": "The repository defines the served rule set as current and actionable provisions. regulatory_provisions_canonical only denotes deduplication, so the active assessment search can return superseded or non-actionable text as a rule.",
+    "fix": "Add the served-set predicates to both normal and ranked search paths, and test that retired/non-actionable fixtures are excluded.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "error handling",
+    "file": "frontend-nextjs/app/api/provisions/route.ts",
+    "line": 182,
+    "what": "When the legacy Python provision search exits unsuccessfully or cannot start, the API returns HTTP 200 with an empty successful result.",
+    "why": "PostgreSQL search is feature-flagged and defaults off when USE_POSTGRESQL_PROVISIONS is unset. A missing interpreter, deployment-path error, or Python failure is therefore presented to users as “no provisions found,” silently hiding applicable rules.",
+    "fix": "Reject on subprocess failure so the route returns a visible 5xx error, preserving the stderr only in server logs. Add tests for non-zero exit and spawn error.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/provisions/route.ts",
+    "line": 56,
+    "what": "The route validates and destructures lga, but drops it when building ProvisionSearchFilters; the database client has no LGA filter.",
+    "why": "A caller that supplies an LGA can receive matching DCP/LEP provisions from other councils. That is especially unsafe in a planning product because identically named clauses and zones differ by council.",
+    "fix": "Pass a normalised council key into the search client and filter by source_council; until that is implemented, reject lga requests rather than silently ignoring their jurisdiction. Cover both cases with route tests.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "security",
+    "file": "frontend-nextjs/app/api/property/route.ts",
+    "line": 18,
+    "what": "The primary property endpoint has no rate limit despite each request fanning out to Planning Portal, ArcGIS, and database lookups.",
+    "why": "This is the address-entry endpoint used by the main assessment flow. Unbounded requests can exhaust server capacity or trigger upstream throttling, making legitimate property lookups fail.",
+    "fix": "Apply the existing searchRateLimiter before starting the lookup, using the same client identifier and response headers as /api/property/profile. Add a 429 route test.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "error handling",
+    "file": "frontend-nextjs/app/api/property/[address]/route.ts",
+    "line": 65,
+    "what": "The legacy property route's Portal fetches have no timeout or abort signal.",
+    "why": "Satellite and report routes depend on this endpoint. A Portal connection that accepts but never completes can hold their server request until platform timeout, rather than returning a controlled unavailable response.",
+    "fix": "Use the existing fetchWithTimeout helper for address, lot, and layer requests, then add a stalled-fetch test asserting a bounded error response.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "security",
+    "file": "frontend-nextjs/app/api/property/route.ts",
+    "line": 288,
+    "what": "Unexpected property-lookup errors are returned to clients verbatim in details.",
+    "why": "Database, upstream, and implementation error messages can disclose internal service structure while users only need to know that the lookup failed.",
+    "fix": "Return a stable public error message and retain the detailed exception only in server logging/error tracking. Add a test using a simulated database error.",
+    "intentional": "accidental"
+  }
+]
