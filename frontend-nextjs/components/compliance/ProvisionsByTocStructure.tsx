@@ -525,7 +525,11 @@ export function ProvisionsByTocStructure({
 
   // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)
   const dcpCurrency = data?.meta?.dcp_currency ?? null;
-  const verifiedAtRaw = dcpCurrency?.verified_at ?? null;
+  // A malformed date counts as no date: it must show the warning, never "Invalid Date" (Sol, 2026-10-24).
+  const verifiedAtRaw = (() => {
+    const v = dcpCurrency?.verified_at ?? null;
+    return v && !Number.isNaN(new Date(v).getTime()) ? v : null;
+  })();
   const amendmentPending = dcpCurrency?.amendment_pending ?? false;
   // DQ-123: the plan names come from the registry rows behind the rules actually served here.
   const servedDcpNames = (dcpCurrency?.dcp_names ?? []).map((d) => d.name).filter(Boolean);
@@ -540,13 +544,13 @@ export function ProvisionsByTocStructure({
       })
     : null;
 
-  // Staleness: warn if verified_at is null or >35 days ago.
+  // Staleness: warn if verified_at is null or >30 days ago (offer agreed 2026-10-24: "Not recently checked" after 30 days).
   // Guard on data !== undefined — during SWR loading, data is undefined and verifiedAtRaw is null,
   // which would incorrectly trigger the stale warning before the API responds.
   const isStale = data !== undefined && (
     !verifiedAtRaw
       ? true
-      : (Date.now() - new Date(verifiedAtRaw).getTime()) > 35 * 24 * 60 * 60 * 1000
+      : (Date.now() - new Date(verifiedAtRaw).getTime()) > 30 * 24 * 60 * 60 * 1000
   );
 
   // Extract heritage provisions from condition layer (Layer 3)
@@ -1974,7 +1978,7 @@ export function ProvisionsByTocStructure({
             {verifiedDateLabel && (
               <>
                 <span>·</span>
-                <span>Last checked for changes {verifiedDateLabel}</span>
+                <span>Last checked against the council&apos;s published PDF: {verifiedDateLabel}</span>
               </>
             )}
             {!verifiedDateLabel && data !== undefined && (
@@ -1991,11 +1995,13 @@ export function ProvisionsByTocStructure({
           )}
           {isStale && (
             <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-              Currency data overdue — the twice-monthly check has not completed recently. Provisions shown are from the last version checked.
+              {verifiedDateLabel
+                ? <>Not recently checked. We have not been able to compare these rules with the council&apos;s website since {verifiedDateLabel}. The council may have changed its plan since then. Check the council&apos;s own DCP page before relying on these rules.</>
+                : <>Not recently checked. We have no record of comparing these rules with the council&apos;s website. Check the council&apos;s own DCP page before relying on these rules.</>}
             </div>
           )}
           <p className="text-xs text-gray-400">
-            Provisions sourced from the council&apos;s published DCP. A check comparing the council&apos;s PDF with our stored copy is scheduled daily; the date above, when shown, is the last check that completed. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
+            The rules on this page are quoted word for word from the council&apos;s published DCP, with the page number for each rule. We compare our copy with the council&apos;s website each day where the council&apos;s site allows it; the date above, when shown, is the last comparison that completed for every chapter. When the council publishes a change, we re-read the plan before showing the new rules. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
           </p>
         </div>
       )}
