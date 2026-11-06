@@ -1844,6 +1844,17 @@
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
    "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
+  "DQ-151": {
+   "declared": "open",
+   "check": [
+    "python",
+    "scripts/load_law_facts.py",
+    "--check"
+   ],
+   "passes_when": "exit 0 - the database table law_facts (current rows) equals data/law/housing_sepp_lmr_facts.json on every fact: value, clause, page, quote, law version date and text hash.",
+   "red_when": "the table does not exist or has not been loaded (exit 1, the state on 2026-11-07), a row drifted from the JSON, or a fact is missing or extra. Exit 2 = no database reachable here: UNKNOWN, never clean.",
+   "note": "Added 2026-11-07, declared open until the table is created and loaded (each a write the owner confirms by name). Then flip to fixed. After the table exists add law_facts to the hard-coded table list of the DQ-138 probe in scripts/dq_probe_live.py. Plan: ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2i."
+  },
   "DQ-149": {
    "declared": "fixed",
    "check": [
