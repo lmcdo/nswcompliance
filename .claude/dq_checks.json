@@ -1844,6 +1844,27 @@
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
    "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
+  "DQ-149": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/extract_lmr_law_facts.py",
+    "--check"
+   ],
+   "passes_when": "exit 0 - data/law/housing_sepp_lmr_facts.json equals what scripts/extract_lmr_law_facts.py extracts from data/law/sepp-housing-2021-as-at-2026-10-23.txt (text hash included).",
+   "red_when": "a stored law fact (a distance, a station, a council, an s164 paragraph, a Chapter 5 standard, its page or its quote) disagrees with the saved law text, or the text changed without the facts being regenerated.",
+   "note": "Added 2026-11-07. Proves facts-vs-SAVED-text only. Whether the saved text is the version in force is a monthly manual step: save the legislation page, run the extractor with --text <file>, read the diff. housing_sepp_standards is a different, hand-typed table with no version stamp (plan ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2h)."
+  },
+  "DQ-150": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/check_clean_feature_boundary.py"
+   ],
+   "passes_when": "exit 0 - every file in .claude/clean_feature_files.json exists and reads no council-plan data (no rules-table view, council-plan table or reader, council-mixed route, council filter, or unpinned rules-table query).",
+   "red_when": "a feature file gains a council read, or a listed file is renamed or deleted, or the list is emptied.",
+   "note": "Added 2026-11-07. Static source scan (no database). Tests inject a council read into each real file and require it to be caught. New files of the feature must be added to .claude/clean_feature_files.json."
+  },
   "OC-21": {
    "kind": "outreach_claim",
    "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json), and an address whose council has such rules says so on its page. Whether each map-based condition has map data for every council is not part of this claim.",

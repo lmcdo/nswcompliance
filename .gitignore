@@ -410,6 +410,7 @@ nul
 !requirements.txt
 !test-trail/*.txt
 !frontend-nextjs/public/llms.txt
+!data/law/*.txt
 corrupted_*.txt
 filter_*.txt
 dcp_*.txt

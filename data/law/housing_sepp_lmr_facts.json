@@ -1,0 +1,313 @@
+{
+  "instrument": "State Environmental Planning Policy (Housing) 2021",
+  "law_version_date": "2026-10-23",
+  "text_file": "data/law/sepp-housing-2021-as-at-2026-10-23.txt",
+  "text_sha256": "a27b93adfd29a324e21c9cdf4acebf77c440aced89ad300370c9a1db20251f51",
+  "page_note": "page = PDF page of the saved file (the footer N/130); text before a PAGE marker belongs to the previous page",
+  "facts": {
+    "lmr_outer_distance": {
+      "value": 800,
+      "clause": "s163 low and mid rise housing area (a)",
+      "page": 77,
+      "quote": "within 800m walking distance of",
+      "unit": "m",
+      "measured": "walking distance"
+    },
+    "lmr_inner_distance": {
+      "value": 400,
+      "clause": "s163 low and mid rise housing inner area (a)",
+      "page": 78,
+      "quote": "within 400m walking distance of",
+      "unit": "m",
+      "measured": "walking distance"
+    },
+    "walking_distance_definition": {
+      "value": null,
+      "clause": "Schedule 10 dictionary, walking distance",
+      "page": 128,
+      "quote": "walking distance means the shortest distance between 2 points measured along a route that may be safely walked by a pedestrian using, as far as reasonably practicable, public footpaths and pedestrian crossings."
+    },
+    "lmr_site_area_rule": {
+      "value": null,
+      "clause": "s163 low and mid rise housing area (b)",
+      "page": 77,
+      "quote": "(b) if a site area contains land identified in paragraph (a)—the site area"
+    },
+    "schedule_11_stations": {
+      "value": [
+        "Adamstown station",
+        "Arncliffe station",
+        "Artarmon station",
+        "Ashfield station",
+        "Banksia station",
+        "Bankstown station",
+        "Bella Vista station",
+        "Beverly Hills station",
+        "Bexley North station",
+        "Canley Vale station",
+        "Cardiff station",
+        "Concord West station",
+        "Crows Nest station",
+        "Croydon station",
+        "Doonside station",
+        "Dulwich Hill station",
+        "Flemington station",
+        "Glenfield station",
+        "Granville station",
+        "Gymea station",
+        "Hamilton station",
+        "Hills Showground station",
+        "Homebush station",
+        "Hornsby station",
+        "Kellyville station",
+        "Kensington light rail station",
+        "Killara station",
+        "Kingsford Juniors light rail station",
+        "Kotara station",
+        "Lidcombe station",
+        "Lilyfield light rail station",
+        "Liverpool station",
+        "Macquarie Park station",
+        "Marrickville station",
+        "Meadowbank station",
+        "Milsons Point station",
+        "Minto station",
+        "North Ryde station",
+        "North Strathfield station",
+        "Oatley station",
+        "Penshurst station",
+        "Petersham station",
+        "Pymble station",
+        "Redfern station",
+        "Regents Park station",
+        "Roseville station",
+        "Seven Hills station",
+        "St Leonards station",
+        "St Peters station",
+        "Stanmore station",
+        "Turrella station",
+        "UNSW Anzac Parade light rail station",
+        "Victoria Cross station",
+        "Wahroonga station",
+        "Waitara station",
+        "Waverton station",
+        "Westmead station",
+        "Wollstonecraft station",
+        "Woolooware station"
+      ],
+      "clause": "Schedule 11",
+      "page": 128,
+      "quote": "59 station names listed",
+      "pages_to": 130,
+      "count": 59
+    },
+    "schedule_12_stations": {
+      "value": [
+        "Cockle Creek station",
+        "Punchbowl station",
+        "Wiley Park station"
+      ],
+      "clause": "Schedule 12",
+      "page": 130,
+      "quote": "3 station names listed",
+      "pages_to": 130,
+      "count": 3
+    },
+    "tod_lgas": {
+      "value": [
+        "Bayside",
+        "Burwood",
+        "Canada Bay",
+        "Canterbury-Bankstown",
+        "Central Coast",
+        "Cumberland",
+        "Georges River",
+        "Inner West",
+        "Ku-ring-gai",
+        "City of Lake Macquarie",
+        "City of Newcastle",
+        "City of Wollongong"
+      ],
+      "clause": "s152(1)",
+      "page": 74,
+      "quote": "(1) This chapter applies to land in the following local government areas that is in a Transport Oriented Development Area—",
+      "count": 12
+    },
+    "s164": {
+      "clause": "s164(1)",
+      "page": 78,
+      "paragraphs": [
+        {
+          "para": "a",
+          "clause": "s164(1)(a)",
+          "page": 78,
+          "repealed": false,
+          "words": "bush fire prone land,"
+        },
+        {
+          "para": "b",
+          "clause": "s164(1)(b)",
+          "page": 78,
+          "repealed": false,
+          "words": "land identified as a coastal vulnerability area or a coastal wetlands and littoral rainforests area within the meaning of State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 2,"
+        },
+        {
+          "para": "c",
+          "clause": "s164(1)(c)",
+          "page": 78,
+          "repealed": false,
+          "words": "land to which Chapter 5 applies,"
+        },
+        {
+          "para": "d",
+          "clause": "s164(1)(d)",
+          "page": 78,
+          "repealed": false,
+          "words": "land that is a heritage item or on which a heritage item is located,"
+        },
+        {
+          "para": "e",
+          "clause": "s164(1)(e)",
+          "page": 78,
+          "repealed": false,
+          "words": "the following local government areas— (i) Bathurst Regional, (ii) City of Blue Mountains, (iii) City of Hawkesbury, (iv) Wollondilly,"
+        },
+        {
+          "para": "f",
+          "clause": "s164(1)(f)",
+          "page": 78,
+          "repealed": false,
+          "words": "land identified as “Probable Maximum Flood” in Figure 1-1 of the Hawkesbury-Nepean River Flood Study —Flood Study Report, dated May 2024 and published on the NSW Flood Data Portal on 20 June 2024,"
+        },
+        {
+          "para": "f1",
+          "clause": "s164(1)(f1)",
+          "page": 78,
+          "repealed": false,
+          "words": "land in the Georges River Catchment under State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 6 that is— (i) susceptible to flooding by the probable maximum flood, and (ii) in one of the following local government areas— (A) Canterbury-Bankstown, (B) Cumberland, (C) City of Fairfield, (D) Georges River, (E) City of Liverpool, (F) Sutherland Shire."
+        },
+        {
+          "para": "g",
+          "clause": "s164(1)(g)",
+          "page": 79,
+          "repealed": false,
+          "words": "land in a flood planning area in the following local government areas— (i) Armidale Regional, (ii) Ballina, (iii) Bellingen, (iv) Byron, (v) City of Cessnock, (vi) Clarence Valley, (vii) City of Coffs Harbour, (viii) Dungog, (ix) Goulburn Mulwaree, (x) Kempsey, (xi) Kyogle, (xii) City of Lismore, (xiii) City of Maitland, (xiv) Nambucca Valley, (xv) City of Newcastle, (xvi) Port Stephens, (xvii) Qu"
+        },
+        {
+          "para": "h",
+          "clause": "s164(1)(h)",
+          "page": 79,
+          "repealed": false,
+          "words": "land in an ANEF contour of 25 or greater or ANEC contour of 20 or greater,"
+        },
+        {
+          "para": "i",
+          "clause": "s164(1)(i)",
+          "page": 79,
+          "repealed": false,
+          "words": "land within 200m of a relevant pipeline within the meaning of State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77,"
+        },
+        {
+          "para": "j",
+          "clause": "s164(1)(j)",
+          "page": 79,
+          "repealed": true,
+          "words": "(Repealed)"
+        },
+        {
+          "para": "k",
+          "clause": "s164(1)(k)",
+          "page": 80,
+          "repealed": false,
+          "words": "land within 800m of a public entrance to a railway, metro or light rail station listed in Schedule 12,"
+        },
+        {
+          "para": "l",
+          "clause": "s164(1)(l)",
+          "page": 80,
+          "repealed": false,
+          "words": "land identified as “Accelerated TOD Precinct” on the Accelerated Transport Oriented Development Precincts Rezoning Areas Map,"
+        },
+        {
+          "para": "m",
+          "clause": "s164(1)(m)",
+          "page": 80,
+          "repealed": false,
+          "words": "land identified as “exclusion area” on the Low and Mid Rise Housing Exclusion Map."
+        }
+      ],
+      "live_count": 13
+    },
+    "s164_k_distance": {
+      "value": 800,
+      "clause": "s164(1)(k)",
+      "page": 80,
+      "quote": "land within 800m of a public entrance to a railway, metro or light rail station listed in Schedule 12",
+      "unit": "m",
+      "measured": "not stated (the paragraph does not say walking)"
+    },
+    "tod_height_residential_flat_building_m": {
+      "value": 22,
+      "clause": "s155(2)",
+      "page": 75,
+      "quote": "(2) The maximum building height for a residential flat building in a Transport Oriented Development Area is 22m.",
+      "unit": "m"
+    },
+    "tod_height_seniors_or_shop_top_m": {
+      "value": 24,
+      "clause": "s155(3)",
+      "page": 76,
+      "quote": "(3) The maximum building height for a building containing seniors housing or shop top housing in a Transport Oriented Development Area is 24m.",
+      "unit": "m"
+    },
+    "tod_fsr": {
+      "value": "2.5:1",
+      "clause": "s155(4)",
+      "page": 76,
+      "quote": "(4) The maximum floor space ratio for the following in a relevant residential zone or relevant employment zone in a Transport Oriented Development Area is 2.5:1—"
+    },
+    "tod_affordable_gfa_threshold": {
+      "value": 2000,
+      "clause": "s156(1)",
+      "page": 76,
+      "quote": "gross floor area of at least 2000m",
+      "unit": "m2 (the superscript 2 is lost in the saved text: confirm against the PDF)",
+      "unit_verified": false
+    },
+    "tod_affordable_share_percent": {
+      "value": 2,
+      "clause": "s156(2)(a)",
+      "page": 76,
+      "quote": "at least 2% of the gross floor area",
+      "unit": "%"
+    },
+    "tod_affordable_parking_1_bed": {
+      "value": 0.4,
+      "clause": "s157(2)(a)",
+      "page": 76,
+      "quote": "for each dwelling containing 1 bedroom—0.4 parking space",
+      "unit": "spaces per dwelling"
+    },
+    "tod_affordable_parking_2_bed": {
+      "value": 0.5,
+      "clause": "s157(2)(b)",
+      "page": 76,
+      "quote": "for each dwelling containing 2 bedrooms—0.5 parking space",
+      "unit": "spaces per dwelling"
+    },
+    "tod_affordable_parking_3_plus_bed": {
+      "value": 1.0,
+      "clause": "s157(2)(c)",
+      "page": 76,
+      "quote": "for each dwelling containing 3 or more bedrooms—1 parking space",
+      "unit": "spaces per dwelling"
+    },
+    "tod_min_lot_width_m": {
+      "value": 21,
+      "clause": "s159",
+      "page": 77,
+      "quote": "the lot is at least 21m wide at the front building line",
+      "unit": "m"
+    }
+  }
+}
