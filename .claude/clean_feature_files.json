@@ -1,0 +1,11 @@
+{
+  "_note": "Files of the low-and-mid-rise / TOD feature. Each must stay free of council-plan data (see scripts/check_clean_feature_boundary.py). Add every new file of the feature here when it is created.",
+  "files": [
+    "services/housing_sepp_gates_api.py",
+    "services/portal_constraints.py",
+    "services/housing_sepp_eligibility.py",
+    "frontend-nextjs/app/api/housing-sepp/gates/route.ts",
+    "frontend-nextjs/hooks/useLmrGates.ts",
+    "frontend-nextjs/app/api/sepp/parking-provisions/route.ts"
+  ]
+}
