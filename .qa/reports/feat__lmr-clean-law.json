@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New state-law-only area check (low and mid-rise walking limit, Chapter 5 TOD map rule, s164 exclusions) built as pure rules plus live public map-service reads. It reads no database, writes nothing, and is not yet wired to any page or served number, so it is not Critical; it is more than Minor because a wrong answer here would later tell a person a lot is or is not in a reform area.",
-  "commit_hash": "e05d91ca",
+  "commit_hash": "1bae1de7",
   "files": [
     "services/lmr_area_decision.py",
     "services/lmr_area_inputs.py",

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AreaCheck } from '@/hooks/useAreaCheck';
-import { reformParkingRates, type LawFacts } from '@/lib/law-facts';
+import { reformParkingRates, todAffordableParkingRates, type LawFacts } from '@/lib/law-facts';
 
 // prior-art-checked: no component shows the state-law area answer with its range, warnings and what was not checked
 // (grep components/compliance, 2026-11-07). HousingSEPPEligibilityCard decides eligibility per development type; this card shows the area.
@@ -44,11 +44,9 @@ export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
   }
 
   const rates = result.lmr.answer === 'yes' || result.lmr.answer === 'borderline' ? reformParkingRates(lawFacts) : [];
-  // TOD (Chapter 5) affordable-housing parking, from the answer's own stored standards: label from the key's bedroom count.
-  const todParking = Object.entries(result.tod.standards ?? {})
-    .filter(([k]) => k.startsWith('tod_affordable_parking_'))
-    .map(([k, v]) => ({ key: k, beds: /parking_(\d+)(_plus)?_bed/.exec(k), ...v }))
-    .filter((x) => x.beds);
+  // TOD (Chapter 5) affordable-housing parking, from the stored law facts only (the same source as the Chapter 6 rates above):
+  // with no facts there is no figure, never one taken from the Python answer.
+  const todParking = result.tod.answer === 'yes' ? todAffordableParkingRates(lawFacts) : [];
   const f = result.lmr.figures;
   const showRange = (result.lmr.answer === 'yes' || result.lmr.answer === 'borderline') && f?.walk_low_m != null && f?.walk_high_m != null;
   return (
@@ -88,7 +86,7 @@ export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
             <ul className="list-disc pl-5">
               {todParking.map((p) => (
                 <li key={p.key}>
-                  {p.beds![1]}{p.beds![2] ? ' or more' : ''} {p.beds![1] === '1' && !p.beds![2] ? 'bedroom' : 'bedrooms'}: {String(p.value)} per dwelling ({p.clause}, page {p.page})
+                  {p.bedrooms}{p.orMore ? ' or more' : ''} {p.bedrooms === 1 && !p.orMore ? 'bedroom' : 'bedrooms'}: {p.rate} per dwelling ({p.clause}, page {p.pdfPage})
                 </li>
               ))}
             </ul>

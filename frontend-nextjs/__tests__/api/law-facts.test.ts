@@ -29,7 +29,7 @@ describe('GET /api/law-facts', () => {
     expect(sql).not.toMatch(/regulatory_provisions|dcp_|source_council/);
     expect(params[0]).toBe('sepp_housing_2021');
     expect(params[1]).toEqual([...LAW_FACT_KEYS]);
-    expect(params[2]).toEqual(['parking_min_%']);   // the parking minimums are served by prefix: whatever sections the saved law has
+    expect(params[2]).toEqual(['parking_min_%', 'tod_affordable_parking_%']);   // parking figures are served by prefix: whatever sections the saved law has
     expect(sql).toMatch(/fact_key LIKE ANY\(\$3::text\[\]\)/);
     expect(mockRelease).toHaveBeenCalled();
   });

@@ -18,6 +18,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from pyproj import Transformer
 from shapely.geometry import Point, Polygon
@@ -27,7 +28,6 @@ from services import lmr_area_decision as dec
 from services import lmr_area_inputs as inp
 from services import lmr_walk_surface as ws
 
-REPO = Path(__file__).resolve().parents[2]
 HERE = Path(__import__("os").environ.get("LMR_WORK", REPO / "data" / "lmr_area_work"))  # working folder, not committed
 HERE.mkdir(parents=True, exist_ok=True)
 import os

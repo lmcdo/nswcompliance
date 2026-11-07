@@ -18,7 +18,7 @@ REPO = Path(__file__).resolve().parents[2]
 HERE = Path(__import__("os").environ.get("LMR_WORK", REPO / "data" / "lmr_area_work"))  # working folder, not committed
 HERE.mkdir(parents=True, exist_ok=True)
 R = json.loads((HERE / (sys.argv[1] if len(sys.argv) > 1 else "test_results.json")).read_text())["lots"]
-LIMIT = 800  # the law's walking limit, for the router-side comparison only (read from the law in the product code)
+LIMIT = json.loads((REPO / "data" / "law" / "housing_sepp_lmr_facts.json").read_text(encoding="utf-8"))["facts"]["lmr_outer_distance"]["value"]  # the law's walking limit, read from the saved law
 
 
 def side(w):
@@ -44,15 +44,20 @@ def report(rows, label):
           f" | median range width {sorted(r['fix_high'] - r['fix_low'] for r in ranged)[len(ranged)//2] if ranged else None} m")
     passed = pct(len(agree), len(yn)) >= 90 and len(wy) + len(wn) == 0 and pct(len(inrange), len(ranged)) >= 90 and pct(len(ct), n) <= 5
     print("      =>", "PASS" if passed else "FAIL")
+    report.last_passed = passed
     return wy, wn, [r for r in ranged if r not in inrange], [r for r in bd if r not in lean_ok and r["judge_walk"] is not None]
 
 
 wy, wn, outside, badlean = report(R, "ALL")
+all_passed = report.last_passed
 report([r for r in R if r.get("fix_extra_m")], "stations with unmapped entrance")
 report([r for r in R if r["fix_code"] not in ("chapter5", "beyond_straight_line")], "walk-decided lots only")
 print("--- break-it versions (each must FAIL the yes/no match) ---")
+weak_controls = []
 for name, f in (("always yes", lambda r: "yes"), ("always no", lambda r: "no")):
     ag = sum(1 for r in R if f(r) == r["judge"])
+    if 100 * ag / len(R) >= 90:
+        weak_controls.append(name)
     print(f"{name:<12} match router {ag}/{len(R)} = {100 * ag / len(R):.0f}%  => {'FAIL (good)' if 100 * ag / len(R) < 90 else 'PASS (test too weak)'}")
 print("--- lots a person should read: router walk OUTSIDE our stated range ---")
 for r in outside:
@@ -60,3 +65,6 @@ for r in outside:
 print("--- borderline lots whose lean points the wrong side ---")
 for r in badlean:
     print(r["address"], "| range", r["fix_low"], "-", r["fix_high"], "| lean", r["fix_lean"], "| router", round(r["judge_walk"]))
+
+# A failed accuracy result or a break-it control that passes must fail the pipeline step, not just print FAIL.
+sys.exit(0 if all_passed and not weak_controls else 1)

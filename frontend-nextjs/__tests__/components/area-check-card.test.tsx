@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { BANNED_READER_WORDS } from '../fixtures/banned-reader-words';
+import { BANNED_READER_WORDS } from '@/test-support/banned-reader-words';
 import { AreaCheckCard } from '@/components/compliance/AreaCheckCard';
 import type { AreaCheck } from '@/hooks/useAreaCheck';
 
@@ -98,20 +98,30 @@ describe('AreaCheckCard parking', () => {
     expect(screen.queryAllByTestId('area-check-parking')).toHaveLength(0);
   });
 
-  it('a TOD lot shows the affordable-housing parking from the answer, labelled by bedrooms', () => {
-    const r = result({
-      pathway: 'tod', lmr: { answer: 'no', reason_code: 'chapter5' },
-      tod: { answer: 'yes', standards: {
-        tod_affordable_parking_1_bed: { value: 0.4, clause: 's157(2)(a)', page: 76, law_version_date: '2026-10-23' },
-        tod_affordable_parking_3_plus_bed: { value: 1, clause: 's157(2)(c)', page: 76, law_version_date: '2026-10-23' },
-        tod_fsr: { value: '2.5:1', clause: 's155(4)', page: 76, law_version_date: '2026-10-23' },
-      } },
-    });
-    render(<AreaCheckCard result={r} loading={false} failed={false} lawFacts={facts} />);
+  const todFacts = rowsToFacts([
+    row('tod_affordable_parking_1_bed', 0.4, 's157(2)(a)', 76, 'Parking', '(2)'),
+    row('tod_affordable_parking_3_plus_bed', 1, 's157(2)(c)', 76, 'Parking', '(2)'),
+  ]);
+  const todResult = () => result({
+    pathway: 'tod', lmr: { answer: 'no', reason_code: 'chapter5' },
+    tod: { answer: 'yes', standards: {
+      tod_affordable_parking_1_bed: { value: 9.9, clause: 'from the Python answer', page: 1, law_version_date: '2026-10-23' },
+      tod_fsr: { value: '2.5:1', clause: 's155(4)', page: 76, law_version_date: '2026-10-23' },
+    } },
+  });
+
+  it('a TOD lot shows the affordable-housing parking from the stored law facts, labelled by bedrooms', () => {
+    render(<AreaCheckCard result={todResult()} loading={false} failed={false} lawFacts={todFacts} />);
     const t = screen.getByTestId('area-check-tod-parking').textContent!;
     expect(t).toMatch(/1 bedroom: 0\.4 per dwelling \(s157\(2\)\(a\), page 76\)/);
     expect(t).toMatch(/3 or more bedrooms: 1 per dwelling \(s157\(2\)\(c\), page 76\)/);
-    expect(t).not.toMatch(/2\.5/);
+    expect(t).not.toMatch(/2\.5|9\.9/);
     expect(screen.queryByTestId('area-check-parking')).toBeNull();
+  });
+
+  it('a TOD lot shows no parking figure when the law facts are missing, even if the Python answer carries one', () => {
+    render(<AreaCheckCard result={todResult()} loading={false} failed={false} lawFacts={null} />);
+    expect(screen.queryByTestId('area-check-tod-parking')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/9\.9/);
   });
 });

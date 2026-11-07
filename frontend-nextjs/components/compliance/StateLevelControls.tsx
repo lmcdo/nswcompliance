@@ -617,8 +617,8 @@ export function StateLevelControls({
   const accessLimits = accessibleAreaLimits(lawFacts);
   const hasQualifyingTransport = accessLimits != null && nearbyTransport.some(stop => {
     if ((stop.type === 'heavy_rail' || stop.type === 'light_rail') && stop.distance <= accessLimits.railM) return true;
-    if (stop.type === 'bus' && stop.distance <= accessLimits.busM &&
-        (stop.frequency === 'high' || stop.frequency === 'medium')) return true;
+    // A bus stop inside the distance is shown as a possibility only: the law also tests the timetable (see the wording below), which is not read here.
+    if (stop.type === 'bus' && stop.distance <= accessLimits.busM) return true;
     return false;
   });
 
@@ -1238,8 +1238,9 @@ export function StateLevelControls({
                     if (accessLimits && nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= accessLimits.railM)) {
                       reasons.push(`a light rail stop within ${accessLimits.railM}m in a straight line`);
                     }
-                    if (accessLimits && nearbyTransport.some(s => s.type === 'bus' && s.distance <= accessLimits.busM && (s.frequency === 'high' || s.frequency === 'medium'))) {
-                      reasons.push(`a frequent bus service within ${accessLimits.busM}m in a straight line`);
+                    if (accessLimits && nearbyTransport.some(s => s.type === 'bus' && s.distance <= accessLimits.busM)) {
+                      reasons.push(`a bus stop within ${accessLimits.busM}m in a straight line (the law also requires`
+                        + `${accessLimits.busPerHour != null ? ` at least ${accessLimits.busPerHour} bus per hour in the periods it lists` : ' a regular bus service'}; the timetable was not checked)`);
                     }
                     return `Parking reductions may apply due to ${reasons.join(' and ')}. The law measures walking distance`
                       + (accessLimits ? ` (${accessLimits.clause}, page ${accessLimits.pdfPage}; law as at ${accessLimits.lawVersionDate})` : '') + '.';
@@ -1600,14 +1601,20 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
+      ) : accessLimits == null ? (
+        // The distances come from law_facts. While they are loading, or if they failed, "no qualifying transport" is not known: say so.
+        <Card className="border-amber-200 bg-amber-50/40" data-testid="tod-parking-not-checked">
+          <CardContent className="p-4 text-sm text-gray-700">
+            Transit Oriented Development (TOD) Parking: not checked. The transport distances in the law could not be loaded, so this page
+            cannot say whether the property has public transport within them.
+          </CardContent>
+        </Card>
       ) : (
         <NotApplicableCard
           title="Transit Oriented Development (TOD) Parking"
           reason={
             'Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within the distances in the law'
-            + (accessLimits
-              ? ` (${accessLimits.railM}m to a railway, metro or light rail station, ${accessLimits.busM}m to a frequent bus stop, in a straight line; ${accessLimits.clause}, page ${accessLimits.pdfPage}).`
-              : '.')
+            + ` (${accessLimits.railM}m to a railway, metro or light rail station, ${accessLimits.busM}m to a bus stop with the service the law requires, in a straight line; ${accessLimits.clause}, page ${accessLimits.pdfPage}).`
           }
           color="purple"
         />

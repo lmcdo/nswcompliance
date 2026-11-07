@@ -24,7 +24,7 @@ export const LAW_FACT_KEYS = [
 export type LawFactKey = (typeof LAW_FACT_KEYS)[number];
 
 /** Families of facts served by key prefix: one fact per section of the law, so the list is whatever the saved law contains. */
-export const LAW_FACT_PREFIXES = ['parking_min_'] as const;
+export const LAW_FACT_PREFIXES = ['parking_min_', 'tod_affordable_parking_'] as const;
 
 export interface LawFact {
   value: number | string;
@@ -110,14 +110,16 @@ export function todStandardsSentence(facts: LawFacts | null | undefined): string
  */
 export function accessibleAreaLimits(
   facts: LawFacts | null | undefined,
-): { railM: number; busM: number; clause: string; pdfPage: number; lawVersionDate: string } | null {
+): { railM: number; busM: number; busPerHour: number | null; clause: string; pdfPage: number; lawVersionDate: string } | null {
   const rail = facts?.accessible_area_rail_distance;
   const bus = facts?.accessible_area_bus_distance;
   if (!rail || !bus) return null;
   const railM = Number(rail.value);
   const busM = Number(bus.value);
   if (!Number.isFinite(railM) || !Number.isFinite(busM) || railM <= 0 || busM <= 0) return null;
-  return { railM, busM, clause: 'Schedule 10 dictionary, accessible area', pdfPage: rail.pdfPage, lawVersionDate: rail.lawVersionDate };
+  const perHour = Number(facts?.accessible_area_bus_min_per_hour?.value);
+  const busPerHour = Number.isFinite(perHour) && perHour > 0 ? perHour : null;
+  return { railM, busM, busPerHour, clause: 'Schedule 10 dictionary, accessible area', pdfPage: rail.pdfPage, lawVersionDate: rail.lawVersionDate };
 }
 
 export interface ParkingRate {
@@ -149,6 +151,32 @@ export function reformParkingRates(facts: LawFacts | null | undefined): ParkingR
     out.push({ key, label, rate, clause: f.clause, pdfPage: f.pdfPage, lawVersionDate: f.lawVersionDate });
   }
   return out.sort((a, b) => a.pdfPage - b.pdfPage || a.key.localeCompare(b.key));
+}
+
+export interface TodParkingRate {
+  key: string;
+  bedrooms: number;
+  orMore: boolean;
+  rate: number;
+  clause: string;
+  pdfPage: number;
+  lawVersionDate: string;
+}
+
+/**
+ * Chapter 5 affordable-housing parking per dwelling, by bedroom count, read ONLY from the stored law facts (`tod_affordable_parking_<n>_bed`,
+ * `..._<n>_plus_bed`). Empty when the facts are missing, so the page then shows no figure rather than one from another source.
+ */
+export function todAffordableParkingRates(facts: LawFacts | null | undefined): TodParkingRate[] {
+  const out: TodParkingRate[] = [];
+  for (const [key, f] of Object.entries(facts ?? {})) {
+    const m = /^tod_affordable_parking_(\d+)(_plus)?_bed$/.exec(key);
+    if (!f || !m) continue;
+    const rate = Number(f.value);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    out.push({ key, bedrooms: Number(m[1]), orMore: Boolean(m[2]), rate, clause: f.clause, pdfPage: f.pdfPage, lawVersionDate: f.lawVersionDate });
+  }
+  return out.sort((a, b) => a.bedrooms - b.bedrooms);
 }
 
 /** The sentence shown when the stored figures could not be read. It contains no figure. */
