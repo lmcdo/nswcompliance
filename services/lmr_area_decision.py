@@ -64,6 +64,10 @@ WALK_MARGIN_LOW_M = 75    # noqa: regulatory-number -- measured router disagreem
 WALK_MARGIN_HIGH_M = 225  # noqa: regulatory-number -- measured router disagreement, not a planning figure
 
 
+# What a reader is told when a check could not be completed. The machine value stays "cant_tell"; the words a person sees never are.
+NOT_DETERMINED_NEXT_STEP = ". Check this lot on the NSW Planning Portal Spatial Viewer or ask the council for a planning certificate."
+
+
 WALK_HEURISTIC = (
     f"Walking range = the measured walk minus {WALK_MARGIN_LOW_M} m, up to the measured walk plus {WALK_MARGIN_HIGH_M} m (plus the station "
     "outline length when the entrance is not mapped, because the entrance can be anywhere on the outline). The range is lopsided on "
@@ -424,7 +428,7 @@ def decide(m: dict, facts: Optional[LawFacts] = None) -> dict:
 
 
 def _failed(reason: str) -> dict:
-    return {"pathway": "unknown", "headline": "Could not tell: " + reason,
+    return {"pathway": "unknown", "headline": "Not determined: " + reason + NOT_DETERMINED_NEXT_STEP,
             "lmr": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason, "rules": []},
             "tod": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason},
             "not_checked": [], "notes": [], "law_version_date": None, "measured": {}}
@@ -506,4 +510,4 @@ def _headline(pathway: str, lmr: dict, tod: dict) -> str:
                 f"data; the law's route is the shortest one that may be walked using footpaths and crossings.")
     if pathway == "neither":
         return f"Neither pathway: Chapter 6: {lmr['detail']} ({lmr['clause']}, p{lmr['page']})."
-    return "Can't tell: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"])  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    return "Not determined: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"]) + NOT_DETERMINED_NEXT_STEP  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
