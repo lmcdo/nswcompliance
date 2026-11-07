@@ -19,7 +19,7 @@
     "services/lmr_walk_surface.py",
     "tests/test_lmr_area_decision.py",
     "tests/test_lmr_area_inputs.py",
-    "tests/test_lmr_area_gather.py",
+    "tests/lmr_gather_real_pyproj.py",
     "tests/test_lmr_walk_surface.py",
     "tests/test_lmr_data_files.py",
     "scripts/lmr_area/build_station_entrances.py",
