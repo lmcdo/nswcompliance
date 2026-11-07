@@ -147,15 +147,16 @@ def test_station_file_missing_a_listed_station_blocks_distances(monkeypatch):
 def test_area_check_never_raises_and_never_yes_on_failure(monkeypatch):
     monkeypatch.setattr(inp, "gather", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     r = inp.area_check(LAT, LNG)
-    assert r["lmr"]["answer"] == "cant_tell" and "boom" in r["lmr"]["detail"]
+    assert r["lmr"]["answer"] == "cant_tell" and "RuntimeError" in r["lmr"]["detail"]  # the reader sees a plain reason; the full text "boom" is in the log
+    assert r["headline"].startswith("Why: ")
 
 
 def test_projection_dependent_tests_pass_in_a_clean_interpreter():
     """tests/conftest_mocks.py replaces pyproj with a stub whose transform returns (0, 0), so geometry tests cannot run in
-    this process. They live in tests/test_lmr_area_gather.py and run here in a child pytest that skips the stubs."""
+    this process. They live in tests/lmr_gather_real_pyproj.py and run here in a child pytest that skips the stubs."""
     repo = Path(__file__).resolve().parent.parent
     r = subprocess.run([sys.executable, "-m", "pytest", "--noconftest", "-q", "-p", "no:cacheprovider",
-                        "tests/test_lmr_area_gather.py"], cwd=repo, capture_output=True, text=True, timeout=300)
+                        "tests/lmr_gather_real_pyproj.py"], cwd=repo, capture_output=True, text=True, timeout=300)
     assert r.returncode == 0, (r.stdout + r.stderr)[-3000:]
 
 

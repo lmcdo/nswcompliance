@@ -357,7 +357,7 @@ def area_check(lat: float, lng: float, **kw) -> dict:
         m = gather(lat, lng, **kw)
     except Exception as exc:  # noqa: BLE001 -- never raise, never a silent yes
         logger.warning("lmr area check measurement failed: %s", exc)
-        return dec._failed(f"measurement failed: {type(exc).__name__}: {exc}")
+        return dec._failed(f"a map or lookup did not respond, or returned something unexpected ({type(exc).__name__})")
     r = dec.decide(m)
     r["measured"] = {**(r.get("measured") or {}), "lot_outline": m.get("lot_outline"), "distance_note": m.get("distance_note")}
     return r

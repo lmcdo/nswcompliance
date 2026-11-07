@@ -409,7 +409,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     wm = walk.get("m")
     if walk.get("valid") is not True or not isinstance(wm, (int, float)) or isinstance(wm, bool):
         return CANT, {**base, "reason_code": "walking_measure_unavailable",
-                      "detail": walk.get("reason") or "no valid walking measure for this lot"}
+                      "detail": walk.get("reason") or "the walk to the nearest station or town centre could not be measured"}
     # The walk is a RANGE, not a point. Low end: the measured walk less the measurement margin. High end: the measured walk plus
     # the margin, plus `optimistic_by_m` when the walk was measured to a station building outline instead of a mapped entrance
     # (the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length).
@@ -461,13 +461,13 @@ def decide(m: dict, facts: Optional[LawFacts] = None) -> dict:
         facts = facts or LawFacts.load()
         return _decide(m or {}, facts)
     except LawFactsError as exc:
-        return _failed(f"law facts unavailable: {exc}")
+        return _failed(f"the saved law figures could not be read ({exc})")
     except Exception as exc:  # noqa: BLE001 -- the contract is never-raise, never-silent
-        return _failed(f"unexpected failure: {type(exc).__name__}: {exc}")
+        return _failed(f"the check hit an unexpected error ({type(exc).__name__}: {exc})")
 
 
 def _failed(reason: str) -> dict:
-    return {"pathway": "unknown", "headline": "No answer for this lot: " + reason + NOT_DETERMINED_NEXT_STEP,
+    return {"pathway": "unknown", "headline": "Why: " + reason + NOT_DETERMINED_NEXT_STEP,
             "lmr": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason, "rules": []},
             "tod": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason},
             "not_checked": [], "notes": [], "law_version_date": None, "measured": {}}
@@ -551,4 +551,4 @@ def _headline(pathway: str, lmr: dict, tod: dict) -> str:
                 f"data; the law's route is the shortest one that may be walked using footpaths and crossings.")
     if pathway == "neither":
         return f"Neither pathway: Chapter 6: {lmr['detail']} ({lmr['clause']}, p{lmr['page']})."
-    return "No answer for this lot: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"]) + NOT_DETERMINED_NEXT_STEP  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    return "Why: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"]) + NOT_DETERMINED_NEXT_STEP  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)

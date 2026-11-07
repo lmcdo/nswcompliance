@@ -444,3 +444,17 @@ def test_reader_facing_details_avoid_internal_words():
     for line in src.splitlines():
         if '"detail":' in line and "reason_code" in line:
             assert "anchor" not in line.split('"detail":', 1)[1].lower(), line.strip()
+
+
+def test_no_answer_headline_leads_with_the_reason_in_plain_words():
+    """A lot with no answer shows 'Why: <reason>' first. The reasons the walking code gives use no internal words."""
+    r = d._failed("a map did not respond")
+    assert r["headline"].startswith("Why: a map did not respond")
+    assert "No answer" not in r["headline"] and "Not determined" not in r["headline"]
+    import inspect
+    from services import lmr_walk_surface as ws
+    src = inspect.getsource(ws)
+    for line in src.splitlines():
+        if "_invalid(" in line or "notes.append(" in line:
+            for word in ("anchor", "surface has", "node", "network too thin"):
+                assert word not in line.split("(", 1)[-1].lower() or "def _invalid" in line, line.strip()

@@ -141,31 +141,31 @@ def walk_from_lot(
     if surfaces is None:
         surfaces = [load_surface(str(p)) for p in available_surfaces()]
     if len(ring_m) < 4:
-        return _invalid("lot outline has too few points")
+        return _invalid("the lot outline on the map is too small to measure a walk from")
     pts = sample_outline(ring_m)
     minx, miny = pts.min(axis=0)
     maxx, maxy = pts.max(axis=0)
     if maxx - minx > MAX_LOT_EXTENT_M or maxy - miny > MAX_LOT_EXTENT_M:
-        return _invalid("lot is larger than the size this lookup handles")
+        return _invalid("the lot is larger than this check can measure a walk from")
     cands =[s for s in surfaces if s.epsg == epsg and s.covers(minx, miny, maxx, maxy)]
     if not cands:
-        return _invalid("no walking surface has been built for this area")
+        return _invalid("we do not have a footpath map for this area yet, so the walk to the nearest station could not be measured")
     if required_anchors:
         built = {a.get("name") for s in cands for a in s.anchors}
         missing = sorted(set(required_anchors) - built)
         if missing:
-            return _invalid(f"no walking surface built for nearby anchor(s): {', '.join(missing[:3])}")
+            return _invalid(f"we do not have footpath data for a station or town centre near this lot ({', '.join(missing[:3])}), so the walk could not be measured")
     best: Optional[dict] = None
     notes: list[str] = []
     for s in cands:
         if s.graph_nodes < MIN_NODES or len(s.xy) < MIN_NODES:
-            notes.append(f"{s.name}: network too thin ({s.graph_nodes} nodes)")
+            notes.append(f"the footpath map for this area ({s.name}) is too sparse to measure a walk")
             continue
         # gap matrix: sample points x surface nodes, only nodes inside the box around the lot matter
         near = (np.abs(s.xy[:, 0] - (minx + maxx) / 2) <= (maxx - minx) / 2 + MAX_GAP_M) & \
                (np.abs(s.xy[:, 1] - (miny + maxy) / 2) <= (maxy - miny) / 2 + MAX_GAP_M)
         if not near.any():
-            notes.append(f"{s.name}: no footpath node within {MAX_GAP_M:.0f} m of the lot")
+            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
             continue
         nxy, nd, na = s.xy[near], s.dist[near], s.anchor_idx[near]
         gap = np.hypot(pts[:, None, 0] - nxy[None, :, 0], pts[:, None, 1] - nxy[None, :, 1])
@@ -177,13 +177,13 @@ def walk_from_lot(
         flat = int(np.argmin(total))
         i, j = divmod(flat, total.shape[1])
         if not np.isfinite(total[i, j]):
-            notes.append(f"{s.name}: no footpath node within {MAX_GAP_M:.0f} m of the lot")
+            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
             continue
         cand = {"m": float(total[i, j]), "gap_m": float(gap[i, j]), "anchor_i": int(na[j]), "surface": s}
         if best is None or cand["m"] < best["m"]:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
             best = cand
     if best is None:
-        return _invalid("; ".join(notes) or "no walking surface answered")
+        return _invalid("; ".join(notes) or "the footpath map gave no walking distance for this lot")
     s: Surface = best.pop("surface")
     a = s.anchors[best["anchor_i"]]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     m = best["m"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)

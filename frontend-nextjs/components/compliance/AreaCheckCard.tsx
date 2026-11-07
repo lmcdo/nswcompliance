@@ -21,7 +21,7 @@ function lead(r: AreaCheck): string {
   if (r.pathway === 'lmr') return 'This lot is within the low and mid-rise walking distance (Chapter 6).';
   if (r.pathway === 'borderline') return 'This lot is close to the low and mid-rise walking limit.';
   if (r.pathway === 'neither') return 'This lot is in neither the Chapter 5 nor the Chapter 6 area.';
-  return 'We have no answer for this lot.';
+  return 'We could not work out whether this lot is in a Chapter 5 or Chapter 6 area.';
 }
 
 export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
@@ -36,7 +36,7 @@ export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
     return (
       <Card className="border-gray-200">
         <CardContent className="py-3 text-sm text-gray-700" data-testid="area-check-failed">
-          No answer for this lot: the area check did not respond. Check this lot on the NSW Planning Portal Spatial Viewer or ask the council
+          We could not work out the area for this lot. Why: the area check did not respond. Check this lot on the NSW Planning Portal Spatial Viewer or ask the council
           for a planning certificate.
         </CardContent>
       </Card>

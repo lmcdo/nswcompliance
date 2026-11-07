@@ -1,7 +1,8 @@
 """Projection-dependent tests for services/lmr_area_inputs.gather().
 
-These need the REAL pyproj. tests/conftest_mocks.py replaces it with a stub whose transform returns (0, 0), so they are
-skipped in a normal run and executed by tests/test_lmr_area_inputs.py in a child pytest with --noconftest.
+These need the REAL pyproj. tests/conftest_mocks.py replaces it with a stub whose transform returns (0, 0). This file is
+deliberately not named test_*.py, so a normal run does not collect it (a skip would count against the skip ratchet);
+tests/test_lmr_area_inputs.py runs it by path in a child pytest with --noconftest.
 """
 import sys
 from unittest.mock import MagicMock
