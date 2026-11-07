@@ -1,0 +1,151 @@
+{
+  "tier": "standard",
+  "justification": "New aircraft-noise rule for Sydney Airport: it reads the four contours of the endorsed ANEF 2045 chart from one committed file and compares a lot outline with the ANEF 25 line. It reads no database, writes nothing and is not yet shown on any page as a served number, so it is not Critical. It is more than Minor because a wrong answer would tell a person their lot is or is not excluded by the law's aircraft-noise paragraph.",
+  "commit_hash": "b00649ac",
+  "files": [
+    "services/sydney_anef.py",
+    "services/lmr_area_decision.py",
+    "services/lmr_area_inputs.py",
+    "scripts/anef/build_sydney_anef_2045.py",
+    "scripts/anef/georef_chart_to_roads.py",
+    "data/anef/sydney_anef_2045.json",
+    "data/anef/sydney_anef_2045_georef.json",
+    "tests/test_sydney_anef.py",
+    "tests/test_lmr_data_files.py",
+    "tests/lmr_gather_real_pyproj.py",
+    "Dockerfile.python"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_sydney_anef.py -q",
+    "fails_when": "Fails whenever a lot well inside the line is not excluded, a lot clear of it is not cleared, a lot within the 53 m margin gets a yes or no, a contour is not closed or not nested 20 > 25 > 30 > 35, or the recorded alignment no longer beats a wrong alignment by a wide margin.",
+    "observed_red": "Six deliberate breaks of the module were each caught by at least one test: inside needs no margin, outside needs no margin, nearest uses the furthest point, clear becomes excludes, near becomes clear, and the point-in-polygon toggle never flipping back. That last one first SURVIVED; west, north, south and U-shaped contour tests were added and it is now caught.",
+    "external_authority": "NSW road centrelines (NSW_Transport_Theme layer 5) are independent of the chart. 2,677 chart road points were matched to 320,226 road samples: 99.5% land within 15 m and 99.9% within 20 m, against 24 to 36% within 20 m for a wrong alignment. The fitted scale (42.26 m per point) equals the chart's own scale bar (42.2). Limit stated to the user: the chart is the airport's forecast and carries its own uncertainty; the margin covers drawing width and alignment only."
+  },
+  "pre_impl": {
+    "existing_data": "No database table is read or written. The rule reads one committed file, data/anef/sydney_anef_2045.json, built offline from Sydney Airport Master Plan 2045 Appendix H Map H-1. The old data/anef zones file (5-point polygons that flagged 223 of 400 test lots) is not used.",
+    "assumption_mismatch": "If the data file is missing or a key is missing, classify_all raises and gather() stores the text 'error', which the decision reports as no answer, never as clear. If a lot has no outline, the address point stands for it. A lot outside the chart's map frame gets no Sydney rule at all, because the chart says nothing there.",
+    "new_vs_existing": "Applies at request time to every lot inside the chart's map frame, which covers the inner Sydney airport area only. Lots elsewhere are unchanged. Western Sydney Airport noise still comes from the planning portal layer.",
+    "external_source_error": "No network is used at request time. The two offline scripts call the NSW road layer; a failed call raises after three tries and no data file is written.",
+    "frontend_type": "Not applicable: the frontend reads the same area-check reply shape; only a rule id and its wording are new.",
+    "user_failure_mode": "A lot inside the line is shown as excluded with the clause, page and chart named; a lot within 53 m of the line says 'Why:' and gives no yes or no; an unreadable chart says no answer."
+  },
+  "functions": [
+    {
+      "name": "classify",
+      "file_line": "services/sydney_anef.py:84",
+      "input": "lat, lng, optional lot outline ring of lon/lat pairs, and a contour level",
+      "output": "None outside the map frame, otherwise a dict with state inside, outside or near plus the margin and distances in metres",
+      "if_none": "None means the lot is outside the chart's map frame; a missing level raises an error rather than guessing"
+    },
+    {
+      "name": "classify_all",
+      "file_line": "services/sydney_anef.py:76",
+      "input": "lat, lng and an optional lot outline ring",
+      "output": "dict keyed by contour level (20, 25, 30, 35) of classify results, or None outside the map frame",
+      "if_none": "None when the lot is outside the map frame, so the decision adds no Sydney rule"
+    },
+    {
+      "name": "_lmr_rules",
+      "file_line": "services/lmr_area_decision.py:219",
+      "input": "the sydney_anef measurement in the measurement dict, plus the law's ANEF level read from the saved law facts",
+      "output": "one rule: excludes when inside the line, clear when outside by more than the margin, unknown when within it or unreadable",
+      "if_none": "a missing key or None adds no rule; the text 'error' or a malformed dict gives unknown, never clear"
+    }
+  ],
+  "values": [
+    {
+      "value": "margin_m (53)",
+      "read_at": "services/sydney_anef.py:99",
+      "nullable": "no",
+      "guard_at": "tests/test_sydney_anef.py:test_the_source_and_the_measured_accuracy_are_recorded",
+      "if_missing": "KeyError from the committed file; gather() catches it and the decision reports no answer"
+    },
+    {
+      "value": "frame_lonlat",
+      "read_at": "services/sydney_anef.py:93",
+      "nullable": "no",
+      "guard_at": "tests/test_sydney_anef.py:test_each_contour_lies_wholly_inside_the_one_outside_it_and_in_sydney",
+      "if_missing": "KeyError from the committed file; gather() catches it and the decision reports no answer"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Offline only: NSW RoadSegment centrelines in a box round the airport, used once to align the chart",
+      "file_line": "scripts/anef/georef_chart_to_roads.py:51",
+      "where_clause": "NSW_Transport_Theme FeatureServer layer 5, envelope 151.12,-34.00,151.27,-33.86, paged 2000 at a time",
+      "if_zero": "the fit has nothing to match and is refused (accepted false)",
+      "if_wrong": "a wrong layer would not give a clear peak: the fit is refused unless 95% of chart road points land within 20 m and a shifted fit scores 50% or less"
+    },
+    {
+      "purpose": "Request time: none. The rule reads one committed file and makes no network call",
+      "file_line": "services/sydney_anef.py:26",
+      "where_clause": "not applicable: local file read, cached once per process",
+      "if_zero": "not applicable: a missing file raises SydneyAnefError and the decision reports no answer",
+      "if_wrong": "a stale file is caught by the recorded PDF hash and the georeference hash checks in tests"
+    },
+    {
+      "purpose": "Offline only: contour paths read straight from the vector chart page (no query)",
+      "file_line": "scripts/anef/build_sydney_anef_2045.py:94",
+      "where_clause": "page 25 of the Appendices PDF, stroke colour 0.082,0.216,0.345, at least 500 segments each",
+      "if_zero": "the build refuses unless exactly four contours are found",
+      "if_wrong": "the build refuses unless every ring is closed and the rings nest 20 > 25 > 30 > 35"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A lot straddles the ANEF 25 line with its far corner well inside the line",
+      "what_happens": "A clear answer would hide that part of the lot is excluded by the law",
+      "mitigated": true,
+      "how": "services/sydney_anef.py classify: any outline point inside by more than the margin makes the lot inside",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k deep_inside"
+    },
+    {
+      "scenario": "A lot lies wholly outside the line but its nearest edge is within the margin of it",
+      "what_happens": "A clear answer would claim more precision than the chart has",
+      "mitigated": true,
+      "how": "services/sydney_anef.py classify: the outside state needs the lot's nearest point to be more than the margin from the line",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k within_the_margin_of_the_line"
+    },
+    {
+      "scenario": "The contour is concave and a point in the notch is tested with a ray that crosses the line twice",
+      "what_happens": "A point in the notch could be reported inside the line and excluded wrongly",
+      "mitigated": true,
+      "how": "services/sydney_anef.py _inside toggles on every crossing; the U-shaped contour test pins this and a mutation test confirmed it fails when the toggle is broken",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k concave"
+    },
+    {
+      "scenario": "The chart data file is missing or a key is missing at request time",
+      "what_happens": "A default would guess where an aircraft-noise line is",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py gather stores the text error and services/lmr_area_decision.py reports unknown, never clear",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k unreadable_or_incomplete"
+    },
+    {
+      "scenario": "A lot far from Sydney Airport, outside the chart's map frame",
+      "what_happens": "The chart would be treated as saying the lot is clear of the line when it says nothing",
+      "mitigated": true,
+      "how": "services/sydney_anef.py classify returns None outside frame_lonlat and the decision adds no Sydney rule",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k outside_the_map_frame"
+    },
+    {
+      "scenario": "The NSW RoadSegment centrelines used to align the chart come back empty, from the wrong layer or in a box that misses the airport, so every contour is shifted on the ground",
+      "what_happens": "Lots near the line would get the wrong side with confidence",
+      "mitigated": true,
+      "how": "scripts/anef/georef_chart_to_roads.py refuses a fit unless 95% of chart road points are within 20 m of real roads and a shifted fit scores 50% or less; the recorded numbers are tested",
+      "repro": "python -m pytest tests/test_sydney_anef.py -q -k georeference"
+    },
+    {
+      "scenario": "The Python image is built without the data file",
+      "what_happens": "Every lot near the airport would answer no answer in production",
+      "mitigated": true,
+      "how": "Dockerfile.python copies data/anef/sydney_anef_2045.json and tests/test_lmr_data_files.py checks the COPY line",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -q -k python_image"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: a person opens the chart page and a few lots next to the ANEF 25 line before any outreach; the outreach hold stays on"
+  }
+}
