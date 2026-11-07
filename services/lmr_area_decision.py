@@ -277,7 +277,7 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
         rules.append(_rule("heritage_item", pd_, "unknown", "the heritage-item check did not answer"))
     elif wired_reg and reg is not False:
         why = ("the State Heritage Register did not answer" if reg is None else
-               "the lot is on the State Heritage Register; whether that makes it a 'heritage item' in s164(1)(d) was not decided from the text")
+               "the lot is on the State Heritage Register; whether that makes it a 'heritage item' in s164(1)(d) is not stated in the text of the law")
         rules.append(_rule("heritage_item", pd_, "unknown", why))
     else:
         rules.append(_rule("heritage_item", pd_, "clear", "no heritage item mapped on the lot outline"))
@@ -467,7 +467,7 @@ def decide(m: dict, facts: Optional[LawFacts] = None) -> dict:
 
 
 def _failed(reason: str) -> dict:
-    return {"pathway": "unknown", "headline": "Not determined: " + reason + NOT_DETERMINED_NEXT_STEP,
+    return {"pathway": "unknown", "headline": "No answer for this lot: " + reason + NOT_DETERMINED_NEXT_STEP,
             "lmr": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason, "rules": []},
             "tod": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason},
             "not_checked": [], "notes": [], "law_version_date": None, "measured": {}}
@@ -551,4 +551,4 @@ def _headline(pathway: str, lmr: dict, tod: dict) -> str:
                 f"data; the law's route is the shortest one that may be walked using footpaths and crossings.")
     if pathway == "neither":
         return f"Neither pathway: Chapter 6: {lmr['detail']} ({lmr['clause']}, p{lmr['page']})."
-    return "Not determined: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"]) + NOT_DETERMINED_NEXT_STEP  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    return "No answer for this lot: " + (lmr["detail"] if lmr["answer"] == CANT else tod["detail"]) + NOT_DETERMINED_NEXT_STEP  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)

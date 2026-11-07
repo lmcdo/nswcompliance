@@ -52,15 +52,15 @@ describe('AreaCheckCard', () => {
     expect(screen.queryByTestId('area-check-range')).toBeNull();
   });
 
-  it('a failed or missing result says "Not determined" with a next step, and loading says it is checking', () => {
+  it('a failed or missing result says "No answer for this lot" with a next step, and loading says it is checking', () => {
     const { rerender } = render(<AreaCheckCard result={null} loading={false} failed={true} />);
-    expect(screen.getByTestId('area-check-failed').textContent).toMatch(/^\s*Not determined:[\s\S]*Spatial Viewer/);
+    expect(screen.getByTestId('area-check-failed').textContent).toMatch(/^\s*No answer for this lot:[\s\S]*Spatial Viewer/);
     rerender(<AreaCheckCard result={null} loading={true} failed={false} />);
     expect(screen.getByTestId('area-check-loading')).toBeTruthy();
   });
 
   it('none of the rendered text uses the words the product avoids', () => {
-    const undetermined = result({ pathway: 'unknown', lmr: { answer: 'cant_tell' }, headline: 'Not determined: a map did not answer.' });
+    const undetermined = result({ pathway: 'unknown', lmr: { answer: 'cant_tell' }, headline: 'No answer for this lot: a map did not answer.' });
     for (const r of [result(), undetermined]) {
       const { container, unmount } = render(<AreaCheckCard result={r} loading={false} failed={false} />);
       expect(container.textContent).not.toMatch(BANNED);
