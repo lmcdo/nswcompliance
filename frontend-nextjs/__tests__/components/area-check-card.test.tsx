@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { BANNED_READER_WORDS } from '../fixtures/banned-reader-words';
 import { AreaCheckCard } from '@/components/compliance/AreaCheckCard';
 import type { AreaCheck } from '@/hooks/useAreaCheck';
 
@@ -17,7 +18,7 @@ const result = (over: Partial<AreaCheck> = {}): AreaCheck => ({
 
 import { rowsToFacts, type LawFactRow } from '@/lib/law-facts';
 
-const BANNED = /can'?t tell|cannot tell|confirmed|eligible|compliant/i;
+const BANNED = BANNED_READER_WORDS;
 
 describe('AreaCheckCard', () => {
   it('shows the walking range, the limit, the law date and what was not checked', () => {
