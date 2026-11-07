@@ -2729,7 +2729,9 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "                           'development_controls', 'control_codes',"
         "                           'quantitative_standards', 'dcp_base_requirements',"
         "                           'dcp_precinct_requirements', 'dcp_table_of_contents',"
-        "                           'provision_versions', 'lep_zone_coverage')"
+        "                           'provision_versions', 'lep_zone_coverage', 'law_facts')"
+        # law_facts (migration 123, 2026-11-07) holds the law figures the low-and-mid-rise / TOD
+        # feature serves; it was created with writes revoked and row level security on.
         # NOTE the doubled %%: run() calls cur.execute(sql, params) with a tuple,
         # so psycopg2 interpolates and a single % in a LIKE pattern is read as a
         # placeholder (IndexError: tuple index out of range).
