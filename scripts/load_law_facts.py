@@ -109,9 +109,14 @@ def diff_rows(json_rows: list[dict], db_rows: list[dict]) -> list[str]:
     return sorted(problems)
 
 
-def plan_changes(json_rows: list[dict], db_all: list[dict]) -> dict:
-    """What --apply would do. `db_all` = every row in law_facts (current and history), with is_current."""
-    insert, supersede, unchanged, conflicts = [], [], 0, []
+def plan_changes(json_rows: list[dict], db_all: list[dict], correct: frozenset = frozenset()) -> dict:
+    """What --apply would do. `db_all` = every row in law_facts (current and history), with is_current.
+
+    `correct` names facts whose wording was wrong under the SAME law version (a bug in the extractor, not a new law). The table allows
+    one row per fact per law version, so a correction updates that row in place; the old row is saved to the backup file first.
+    Without the name, the same-version difference stays a CONFLICT.
+    """
+    insert, supersede, unchanged, conflicts, update = [], [], 0, [], []
     current = {r["fact_key"]: r for r in db_all if r.get("is_current")}
     for row in json_rows:
         cur = current.get(row["fact_key"])
@@ -120,14 +125,20 @@ def plan_changes(json_rows: list[dict], db_all: list[dict]) -> dict:
         elif str(cur["law_version_date"]) == str(row["law_version_date"]):
             if _canon(cur) == _canon(row):
                 unchanged += 1
+            elif row["fact_key"] in correct:
+                update.append(row)
             else:
-                conflicts.append(f"{row['fact_key']}: same law version {row['law_version_date']} but different content")
+                conflicts.append(f"{row['fact_key']}: same law version {row['law_version_date']} but different content "
+                                 f"(a wording fix under the same version needs --correct {row['fact_key']})")
         elif str(cur["law_version_date"]) < str(row["law_version_date"]):
             supersede.append(row["fact_key"])
             insert.append(row)
         else:
             conflicts.append(f"{row['fact_key']}: database holds a NEWER law version {cur['law_version_date']}")
-    return {"insert": insert, "supersede": supersede, "unchanged": unchanged, "conflicts": conflicts}
+    unknown = sorted(set(correct) - {r["fact_key"] for r in update})
+    for k in unknown:   # naming a fact that is not a same-version difference must never silently do nothing
+        conflicts.append(f"--correct {k}: that fact is not a same-version difference (nothing to correct)")
+    return {"insert": insert, "supersede": supersede, "unchanged": unchanged, "conflicts": conflicts, "update": update}
 
 
 # ---- database side (kept thin; the logic above is what the tests pin) ------------------------------
@@ -176,7 +187,7 @@ def check() -> int:
     return 1 if problems else 0
 
 
-def run(apply: bool) -> int:
+def run(apply: bool, correct: frozenset = frozenset()) -> int:
     import dq_db
 
     rows = build_rows(_doc())
@@ -189,9 +200,12 @@ def run(apply: bool) -> int:
             print("law_facts does not exist: apply migration 123 first (nothing to load into).")
             return 1
         existing = _fetch(cur)
-        plan = plan_changes(rows, existing)
+        plan = plan_changes(rows, existing, correct)
         print(f"existing rows: {len(existing)} | to insert: {len(plan['insert'])} | to supersede: "
-              f"{len(plan['supersede'])} | unchanged: {plan['unchanged']} | JSON facts: {len(rows)}")
+              f"{len(plan['supersede'])} | to correct in place: {len(plan['update'])} | unchanged: {plan['unchanged']} | JSON facts: {len(rows)}")
+        for row in plan["update"]:
+            old = next(r for r in existing if r["fact_key"] == row["fact_key"] and r.get("is_current"))
+            print(f"  will correct {row['fact_key']}: stored value {len(json.dumps(old['value']))} chars -> {len(json.dumps(row['value']))} chars")
         for c in plan["conflicts"]:
             print("CONFLICT:", c)
         if plan["conflicts"]:
@@ -199,7 +213,7 @@ def run(apply: bool) -> int:
         if not apply:
             print("dry run: nothing written. Re-run with --apply to write.")
             return 0
-        if not plan["insert"]:
+        if not plan["insert"] and not plan["update"]:
             print("nothing to do.")
             return 0
 
@@ -219,6 +233,15 @@ def run(apply: bool) -> int:
             cur.execute("UPDATE law_facts SET is_current = false WHERE instrument_key = %s AND fact_key = %s AND is_current",
                         (INSTRUMENT_KEY, key))
         placeholders = ", ".join(["%s"] * len(COLUMNS))
+        for row in plan["update"]:   # same law version, corrected wording: the old row is in the backup file above
+            sets = ", ".join(f"{c} = %s" for c in COLUMNS if c not in ("instrument_key", "fact_key", "law_version_date"))
+            vals = [Json(row[c]) if c in ("value", "extra") else row[c] for c in COLUMNS if c not in ("instrument_key", "fact_key", "law_version_date")]
+            cur.execute(f"UPDATE law_facts SET {sets}, loaded_at = now() WHERE instrument_key = %s AND fact_key = %s AND is_current",
+                        vals + [INSTRUMENT_KEY, row["fact_key"]])
+            if cur.rowcount != 1:
+                conn.rollback()
+                print(f"ROLLED BACK: expected to correct 1 row for {row['fact_key']}, matched {cur.rowcount}")
+                return 1
         for row in plan["insert"]:
             vals = [Json(row[c]) if c in ("value", "extra") else row[c] for c in COLUMNS]
             cur.execute(f"INSERT INTO law_facts ({', '.join(COLUMNS)}) VALUES ({placeholders})", vals)
@@ -228,7 +251,7 @@ def run(apply: bool) -> int:
             print("ROLLED BACK: the database would not equal the JSON:", after[:5])
             return 1
         conn.commit()
-        print(f"committed: {len(plan['insert'])} row(s). law_facts now equals the JSON.")
+        print(f"committed: {len(plan['insert'])} inserted, {len(plan['update'])} corrected in place. law_facts now equals the JSON.")
         return 0
     finally:
         conn.close()
@@ -239,10 +262,12 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--apply", action="store_true", help="write the rows (default is a dry run)")
     ap.add_argument("--check", action="store_true", help="read-only: does the database equal the JSON? exit 0/1/2")
+    ap.add_argument("--correct", action="append", default=[], metavar="FACT_KEY",
+                    help="a fact whose wording was wrong under the SAME law version: update that row in place (old row saved to the backup)")
     args = ap.parse_args(argv)
     if args.check:
         return check()
-    return run(args.apply)
+    return run(args.apply, frozenset(args.correct))
 
 
 if __name__ == "__main__":

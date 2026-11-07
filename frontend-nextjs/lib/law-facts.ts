@@ -1,0 +1,98 @@
+/**
+ * State-law figures for the low-and-mid-rise / TOD feature, read from the `law_facts` table.
+ *
+ * Every figure here arrives with its clause, PDF page, the sentence it came from and the law version date, and is
+ * proven equal to the saved law text by `python scripts/load_law_facts.py --check` (ledger row DQ-151). Nothing in
+ * this file types a planning figure: when the figures are not available the text says so and links to the section.
+ *
+ * prior-art-checked: no existing code reads law_facts (grep frontend-nextjs/ and services/, 2026-11-07). The nearest
+ * surface is /api/sepp/parking-provisions (regulatory_provisions, parking cards); it holds none of the Chapter 5 figures.
+ */
+
+/** The only facts the website reads. A fact not listed here is not served. */
+export const LAW_FACT_KEYS = [
+  'tod_height_residential_flat_building_m',
+  'tod_height_seniors_or_shop_top_m',
+  'tod_fsr',
+  'lmr_outer_distance',
+  'lmr_inner_distance',
+] as const;
+
+export type LawFactKey = (typeof LAW_FACT_KEYS)[number];
+
+export interface LawFact {
+  value: number | string;
+  unit: string | null;
+  clause: string;
+  pdfPage: number;
+  quote: string;
+  lawVersionDate: string;
+}
+
+export type LawFacts = Partial<Record<LawFactKey, LawFact>>;
+
+export interface LawFactsResponse {
+  available: boolean;
+  instrument: string;
+  facts: LawFacts;
+}
+
+/** A row of the law_facts table as the route selects it. */
+export interface LawFactRow {
+  fact_key: string;
+  value: unknown;
+  value_number: string | number | null;
+  unit: string | null;
+  clause: string;
+  pdf_page: number;
+  quote: string;
+  law_version_date: string | Date;
+}
+
+const isoDate = (d: string | Date): string => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
+
+/**
+ * Turn table rows into the served facts. A row with no usable value is dropped (never served as 0 or empty), and a key the
+ * website does not read is ignored.
+ */
+export function rowsToFacts(rows: LawFactRow[]): LawFacts {
+  const out: LawFacts = {};
+  for (const r of rows) {
+    if (!(LAW_FACT_KEYS as readonly string[]).includes(r.fact_key)) continue;
+    const n = r.value_number == null ? null : Number(r.value_number);
+    const value = typeof r.value === 'string' && r.value.trim() !== '' ? r.value : n != null && Number.isFinite(n) ? n : null;
+    if (value == null || !r.clause || !r.pdf_page || !r.quote) continue;
+    out[r.fact_key as LawFactKey] = {
+      value,
+      unit: r.unit,
+      clause: r.clause,
+      pdfPage: Number(r.pdf_page),
+      quote: r.quote,
+      lawVersionDate: isoDate(r.law_version_date),
+    };
+  }
+  return out;
+}
+
+/**
+ * The sentence the TOD panel shows for section 155's height and floor space ratio standards, built from the stored figures.
+ * Returns null when any of the three is missing, so the caller falls back to a sentence with no numbers in it.
+ */
+export function todStandardsSentence(facts: LawFacts | null | undefined): string | null {
+  const rfb = facts?.tod_height_residential_flat_building_m;
+  const other = facts?.tod_height_seniors_or_shop_top_m;
+  const fsr = facts?.tod_fsr;
+  if (!rfb || !other || !fsr) return null;
+  return (
+    'Section 155 identifies height and floor space ratio standards that differ by what is proposed — ' +
+    `${rfb.value}m for a residential flat building (${rfb.clause}, page ${rfb.pdfPage}), ` +
+    `${other.value}m for seniors or shop top housing (${other.clause}, page ${other.pdfPage}), and a floor space ratio of ` +
+    `${fsr.value} for those types in a relevant residential or employment zone (${fsr.clause}, page ${fsr.pdfPage}). ` +
+    `Law as at ${rfb.lawVersionDate}.`
+  );
+}
+
+/** The sentence shown when the stored figures could not be read. It contains no figure. */
+export const TOD_STANDARDS_UNAVAILABLE =
+  'Section 155 identifies height and floor space ratio standards that differ by what is proposed. ' +
+  'The stored figures could not be read just now; they are in the section itself, linked below.';

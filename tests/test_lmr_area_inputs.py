@@ -156,3 +156,69 @@ def test_projection_dependent_tests_pass_in_a_clean_interpreter():
     r = subprocess.run([sys.executable, "-m", "pytest", "--noconftest", "-q", "-p", "no:cacheprovider",
                         "tests/test_lmr_area_gather.py"], cwd=repo, capture_output=True, text=True, timeout=300)
     assert r.returncode == 0, (r.stdout + r.stderr)[-3000:]
+
+
+# ---- flood and coastal measurements -----------------------------------------------------------------
+NEW_LAYER_KEYS = ("georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")
+
+
+def test_fetch_layers_measures_the_five_new_maps_on_the_lot_outline(monkeypatch):
+    fake(monkeypatch, {"FeatureServer/8": feats({"lganame": "LIVERPOOL"})})
+    out = inp.fetch_layers(LAT, LNG, RING)
+    for k in NEW_LAYER_KEYS:
+        assert out[k] == {"point": False, "lot": False}, k
+    assert out["lga"] == "LIVERPOOL"
+
+
+def test_each_new_map_uses_its_own_layer_and_a_failure_is_none(monkeypatch):
+    seen = []
+
+    def _get(url, params, post=False):
+        seen.append(url)
+        return None if "MapServer/251/" in url else feats()
+    monkeypatch.setattr(inp, "_get_json", _get)
+    out = inp.fetch_layers(LAT, LNG, RING)
+    assert out["coastal_vuln"] == {"point": None, "lot": None}                  # failed -> None, never False
+    assert out["coastal_wetlands"] == {"point": False, "lot": False}
+    for frag in ("MapServer/147/", "MapServer/157/", "MapServer/251/", "CoastalManagementSEPP/CoastalManagementSEPP/MapServer/1/",
+                 "CoastalManagementSEPP/CoastalManagementSEPP/MapServer/3/"):
+        assert any(frag in u for u in seen), frag
+
+
+def test_flood_function_is_called_only_for_a_council_s164g_names(monkeypatch):
+    calls = []
+
+    def flood(wkt):
+        calls.append(wkt)
+        return {"value": False, "reason": "covered council, whole lot clear"}
+    assert inp._flood_answer("Inner West", RING, flood) is None and calls == []            # not named: never asked
+    assert inp._flood_answer(None, RING, flood) is None and calls == []                    # council unknown: never asked
+    r = inp._flood_answer("CITY OF NEWCASTLE", RING, flood)
+    assert r["value"] is False and len(calls) == 1 and calls[0].startswith("POLYGON((")
+    assert inp._flood_answer("Newcastle", None, flood)["value"] is False and calls[1] is None   # no outline: the point answer, WKT None
+
+
+def test_flood_function_failures_and_odd_answers_are_unknown_never_clear():
+    assert inp._flood_answer("Newcastle", RING, lambda w: {"value": None})["value"] is None
+    assert inp._flood_answer("Newcastle", RING, lambda w: {"value": "no"})["value"] is None      # a string is not a bool
+    assert inp._flood_answer("Newcastle", RING, lambda w: None)["value"] is None
+
+    def boom(w):
+        raise RuntimeError("database down")
+    r = inp._flood_answer("Newcastle", RING, boom)
+    assert r["value"] is None and "failed" in r["reason"]
+
+
+def test_a_newcastle_lot_is_a_yes_only_when_flood_says_clear():
+    lay = {"tod_map": CLEAR_L, "accelerated": CLEAR_L, "exclusion": CLEAR_L, "bushfire": CLEAR_L, "lga": "CITY OF NEWCASTLE",
+           "heritage": {"item": False, "conservation_area": False, "state_register": False},
+           **{k: CLEAR_L for k in NEW_LAYER_KEYS}}
+    base = {**lay, "sched12_straight_m": 5000.0, "straight_m": 300.0, "walk": {"m": 200.0, "anchor": "A", "entrance_id": "e", "valid": True}}
+    assert dec.decide({**base, "flood_planning": {"value": False}})["lmr"]["answer"] == "yes"
+    assert dec.decide({**base, "flood_planning": {"value": True}})["lmr"]["answer"] == "no"
+    assert dec.decide({**base, "flood_planning": {"value": None}})["lmr"]["answer"] == "cant_tell"
+    assert dec.decide(base)["lmr"]["answer"] == "cant_tell"                                        # never supplied
+    assert {x["para"] for x in dec.decide({**base, "flood_planning": {"value": False}})["not_checked"]} == {"h", "i"}
+
+
+CLEAR_L = {"point": False, "lot": False}

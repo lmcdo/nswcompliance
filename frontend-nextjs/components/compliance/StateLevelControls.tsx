@@ -31,6 +31,8 @@ import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProv
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { widthRange } from '@/lib/geometry/street-frontage';
 import { useLmrGates } from '@/hooks/useLmrGates';
+import { useLawFacts } from '@/hooks/useLawFacts';
+import { todStandardsSentence, TOD_STANDARDS_UNAVAILABLE } from '@/lib/law-facts';
 
 import { answer, heritageAnswer } from '@/lib/fact-answer';
 interface StrataInfo {
@@ -137,6 +139,7 @@ export function StateLevelControls({
   const { lat: propertyLat, lng: propertyLng } = getCoordinates();
 
   // Low and Mid-Rise housing area, answered by the planning map (null while loading or when it did not answer).
+  const { facts: lawFacts } = useLawFacts();
   const { gates: lmrGates } = useLmrGates(
     propertyLat != null && propertyLng != null ? { lat: propertyLat, lng: propertyLng } : null,
   );
@@ -1262,11 +1265,10 @@ export function StateLevelControls({
                       <p className="text-xs font-semibold text-purple-900 mb-1">
                         TOD development standards
                       </p>
+                      {/* The figures come from the law_facts table (clause, page and law version date with each),
+                        * never from this file. Without them the sentence below carries no figure at all. */}
                       <p className="text-xs text-purple-800">
-                        Section 155 identifies height and floor space ratio standards that
-                        differ by what is proposed — 22m for a residential flat building,
-                        24m for seniors or shop top housing, and a floor space ratio of
-                        2.5:1 for those types in a relevant residential or employment zone.
+                        {todStandardsSentence(lawFacts) ?? TOD_STANDARDS_UNAVAILABLE}
                       </p>
                       {/* s155(5): "This section does not apply to the extent a provision of
                         * another chapter of this policy or another environmental planning

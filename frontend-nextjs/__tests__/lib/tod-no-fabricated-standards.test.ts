@@ -171,9 +171,14 @@ describe('s155(5) — the standard yields to a higher one elsewhere', () => {
   it('does not claim section 155 "sets" the controls', () => {
     // "sets" reads as a ceiling; "identifies ... standards" is the section's own framing
     // and survives subsection (5).
+    // Since 2026-11-07 the sentence is built in lib/law-facts.ts from the stored figures, so the wording lives there;
+    // the component must still never say "set by section 155" either.
     const src = read('components/compliance/StateLevelControls.tsx');
+    const lib = read('lib/law-facts.ts');
     expect(src).not.toMatch(/floor space ratio are set by section 155/i);
-    expect(src).toMatch(/Section 155 identifies/);
+    expect(lib).not.toMatch(/floor space ratio are set by section 155/i);
+    expect(lib).toMatch(/Section 155 identifies/);
+    expect(src).toMatch(/todStandardsSentence\(lawFacts\)/);
   });
 });
 

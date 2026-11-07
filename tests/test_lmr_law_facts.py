@@ -196,3 +196,14 @@ def test_identical_text_has_no_differences():
 def test_command_line_check_passes_on_the_repo_text(capsys):
     assert law.main(["--check"]) == 0
     assert "match the saved text" in capsys.readouterr().out
+
+
+def test_s164_council_lists_are_complete_not_cut_off():
+    """Paragraph (g) names 23 councils and (f1) names 6 (lettered). A length cap once cut (g) mid-word after 17."""
+    import re
+    paras = {p["para"]: p["words"] for p in STORED["facts"]["s164"]["paragraphs"]}
+    g = re.findall(r"\((?:[ivx]+)\)\s*([^,(.]+?)\s*(?:,|$)", paras["g"])
+    assert len(g) == 23 and g[0] == "Armidale Regional" and g[-1] == "Walcha"
+    f1 = re.findall(r"\(([A-F])\)\s*([^,(.]+?)\s*(?:,|\.|$)", paras["f1"])
+    assert [n for _, n in f1] == ["Canterbury-Bankstown", "Cumberland", "City of Fairfield", "Georges River", "City of Liverpool", "Sutherland Shire"]
+    assert not paras["g"].endswith(("Qu", "(xvii)")) and len(paras["g"]) > 400

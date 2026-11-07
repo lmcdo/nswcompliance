@@ -46,12 +46,98 @@ def test_baseline_is_yes_with_clause_page_and_figures():
 
 
 def test_every_yes_prints_what_was_not_checked():
+    # lot(): bush fire wired; the coastal and Hawkesbury-Nepean maps are not; Inner West is outside the (f1) and (g) council lists
     r = ans(lot())
     paras = {x["para"] for x in r["not_checked"]}
-    assert {"b", "f", "f1", "g", "i", "h"} <= paras and "a" not in paras  # bushfire was wired in lot()
+    assert paras == {"b", "f", "h", "i"}, paras
     assert all(x["clause"] and x["page"] for x in r["not_checked"])
     unwired = {k: v for k, v in lot().items() if k != "bushfire"}
     assert "a" in {x["para"] for x in ans(unwired)["not_checked"]}
+
+
+# ---- flood, coastal ----------------------------------------------------------------------------------
+GEORGES_COUNCILS = ["Canterbury-Bankstown", "Cumberland", "Fairfield", "Georges River", "Liverpool", "Sutherland"]
+G_COUNCILS = ["Armidale Regional", "Newcastle", "Shoalhaven", "Queanbeyan-Palerang Regional", "Upper Hunter", "Walcha"]
+
+
+def coastal(**over):
+    base = {"coastal_vuln": CLEAR, "coastal_wetlands": CLEAR, "littoral": CLEAR}
+    base.update(over)
+    return base
+
+
+def test_council_lists_come_from_the_law_text_and_are_complete():
+    assert len(FACTS.council_names("g", "roman")) == 23 and FACTS.council_names("g", "roman")[-1] == "Walcha"
+    assert FACTS.council_names("f1", "letter") == ["Canterbury-Bankstown", "Cumberland", "City of Fairfield", "Georges River", "City of Liverpool", "Sutherland Shire"]
+    assert len(FACTS.council_names("e", "roman")) == 4
+
+
+@pytest.mark.parametrize("name", G_COUNCILS)
+def test_g_applies_only_in_the_named_councils_and_needs_the_flood_map_there(name):
+    r = ans(lot(lga=name))   # no flood answer supplied for a named council: not a yes
+    assert r["lmr"]["answer"] == "cant_tell"
+    assert any(q["clause"] == "s164(1)(g)" and q["outcome"] == "unknown" for q in r["lmr"]["rules"])
+    assert ans(lot(lga=name, flood_planning={"value": False}))["lmr"]["answer"] == "yes"
+    r = ans(lot(lga=name, flood_planning={"value": True}))["lmr"]
+    assert r["answer"] == "no" and r["clause"] == "s164(1)(g)"
+    assert ans(lot(lga=name, flood_planning={"value": None}))["lmr"]["answer"] == "cant_tell"
+
+
+def test_g_is_clear_everywhere_else_without_any_flood_data():
+    for name in ("Inner West", "Woollahra", "Ku-ring-gai", "Canterbury-Bankstown"):
+        r = ans(lot(lga=name))
+        assert not any(q["outcome"] == "unknown" and q["clause"] == "s164(1)(g)" for q in r["lmr"]["rules"]), name
+
+
+@pytest.mark.parametrize("name", GEORGES_COUNCILS)
+def test_f1_inside_catchment_and_council_is_a_warning_not_a_block(name):
+    r = ans(lot(lga=name, georges_catchment=HIT, **coastal()))
+    assert r["lmr"]["answer"] == "yes"
+    assert [w["clause"] for w in r["warnings"]] == ["s164(1)(f1)"] and "not checked" in r["warnings"][0]["detail"]
+    assert r["lmr"]["warnings"] == r["warnings"]
+
+
+def test_f1_outside_the_catchment_or_the_councils_is_clear_and_unknown_blocks():
+    assert ans(lot(lga="Liverpool", georges_catchment=CLEAR, **coastal()))["warnings"] == []
+    assert ans(lot(lga="Inner West", georges_catchment=HIT, **coastal()))["warnings"] == []    # council not named: cannot apply
+    assert ans(lot(lga="Liverpool", georges_catchment=None, **coastal()))["lmr"]["answer"] == "cant_tell"
+    assert ans(lot(lga="Liverpool", georges_catchment={"point": False, "lot": None}, **coastal()))["lmr"]["answer"] == "cant_tell"
+    part = ans(lot(lga="Liverpool", georges_catchment={"point": False, "lot": True}, **coastal()))
+    assert part["lmr"]["answer"] == "yes" and len(part["warnings"]) == 1
+
+
+def test_f_hawkesbury_nepean_clear_outside_warn_inside_and_not_wired_is_printed():
+    assert ans(lot(hn_catchment=CLEAR, **coastal()))["warnings"] == []
+    inside = ans(lot(hn_catchment=HIT, **coastal()))
+    assert inside["lmr"]["answer"] == "yes" and [w["clause"] for w in inside["warnings"]] == ["s164(1)(f)"]
+    assert ans(lot(hn_catchment=None, **coastal()))["lmr"]["answer"] == "cant_tell"
+    assert "f" in {x["para"] for x in ans(lot(**coastal()))["not_checked"]}                 # not wired: printed
+    assert "f" not in {x["para"] for x in ans(lot(hn_catchment=CLEAR, **coastal()))["not_checked"]}
+    clear = ans(lot(hn_catchment=CLEAR, **coastal()))["lmr"]["rules"]
+    assert "our inference" in next(q["detail"] for q in clear if q["clause"] == "s164(1)(f)")
+
+
+def test_b_coastal_any_one_of_the_three_maps_excludes_a_part_or_a_failure_blocks():
+    for key in ("coastal_vuln", "coastal_wetlands", "littoral"):
+        r = ans(lot(**coastal(**{key: HIT})))["lmr"]
+        assert r["answer"] == "no" and r["clause"] == "s164(1)(b)", key
+        assert ans(lot(**coastal(**{key: {"point": False, "lot": True}})))["lmr"]["answer"] == "cant_tell", key
+        assert ans(lot(**coastal(**{key: None})))["lmr"]["answer"] == "cant_tell", key
+    assert "b" not in {x["para"] for x in ans(lot(**coastal()))["not_checked"]}
+    partly = {k: v for k, v in coastal().items() if k != "littoral"}                         # one of the three missing: not wired
+    assert "b" in {x["para"] for x in ans(lot(**partly))["not_checked"]}
+
+
+def test_a_no_stays_final_over_a_warning_and_the_remaining_list_is_h_and_i():
+    full = lot(lga="Liverpool", georges_catchment=HIT, hn_catchment=CLEAR, flood_planning={"value": False}, **coastal())
+    assert {x["para"] for x in ans(full)["not_checked"]} == {"h", "i"}
+    assert ans({**full, "exclusion": HIT})["lmr"]["answer"] == "no"
+
+
+def test_warning_wording_has_no_liability_words():
+    r = ans(lot(lga="Liverpool", georges_catchment=HIT, hn_catchment=HIT, **coastal()))
+    for w in r["warnings"]:
+        assert not LIAB.search(w["detail"]), w["detail"]
 
 
 # ---- walking band -------------------------------------------------------------------------------------
@@ -261,7 +347,7 @@ def test_norm_lga():
 
 
 # ---- wording ------------------------------------------------------------------------------------------
-LIABILITY = re.compile(r"\b(safe|safely|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|"
+LIAB = LIABILITY = re.compile(r"\b(safe|safely|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|"
                        r"guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|"
                        r"reliable|eligible)\b", re.I)
 

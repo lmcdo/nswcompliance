@@ -155,7 +155,8 @@ def _s164(lines, pages) -> dict:
                 "clause": f"s164(1)({p['para']})",
                 "page": pages[p["_i"]],
                 "repealed": words.startswith("(Repealed)"),
-                "words": words[:400],
+                # Full wording. A cap here once cut paragraph (g) mid-word after 17 of its 23 councils.
+                "words": words,
             }
         )
     return {"clause": "s164(1)", "page": pages[start], "paragraphs": out, "live_count": sum(1 for p in out if not p["repealed"])}

@@ -22,7 +22,19 @@
     "scripts/lmr_area/area_check_score.py",
     "scripts/lmr_area/tod_check.py",
     "data/law/lmr_station_entrances.json",
-    ".claude/clean_feature_files.json"
+    ".claude/clean_feature_files.json",
+    "scripts/extract_lmr_law_facts.py",
+    "scripts/load_law_facts.py",
+    "data/law/housing_sepp_lmr_facts.json",
+    "tests/test_lmr_law_facts.py",
+    "tests/test_load_law_facts.py",
+    "frontend-nextjs/lib/law-facts.ts",
+    "frontend-nextjs/app/api/law-facts/route.ts",
+    "frontend-nextjs/hooks/useLawFacts.ts",
+    "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+    "frontend-nextjs/__tests__/lib/law-facts.test.ts",
+    "frontend-nextjs/__tests__/api/law-facts.test.ts",
+    "frontend-nextjs/__tests__/lib/tod-no-fabricated-standards.test.ts"
   ],
   "falsifiable_check": {
     "command": "python scripts/lmr_area/area_check_score.py test_results.json",
@@ -41,7 +53,7 @@
   "functions": [
     {
       "name": "decide",
-      "file_line": "services/lmr_area_decision.py:338",
+      "file_line": "services/lmr_area_decision.py:415",
       "input": "dict of measurements (layer hits, council, distances, walk range) plus the saved law facts",
       "output": "dict with pathway, headline, lmr answer, tod answer, not_checked list, notes",
       "if_none": "any missing measurement gives cant_tell for that rule; a no from any rule is final; a yes needs every rule clear and the whole walking range under the limit; the function never raises"
@@ -55,7 +67,7 @@
     },
     {
       "name": "gather",
-      "file_line": "services/lmr_area_inputs.py:222",
+      "file_line": "services/lmr_area_inputs.py:250",
       "input": "latitude, longitude, optional lot outline, station file, walking surfaces, saved layer results",
       "output": "measurement dict that is ready for decide",
       "if_none": "no lot outline, unreadable station file or failed town centre map leaves distances None, so the answer is cant_tell"
@@ -92,6 +104,13 @@
       "where_clause": "point query and polygon query against each ePlanning or BFPL layer, outFields OBJECTID only",
       "if_zero": "a successful empty answer means clear; a failed call means None and unknown, never clear",
       "if_wrong": "a lot only partly on a map is reported as part, not hit, and the decision does not treat part as clear"
+    },
+    {
+      "purpose": "Read the current Chapter 5 law figures for the TOD panel from the law_facts table",
+      "file_line": "frontend-nextjs/app/api/law-facts/route.ts:26",
+      "where_clause": "is_current AND instrument_key = 'sepp_housing_2021' AND fact_key = ANY(the five listed keys)",
+      "if_zero": "available true with no facts; the panel then prints a sentence with no figure",
+      "if_wrong": "a non-current or other-instrument row cannot be returned; a fact outside the list is never served"
     }
   ],
   "break_it": [
@@ -143,6 +162,41 @@
       "mitigated": true,
       "how": "tests/test_lmr_area_gather.py skips under the stub and tests/test_lmr_area_inputs.py runs it in a child pytest with --noconftest; test_the_real_projection_is_in_use fails if the projection returns zero",
       "repro": "python -m pytest --noconftest tests/test_lmr_area_gather.py"
+    },
+    {
+      "scenario": "The law figures for the TOD panel are typed into the page, so a change to section 155 never reaches the panel (the 22 m, 24 m and 2.5:1 sentence in StateLevelControls.tsx)",
+      "what_happens": "The panel keeps showing an old figure after the law changes, with no test failing",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/law-facts.ts builds the sentence from the law_facts rows; frontend-nextjs/__tests__/lib/law-facts.test.ts changes a stored figure and requires the sentence to change, and fails if the component code contains a typed figure",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/law-facts.test.ts"
+    },
+    {
+      "scenario": "The law_facts table is unreadable or empty when the TOD panel loads, and the page falls back to a default figure",
+      "what_happens": "A made-up figure appears as if it were the law",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/api/law-facts/route.ts returns 503 available false on a failed query; todStandardsSentence returns null when any of the three figures is missing and the panel prints TOD_STANDARDS_UNAVAILABLE, which contains no figure",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/law-facts.test.ts"
+    },
+    {
+      "scenario": "The saved wording of s164(1)(g) is cut at a length cap, so only 17 of its 23 councils are known and a lot in one of the missing six is treated as outside the paragraph",
+      "what_happens": "A flood-planning lot in Walcha or a neighbouring named council could be cleared by council name alone",
+      "mitigated": true,
+      "how": "scripts/extract_lmr_law_facts.py no longer caps the wording; tests/test_lmr_law_facts.py requires 23 names ending in Walcha and 6 lettered councils for (f1); the database row was corrected in place with scripts/load_law_facts.py --correct s164 and law_facts now equals the file",
+      "repro": "python -m pytest tests/test_lmr_law_facts.py -k council_lists"
+    },
+    {
+      "scenario": "A lot in one of the 23 councils named in s164(1)(g) is answered yes because no flood answer was supplied to the area check",
+      "what_happens": "A lot on a council flood planning map is told it is clear",
+      "mitigated": true,
+      "how": "services/lmr_area_decision.py — in a named council a missing, failed or non-boolean flood answer is unknown, which blocks a yes; services/lmr_area_inputs.py _flood_answer turns any failure into value None",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -k g_applies_only; python -m pytest tests/test_lmr_area_inputs.py -k flood_function"
+    },
+    {
+      "scenario": "The coastal vulnerability map is assumed empty because its label says 'No map at this time', but the layer holds 10 areas near Port Stephens and Coffs",
+      "what_happens": "A lot inside one of those areas would be told it is clear",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py queries layer 251 by lot outline like the other maps; a hit excludes, a part or a failed query blocks a yes; a point inside a real area hit on a live check 2026-11-07",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -k b_coastal"
     }
   ],
   "post_merge": {

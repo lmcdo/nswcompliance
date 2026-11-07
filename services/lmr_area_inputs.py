@@ -45,6 +45,15 @@ LAYERS = {
     "heritage_epi": f"{_EPL}/Planning_Portal_Principal_Planning/MapServer/16/query",
     "heritage_shr": f"{_EPL}/Planning_Portal_Principal_Planning/MapServer/221/query",
     "bushfire": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Fire/BFPL/MapServer/0/query",
+    # prior-art-checked: reuse not viable as a function: services/portal_constraints.fetch_coastal queries layers 1, 6 and 3 by POINT
+    # and counts the coastal ENVIRONMENT area (layer 6), which s164(1)(b) does not name; these need lot-outline queries on exactly three maps.
+    # Flood (f) and (f1) catchment layers: probed 2026-11-07, Hurstville and Bankstown hit 147, Penrith hits 157, Ashfield neither.
+    # Layer 251 is labelled "No map at this time" but holds 10 areas (Port Stephens and Coffs coast), so it is queried, not assumed empty.
+    "georges_catchment": f"{_EPL}/Planning_Portal_SEPP/MapServer/147/query",
+    "hn_catchment": f"{_EPL}/Planning_Portal_SEPP/MapServer/157/query",
+    "coastal_vuln": f"{_EPL}/Planning_Portal_SEPP/MapServer/251/query",
+    "coastal_wetlands": "https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/1/query",
+    "littoral": "https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/3/query",
     "lga": "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/8/query",
     # prior-art-checked: the existing lot readers (app/api/property/route.ts, lib/nsw-planning-portal.ts,
     # for-property/route.ts) are TypeScript frontend code and for-property is a council-mixed route that the boundary
@@ -205,12 +214,31 @@ def _epsg_for(lng: float) -> int:
 
 # prior-art-checked: reuse not viable: the heritage and bush fire code the guard lists is TypeScript page and PDF code; fetch_layers is
 # the same Python block that was inside gather(), moved into its own function. No new source and no new query.
+def _flood_answer(lga: Optional[str], rings: Optional[list], flood_fn: Any) -> Optional[dict]:
+    """The flood-planning answer, asked only for a lot in a council s164(1)(g) names. Any failure is value None, never False."""
+    try:
+        fac = dec.LawFacts.load()
+        if not lga or not dec._in_names(lga, fac.council_names("g", "roman")):
+            return None   # not a named council: the decision clears (g) by the council alone
+        wkt = None
+        if rings:
+            wkt = "POLYGON((" + ", ".join(f"{x} {y}" for x, y in rings) + "))"
+        out = flood_fn(wkt)
+        v = out.get("value") if isinstance(out, dict) else None
+        return {"value": v if isinstance(v, bool) else None, "reason": (out or {}).get("reason") if isinstance(out, dict) else None}
+    except Exception as exc:  # noqa: BLE001 -- a failed flood lookup is unknown, never a clear
+        logger.warning("lmr inputs: flood answer failed: %s", exc)
+        return {"value": None, "reason": f"flood lookup failed: {type(exc).__name__}"}
+
+
 def fetch_layers(lat: float, lng: float, rings: Optional[list]) -> dict:
     """The map-service measurements for one lot (TOD, accelerated TOD, exclusion map, bush fire, heritage, council). Network only."""
     from concurrent.futures import ThreadPoolExecutor
 
-    with ThreadPoolExecutor(max_workers=6) as ex:
-        futs = {k: ex.submit(_layer, k, lat, lng, rings) for k in ("tod_map", "accelerated", "exclusion", "bushfire")}
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        futs = {k: ex.submit(_layer, k, lat, lng, rings) for k in (
+            "tod_map", "accelerated", "exclusion", "bushfire",
+            "georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")}
         f_her = ex.submit(_heritage, rings)
         f_lga = ex.submit(_lga, lat, lng)
         out: dict[str, Any] = {k: f.result() for k, f in futs.items()}
@@ -220,8 +248,14 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list]) -> dict:
 
 
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
-           walk_surfaces: Optional[list] = None, layers: Optional[dict] = None) -> dict:
-    """Measurements for decide(): layer hits (point and lot outline), council, distances, walking."""
+           walk_surfaces: Optional[list] = None, layers: Optional[dict] = None,
+           flood_fn: Optional[Any] = None) -> dict:
+    """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
+
+    `flood_fn` (optional) is called with the lot outline as WKT (or None) ONLY when the lot is in one of the 23 councils s164(1)(g) names,
+    and returns the existing flood answer (services/flood_planning.flood_planning_status): a dict with "value" True / False / None.
+    The caller owns the database connection; this module holds none. Without it, a lot in a named council cannot be answered yes.
+    """
     from pyproj import Transformer
     from shapely.geometry import MultiPoint, Polygon
     from shapely.ops import transform, unary_union
@@ -233,6 +267,8 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
     m["lot_outline"] = bool(rings)
+    if flood_fn is not None and "flood_planning" not in m:
+        m["flood_planning"] = _flood_answer(m.get("lga"), rings, flood_fn)
 
     # Distances need a lot outline and the station file; without either they stay None (cant_tell), never a number.
     m["straight_m"] = None

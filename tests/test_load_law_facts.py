@@ -118,6 +118,24 @@ def test_same_version_different_content_is_a_conflict_not_an_overwrite():
     assert len(p["conflicts"]) == 1 and "same law version" in p["conflicts"][0] and len(p["insert"]) == 0
 
 
+def test_correct_updates_only_the_named_fact_under_the_same_version():
+    db = as_db(ROWS)
+    db[0]["quote"] = "wording that was wrong"
+    key = db[0]["fact_key"]
+    p = lf.plan_changes(ROWS, db, frozenset({key}))
+    assert [r["fact_key"] for r in p["update"]] == [key] and p["conflicts"] == [] and p["insert"] == [] and p["supersede"] == []
+    # naming a DIFFERENT fact does not fix this one, and naming a fact with no difference is reported, never ignored
+    other = next(r["fact_key"] for r in ROWS if r["fact_key"] != key)
+    p2 = lf.plan_changes(ROWS, db, frozenset({other}))
+    assert any("same law version" in c for c in p2["conflicts"]) and any(f"--correct {other}" in c for c in p2["conflicts"])
+
+
+def test_correct_cannot_override_a_newer_law_version_in_the_database():
+    db = as_db(ROWS)
+    db[0]["law_version_date"] = date(2027, 1, 1)
+    assert any("NEWER" in c for c in lf.plan_changes(ROWS, db, frozenset({db[0]["fact_key"]}))["conflicts"])
+
+
 def test_a_newer_version_in_the_database_is_a_conflict():
     db = as_db(ROWS)
     db[0]["law_version_date"] = date(2027, 1, 1)

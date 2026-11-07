@@ -117,6 +117,18 @@ class LawFacts:
         f = self.fact(key)
         return {"clause": f.get("clause"), "page": f.get("page"), "law_version_date": self.version_date}
 
+    def council_names(self, para: str, style: str = "roman") -> list[str]:
+        """The councils a paragraph of s164(1) names, read from its saved wording.
+
+        style "roman" is (i) (ii) ...; style "letter" is (A) (B) ... (used by (f1), whose first two items are not councils).
+        An empty list is an error, never "no councils".
+        """
+        pattern = r"\((?:[ivx]+)\)\s*([^,(.]+?)\s*(?:,|\.|$)" if style == "roman" else r"\((?:[A-Z])\)\s*([^,(.]+?)\s*(?:,|\.|$)"
+        names = [n.strip() for n in re.findall(pattern, self.paragraph(para)["words"])]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+        if not names:
+            raise LawFactsError(f"s164(1)({para}) council list could not be read from the saved law")
+        return names
+
     def paragraph(self, para: str) -> dict:
         for p in self.fact("s164").get("paragraphs", []):
             if p.get("para") == para:
@@ -275,6 +287,71 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
             rules.append(_rule("bush_fire_prone", pa, "clear", "lot outline is not on bush fire prone land"))
         else:
             rules.append(_rule("bush_fire_prone", pa, "unknown", "the bush fire prone land map did not answer"))
+
+    # (b) coastal vulnerability area, or coastal wetlands and littoral rainforests area: three maps, only if all three were wired.
+    coastal_keys = ("coastal_vuln", "coastal_wetlands", "littoral")
+    if all(k in m for k in coastal_keys):
+        pb = facts.paragraph("b")
+        states = [layer_state(m.get(k)) for k in coastal_keys]
+        if "hit" in states:
+            rules.append(_rule("coastal", pb, "excludes", "address point is on one of the coastal maps named in (b)"))
+        elif "part" in states or "unknown" in states:
+            why = "part of the lot is on a coastal map named in (b)" if "part" in states else "a coastal map named in (b) did not answer"
+            rules.append(_rule("coastal", pb, "unknown", why))
+        else:
+            rules.append(_rule("coastal", pb, "clear", "lot outline is on none of the three coastal maps named in (b)"))
+
+    # (g) flood planning areas, but only in the 23 councils the paragraph names. Everywhere else it cannot apply.
+    pg = facts.paragraph("g")
+    g_names = facts.council_names("g", "roman")
+    if not isinstance(lga, str) or not norm_lga(lga):
+        rules.append(_rule("flood_planning_area", pg, "unknown", "council area did not answer"))
+    elif not _in_names(lga, g_names):
+        rules.append(_rule("flood_planning_area", pg, "clear", f"{lga} is not one of the {len(g_names)} councils named in (g)", lga=lga))
+    else:
+        # A named council and no flood answer supplied is NOT a yes: flood planning areas are exactly what (g) excludes there.
+        fv = _bool((m.get("flood_planning") or {}).get("value")) if isinstance(m.get("flood_planning"), dict) else None
+        if fv is True:
+            rules.append(_rule("flood_planning_area", pg, "excludes", "the lot is on the council's flood planning map", lga=lga))
+        elif fv is False:
+            rules.append(_rule("flood_planning_area", pg, "clear", "the lot is not on the council's flood planning map", lga=lga))
+        else:
+            rules.append(_rule("flood_planning_area", pg, "unknown",
+                               "the council's flood planning map is not held, did not answer, or was not supplied", lga=lga))
+
+    # (f1) Georges River catchment Probable Maximum Flood, and only in the 6 councils named. We do not hold the flood map itself:
+    # outside the catchment or the councils the paragraph cannot apply; inside both, the lot gets a specific warning, not a block.
+    pf1 = facts.paragraph("f1")
+    f1_names = facts.council_names("f1", "letter")
+    if not isinstance(lga, str) or not norm_lga(lga):
+        rules.append(_rule("pmf_georges_river", pf1, "unknown", "council area did not answer"))
+    elif not _in_names(lga, f1_names):
+        rules.append(_rule("pmf_georges_river", pf1, "clear", f"{lga} is not one of the {len(f1_names)} councils named in (f1)", lga=lga))
+    elif "georges_catchment" in m:
+        st = layer_state(m.get("georges_catchment"))
+        if st == "clear":
+            rules.append(_rule("pmf_georges_river", pf1, "clear", "the lot is outside the Georges River Catchment", lga=lga))
+        elif st in ("hit", "part"):
+            rules.append(_rule("pmf_georges_river", pf1, "warn",
+                               "the lot is in the Georges River Catchment and a named council: land that floods in the Probable Maximum Flood "
+                               "is excluded, and the flood extent was not checked", lga=lga))
+        else:
+            rules.append(_rule("pmf_georges_river", pf1, "unknown", "the Georges River Catchment map did not answer"))
+
+    # (f) Hawkesbury-Nepean Probable Maximum Flood. The paragraph names a flood-study figure, not a catchment; the study area lies inside
+    # the river's catchment, so a lot outside the catchment cannot be on it. That inference is ours, and it is printed with the answer.
+    if "hn_catchment" in m:
+        pf = facts.paragraph("f")
+        st = layer_state(m.get("hn_catchment"))
+        if st == "clear":
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "clear",
+                               "the lot is outside the Hawkesbury-Nepean Catchment (our inference: the flood study area lies inside the catchment)"))
+        elif st in ("hit", "part"):
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "warn",
+                               "the lot is in the Hawkesbury-Nepean Catchment: land on the Probable Maximum Flood map in the study is excluded, "
+                               "and the flood extent was not checked"))
+        else:
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "unknown", "the Hawkesbury-Nepean Catchment map did not answer"))
     return rules
 
 
@@ -322,17 +399,17 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
                               f"{'more likely within the limit than not' if p_inside >= 0.5 else 'more likely over the limit than not'}"}
 
 
-NOT_CHECKED_ALWAYS = [
-    {"para": "b", "what": "coastal vulnerability area / coastal wetlands and littoral rainforests area"},
-    {"para": "f", "what": "Probable Maximum Flood, Hawkesbury-Nepean"},
-    {"para": "f1", "what": "Probable Maximum Flood, Georges River catchment (6 councils)"},
-    {"para": "g", "what": "flood planning areas in the councils named in the paragraph"},
-    {"para": "i", "what": "land within 200 m of a relevant pipeline"},
-]
-NOT_CHECKED_UNLESS_WIRED = [
-    ({"para": "a", "what": "bush fire prone land"}, "bushfire"),
-    ({"para": "h", "what": "ANEF 25 / ANEC 20 aircraft noise contour"}, "anef"),
-]
+# Every live exclusion that is not a rule above is printed as "not checked". A paragraph is "handled" when a rule above covers it
+# (the rule's clause is s164(1)(<para>)); h and i have no rule yet, so they are always printed.
+EXCLUSION_LABELS = {
+    "a": "bush fire prone land",
+    "b": "coastal vulnerability area, coastal wetlands and littoral rainforests area",
+    "f": "Probable Maximum Flood, Hawkesbury-Nepean",
+    "f1": "Probable Maximum Flood, Georges River catchment (6 councils)",
+    "g": "flood planning areas in the 23 councils the paragraph names",
+    "h": "ANEF 25 / ANEC 20 aircraft noise contour",
+    "i": "land within 200 m of a relevant pipeline",
+}
 
 
 def decide(m: dict, facts: Optional[LawFacts] = None) -> dict:
@@ -357,6 +434,7 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     rules = _lmr_rules(m, facts)
     excluding = [r for r in rules if r["outcome"] == "excludes"]
     unknown = [r for r in rules if r["outcome"] == "unknown"]
+    warned = [r for r in rules if r["outcome"] == "warn"]   # does not change the answer; printed with it
     dist_answer, dist = _distance_step(m, facts)
 
     # --- low and mid-rise answer ---
@@ -399,9 +477,11 @@ def _decide(m: dict, facts: LawFacts) -> dict:
                "unknown" if CANT in (tod["answer"], lmr["answer"]) else  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
                "borderline" if lmr["answer"] == BORDER else "neither")  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
 
-    nc = [dict(x, clause=facts.paragraph(x["para"])["clause"], page=facts.paragraph(x["para"])["page"]) for x in NOT_CHECKED_ALWAYS]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-    nc += [dict(x, clause=facts.paragraph(x["para"])["clause"], page=facts.paragraph(x["para"])["page"])  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-           for x, key in NOT_CHECKED_UNLESS_WIRED if key not in m]
+    handled = {r["clause"] for r in rules}  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    nc = [{"para": para, "what": what, "clause": facts.paragraph(para)["clause"], "page": facts.paragraph(para)["page"]}  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+          for para, what in EXCLUSION_LABELS.items() if f"s164(1)({para})" not in handled]
+    warnings = [{"clause": r["clause"], "page": r["page"], "detail": r["detail"]} for r in warned]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    lmr["warnings"] = warnings
     notes: list[str] = []
     h = m.get("heritage") if isinstance(m.get("heritage"), dict) else {}
     if h.get("conservation_area") is True:
@@ -409,7 +489,7 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     if lmr["answer"] == YES:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         notes.append("A council plan may set a maximum car parking rate; the parking standards of Chapter 6 apply only if none does. Check the council's own plan.")
     return {"pathway": pathway, "headline": _headline(pathway, lmr, tod), "lmr": lmr, "tod": tod,
-            "not_checked": nc,
+            "not_checked": nc, "warnings": warnings,
             "notes": notes, "law_version_date": facts.version_date,
             "measured": {k: m.get(k) for k in ("lga", "straight_m", "sched12_straight_m", "walk") if k in m}}
 
