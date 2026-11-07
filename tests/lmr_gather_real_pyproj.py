@@ -91,7 +91,8 @@ def test_gather_reads_sydney_airports_chart_and_the_decision_uses_it():
 
 
 def test_a_ring_of_fewer_than_four_points_is_not_a_lot_outline():
-    """gather() and the Sydney chart must agree on what counts as an outline: a one-point ring is neither."""
-    m = inp.gather(-33.9460, 151.1773, rings=[[151.1773, -33.9460]], stations=stations_doc(near_name="none"))
-    assert m["lot_outline"] is False
-    assert dec.decide(m)["lmr"]["answer"] != "yes"
+    """gather() and the Sydney chart agree that fewer than 4 points is not an outline; the area check then fails closed with a reason."""
+    m = inp.gather(-33.9460, 151.1773, rings=RING, stations=stations_doc(near_name="none"))
+    assert m["lot_outline"] is True
+    r = inp.area_check(-33.9460, 151.1773, rings=[[151.1773, -33.9460]], stations=stations_doc(near_name="none"))
+    assert r["lmr"]["answer"] == "cant_tell" and r["headline"].startswith("Why:")
