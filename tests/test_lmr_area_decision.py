@@ -458,3 +458,14 @@ def test_no_answer_headline_leads_with_the_reason_in_plain_words():
         if "_invalid(" in line or "notes.append(" in line:
             for word in ("anchor", "surface has", "node", "network too thin"):
                 assert word not in line.split("(", 1)[-1].lower() or "def _invalid" in line, line.strip()
+
+
+def test_failure_reply_has_every_field_the_page_requires():
+    """The page rejects a reply that lacks any of these (frontend-nextjs/hooks/useAreaCheck.ts isAreaCheck). A rejected reply throws away the
+    reason and the card says 'did not respond', so every reply, including a failure, must carry all of them."""
+    for r in (d._failed("a map did not respond"), d.decide({}, None)):
+        assert isinstance(r["headline"], str) and r["headline"]
+        assert r["lmr"]["answer"] in ("yes", "no", "borderline", "cant_tell")
+        assert r["tod"]["answer"] in ("yes", "no", "borderline", "cant_tell")
+        for key in ("warnings", "not_checked", "notes"):
+            assert isinstance(r[key], list), key

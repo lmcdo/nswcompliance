@@ -470,7 +470,7 @@ def _failed(reason: str) -> dict:
     return {"pathway": "unknown", "headline": "Why: " + reason + NOT_DETERMINED_NEXT_STEP,
             "lmr": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason, "rules": []},
             "tod": {"answer": CANT, "reason_code": "safety_check_failed", "detail": reason},
-            "not_checked": [], "notes": [], "law_version_date": None, "measured": {}}
+            "warnings": [], "not_checked": [], "notes": [], "law_version_date": None, "measured": {}}
 
 
 def _decide(m: dict, facts: LawFacts) -> dict:

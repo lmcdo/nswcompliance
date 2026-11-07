@@ -52,6 +52,16 @@ describe('isAreaCheck', () => {
     expect(isAreaCheck(base({ answer: 'yes' }))).toBe(true);
   });
 
+  it('accepts the backend failure reply (a "Why:" reason, no area), so the reason reaches the card', () => {
+    const failure = {
+      pathway: 'unknown', headline: 'Why: a map did not respond. Check this lot on the NSW Planning Portal Spatial Viewer.',
+      lmr: { answer: 'cant_tell', reason_code: 'safety_check_failed', detail: 'a map did not respond', rules: [] },
+      tod: { answer: 'cant_tell', reason_code: 'safety_check_failed', detail: 'a map did not respond' },
+      warnings: [], not_checked: [], notes: [], law_version_date: null, measured: {},
+    };
+    expect(isAreaCheck(failure)).toBe(true);
+  });
+
   it('rejects a partial or mismatched payload, so it becomes a failure and not a yes', () => {
     expect(isAreaCheck({ lmr: { answer: 'yes' } })).toBe(false);
     expect(isAreaCheck(null)).toBe(false);
