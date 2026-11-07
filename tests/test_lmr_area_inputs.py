@@ -222,3 +222,40 @@ def test_a_newcastle_lot_is_a_yes_only_when_flood_says_clear():
 
 
 CLEAR_L = {"point": False, "lot": False}
+
+
+# ---- airport noise and pipelines --------------------------------------------------------------------
+def test_noise_bands_are_read_from_the_portal_layer_by_lot_outline(monkeypatch):
+    fake(monkeypatch, {"MapServer/235/": feats({"ANEF_CODE": "25 - 30", "LAY_NAME": "Australian Noise Exposure Concept (units)"},
+                                               {"ANEF_CODE": "20 - 25", "LAY_NAME": "Australian Noise Exposure Forecast (units)"})})
+    assert inp._noise_bands(LAT, LNG, RING) == [{"code": "25 - 30", "name": "Australian Noise Exposure Concept (units)"},
+                                                {"code": "20 - 25", "name": "Australian Noise Exposure Forecast (units)"}]
+    fake(monkeypatch, {"MapServer/235/": feats()})
+    assert inp._noise_bands(LAT, LNG, RING) == []                      # a lot on no band is [], not None
+    fake(monkeypatch, {"MapServer/235/": None})
+    assert inp._noise_bands(LAT, LNG, RING) is None                    # a failed call is None, never clear
+
+
+def test_pipeline_query_uses_the_law_distance_and_a_failure_is_none(monkeypatch):
+    seen = {}
+
+    def _get(url, params, post=False):
+        seen.update(url=url, **params)
+        return feats({"feature_name": "NSW Border to Sydney", "operator": "APA"})
+    monkeypatch.setattr(inp, "_get_json", _get)
+    out = inp._pipeline_near(LAT, LNG, RING, 200.0)
+    assert out == {"hit": True, "names": ["NSW Border to Sydney"]}
+    assert "Oil_Gas_Pipelines" in seen["url"] and seen["distance"] == "200.0" and seen["units"] == "esriSRUnit_Meter"
+    fake(monkeypatch, {"Oil_Gas_Pipelines": feats()})
+    assert inp._pipeline_near(LAT, LNG, RING, 200.0) == {"hit": False, "names": []}
+    fake(monkeypatch, {"Oil_Gas_Pipelines": None})
+    assert inp._pipeline_near(LAT, LNG, RING, 200.0) == {"hit": None, "names": []}
+
+
+def test_the_pipeline_distance_in_gather_is_the_laws_not_a_typed_figure(monkeypatch):
+    seen = []
+    monkeypatch.setattr(inp, "_pipeline_near", lambda la, lo, r, metres: seen.append(metres) or {"hit": False, "names": []})
+    monkeypatch.setattr(inp, "town_centre_polygons", lambda *a, **k: None)
+    fake(monkeypatch, {})
+    inp.gather(LAT, LNG, rings=RING, stations={"stations": []})
+    assert seen == [dec.LawFacts.load().number("s164_i_distance")]

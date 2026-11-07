@@ -12,7 +12,7 @@
  */
 import { NextResponse } from 'next/server';
 import { getClient } from '@/lib/database/pool-manager';
-import { LAW_FACT_KEYS, rowsToFacts, type LawFactRow } from '@/lib/law-facts';
+import { LAW_FACT_KEYS, LAW_FACT_PREFIXES, rowsToFacts, type LawFactRow } from '@/lib/law-facts';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,18 +21,18 @@ const INSTRUMENT_KEY = 'sepp_housing_2021';
 
 /** `is_current` strict: a NULL would mean we cannot say the figure is still in force. */
 const LAW_FACTS_SQL = `
-  SELECT fact_key, value, value_number, unit, clause, pdf_page, quote, law_version_date
+  SELECT fact_key, value, value_number, unit, clause, pdf_page, quote, law_version_date, extra
   FROM law_facts
   WHERE is_current
     AND instrument_key = $1
-    AND fact_key = ANY($2::text[])
+    AND (fact_key = ANY($2::text[]) OR fact_key LIKE ANY($3::text[]))
 `;
 
 export async function GET() {
   let client;
   try {
     client = await getClient();
-    const result = await client.query(LAW_FACTS_SQL, [INSTRUMENT_KEY, [...LAW_FACT_KEYS]]);
+    const result = await client.query(LAW_FACTS_SQL, [INSTRUMENT_KEY, [...LAW_FACT_KEYS], LAW_FACT_PREFIXES.map((p) => `${p}%`)]);
     const facts = rowsToFacts(result.rows as LawFactRow[]);
     return NextResponse.json({ available: true, instrument: INSTRUMENT_KEY, facts });
   } catch (error) {

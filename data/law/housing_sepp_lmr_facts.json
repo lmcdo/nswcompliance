@@ -269,6 +269,67 @@
       "unit": "m",
       "measured": "not stated (the paragraph does not say walking)"
     },
+    "parking_min_s168_2": {
+      "value": 1,
+      "clause": "s168(2)(c)",
+      "page": 81,
+      "quote": "if no environmental planning instrument or development control plan that applies to the land specifies a maximum number of car parking spaces per dwelling—a minimum of 1 car parking space per dwelling",
+      "unit": "spaces per dwelling",
+      "section_heading": "Non-discretionary development standards—dual occupancies",
+      "applies_to": "(2) The following non-discretionary development standards apply— (a) a minimum lot size of 450m,"
+    },
+    "parking_min_s172_2": {
+      "value": 1,
+      "clause": "s172(2)(c)",
+      "page": 82,
+      "quote": "if no environmental planning instrument or development control plan that applies to the land specifies a maximum number of car parking spaces per dwelling—a minimum of 1 car parking space per dwelling",
+      "unit": "spaces per dwelling",
+      "section_heading": "Non-discretionary development standards—multi dwelling housing",
+      "applies_to": "(2) The following non-discretionary development standards apply in relation to development for the purposes of multi dwelling housing—"
+    },
+    "parking_min_s172_3": {
+      "value": 0.5,
+      "clause": "s172(3)(c)",
+      "page": 82,
+      "quote": "if no environmental planning instrument or development control plan that applies to the land specifies a maximum number of car parking spaces per dwelling—a minimum of 0.5 car parking spaces per dwelling",
+      "unit": "spaces per dwelling",
+      "section_heading": "Non-discretionary development standards—multi dwelling housing",
+      "applies_to": "(3) The following non-discretionary development standards apply in relation to development for the purposes of multi dwelling housing (terraces)—"
+    },
+    "parking_min_s179_2": {
+      "value": 0.5,
+      "clause": "s179(2)(c)",
+      "page": 84,
+      "quote": "if no environmental planning instrument or development control plan that applies to the land specifies a maximum number of car parking spaces per dwelling—a minimum of 0.5 car parking spaces per dwelling",
+      "unit": "spaces per dwelling",
+      "section_heading": "Non-discretionary development standards—residential flat buildings and shop top housing in Zone R1 or R2",
+      "applies_to": "(2) The following non-discretionary development standards apply— (a) a minimum lot size of 500m,"
+    },
+    "s164_h_anef_min": {
+      "value": 25,
+      "clause": "s164(1)(h)",
+      "page": 79,
+      "quote": "land in an ANEF contour of 25 or greater or ANEC contour of 20 or greater",
+      "unit": "ANEF",
+      "measured": "contour level"
+    },
+    "s164_h_anec_min": {
+      "value": 20,
+      "clause": "s164(1)(h)",
+      "page": 79,
+      "quote": "land in an ANEF contour of 25 or greater or ANEC contour of 20 or greater",
+      "unit": "ANEC",
+      "measured": "contour level"
+    },
+    "s164_i_distance": {
+      "value": 200,
+      "clause": "s164(1)(i)",
+      "page": 79,
+      "quote": "land within 200m of a relevant pipeline within the meaning of State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77",
+      "unit": "m",
+      "measured": "not stated (the paragraph does not say walking)",
+      "defined_in": "State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77"
+    },
     "tod_height_residential_flat_building_m": {
       "value": 22,
       "clause": "s155(2)",

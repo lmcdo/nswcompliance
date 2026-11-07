@@ -15,6 +15,8 @@ const result = (over: Partial<AreaCheck> = {}): AreaCheck => ({
   law_version_date: '2026-10-23', ...over,
 });
 
+import { rowsToFacts, type LawFactRow } from '@/lib/law-facts';
+
 const BANNED = /can'?t tell|cannot tell|confirmed|eligible|compliant/i;
 
 describe('AreaCheckCard', () => {
@@ -65,5 +67,50 @@ describe('AreaCheckCard', () => {
     }
     const f = render(<AreaCheckCard result={null} loading={false} failed={true} />);
     expect(f.container.textContent).not.toMatch(BANNED);
+  });
+});
+
+
+describe('AreaCheckCard parking', () => {
+  const row = (key: string, n: number, clause: string, page: number, heading: string, applies: string): LawFactRow => ({
+    fact_key: key, value: n, value_number: n, unit: 'spaces per dwelling', clause, pdf_page: page, quote: 'q', law_version_date: '2026-10-23',
+    extra: { section_heading: heading, applies_to: applies },
+  });
+  const facts = rowsToFacts([
+    row('parking_min_s168_2', 1, 's168(2)(c)', 81, 'Non-discretionary development standards—dual occupancies', '(2) apply—'),
+    row('parking_min_s172_3', 0.5, 's172(3)(c)', 82, 'Non-discretionary development standards—multi dwelling housing', '(3) for the purposes of multi dwelling housing (terraces)—'),
+  ]);
+
+  it('shows each stored minimum with its clause and page, and the maximum-by-another-plan condition', () => {
+    render(<AreaCheckCard result={result()} loading={false} failed={false} lawFacts={facts} />);
+    const t = screen.getByTestId('area-check-parking').textContent!;
+    expect(t).toMatch(/dual occupancies: 1 space per dwelling \(s168\(2\)\(c\), page 81\)/);
+    expect(t).toMatch(/multi dwelling housing \(terraces\): 0\.5 spaces per dwelling \(s172\(3\)\(c\), page 82\)/);
+    expect(t).toMatch(/only if no environmental planning instrument or development control plan/);
+  });
+
+  it('shows no parking when the facts are missing, or when the lot is not in the low and mid-rise area', () => {
+    render(<AreaCheckCard result={result()} loading={false} failed={false} lawFacts={null} />);
+    expect(screen.queryByTestId('area-check-parking')).toBeNull();
+    const no = result({ pathway: 'neither', lmr: { answer: 'no', reason_code: 'beyond_straight_line' } });
+    render(<AreaCheckCard result={no} loading={false} failed={false} lawFacts={facts} />);
+    expect(screen.queryAllByTestId('area-check-parking')).toHaveLength(0);
+  });
+
+  it('a TOD lot shows the affordable-housing parking from the answer, labelled by bedrooms', () => {
+    const r = result({
+      pathway: 'tod', lmr: { answer: 'no', reason_code: 'chapter5' },
+      tod: { answer: 'yes', standards: {
+        tod_affordable_parking_1_bed: { value: 0.4, clause: 's157(2)(a)', page: 76, law_version_date: '2026-10-23' },
+        tod_affordable_parking_3_plus_bed: { value: 1, clause: 's157(2)(c)', page: 76, law_version_date: '2026-10-23' },
+        tod_fsr: { value: '2.5:1', clause: 's155(4)', page: 76, law_version_date: '2026-10-23' },
+      } },
+    });
+    render(<AreaCheckCard result={r} loading={false} failed={false} lawFacts={facts} />);
+    const t = screen.getByTestId('area-check-tod-parking').textContent!;
+    expect(t).toMatch(/1 bedroom: 0\.4 per dwelling \(s157\(2\)\(a\), page 76\)/);
+    expect(t).toMatch(/3 or more bedrooms: 1 per dwelling \(s157\(2\)\(c\), page 76\)/);
+    expect(t).not.toMatch(/2\.5/);
+    expect(screen.queryByTestId('area-check-parking')).toBeNull();
   });
 });

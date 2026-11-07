@@ -670,7 +670,7 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
-      <AreaCheckCard result={areaCheck.result} loading={areaCheck.loading} failed={areaCheck.failed} />
+      <AreaCheckCard result={areaCheck.result} loading={areaCheck.loading} failed={areaCheck.failed} lawFacts={lawFacts} />
       {/* Data currency indicator */}
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />

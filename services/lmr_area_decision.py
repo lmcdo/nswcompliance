@@ -121,6 +121,10 @@ class LawFacts:
         f = self.fact(key)
         return {"clause": f.get("clause"), "page": f.get("page"), "law_version_date": self.version_date}
 
+    def noise_thresholds(self) -> tuple[float, float]:
+        """(ANEF level, ANEC level) at or above which s164(1)(h) excludes land, read from the saved law."""
+        return self.number("s164_h_anef_min"), self.number("s164_h_anec_min")
+
     def council_names(self, para: str, style: str = "roman") -> list[str]:
         """The councils a paragraph of s164(1) names, read from its saved wording.
 
@@ -356,6 +360,38 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
                                "and the flood extent was not checked"))
         else:
             rules.append(_rule("pmf_hawkesbury_nepean", pf, "unknown", "the Hawkesbury-Nepean Catchment map did not answer"))
+
+    # (h) aircraft noise, from the contour bands NSW publishes on the planning portal (Western Sydney Airport and a few council areas). A band whose
+    # lower level is at or above the law's level excludes; the law's level for an ANEC (concept) map differs from its level for an ANEF map.
+    if "airport_noise" in m:
+        ph = facts.paragraph("h")
+        anef_min, anec_min = facts.noise_thresholds()
+        bands = m.get("airport_noise")
+        if not isinstance(bands, list):
+            rules.append(_rule("aircraft_noise", ph, "unknown", "the planning portal's airport noise map did not answer"))
+        else:
+            verdict, why = "clear", "the lot is on none of the airport noise contour bands this map holds"
+            for b in bands:
+                code, name = str((b or {}).get("code") or ""), str((b or {}).get("name") or "")
+                low = re.match(r"^\s*(\d+)", code)
+                level = anec_min if "concept" in name.lower() else anef_min
+                kind = "ANEC" if "concept" in name.lower() else "ANEF"
+                if not low:
+                    verdict, why = "unknown", f"the lot is on a noise band called '{code}', which cannot be compared with the law's {kind} level"
+                    continue
+                if int(low.group(1)) >= level:
+                    verdict, why = "excludes", f"the lot is on the {kind} {code} band; the law excludes {kind} {level:g} or greater"
+                    break
+            rules.append(_rule("aircraft_noise", ph, verdict, why))
+
+    # (i) pipelines within the law's distance. Only gas pipelines on Geoscience Australia's national map are held, and whether one is a "relevant
+    # pipeline" named in section 2.77(3) of the Transport and Infrastructure SEPP was not checked, so a hit is a warning and a miss clears nothing.
+    pl = m.get("pipeline")
+    if isinstance(pl, dict) and pl.get("hit") is True:
+        pi = facts.paragraph("i")
+        rules.append(_rule("pipeline", pi, "warn",
+                           f"a gas pipeline on Geoscience Australia's national map is within {facts.number('s164_i_distance'):g} m of the lot; whether it is one of the "
+                           "relevant pipelines the law means (section 2.77(3) of the Transport and Infrastructure SEPP) was not checked"))
     return rules
 
 
@@ -405,6 +441,10 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
 
 # Every live exclusion that is not a rule above is printed as "not checked". A paragraph is "handled" when a rule above covers it
 # (the rule's clause is s164(1)(<para>)); h and i have no rule yet, so they are always printed.
+PARTLY_CHECKED = {   # paragraphs a rule covers only in part: still printed, with what the rule could not see
+    "h": "aircraft noise outside the contours the planning portal holds (Sydney Airport's own ANEF and other airports are not held)",
+    "i": "pipelines other than the gas pipelines on Geoscience Australia's national map, and whether a mapped pipeline is a relevant pipeline",
+}
 EXCLUSION_LABELS = {
     "a": "bush fire prone land",
     "b": "coastal vulnerability area, coastal wetlands and littoral rainforests area",
@@ -484,6 +524,8 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     handled = {r["clause"] for r in rules}  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     nc = [{"para": para, "what": what, "clause": facts.paragraph(para)["clause"], "page": facts.paragraph(para)["page"]}  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
           for para, what in EXCLUSION_LABELS.items() if f"s164(1)({para})" not in handled]
+    nc += [{"para": para, "what": what, "clause": facts.paragraph(para)["clause"], "page": facts.paragraph(para)["page"]}  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+           for para, what in PARTLY_CHECKED.items() if f"s164(1)({para})" in handled]
     warnings = [{"clause": r["clause"], "page": r["page"], "detail": r["detail"]} for r in warned]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     lmr["warnings"] = warnings
     notes: list[str] = []

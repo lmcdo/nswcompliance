@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AreaCheck } from '@/hooks/useAreaCheck';
+import { reformParkingRates, type LawFacts } from '@/lib/law-facts';
 
 // prior-art-checked: no component shows the state-law area answer with its range, warnings and what was not checked
 // (grep components/compliance, 2026-11-07). HousingSEPPEligibilityCard decides eligibility per development type; this card shows the area.
@@ -10,6 +11,8 @@ interface Props {
   result: AreaCheck | null;
   loading: boolean;
   failed: boolean;
+  /** The stored law figures; the parking rates are read from these. Without them no rate is shown. */
+  lawFacts?: LawFacts | null;
 }
 
 /** One plain sentence for each answer. The server's own wording (clause, page, range) is shown beneath it. */
@@ -21,7 +24,7 @@ function lead(r: AreaCheck): string {
   return 'The area could not be determined for this lot.';
 }
 
-export function AreaCheckCard({ result, loading, failed }: Props) {
+export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
   if (loading) {
     return (
       <Card className="border-gray-200">
@@ -40,6 +43,12 @@ export function AreaCheckCard({ result, loading, failed }: Props) {
     );
   }
 
+  const rates = result.lmr.answer === 'yes' || result.lmr.answer === 'borderline' ? reformParkingRates(lawFacts) : [];
+  // TOD (Chapter 5) affordable-housing parking, from the answer's own stored standards: label from the key's bedroom count.
+  const todParking = Object.entries(result.tod.standards ?? {})
+    .filter(([k]) => k.startsWith('tod_affordable_parking_'))
+    .map(([k, v]) => ({ key: k, beds: /parking_(\d+)(_plus)?_bed/.exec(k), ...v }))
+    .filter((x) => x.beds);
   const f = result.lmr.figures;
   const showRange = (result.lmr.answer === 'yes' || result.lmr.answer === 'borderline') && f?.walk_low_m != null && f?.walk_high_m != null;
   return (
@@ -58,6 +67,32 @@ export function AreaCheckCard({ result, loading, failed }: Props) {
         )}
         {result.lmr.heuristic && result.lmr.answer === 'borderline' && (
           <p className="text-xs text-gray-600" data-testid="area-check-method">{result.lmr.heuristic}</p>
+        )}
+        {rates.length > 0 && (
+          <div className="text-xs text-gray-700" data-testid="area-check-parking">
+            <p className="font-medium">Car parking in a low and mid-rise area (Chapter 6)</p>
+            <p>
+              The law sets these non-discretionary minimums per dwelling, but only if no environmental planning instrument or development control
+              plan that applies to the land sets a maximum number of spaces.
+            </p>
+            <ul className="list-disc pl-5">
+              {rates.map((r) => (
+                <li key={r.key}>{r.label}: {r.rate} {r.rate === 1 ? 'space' : 'spaces'} per dwelling ({r.clause}, page {r.pdfPage})</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {todParking.length > 0 && (
+          <div className="text-xs text-gray-700" data-testid="area-check-tod-parking">
+            <p className="font-medium">Parking for affordable housing in a Transport Oriented Development area (Chapter 5)</p>
+            <ul className="list-disc pl-5">
+              {todParking.map((p) => (
+                <li key={p.key}>
+                  {p.beds![1]}{p.beds![2] ? ' or more' : ''} {p.beds![1] === '1' && !p.beds![2] ? 'bedroom' : 'bedrooms'}: {String(p.value)} per dwelling ({p.clause}, page {p.page})
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {result.warnings.length > 0 && (
           <ul className="list-disc pl-5 text-xs text-amber-800" data-testid="area-check-warnings">

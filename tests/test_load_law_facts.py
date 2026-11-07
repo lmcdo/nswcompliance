@@ -42,7 +42,7 @@ def as_db(rows, current=True):
 
 def test_one_row_per_fact_with_clause_page_quote_and_hash():
     assert [r["fact_key"] for r in ROWS] == list(DOC["facts"])
-    assert len(ROWS) == N_FACTS == 21   # 18 + the 3 'accessible area' facts added 2026-11-07
+    assert len(ROWS) == N_FACTS == 28   # 18 + 3 'accessible area' facts + 4 parking minimums + the s164(1)(i) distance + 2 s164(1)(h) levels (2026-11-07)
     for r in ROWS:
         assert r["clause"] and r["quote"] and isinstance(r["pdf_page"], int)
         assert r["text_sha256"] == DOC["text_sha256"] and r["law_version_date"] == "2026-10-23"

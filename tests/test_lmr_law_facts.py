@@ -115,8 +115,8 @@ def test_every_fact_has_clause_page_and_a_quote_that_is_in_the_law_text():
             probe = quote[:200] if it.get("words") else quote
             assert probe in body, (name, probe[:80])
             checked += 1
-    # 18 plain facts (21 minus the 2 station lists minus the s164 block) + 14 s164 paragraphs
-    assert checked == 32   # 29 + the 3 accessible-area facts
+    # 25 plain facts (28 minus the 2 station lists minus the s164 block) + 14 s164 paragraphs
+    assert checked == 39   # 32 + 4 parking minimums + the s164(1)(i) distance + the two s164(1)(h) levels
 
 
 def test_every_station_name_is_a_line_of_the_law_text():
@@ -207,3 +207,49 @@ def test_s164_council_lists_are_complete_not_cut_off():
     f1 = re.findall(r"\(([A-F])\)\s*([^,(.]+?)\s*(?:,|\.|$)", paras["f1"])
     assert [n for _, n in f1] == ["Canterbury-Bankstown", "Cumberland", "City of Fairfield", "Georges River", "City of Liverpool", "Sutherland Shire"]
     assert not paras["g"].endswith(("Qu", "(xvii)")) and len(paras["g"]) > 400
+
+
+# ---- Chapter 6 parking minimums and the pipeline distance: read from the text, never typed ---------------
+
+
+def test_parking_minimums_are_read_per_section_with_clause_page_and_form():
+    f = STORED["facts"]
+    keys = sorted(k for k in f if k.startswith("parking_min_"))
+    assert keys == ["parking_min_s168_2", "parking_min_s172_2", "parking_min_s172_3", "parking_min_s179_2"]
+    assert [f[k]["value"] for k in keys] == [1, 1, 0.5, 0.5]
+    assert [f[k]["clause"] for k in keys] == ["s168(2)(c)", "s172(2)(c)", "s172(3)(c)", "s179(2)(c)"]
+    assert [f[k]["page"] for k in keys] == [81, 82, 82, 84]
+    assert all(f[k]["unit"] == "spaces per dwelling" for k in keys)
+    assert "dual occupancies" in f["parking_min_s168_2"]["section_heading"]
+    assert "(terraces)" in f["parking_min_s172_3"]["applies_to"] and "(terraces)" not in f["parking_min_s172_2"]["applies_to"]
+    assert "residential flat buildings and shop top housing" in f["parking_min_s179_2"]["section_heading"]
+    # s180 (residential flat buildings and shop top housing in R3 and R4) carries FSR and height only: no parking fact is invented for it
+    assert not any("s180" in k for k in f)
+
+
+def test_the_parking_rate_follows_the_law_text():
+    changed = law.extract(mutate("a minimum of 0.5 car parking spaces per dwelling", "a minimum of 0.4 car parking spaces per dwelling", 1),
+                          STORED["text_file"], STORED["law_version_date"])
+    assert law.differences(STORED, changed)
+    keys = [k for k in changed["facts"] if k.startswith("parking_min_")]
+    assert sorted(changed["facts"][k]["value"] for k in keys) == [0.4, 0.5, 1, 1]
+
+
+def test_a_section_that_gains_a_parking_sentence_is_picked_up_not_ignored():
+    sentence = ("(c)  if no environmental planning instrument or development control plan that applies to the land specifies a\n"
+                "maximum number of car parking spaces per dwelling\u2014a minimum of 0.3 car parking spaces per dwelling,\n")
+    # the LAST occurrence of this line is s180(3) (residential flat buildings and shop top housing, outer area); the first two are other sections
+    anchor = "(a)  a maximum floor space ratio of 1.5:1,"
+    at = TEXT.rindex(anchor)
+    changed = law.extract(TEXT[:at] + sentence + TEXT[at:], STORED["text_file"], STORED["law_version_date"])
+    assert "parking_min_s180_3" in changed["facts"] and changed["facts"]["parking_min_s180_3"]["value"] == 0.3
+    assert law.differences(STORED, changed)
+
+
+def test_pipeline_distance_is_read_from_s164_i():
+    d = STORED["facts"]["s164_i_distance"]
+    assert (d["value"], d["clause"], d["page"], d["unit"]) == (200, "s164(1)(i)", 79, "m")
+    assert "section 2.77" in d["defined_in"] and "relevant pipeline" in d["quote"]
+    changed = law.extract(mutate("land within 200m of a relevant pipeline", "land within 250m of a relevant pipeline", 1),
+                          STORED["text_file"], STORED["law_version_date"])
+    assert changed["facts"]["s164_i_distance"]["value"] == 250 and law.differences(STORED, changed)

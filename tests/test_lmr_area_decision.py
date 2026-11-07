@@ -361,3 +361,69 @@ def test_no_liability_words_in_any_text_we_write():
         texts += [x["detail"] for x in r["lmr"]["rules"]]
         for t in texts:
             assert not LIABILITY.search(t), t
+
+
+# ---- aircraft noise (h) and pipelines (i) -------------------------------------------------------------
+ANEC = "Australian Noise Exposure Concept (units)"
+ANEF = "Australian Noise Exposure Forecast (units)"
+
+
+def noisy(*bands, **over):
+    return lot(airport_noise=[{"code": c, "name": n} for c, n in bands], **over)
+
+
+@pytest.mark.parametrize("code,name,expected", [
+    ("20 - 25", ANEC, "no"),      # the law: ANEC 20 or greater
+    ("25 - 30", ANEC, "no"),
+    ("20 - 25", ANEF, "yes"),     # the law: ANEF 25 or greater, so the 20 - 25 band is below it
+    ("25 - 30", ANEF, "no"),
+    ("40 +", ANEF, "no"),
+])
+def test_noise_bands_are_compared_with_the_laws_own_levels(code, name, expected):
+    r = ans(noisy((code, name)))["lmr"]
+    assert r["answer"] == expected
+    if expected == "no":
+        assert r["clause"] == "s164(1)(h)" and r["page"] == 79
+
+
+def test_noise_levels_come_from_the_saved_law_not_the_code():
+    f = copy.deepcopy(FACTS._facts)
+    f["s164_h_anef_min"]["value"] = 20
+    custom = d.LawFacts({"law_version_date": "x", "facts": f})
+    assert d.decide(noisy(("20 - 25", ANEF)), custom)["lmr"]["answer"] == "no"
+
+
+def test_noise_no_band_is_clear_and_a_failed_or_unreadable_band_blocks_a_yes():
+    assert ans(lot(airport_noise=[]))["lmr"]["answer"] == "yes"
+    assert ans(lot(airport_noise=None))["lmr"]["answer"] == "cant_tell"
+    assert ans(noisy(("High Noise", ANEF)))["lmr"]["answer"] == "cant_tell"
+    assert ans(noisy(("20 - 25", ANEF), ("High Noise", ANEF)))["lmr"]["answer"] == "cant_tell"
+    assert ans(noisy(("20 - 25", ANEF), ("25 - 30", ANEF)))["lmr"]["answer"] == "no"       # an excluding band wins over a lower one
+
+
+def test_h_is_still_listed_as_partly_checked_even_when_the_noise_map_answered():
+    r = ans(lot(airport_noise=[]))
+    h = next(x for x in r["not_checked"] if x["para"] == "h")
+    assert "Sydney Airport" in h["what"] and h["clause"] == "s164(1)(h)"
+
+
+def test_pipeline_hit_is_a_warning_not_a_block_and_a_miss_clears_nothing():
+    hit = ans(lot(pipeline={"hit": True, "names": ["x"]}))
+    assert hit["lmr"]["answer"] == "yes" and [w["clause"] for w in hit["warnings"]] == ["s164(1)(i)"]
+    assert "section 2.77(3)" in hit["warnings"][0]["detail"] and "200 m" in hit["warnings"][0]["detail"]
+    for p in ({"hit": False, "names": []}, {"hit": None, "names": []}, None):
+        r = ans(lot(pipeline=p))
+        assert r["warnings"] == [] and "i" in {x["para"] for x in r["not_checked"]}
+
+
+def test_pipeline_distance_in_the_warning_follows_the_law_text():
+    f = copy.deepcopy(FACTS._facts)
+    f["s164_i_distance"]["value"] = 250
+    custom = d.LawFacts({"law_version_date": "x", "facts": f})
+    assert "250 m" in d.decide(lot(pipeline={"hit": True, "names": []}), custom)["warnings"][0]["detail"]
+
+
+def test_noise_and_pipeline_wording_has_no_liability_words():
+    r = ans(lot(pipeline={"hit": True, "names": []}, airport_noise=[]))
+    for t in [w["detail"] for w in r["warnings"]] + [x["what"] for x in r["not_checked"]]:
+        assert not LIAB.search(t), t

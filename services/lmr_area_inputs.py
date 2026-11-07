@@ -49,6 +49,12 @@ LAYERS = {
     # and counts the coastal ENVIRONMENT area (layer 6), which s164(1)(b) does not name; these need lot-outline queries on exactly three maps.
     # Flood (f) and (f1) catchment layers: probed 2026-11-07, Hurstville and Bankstown hit 147, Penrith hits 157, Ashfield neither.
     # Layer 251 is labelled "No map at this time" but holds 10 areas (Port Stephens and Coffs coast), so it is queried, not assumed empty.
+    # prior-art-checked: reuse not viable: portal_constraints.fetch_anef reads the Sydney-only anef_zones table, which flags about half of Sydney lots
+    # (223 of 400 test lots at ANEF 25 or more, 2026-11-07); layer 235 is the portal's own table of contour bands (Western Sydney Airport and several
+    # council areas), queried by lot outline. No pipeline reader exists (grep services/, 2026-11-07); Geoscience Australia's open gas pipeline layer
+    # (CC BY 4.0) holds the Moomba-Sydney and Sydney-Newcastle lines and is queried with the law's distance.
+    "airport_noise": f"{_EPL}/Planning_Portal_Protection/MapServer/235/query",
+    "pipeline": "https://services.ga.gov.au/gis/rest/services/Oil_Gas_Pipelines/MapServer/1/query",
     "georges_catchment": f"{_EPL}/Planning_Portal_SEPP/MapServer/147/query",
     "hn_catchment": f"{_EPL}/Planning_Portal_SEPP/MapServer/157/query",
     "coastal_vuln": f"{_EPL}/Planning_Portal_SEPP/MapServer/251/query",
@@ -197,6 +203,25 @@ def _layer(key: str, lat: float, lng: float, rings: Optional[list]) -> dict:
     return {"point": pt, "lot": lot}
 
 
+def _noise_bands(lat: float, lng: float, rings: Optional[list]) -> Optional[list]:
+    """Every airport-noise contour band the lot touches (code like '25 - 30' and the map's own name), [] if none, None if the map did not answer."""
+    geom = _poly_params(rings, out_fields="ANEF_CODE,LAY_NAME") if rings else _point_params(lat, lng, out_fields="ANEF_CODE,LAY_NAME")
+    feats = _features(_get_json(LAYERS["airport_noise"], geom, post=True))
+    if feats is None:
+        return None
+    return [{"code": (f.get("attributes") or {}).get("ANEF_CODE"), "name": (f.get("attributes") or {}).get("LAY_NAME")} for f in feats]
+
+
+def _pipeline_near(lat: float, lng: float, rings: Optional[list], metres: float) -> dict:
+    """Is a gas pipeline on Geoscience Australia's national map within `metres` of the lot? hit True / False, or None when the service did not answer."""
+    extra = {"distance": str(metres), "units": "esriSRUnit_Meter"}
+    geom = {**(_poly_params(rings, out_fields="feature_name,operator") if rings else _point_params(lat, lng, out_fields="feature_name,operator")), **extra}
+    feats = _features(_get_json(LAYERS["pipeline"], geom, post=True))
+    if feats is None:
+        return {"hit": None, "names": []}
+    return {"hit": len(feats) > 0, "names": [(f.get("attributes") or {}).get("feature_name") for f in feats]}
+
+
 def _lga(lat: float, lng: float) -> Optional[str]:
     f = _features(_get_json(LAYERS["lga"], _point_params(lat, lng, out_fields="lganame"), post=True))
     if not f:
@@ -241,7 +266,9 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list]) -> dict:
             "georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")}
         f_her = ex.submit(_heritage, rings)
         f_lga = ex.submit(_lga, lat, lng)
+        f_noise = ex.submit(_noise_bands, lat, lng, rings)
         out: dict[str, Any] = {k: f.result() for k, f in futs.items()}
+        out["airport_noise"] = f_noise.result()
         out["heritage"] = f_her.result()
         out["lga"] = f_lga.result()
     return out
@@ -267,6 +294,11 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
     m["lot_outline"] = bool(rings)
+    if "pipeline" not in m:
+        try:   # the distance is the law's (s164(1)(i)), read from the saved facts, never typed here
+            m["pipeline"] = _pipeline_near(lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))
+        except dec.LawFactsError:
+            m["pipeline"] = {"hit": None, "names": []}
     if flood_fn is not None and "flood_planning" not in m:
         m["flood_planning"] = _flood_answer(m.get("lga"), rings, flood_fn)
 

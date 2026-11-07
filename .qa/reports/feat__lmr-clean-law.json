@@ -41,7 +41,8 @@
     "frontend-nextjs/hooks/useAreaCheck.ts",
     "frontend-nextjs/components/compliance/AreaCheckCard.tsx",
     "tests/test_housing_sepp_area_check_api.py",
-    "frontend-nextjs/lib/regulatory-constants.ts"
+    "frontend-nextjs/lib/regulatory-constants.ts",
+    "frontend-nextjs/__tests__/components/area-check-card.test.tsx"
   ],
   "falsifiable_check": {
     "command": "python scripts/lmr_area/area_check_score.py test_results.json",
@@ -60,7 +61,7 @@
   "functions": [
     {
       "name": "decide",
-      "file_line": "services/lmr_area_decision.py:415",
+      "file_line": "services/lmr_area_decision.py:459",
       "input": "dict of measurements (layer hits, council, distances, walk range) plus the saved law facts",
       "output": "dict with pathway, headline, lmr answer, tod answer, not_checked list, notes",
       "if_none": "any missing measurement gives cant_tell for that rule; a no from any rule is final; a yes needs every rule clear and the whole walking range under the limit; the function never raises"
@@ -74,7 +75,7 @@
     },
     {
       "name": "gather",
-      "file_line": "services/lmr_area_inputs.py:250",
+      "file_line": "services/lmr_area_inputs.py:277",
       "input": "latitude, longitude, optional lot outline, station file, walking surfaces, saved layer results",
       "output": "measurement dict that is ready for decide",
       "if_none": "no lot outline, unreadable station file or failed town centre map leaves distances None, so the answer is cant_tell"
@@ -225,6 +226,27 @@
       "mitigated": true,
       "how": "frontend-nextjs/lib/law-facts.ts accessibleAreaLimits reads the stored figures and returns null unless both exist; StateLevelControls.tsx makes no distance claim without them; the typed constants are deleted and frontend-nextjs/__tests__/lib/law-facts.test.ts fails if a distance-shaped 600 or 1000 or a *_M constant returns",
       "repro": "cd frontend-nextjs && npx jest __tests__/lib/law-facts.test.ts"
+    },
+    {
+      "scenario": "The parking minimums are typed into the page, so a change to Chapter 6 never reaches it, or a section with no parking standard (s180) is shown with an invented rate",
+      "what_happens": "The area card shows a parking rate the law does not contain",
+      "mitigated": true,
+      "how": "scripts/extract_lmr_law_facts.py _parking_minimums reads each parking sentence with its section and page; a section with no sentence yields no fact; frontend-nextjs/lib/law-facts.ts reformParkingRates labels each rate from the stored heading and types no figure; frontend-nextjs/__tests__/lib/law-facts.test.ts fails if 0.5, 0.4 or 0.2 appears in the code",
+      "repro": "python -m pytest tests/test_lmr_law_facts.py -k parking; cd frontend-nextjs && npx jest __tests__/lib/law-facts.test.ts"
+    },
+    {
+      "scenario": "A lot inside an airport noise contour band is told it is clear because the Sydney-only anef_zones table or a typed level is used instead of the law's levels and the portal's bands",
+      "what_happens": "A lot at ANEF 25 or ANEC 20 or greater gets a yes, or (with the old table) about half of Sydney gets a wrong no",
+      "mitigated": true,
+      "how": "services/lmr_area_decision.py compares each band from planning portal layer 235 with the ANEF and ANEC levels read from the saved s164(1)(h) wording; a band that cannot be compared or a failed query blocks a yes; paragraph (h) stays listed as partly checked because Sydney Airport's own contours are not on the portal",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -k noise"
+    },
+    {
+      "scenario": "A lot beside a gas pipeline is told nothing, or a lot far from the mapped lines is cleared of paragraph (i)",
+      "what_happens": "A person assumes no pipeline was relevant",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py queries Geoscience Australia's gas pipeline layer with the law's distance read from the saved facts; a hit is a warning that says whether it is a relevant pipeline was not checked; a miss or a failed call clears nothing and (i) stays in the not-checked list",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -k pipeline; python -m pytest tests/test_lmr_area_inputs.py -k pipeline"
     }
   ],
   "post_merge": {

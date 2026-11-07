@@ -147,6 +147,46 @@ def _accessible_area(lines, pages) -> dict:
     }
 
 
+def _parking_minimums(lines, pages) -> dict:
+    """Every Chapter 6 non-discretionary parking minimum, one fact per (section, subsection), read from the text.
+
+    Each such standard has the shape: "(c) if no environmental planning instrument or development control plan that applies to the land
+    specifies a maximum number of car parking spaces per dwelling-a minimum of N car parking space(s) per dwelling". The section heading and the
+    subsection opener say which development form and zone it belongs to; both are kept in `extra`. A section with no such sentence (s180 has none in the 23 October 2026 text)
+    simply yields no fact; nothing is invented for it.
+    """
+    start = _last(lines, r"^165\s+Non-discretionary development standards", "s165")
+    stop = _first(lines, r"^Chapter 7 ", "end of Chapter 6", start + 1)
+    out: dict = {}
+    section, heading, sub, applies = None, "", None, ""
+    for i in range(start, stop):
+        t = lines[i].strip()
+        m = re.match(r"^(\d{3})\s+(Non-discretionary development standards.*)$", t)
+        if m:
+            section, heading, sub, applies = m.group(1), m.group(2), None, ""
+            nxt = lines[i + 1].strip() if i + 1 < stop else ""
+            if nxt and not re.match(r"^\(", nxt) and not _noise(lines[i + 1]):
+                heading = f"{heading} {nxt}"
+            continue
+        m = re.match(r"^\((\d+)\)\s+(.*)$", t)
+        if m and section:
+            sub, applies = m.group(1), _joined(lines, i, i + 2)
+            continue
+        m = re.match(r"^\(([a-z])\)\s+if no environmental planning instrument or development control plan that applies to the land specifies a$", t)
+        if m and section and sub:
+            text = _joined(lines, i, i + 3)
+            v, q = _num(
+                r"if no environmental planning instrument or development control plan that applies to the land specifies a maximum number of car "
+                r"parking spaces per dwelling—a minimum of (\d+(?:\.\d+)?) car parking spaces? per dwelling",
+                text, f"s{section}({sub})({m.group(1)}) parking minimum")
+            out[f"parking_min_s{section}_{sub}"] = _fact(
+                float(v) if "." in v else int(v), f"s{section}({sub})({m.group(1)})", pages[i], q, unit="spaces per dwelling",
+                section_heading=heading, applies_to=applies)
+    if not out:
+        raise AnchorError("no Chapter 6 parking minimums found")
+    return out
+
+
 def _s164(lines, pages) -> dict:
     s164 = _last(lines, r"^164\s+Land to which chapter applies$", "s164 heading")
     start = _first(lines, r"^\(1\)\s+This chapter applies to the whole of the State, other than the following—$", "s164(1)", s164)
@@ -251,6 +291,20 @@ def extract(text: str, text_file: str, version_date: str) -> dict:
     k = next(p for p in facts["s164"]["paragraphs"] if p["para"] == "k")
     v, q = _num(r"land within (\d+)m of a public entrance to a railway, metro or light rail station listed in Schedule 12", k["words"], "s164(1)(k)")
     facts["s164_k_distance"] = _fact(int(v), "s164(1)(k)", k["page"], q, unit="m", measured="not stated (the paragraph does not say walking)")
+
+    facts.update(_parking_minimums(lines, pages))
+
+    h_par = next(p for p in facts["s164"]["paragraphs"] if p["para"] == "h")
+    v, q = _num(r"land in an ANEF contour of (\d+) or greater or ANEC contour of (\d+) or greater", h_par["words"], "s164(1)(h)")
+    anef, anec = re.search(r"ANEF contour of (\d+) or greater or ANEC contour of (\d+) or greater", h_par["words"]).groups()
+    facts["s164_h_anef_min"] = _fact(int(anef), "s164(1)(h)", h_par["page"], q, unit="ANEF", measured="contour level")
+    facts["s164_h_anec_min"] = _fact(int(anec), "s164(1)(h)", h_par["page"], q, unit="ANEC", measured="contour level")
+
+    i_par = next(p for p in facts["s164"]["paragraphs"] if p["para"] == "i")
+    v, q = _num(r"land within (\d+)m of a relevant pipeline within the meaning of (.+?), section (\d+\.\d+)", i_par["words"], "s164(1)(i)")
+    facts["s164_i_distance"] = _fact(int(v), "s164(1)(i)", i_par["page"], q, unit="m",
+                                     measured="not stated (the paragraph does not say walking)",
+                                     defined_in="State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77")
 
     facts.update(_tod_standards(lines, pages))
 

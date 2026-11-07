@@ -23,6 +23,9 @@ export const LAW_FACT_KEYS = [
 
 export type LawFactKey = (typeof LAW_FACT_KEYS)[number];
 
+/** Families of facts served by key prefix: one fact per section of the law, so the list is whatever the saved law contains. */
+export const LAW_FACT_PREFIXES = ['parking_min_'] as const;
+
 export interface LawFact {
   value: number | string;
   unit: string | null;
@@ -30,9 +33,11 @@ export interface LawFact {
   pdfPage: number;
   quote: string;
   lawVersionDate: string;
+  /** What the extractor recorded beside the figure: for a parking minimum, the section heading and the subsection it sits in. */
+  extra?: Record<string, unknown>;
 }
 
-export type LawFacts = Partial<Record<LawFactKey, LawFact>>;
+export type LawFacts = Partial<Record<string, LawFact>>;
 
 export interface LawFactsResponse {
   available: boolean;
@@ -50,6 +55,7 @@ export interface LawFactRow {
   pdf_page: number;
   quote: string;
   law_version_date: string | Date;
+  extra?: unknown;
 }
 
 const isoDate = (d: string | Date): string => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
@@ -61,17 +67,19 @@ const isoDate = (d: string | Date): string => (d instanceof Date ? d.toISOString
 export function rowsToFacts(rows: LawFactRow[]): LawFacts {
   const out: LawFacts = {};
   for (const r of rows) {
-    if (!(LAW_FACT_KEYS as readonly string[]).includes(r.fact_key)) continue;
+    const wanted = (LAW_FACT_KEYS as readonly string[]).includes(r.fact_key) || LAW_FACT_PREFIXES.some((p) => r.fact_key.startsWith(p));
+    if (!wanted) continue;
     const n = r.value_number == null ? null : Number(r.value_number);
     const value = typeof r.value === 'string' && r.value.trim() !== '' ? r.value : n != null && Number.isFinite(n) ? n : null;
     if (value == null || !r.clause || !r.pdf_page || !r.quote) continue;
-    out[r.fact_key as LawFactKey] = {
+    out[r.fact_key] = {
       value,
       unit: r.unit,
       clause: r.clause,
       pdfPage: Number(r.pdf_page),
       quote: r.quote,
       lawVersionDate: isoDate(r.law_version_date),
+      extra: r.extra && typeof r.extra === 'object' ? (r.extra as Record<string, unknown>) : undefined,
     };
   }
   return out;
@@ -110,6 +118,37 @@ export function accessibleAreaLimits(
   const busM = Number(bus.value);
   if (!Number.isFinite(railM) || !Number.isFinite(busM) || railM <= 0 || busM <= 0) return null;
   return { railM, busM, clause: 'Schedule 10 dictionary, accessible area', pdfPage: rail.pdfPage, lawVersionDate: rail.lawVersionDate };
+}
+
+export interface ParkingRate {
+  key: string;
+  label: string;
+  rate: number;
+  clause: string;
+  pdfPage: number;
+  lawVersionDate: string;
+}
+
+/**
+ * Chapter 6 parking minimums per dwelling, one for each section of the law that states one. The development form is read from the stored
+ * section heading and subsection text (never typed here); a rate with no usable figure is dropped. Empty when none are stored, so the page
+ * then shows no parking rate at all.
+ */
+export function reformParkingRates(facts: LawFacts | null | undefined): ParkingRate[] {
+  const out: ParkingRate[] = [];
+  for (const [key, f] of Object.entries(facts ?? {})) {
+    if (!f || !key.startsWith('parking_min_')) continue;
+    const rate = Number(f.value);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    const applies = String(f.extra?.applies_to ?? '');
+    const heading = String(f.extra?.section_heading ?? '');
+    const purposes = /purposes of ([^—]+?)\s*—/.exec(applies)?.[1]?.trim();
+    const tail = heading.includes('—') ? heading.slice(heading.indexOf('—') + 1).trim() : heading.trim();
+    const label = purposes || tail;
+    if (!label) continue;
+    out.push({ key, label, rate, clause: f.clause, pdfPage: f.pdfPage, lawVersionDate: f.lawVersionDate });
+  }
+  return out.sort((a, b) => a.pdfPage - b.pdfPage || a.key.localeCompare(b.key));
 }
 
 /** The sentence shown when the stored figures could not be read. It contains no figure. */

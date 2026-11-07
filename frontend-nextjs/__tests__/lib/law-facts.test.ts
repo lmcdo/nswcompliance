@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-  rowsToFacts, todStandardsSentence, TOD_STANDARDS_UNAVAILABLE, LAW_FACT_KEYS, accessibleAreaLimits, type LawFactRow,
+  rowsToFacts, todStandardsSentence, TOD_STANDARDS_UNAVAILABLE, LAW_FACT_KEYS, accessibleAreaLimits, reformParkingRates, type LawFactRow,
 } from '@/lib/law-facts';
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8');
@@ -130,5 +130,51 @@ describe('the page no longer types transport distances', () => {
       expect(src).not.toMatch(/\b(600|1000)\s?(m\b|metres)|_M:\s*(600|1000)\b/);
     }
     expect(comp).toMatch(/accessibleAreaLimits\(lawFacts\)/);
+  });
+});
+
+
+describe('reformParkingRates (parking minimums served by prefix, labelled from the stored text)', () => {
+  const P = (key: string, n: number, clause: string, page: number, heading: string, applies: string): LawFactRow => ({
+    ...ROW(key, n, n, clause, page), unit: 'spaces per dwelling', extra: { section_heading: heading, applies_to: applies },
+  });
+  const rows: LawFactRow[] = [
+    P('parking_min_s168_2', 1, 's168(2)(c)', 81, 'Non-discretionary development standards—dual occupancies', '(2) The following non-discretionary development standards apply—'),
+    P('parking_min_s172_2', 1, 's172(2)(c)', 82, 'Non-discretionary development standards—multi dwelling housing', '(2) The following standards apply in relation to development for the purposes of multi dwelling housing—'),
+    P('parking_min_s172_3', 0.5, 's172(3)(c)', 82, 'Non-discretionary development standards—multi dwelling housing', '(3) The following standards apply in relation to development for the purposes of multi dwelling housing (terraces)—'),
+    P('parking_min_s179_2', 0.5, 's179(2)(c)', 84, 'Non-discretionary development standards—residential flat buildings and shop top housing in Zone R1 or R2', '(2) The following non-discretionary development standards apply—'),
+  ];
+
+  it('serves every parking fact with its form, rate, clause and page, in page order', () => {
+    const r = reformParkingRates(rowsToFacts(rows));
+    expect(r.map((x) => [x.label, x.rate, x.clause, x.pdfPage])).toEqual([
+      ['dual occupancies', 1, 's168(2)(c)', 81],
+      ['multi dwelling housing', 1, 's172(2)(c)', 82],
+      ['multi dwelling housing (terraces)', 0.5, 's172(3)(c)', 82],
+      ['residential flat buildings and shop top housing in Zone R1 or R2', 0.5, 's179(2)(c)', 84],
+    ]);
+  });
+
+  it('follows the stored figures and sections: a changed rate, a new section and a removed section all show', () => {
+    const changed = rows.map((r) => (r.fact_key === 'parking_min_s172_3' ? { ...r, value: 0.4, value_number: 0.4 } : r));
+    expect(reformParkingRates(rowsToFacts(changed)).find((x) => x.key === 'parking_min_s172_3')!.rate).toBe(0.4);
+    const added = [...rows, P('parking_min_s180_3', 0.3, 's180(3)(c)', 85, 'Non-discretionary development standards—residential flat buildings and shop top housing in Zone R3 or R4', '(3) The following apply—')];
+    expect(reformParkingRates(rowsToFacts(added)).map((x) => x.key)).toContain('parking_min_s180_3');
+    expect(reformParkingRates(rowsToFacts(rows.slice(1))).map((x) => x.key)).not.toContain('parking_min_s168_2');
+  });
+
+  it('shows nothing when there are no facts, no usable figure or no way to say what the rate is for', () => {
+    expect(reformParkingRates(null)).toEqual([]);
+    expect(reformParkingRates({})).toEqual([]);
+    const zero = rows.map((r) => ({ ...r, value: 0, value_number: 0 }));
+    expect(reformParkingRates(rowsToFacts(zero))).toEqual([]);
+    const unlabeled = [{ ...rows[0], extra: {} }];
+    expect(reformParkingRates(rowsToFacts(unlabeled))).toEqual([]);
+  });
+
+  it('the website code types no parking rate', () => {
+    for (const f of ['lib/law-facts.ts', 'components/compliance/AreaCheckCard.tsx']) {
+      expect(code(read(f))).not.toMatch(/\b0\.5\b|\b0\.4\b|\b0\.2\b/);
+    }
   });
 });
