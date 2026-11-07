@@ -69,12 +69,11 @@ NOT_DETERMINED_NEXT_STEP = ". Check this lot on the NSW Planning Portal Spatial 
 
 
 WALK_HEURISTIC = (
-    f"Walking range = the measured walk minus {WALK_MARGIN_LOW_M} m, up to the measured walk plus {WALK_MARGIN_HIGH_M} m (plus the station "
-    "outline length when the entrance is not mapped, because the entrance can be anywhere on the outline). The range is lopsided on "
-    "purpose: on test lots our footpath map gave a shorter walk than an independent walking router far more often than a longer one. "
-    "The measured walk follows public footpath data; the law's route is the shortest one that may be walked using footpaths and "
-    "crossings. When the range straddles the limit, the true walk is assumed equally likely anywhere in the range, and the answer "
-    "reports what share of the range is under the limit."
+    f"How the range is worked out: we measure the walk along public footpaths, then allow {WALK_MARGIN_LOW_M} m shorter and {WALK_MARGIN_HIGH_M} m longer. "
+    "The allowance is bigger on the longer side because, on test lots, our footpath map gave a shorter walk than a second walking-route "
+    "service more often than a longer one. If the station entrance is not mapped, the length of the station outline is added. "
+    "The law's route is the shortest one that may be walked using footpaths and crossings. When the limit falls inside the range, "
+    "every walk length in the range is treated as equally likely, and the share shown is the part of the range under the limit."
 )
 
 

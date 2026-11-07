@@ -427,3 +427,11 @@ def test_noise_and_pipeline_wording_has_no_liability_words():
     r = ans(lot(pipeline={"hit": True, "names": []}, airport_noise=[]))
     for t in [w["detail"] for w in r["warnings"]] + [x["what"] for x in r["not_checked"]]:
         assert not LIAB.search(t), t
+
+
+def test_walk_method_note_is_plain_english():
+    """The card prints this note to a reader. It must not use the internal words it once did."""
+    from services.lmr_area_decision import WALK_HEURISTIC
+    for word in ("lopsided", "router", "straddles", "heuristic"):
+        assert word not in WALK_HEURISTIC.lower()
+    assert "75 m shorter and 225 m longer" in WALK_HEURISTIC  # the figures still come from the constants

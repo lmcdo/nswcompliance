@@ -25,6 +25,12 @@ describe('area-check proxy', () => {
     expect(String(f.mock.calls[0][0])).toMatch(/\/pipeline\/housing-sepp\/area-check\?lat=-33\.889&lng=151\.126$/);
   });
 
+  it('never lets Next cache the Python answer (a cached copy kept serving old law text after the text changed)', async () => {
+    const f = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) }); global.fetch = f as never;
+    await GET(req('?lat=-33.889&lng=151.126'));
+    expect(f.mock.calls[0][1]).toMatchObject({ cache: 'no-store' });
+  });
+
   it('a service error or an unreachable service is a 502 error, not a yes or a no', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500, text: async () => 'boom' }) as never;
     const a = await GET(req('?lat=-33.889&lng=151.126'));

@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
   try {
     pythonResp = await fetch(
       `${PYTHON_API}/pipeline/housing-sepp/area-check?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-      { signal: AbortSignal.timeout(50_000) },
+      // no-store: the answer carries the law version date; Next's fetch cache served a week-old answer after the rules text changed.
+      { cache: 'no-store', signal: AbortSignal.timeout(50_000) },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
