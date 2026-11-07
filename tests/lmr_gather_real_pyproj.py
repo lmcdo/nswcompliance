@@ -77,3 +77,13 @@ def test_walk_is_accepted_when_the_nearby_anchor_has_a_surface():
                        "nodes": nodes, "graph_nodes": 300}, "m")
     m = inp.gather(LAT, LNG, rings=RING, stations=stations_doc(), walk_surfaces=[mine])
     assert m["walk"]["valid"] is True and m["walk"]["anchor"] == "Ashfield station"
+
+
+def test_gather_reads_sydney_airports_chart_and_the_decision_uses_it():
+    """End to end with the real projection: a lot on the runway is inside the 25 line and excluded; a lot in Parramatta is outside the chart's frame."""
+    ring = [[151.1772, -33.9461], [151.1774, -33.9461], [151.1774, -33.9459], [151.1772, -33.9459], [151.1772, -33.9461]]
+    m = inp.gather(-33.9460, 151.1773, rings=ring, stations=stations_doc(near_name="none"))
+    assert m["sydney_anef"]["25"]["state"] == "inside"
+    rules = [x for x in dec.decide(m)["lmr"]["rules"] if x["rule"] == "aircraft_noise_sydney"]
+    assert rules and rules[0]["outcome"] == "excludes"
+    assert inp.gather(-33.8148, 151.0017, rings=None, stations=stations_doc(near_name="none"))["sydney_anef"] is None

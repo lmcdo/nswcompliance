@@ -1,0 +1,24 @@
+{
+  "scale_mercator_m_per_pt": 50.93,
+  "x_offset_3857": 16814350.066362962,
+  "y_offset_3857": -3994915.0165383704,
+  "ground_m_per_pt": 42.25764656092222,
+  "chart_road_points": 2677,
+  "real_road_samples": 320226,
+  "share_within_m": {
+    "5": 0.4792678371311169,
+    "10": 0.9376167351512887,
+    "15": 0.9951438177063877,
+    "20": 0.999252895031752,
+    "30": 1.0
+  },
+  "chance_share_within_20m_when_shifted": [
+    0.35861038475905865,
+    0.3642136720209189,
+    0.23982069480762047
+  ],
+  "page_index": 24,
+  "pdf_sha256": "4524910506e65fe833083ee0350db8999f4382ebcdceb5cd1e6f0b5508698b8b",
+  "roads_source": "NSW_Transport_Theme layer 5 RoadSegment (portal.spatial.nsw.gov.au)",
+  "accepted": true
+}

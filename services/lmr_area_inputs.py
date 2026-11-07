@@ -17,6 +17,7 @@ Sources (all public NSW services, queried live; only coordinates and the lot out
   council area       NSW Spatial Services administrative boundaries layer 8
   stations           data/law/lmr_station_entrances.json (OSM entrances for the Schedule 11 and 12 stations, names read from the law)
   walking            services/lmr_walk_surface.py
+  Sydney Airport noise   services/sydney_anef.py (the endorsed 2045 ANEF chart's contours, committed in data/anef/; local geometry, no network)
 """
 from __future__ import annotations
 
@@ -30,6 +31,7 @@ import requests
 
 from services import lmr_area_decision as dec
 from services import lmr_walk_surface as walk_mod
+from services import sydney_anef
 
 logger = logging.getLogger(__name__)
 
@@ -294,6 +296,12 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
     m["lot_outline"] = bool(rings)
+    if "sydney_anef" not in m:
+        try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. None = the lot is outside the chart's map frame.
+            m["sydney_anef"] = sydney_anef.classify_all(lat, lng, rings)
+        except Exception as exc:  # noqa: BLE001 -- the decision reports this as "no answer", never as clear
+            logger.warning("sydney anef chart failed: %s", exc)
+            m["sydney_anef"] = "error"
     if "pipeline" not in m:
         try:   # the distance is the law's (s164(1)(i)), read from the saved facts, never typed here
             m["pipeline"] = _pipeline_near(lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))

@@ -383,6 +383,30 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
                     break
             rules.append(_rule("aircraft_noise", ph, verdict, why))
 
+    # (h) again, for Sydney Airport: its own endorsed 2045 ANEF chart (the planning portal holds none of it). The chart's contour at the law's level is
+    # compared with the lot outline; within the chart's measured accuracy of the line the lot cannot be placed, so that is "unknown", never a guess.
+    if m.get("sydney_anef") is not None:   # None = the lot is outside the chart's map frame: the chart says nothing there
+        ph = facts.paragraph("h")
+        anef_min, _ = facts.noise_thresholds()
+        sy = m.get("sydney_anef")
+        c = sy.get(f"{anef_min:g}") if isinstance(sy, dict) else None
+        if not isinstance(sy, dict):
+            rules.append(_rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 aircraft noise chart could not be read"))
+        elif not isinstance(c, dict) or c.get("state") not in ("inside", "outside", "near"):
+            rules.append(_rule("aircraft_noise_sydney", ph, "unknown", f"Sydney Airport's 2045 chart has no ANEF {anef_min:g} line to compare with the law"))
+        elif c.get("state") == "inside":
+            rules.append(_rule("aircraft_noise_sydney", ph, "excludes",
+                               f"part of the lot is inside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart (endorsed by Airservices Australia); "
+                               f"the law excludes ANEF {anef_min:g} or greater", margin_m=c.get("margin_m"), inside_by_m=c.get("inside_by_m")))
+        elif c.get("state") == "outside":
+            rules.append(_rule("aircraft_noise_sydney", ph, "clear",
+                               f"the lot is outside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart by more than the chart's accuracy of "
+                               f"{c.get('margin_m'):g} m", margin_m=c.get("margin_m"), nearest_m=c.get("nearest_m")))
+        else:
+            rules.append(_rule("aircraft_noise_sydney", ph, "unknown",
+                               f"the lot is within {c.get('margin_m'):g} m of the ANEF {anef_min:g} line on Sydney Airport's 2045 chart, which is as close as "
+                               f"the chart can be read", margin_m=c.get("margin_m"), nearest_m=c.get("nearest_m")))
+
     # (i) pipelines within the law's distance. Only gas pipelines on Geoscience Australia's national map are held, and whether one is a "relevant
     # pipeline" named in section 2.77(3) of the Transport and Infrastructure SEPP was not checked, so a hit is a warning and a miss clears nothing.
     pl = m.get("pipeline")
@@ -441,7 +465,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
 # Every live exclusion that is not a rule above is printed as "not checked". A paragraph is "handled" when a rule above covers it
 # (the rule's clause is s164(1)(<para>)); h and i have no rule yet, so they are always printed.
 PARTLY_CHECKED = {   # paragraphs a rule covers only in part: still printed, with what the rule could not see
-    "h": "aircraft noise outside the contours the planning portal holds (Sydney Airport's own ANEF and other airports are not held)",
+    "h": "aircraft noise from airports other than Sydney Airport, outside the contours the planning portal holds (Western Sydney Airport and a few council areas)",
     "i": "pipelines other than the gas pipelines on Geoscience Australia's national map, and whether a mapped pipeline is a relevant pipeline",
 }
 EXCLUSION_LABELS = {
