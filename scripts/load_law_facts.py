@@ -259,7 +259,7 @@ def run(apply: bool, correct: frozenset = frozenset()) -> int:
 
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--apply", action="store_true", help="write the rows (default is a dry run)")
     ap.add_argument("--check", action="store_true", help="read-only: does the database equal the JSON? exit 0/1/2")
     ap.add_argument("--correct", action="append", default=[], metavar="FACT_KEY",

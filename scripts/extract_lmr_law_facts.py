@@ -141,8 +141,8 @@ def _accessible_area(lines, pages) -> dict:
     bus, q_bus = _num(r"\(c\)\s*(\d+)m walking distance of a bus stop used by a regular bus service", chunk, "accessible area (c)")
     per_hour, q_hour = _num(r"has at least (\d+) bus per hour servicing the bus stop", chunk, "accessible area bus frequency")
     return {
-        "accessible_area_rail_distance": _fact(int(rail), "Schedule 10 dictionary, accessible area (a)", pages[i], q_rail, unit="m", measured="walking distance"),
-        "accessible_area_bus_distance": _fact(int(bus), "Schedule 10 dictionary, accessible area (c)", pages[i], q_bus, unit="m", measured="walking distance"),
+        "accessible_area_rail_distance": _fact(int(rail), "Schedule 10 dictionary, accessible area (a)", pages[i], q_rail, unit="m", measured="walking distance"),  # qa-ignore: _num raises AnchorError when the figure is missing, so rail is never None
+        "accessible_area_bus_distance": _fact(int(bus), "Schedule 10 dictionary, accessible area (c)", pages[i], q_bus, unit="m", measured="walking distance"),  # qa-ignore: _num raises AnchorError when the figure is missing, so bus is never None
         "accessible_area_bus_min_per_hour": _fact(int(per_hour), "Schedule 10 dictionary, accessible area (c)", pages[i], q_hour, unit="buses per hour"),
     }
 
@@ -298,7 +298,7 @@ def extract(text: str, text_file: str, version_date: str) -> dict:
     v, q = _num(r"land in an ANEF contour of (\d+) or greater or ANEC contour of (\d+) or greater", h_par["words"], "s164(1)(h)")
     anef, anec = re.search(r"ANEF contour of (\d+) or greater or ANEC contour of (\d+) or greater", h_par["words"]).groups()
     facts["s164_h_anef_min"] = _fact(int(anef), "s164(1)(h)", h_par["page"], q, unit="ANEF", measured="contour level")
-    facts["s164_h_anec_min"] = _fact(int(anec), "s164(1)(h)", h_par["page"], q, unit="ANEC", measured="contour level")
+    facts["s164_h_anec_min"] = _fact(int(anec), "s164(1)(h)", h_par["page"], q, unit="ANEC", measured="contour level")  # qa-ignore: the search above must match or .groups() raises; anec is never None
 
     i_par = next(p for p in facts["s164"]["paragraphs"] if p["para"] == "i")
     v, q = _num(r"land within (\d+)m of a relevant pipeline within the meaning of (.+?), section (\d+\.\d+)", i_par["words"], "s164(1)(i)")
@@ -328,8 +328,9 @@ def version_date_of(path: Path) -> str:
 def differences(stored: dict, fresh: dict) -> list[str]:
     """Names of the facts (and top-level fields) that differ. Empty list = identical."""
     diff = [k for k in ("instrument", "law_version_date", "text_file", "text_sha256") if stored.get(k) != fresh.get(k)]
-    keys = set(stored.get("facts", {})) | set(fresh.get("facts", {}))
-    diff += [f"facts.{k}" for k in sorted(keys) if stored.get("facts", {}).get(k) != fresh.get("facts", {}).get(k)]
+    stored_facts, fresh_facts = (stored.get("facts") or {}), (fresh.get("facts") or {})
+    keys = set(stored_facts) | set(fresh_facts)
+    diff += [f"facts.{k}" for k in sorted(keys) if stored_facts.get(k) != fresh_facts.get(k)]
     return diff
 
 
@@ -344,7 +345,7 @@ def build(text_path: Path) -> dict:
 
 def main(argv: list[str]) -> int:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").strip().split("\n")[0])
     ap.add_argument("--write", action="store_true", help="regenerate and write the JSON")
     ap.add_argument("--check", action="store_true", help="compare the repo text with the stored JSON (default)")
     ap.add_argument("--text", type=Path, help="a newly saved law text: print what changed against the stored JSON")

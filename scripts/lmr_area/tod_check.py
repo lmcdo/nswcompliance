@@ -55,7 +55,7 @@ def lots_near(lat, lng, dist_m):
                     "inSR": 4326, "outSR": 4326, "spatialRel": "esriSpatialRelIntersects", "outFields": "address",
                     "returnGeometry": "true", "f": "json"})
     out = []
-    for f in (j or {}).get("features", []):
+    for f in ((j or {}).get("features") or []):
         r = (f.get("geometry") or {}).get("rings")
         if r and f["attributes"].get("address"):
             p = Polygon(r[0]).buffer(0)

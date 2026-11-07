@@ -304,3 +304,12 @@ def test_check_passes_only_when_the_database_equals_the_json(monkeypatch):
     assert lf.check() == 1
     monkeypatch.setattr(lf, "_fetch", lambda cur, where="": as_db(ROWS)[:-1])
     assert lf.check() == 1
+
+
+@pytest.mark.database
+@pytest.mark.skipif(not __import__("os").environ.get("PYTEST_REAL_DB"), reason="opt in with PYTEST_REAL_DB=1 and DATABASE_URL")
+def test_real_database_equals_the_saved_json():
+    """Real layer: the stored law_facts rows in the live database equal data/law/housing_sepp_lmr_facts.json (read-only check, exit 0)."""
+    import subprocess
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "load_law_facts.py"), "--check"], capture_output=True, text=True, timeout=120, cwd=ROOT)
+    assert r.returncode == 0, r.stdout[-800:] + r.stderr[-800:]

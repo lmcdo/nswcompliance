@@ -325,7 +325,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     ent11, ent12 = [], []
     near_anchors: set[str] = set()  # every anchor whose straight distance is within the walking limit
     for st in stations["stations"]:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-        pts = [(e["lon"], e["lat"]) for e in st.get("entrances", [])] or [(st["lon"], st["lat"])]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+        pts = [(e["lon"], e["lat"]) for e in (st.get("entrances") or [])] or [(st["lon"], st["lat"])]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         pm = [to_m(x, y) for x, y in pts]
         if st["name"] in s12_names:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
             ent12 += pm
@@ -359,5 +359,5 @@ def area_check(lat: float, lng: float, **kw) -> dict:
         logger.warning("lmr area check measurement failed: %s", exc)
         return dec._failed(f"measurement failed: {type(exc).__name__}: {exc}")
     r = dec.decide(m)
-    r["measured"] = {**r.get("measured", {}), "lot_outline": m.get("lot_outline"), "distance_note": m.get("distance_note")}
+    r["measured"] = {**(r.get("measured") or {}), "lot_outline": m.get("lot_outline"), "distance_note": m.get("distance_note")}
     return r

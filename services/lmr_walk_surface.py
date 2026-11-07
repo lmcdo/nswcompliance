@@ -54,7 +54,7 @@ class Surface:
         self.epsg: int = doc["epsg"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         self.bbox_m = tuple(doc["bbox_m"])  # (minx, miny, maxx, maxy) in the surface CRS  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         self.built: str = doc["built"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-        self.osm_extract: str = doc.get("osm_extract", "")
+        self.osm_extract: str = doc.get("osm_extract") or ""
         self.anchors: list[dict] = doc["anchors"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         arr = np.asarray(doc["nodes"], dtype=float).reshape(-1, 4)  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         self.xy = arr[:, :2]

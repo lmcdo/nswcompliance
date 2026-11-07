@@ -70,7 +70,7 @@ export function rowsToFacts(rows: LawFactRow[]): LawFacts {
     const wanted = (LAW_FACT_KEYS as readonly string[]).includes(r.fact_key) || LAW_FACT_PREFIXES.some((p) => r.fact_key.startsWith(p));
     if (!wanted) continue;
     const n = r.value_number == null ? null : Number(r.value_number);
-    const value = typeof r.value === 'string' && r.value.trim() !== '' ? r.value : n != null && Number.isFinite(n) ? n : null;
+    const value = typeof r.value === 'string' && r.value?.trim() !== '' ? r.value : n != null && Number.isFinite(n) ? n : null;
     if (value == null || !r.clause || !r.pdf_page || !r.quote) continue;
     out[r.fact_key] = {
       value,

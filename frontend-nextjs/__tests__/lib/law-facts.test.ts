@@ -168,7 +168,9 @@ describe('reformParkingRates (parking minimums served by prefix, labelled from t
     expect(reformParkingRates({})).toEqual([]);
     const zero = rows.map((r) => ({ ...r, value: 0, value_number: 0 }));
     expect(reformParkingRates(rowsToFacts(zero))).toEqual([]);
-    const unlabeled = [{ ...rows[0], extra: {} }];
+    const [first] = rows;
+    expect(first).toBeDefined();
+    const unlabeled = [{ ...first, extra: {} }];
     expect(reformParkingRates(rowsToFacts(unlabeled))).toEqual([]);
   });
 

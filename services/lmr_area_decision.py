@@ -108,7 +108,7 @@ class LawFacts:
         v = self.fact(key).get("value")
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise LawFactsError(f"law fact {key} has no numeric value")
-        return float(v)
+        return float(v)  # qa-ignore: v is type-checked (int or float, not bool) three lines above
 
     def names(self, key: str) -> list[str]:
         v = self.fact(key).get("value")
@@ -137,7 +137,7 @@ class LawFacts:
         return names
 
     def paragraph(self, para: str) -> dict:
-        for p in self.fact("s164").get("paragraphs", []):
+        for p in (self.fact("s164").get("paragraphs") or []):
             if p.get("para") == para:
                 if p.get("repealed"):
                     raise LawFactsError(f"s164(1)({para}) is repealed in this version")
@@ -402,10 +402,10 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     walk = m.get("walk") if isinstance(m.get("walk"), dict) else {}
     base = {**cite, "limit_m": outer, "straight_m": None if straight is None else round(straight)}
     if not isinstance(straight, (int, float)) or isinstance(straight, bool) or straight < 0:
-        return CANT, {**base, "reason_code": "no_straight_distance", "detail": "distance to the nearest anchor did not answer"}
+        return CANT, {**base, "reason_code": "no_straight_distance", "detail": "the distance to the nearest station or town centre did not come back"}
     if straight > outer:
         # A walk can never be shorter than the straight line, so this "no" does not depend on the walking measure.
-        return NO, {**base, "reason_code": "beyond_straight_line", "detail": "the straight line to the nearest anchor is longer than the walking limit"}
+        return NO, {**base, "reason_code": "beyond_straight_line", "detail": "the straight line to the nearest station or town centre is longer than the walking limit"}
     wm = walk.get("m")
     if walk.get("valid") is not True or not isinstance(wm, (int, float)) or isinstance(wm, bool):
         return CANT, {**base, "reason_code": "walking_measure_unavailable",
@@ -413,8 +413,8 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     # The walk is a RANGE, not a point. Low end: the measured walk less the measurement margin. High end: the measured walk plus
     # the margin, plus `optimistic_by_m` when the walk was measured to a station building outline instead of a mapped entrance
     # (the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length).
-    opt = walk.get("optimistic_by_m", 0)
-    opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and opt >= 0 else 0.0
+    opt = walk.get("optimistic_by_m") or 0
+    opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and opt >= 0 else 0.0  # qa-ignore: opt is type-checked on this same line
     lo_m, hi_m = max(0.0, wm - WALK_MARGIN_LOW_M), wm + opt + WALK_MARGIN_HIGH_M
     best = wm + opt / 2
     base.update({"walk_m": round(wm), "walk_low_m": round(lo_m), "walk_high_m": round(hi_m), "walk_best_m": round(best),

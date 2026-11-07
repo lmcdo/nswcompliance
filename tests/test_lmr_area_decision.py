@@ -435,3 +435,12 @@ def test_walk_method_note_is_plain_english():
     for word in ("lopsided", "router", "straddles", "heuristic"):
         assert word not in WALK_HEURISTIC.lower()
     assert "75 m shorter and 225 m longer" in WALK_HEURISTIC  # the figures still come from the constants
+
+
+def test_reader_facing_details_avoid_internal_words():
+    """`detail` and `headline` are printed on the card. 'anchor' is the code's word for a station or town centre; a reader never sees it."""
+    import inspect
+    src = inspect.getsource(d)
+    for line in src.splitlines():
+        if '"detail":' in line and "reason_code" in line:
+            assert "anchor" not in line.split('"detail":', 1)[1].lower(), line.strip()

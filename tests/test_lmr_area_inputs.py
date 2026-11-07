@@ -2,6 +2,7 @@
 
 Aim: a failed or odd map response must become None / "cant_tell", never a quiet clear.
 """
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -259,3 +260,17 @@ def test_the_pipeline_distance_in_gather_is_the_laws_not_a_typed_figure(monkeypa
     fake(monkeypatch, {})
     inp.gather(LAT, LNG, rings=RING, stations={"stations": []})
     assert seen == [dec.LawFacts.load().number("s164_i_distance")]
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not __import__("os").environ.get("PYTEST_LIVE_PORTAL"), reason="opt in with PYTEST_LIVE_PORTAL=1 (calls the NSW planning portal and the database)")
+def test_live_portal_chapter5_point_answers_chapter5():
+    """Real layer: a lot on the TOD Sites Map (-33.8886, 151.1253, Inner West) is answered Chapter 5 from the live map, not from a stub.
+
+    Runs in a child process because tests/conftest_mocks.py replaces pyproj with a stub that returns (0, 0).
+    """
+    root = Path(__file__).resolve().parent.parent
+    code = "import json; from services.lmr_area_inputs import area_check; r = area_check(-33.8886, 151.1253); print(json.dumps(r['pathway']))"
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=180, cwd=root)
+    assert r.returncode == 0, r.stderr[-800:]
+    assert json.loads(r.stdout.strip().splitlines()[-1]) == "tod"
