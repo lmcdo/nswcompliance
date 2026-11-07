@@ -62,6 +62,7 @@ YES, NO, CANT, BORDER = "yes", "no", "cant_tell", "borderline"
 # only 86% of two fresh samples, so these two numbers are set on all three samples and must be checked on lots drawn with new seeds.
 WALK_MARGIN_LOW_M = 75    # noqa: regulatory-number -- measured router disagreement, not a planning figure
 WALK_MARGIN_HIGH_M = 225  # noqa: regulatory-number -- measured router disagreement, not a planning figure
+SANITY_MAX_M = 100000000.0  # noqa: regulatory-number -- upper sanity bound on a distance read from a chart answer (also rejects NaN and infinity); not a planning figure
 
 
 # What a reader is told when a check could not be completed. The machine value stays "cant_tell"; the words a person sees never are.
@@ -232,11 +233,11 @@ def _sydney_noise_rule(m: dict, facts: LawFacts) -> Optional[dict]:
     if not isinstance(c, dict) or c.get("state") not in ("inside", "outside", "near"):
         return _rule("aircraft_noise_sydney", ph, "unknown", f"Sydney Airport's 2045 chart has no ANEF {anef_min:g} line to compare with the law")
     margin = c.get("margin_m")
-    if isinstance(margin, bool) or not isinstance(margin, (int, float)) or not 0 < margin < 100000:   # also false for NaN
+    if isinstance(margin, bool) or not isinstance(margin, (int, float)) or not 0 < margin < SANITY_MAX_M:   # also false for NaN
         return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks its accuracy figure, so a lot cannot be placed against its line")
     if c["state"] == "inside":  # noqa: bracket-access -- state was checked above
         depth = c.get("inside_by_m")
-        if isinstance(depth, bool) or not isinstance(depth, (int, float)) or not margin < depth < 100000000:   # an exclusion rests on this depth; also false for NaN
+        if isinstance(depth, bool) or not isinstance(depth, (int, float)) or not margin < depth < SANITY_MAX_M:   # an exclusion rests on this depth; also false for NaN
             return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks how far the lot is inside the line, so it cannot be called excluded")
         return _rule("aircraft_noise_sydney", ph, "excludes",
                      f"part of the lot is inside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart (endorsed by Airservices Australia); "
@@ -252,7 +253,7 @@ def _sydney_noise_rule(m: dict, facts: LawFacts) -> Optional[dict]:
                          f"the lot is wholly outside the map of Sydney Airport's 2045 aircraft noise chart, which shows all of its outermost (ANEF 20) line, "
                          f"so it is clear of the ANEF {anef_min:g} line", margin_m=margin)
         nearest = c.get("nearest_m")
-        if isinstance(nearest, bool) or not isinstance(nearest, (int, float)) or not margin < nearest < 100000000:   # clear rests on this distance; also false for NaN
+        if isinstance(nearest, bool) or not isinstance(nearest, (int, float)) or not margin < nearest < SANITY_MAX_M:   # clear rests on this distance; also false for NaN
             return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks the lot's distance from the line, so it cannot be called clear")
         return _rule("aircraft_noise_sydney", ph, "clear",
                      f"the lot is outside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart by more than the chart's accuracy of {margin:g} m",

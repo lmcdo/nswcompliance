@@ -19,7 +19,8 @@ from typing import Optional
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "anef" / "sydney_anef_2045.json"
 LAW_LEVEL = 25  # the level used when a caller does not name one; the decision passes the law's own level, read from law_facts
 _M_PER_DEG = math.radians(1.0) * 6378137.0  # metres per degree of latitude (and of longitude at the equator)
-MAX_INTERIOR_SAMPLES = 50  # when a lot encloses part of a contour its inside is sampled on a grid of at most this many points a side
+MAX_INTERIOR_SAMPLES = 50  # noqa: regulatory-number -- grid size when a lot encloses part of a contour, not a planning figure
+OUTLINE_STEP_M = 5.0  # noqa: regulatory-number -- the lot outline is sampled at most this far apart; a sampling step, not a planning figure
 
 
 class SydneyAnefError(Exception):
@@ -61,12 +62,12 @@ def _dist_to_ring(poly: list[tuple[float, float]], x: float, y: float) -> float:
 
 
 def _outline_points(lat: float, lng: float, ring: Optional[list]) -> list[tuple[float, float]]:
-    """The lot's outline (one ring of [lon, lat]) densified to at most about 5 m between points, as (lon, lat); the address point alone when no outline is held."""
+    """The lot's outline (one ring of [lon, lat]) densified to OUTLINE_STEP_M between points, as (lon, lat); the address point alone when no outline is held."""
     if not ring or len(ring) < 4:   # fewer than 4 points (a closed triangle) is not a lot outline
         return [(lng, lat)]
     pts: list[tuple[float, float]] = []
     for (x1, y1), (x2, y2) in zip(ring[:-1], ring[1:]):
-        n = max(1, math.ceil(math.hypot((x2 - x1) * 91000.0, (y2 - y1) * 111000.0) / 5.0))
+        n = max(1, math.ceil(math.hypot((x2 - x1) * 91000.0, (y2 - y1) * 111000.0) / OUTLINE_STEP_M))
         pts += [(x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n) for k in range(n)]
     pts.append((ring[-1][0], ring[-1][1]))
     return pts
