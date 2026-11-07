@@ -1,0 +1,3082 @@
+{
+ "built": "2026-11-07",
+ "source": "OpenStreetMap via Overpass (ODbL) + Transport for NSW GTFS Pathways (CC-BY 3.0 Australia, https://opendata.transport.nsw.gov.au/dataset/gtfs-pathways)",
+ "law_version_date": "2026-10-23",
+ "stations": [
+  {
+   "name": "Adamstown station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886265347",
+   "lat": -32.9337786,
+   "lon": 151.7200237,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/1865342629",
+     "lat": -32.933318,
+     "lon": 151.7204371,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/6316321198",
+     "lat": -32.9338464,
+     "lon": 151.7201381,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/6316321201",
+     "lat": -32.933657,
+     "lon": 151.7203807,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/6316321213",
+     "lat": -32.933668,
+     "lon": 151.7202975,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/6316321214",
+     "lat": -32.9335312,
+     "lon": 151.7201542,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318560",
+     "lat": -32.9336704,
+     "lon": 151.7203692,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318561",
+     "lat": -32.9338581,
+     "lon": 151.7201264,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318562",
+     "lat": -32.9333794,
+     "lon": 151.7203982,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318565",
+     "lat": -32.9335437,
+     "lon": 151.7201448,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318566",
+     "lat": -32.9335403,
+     "lon": 151.7201411,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318571",
+     "lat": -32.933682,
+     "lon": 151.7202872,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10003318572",
+     "lat": -32.933674,
+     "lon": 151.7202787,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Arncliffe station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6620600130",
+   "lat": -33.936435,
+   "lon": 151.1473489,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4905430124",
+     "lat": -33.9367849,
+     "lon": 151.1468705,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4905430161",
+     "lat": -33.9368343,
+     "lon": 151.1470129,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4905430162",
+     "lat": -33.9369101,
+     "lon": 151.1472443,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4905430163",
+     "lat": -33.9369702,
+     "lon": 151.1474287,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773670",
+     "lat": -33.9367791,
+     "lon": 151.1468545,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773671",
+     "lat": -33.9367908,
+     "lon": 151.1468881,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773672",
+     "lat": -33.9368211,
+     "lon": 151.1470197,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773673",
+     "lat": -33.9368967,
+     "lon": 151.1472509,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773674",
+     "lat": -33.9369644,
+     "lon": 151.1474125,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773675",
+     "lat": -33.9369598,
+     "lon": 151.1474148,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773683",
+     "lat": -33.9368949,
+     "lon": 151.1472455,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9780773684",
+     "lat": -33.936823,
+     "lon": 151.1470254,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Artarmon station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1557879554",
+   "lat": -33.808856,
+   "lon": 151.1851425,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4432374086",
+     "lat": -33.8085438,
+     "lon": 151.184691,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4432411197",
+     "lat": -33.8086492,
+     "lon": 151.1848354,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4432411210",
+     "lat": -33.8087374,
+     "lon": 151.1847422,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181496074",
+     "lat": -33.8087437,
+     "lon": 151.1847501,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181496075",
+     "lat": -33.8086552,
+     "lon": 151.1848441,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181496076",
+     "lat": -33.8086435,
+     "lon": 151.1848282,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181496077",
+     "lat": -33.8087312,
+     "lon": 151.1847346,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181496078",
+     "lat": -33.8086598,
+     "lon": 151.1848501,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12960378225",
+     "lat": -33.8087912,
+     "lon": 151.1848286,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12960378226",
+     "lat": -33.8088356,
+     "lon": 151.184894,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Ashfield station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886240860",
+   "lat": -33.8876579,
+   "lon": 151.1258176,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_26",
+     "lat": -33.887444,
+     "lon": 151.12596100000005,
+     "name": "Ashfield Station, Station St - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_27",
+     "lat": -33.887398,
+     "lon": 151.125809,
+     "name": "Ashfield Station, Station St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_24",
+     "lat": -33.88789000000001,
+     "lon": 151.125793,
+     "name": "Ashfield Station, Brown St - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_25",
+     "lat": -33.887775,
+     "lon": 151.12553400000004,
+     "name": "Ashfield Station, Brown St - Stairs"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Banksia station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6620600094",
+   "lat": -33.9453399,
+   "lon": 151.140407,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6959923460",
+     "lat": -33.9454306,
+     "lon": 151.1403582
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Bankstown station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/1029985562",
+   "lat": -33.9177281,
+   "lon": 151.0351302,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/2624220444",
+     "lat": -33.917789,
+     "lon": 151.0341152
+    },
+    {
+     "id": "node/2624220445",
+     "lat": -33.9180435,
+     "lon": 151.0341394
+    },
+    {
+     "id": "node/12560651505",
+     "lat": -33.9178081,
+     "lon": 151.03517
+    },
+    {
+     "id": "node/12560651508",
+     "lat": -33.9178003,
+     "lon": 151.0353573
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Bella Vista station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/677568476",
+   "lat": -33.7306227,
+   "lon": 150.943986,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6338844600",
+     "lat": -33.7311285,
+     "lon": 150.9442782
+    },
+    {
+     "id": "node/6338844666",
+     "lat": -33.7300381,
+     "lon": 150.9438096
+    },
+    {
+     "id": "gtfs:2153478-exit1",
+     "lat": -33.730174299999995,
+     "lon": 150.943752,
+     "name": ""
+    },
+    {
+     "id": "gtfs:entrance_exit_56",
+     "lat": -33.7310687,
+     "lon": 150.9443005,
+     "name": "Bella Vista Station, Mawson Ave - South - Escalators"
+    },
+    {
+     "id": "gtfs:2153478-exit3",
+     "lat": -33.731106700000005,
+     "lon": 150.94419,
+     "name": ""
+    },
+    {
+     "id": "gtfs:entrance_exit_55",
+     "lat": -33.730141100000004,
+     "lon": 150.9438642,
+     "name": "Bella Vista Station, Mawson Ave - North - Lift"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Beverly Hills station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6576039172",
+   "lat": -33.9490787,
+   "lon": 151.0810471,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/2444076737",
+     "lat": -33.9491376,
+     "lon": 151.08084,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9567178793",
+     "lat": -33.9491671,
+     "lon": 151.0808602,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9567178794",
+     "lat": -33.949147,
+     "lon": 151.0808072,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9567178795",
+     "lat": -33.9490929,
+     "lon": 151.0810237,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9567178798",
+     "lat": -33.9492639,
+     "lon": 151.0804752,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12389169775",
+     "lat": -33.9498046,
+     "lon": 151.0802428,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12389169777",
+     "lat": -33.9497722,
+     "lon": 151.0802261,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12389169778",
+     "lat": -33.9496754,
+     "lon": 151.0801779,
+     "kind": "parking_entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12389169787",
+     "lat": -33.9497533,
+     "lon": 151.08019,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/12389169788",
+     "lat": -33.949759,
+     "lon": 151.0801722,
+     "kind": "parking_entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Bexley North station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6576039170",
+   "lat": -33.9375479,
+   "lon": 151.1134896,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9173507651",
+     "lat": -33.9374957,
+     "lon": 151.1139083,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9173507652",
+     "lat": -33.9374983,
+     "lon": 151.1138891,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9173507656",
+     "lat": -33.9374933,
+     "lon": 151.113908,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9173507657",
+     "lat": -33.9374916,
+     "lon": 151.1139372,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11523941097",
+     "lat": -33.9374759,
+     "lon": 151.1139332,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11523941098",
+     "lat": -33.9374795,
+     "lon": 151.1139092,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11523941099",
+     "lat": -33.9375051,
+     "lon": 151.1139399,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11523941100",
+     "lat": -33.9375092,
+     "lon": 151.1139157,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11523941101",
+     "lat": -33.9375074,
+     "lon": 151.113767,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Canley Vale station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886265353",
+   "lat": -33.8872029,
+   "lon": 150.9436605,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4692805720",
+     "lat": -33.8873533,
+     "lon": 150.9434225,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7856335734",
+     "lat": -33.8874252,
+     "lon": 150.943664,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7856335747",
+     "lat": -33.8872608,
+     "lon": 150.9434703,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7856335748",
+     "lat": -33.8870059,
+     "lon": 150.9436816,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181564246",
+     "lat": -33.8872693,
+     "lon": 150.9434824,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9181564251",
+     "lat": -33.8873126,
+     "lon": 150.9437555,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10035333606",
+     "lat": -33.8874552,
+     "lon": 150.9435796,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10035337429",
+     "lat": -33.8874436,
+     "lon": 150.9435893,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10035337432",
+     "lat": -33.8874624,
+     "lon": 150.9435734,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10035337437",
+     "lat": -33.8873642,
+     "lon": 150.9434128,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10035337440",
+     "lat": -33.8873429,
+     "lon": 150.9434298,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/13644184774",
+     "lat": -33.8873613,
+     "lon": 150.943408,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Cardiff station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/339273908",
+   "lat": -32.9416524,
+   "lon": 151.6628275,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/249344151",
+     "lat": -32.941282,
+     "lon": 151.6628203,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7347167898",
+     "lat": -32.9415856,
+     "lon": 151.6624558,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7347167903",
+     "lat": -32.9414433,
+     "lon": 151.6623598,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/7347167907",
+     "lat": -32.9413303,
+     "lon": 151.6626051,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994026302",
+     "lat": -32.9414556,
+     "lon": 151.6623696,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994026303",
+     "lat": -32.9414581,
+     "lon": 151.6623631,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994026307",
+     "lat": -32.9414612,
+     "lon": 151.6623567,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994026314",
+     "lat": -32.9413391,
+     "lon": 151.6626145,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994026315",
+     "lat": -32.9413431,
+     "lon": 151.6626058,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994066628",
+     "lat": -32.9413629,
+     "lon": 151.6625884,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994066629",
+     "lat": -32.9415098,
+     "lon": 151.6627004,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Concord West station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/26400030",
+   "lat": -33.8484033,
+   "lon": 151.0856114,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:213810-exit4",
+     "lat": -33.8485021,
+     "lon": 151.0852513,
+     "name": "King St"
+    },
+    {
+     "id": "gtfs:213810-exit5",
+     "lat": -33.8483767,
+     "lon": 151.08522030000003,
+     "name": "King St"
+    },
+    {
+     "id": "gtfs:213810-exit6",
+     "lat": -33.8483528,
+     "lon": 151.0859028,
+     "name": "Queen St"
+    },
+    {
+     "id": "gtfs:213810-exit7",
+     "lat": -33.8484535,
+     "lon": 151.085899,
+     "name": "Queen St"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Crows Nest station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/1255910313",
+   "lat": -33.8257383,
+   "lon": 151.1992543,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/11577976158",
+     "lat": -33.8254107,
+     "lon": 151.1987661
+    },
+    {
+     "id": "node/11577998303",
+     "lat": -33.8254902,
+     "lon": 151.1997434
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Croydon station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6553012244",
+   "lat": -33.8832296,
+   "lon": 151.1155955,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6191622413",
+     "lat": -33.8828377,
+     "lon": 151.1155008
+    },
+    {
+     "id": "node/9282073252",
+     "lat": -33.8832064,
+     "lon": 151.1150726
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Doonside station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1670207781",
+   "lat": -33.7639932,
+   "lon": 150.868382,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_264",
+     "lat": -33.763626,
+     "lon": 150.869232,
+     "name": "Doonside Station, Cross St - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_263",
+     "lat": -33.7639986,
+     "lon": 150.8693267,
+     "name": "Doonside Station, School Pde - Ramp"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Dulwich Hill station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6627573536",
+   "lat": -33.9110089,
+   "lon": 151.140913,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_272",
+     "lat": -33.911057,
+     "lon": 151.141144,
+     "name": "Dulwich Hill Station, Wardell Rd - Stairs"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Flemington station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/20163894",
+   "lat": -33.8648765,
+   "lon": 151.069948,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/2441129225",
+     "lat": -33.8651458,
+     "lon": 151.0703332
+    },
+    {
+     "id": "node/9244693325",
+     "lat": -33.8635398,
+     "lon": 151.0702052
+    },
+    {
+     "id": "node/9282131190",
+     "lat": -33.8650917,
+     "lon": 151.0700464
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Glenfield station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886265357",
+   "lat": -33.9722422,
+   "lon": 150.8930882,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6117421616",
+     "lat": -33.972469,
+     "lon": 150.8931239
+    },
+    {
+     "id": "node/6117421618",
+     "lat": -33.972066,
+     "lon": 150.8935819
+    },
+    {
+     "id": "node/6117421620",
+     "lat": -33.9718595,
+     "lon": 150.8931276
+    },
+    {
+     "id": "gtfs:entrance_exit_341",
+     "lat": -33.972076,
+     "lon": 150.89356999999995,
+     "name": "Glenfield Station, Railway Pde - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_339",
+     "lat": -33.971740999999994,
+     "lon": 150.89326499999999,
+     "name": "Glenfield Station, service road - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_342",
+     "lat": -33.971828,
+     "lon": 150.893173,
+     "name": "Glenfield Station, service road - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_338",
+     "lat": -33.9722467,
+     "lon": 150.89338869999997,
+     "name": "Glenfield Station, Railway Pde - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_340",
+     "lat": -33.972477000000005,
+     "lon": 150.893127,
+     "name": "Glenfield Station, Railway Pde - Stairs"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Granville station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/4692878089",
+   "lat": -33.8330942,
+   "lon": 151.0124059,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:214240-exit1",
+     "lat": -33.8332446,
+     "lon": 151.01184130000001,
+     "name": ""
+    },
+    {
+     "id": "gtfs:214240-exit2",
+     "lat": -33.833183,
+     "lon": 151.011841,
+     "name": ""
+    },
+    {
+     "id": "gtfs:entrance_exit_354",
+     "lat": -33.832901,
+     "lon": 151.01139799999999,
+     "name": "Granville Station, Memorial Dr - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_355",
+     "lat": -33.832775,
+     "lon": 151.01148999999995,
+     "name": "Granville Station, Memorial Dr - Ramp"
+    },
+    {
+     "id": "gtfs:214240-exit6",
+     "lat": -33.8330686,
+     "lon": 151.0119312,
+     "name": ""
+    },
+    {
+     "id": "gtfs:214240-exit7",
+     "lat": -33.832560799999996,
+     "lon": 151.01211569999995,
+     "name": "Bridge St"
+    },
+    {
+     "id": "gtfs:214240-exit8",
+     "lat": -33.832386,
+     "lon": 151.011673,
+     "name": "Bridge St"
+    },
+    {
+     "id": "gtfs:214240-exit9",
+     "lat": -33.832668,
+     "lon": 151.012283,
+     "name": "Bridge St"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Gymea station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6620581683",
+   "lat": -34.0348927,
+   "lon": 151.0855146,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9655689351",
+     "lat": -34.0349035,
+     "lon": 151.0851988,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9787141327",
+     "lat": -34.0349018,
+     "lon": 151.0851805,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9787141328",
+     "lat": -34.034905,
+     "lon": 151.0852158,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9787141329",
+     "lat": -34.0348673,
+     "lon": 151.0851334,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9787141330",
+     "lat": -34.0348687,
+     "lon": 151.0851431,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Hamilton station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/14027610507",
+   "lat": -32.9186418,
+   "lon": 151.7487559,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6605241273",
+     "lat": -32.9185702,
+     "lon": 151.7484457
+    },
+    {
+     "id": "node/9548337900",
+     "lat": -32.9183078,
+     "lon": 151.7484586
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Hills Showground station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/677568474",
+   "lat": -33.7278031,
+   "lon": 150.9873944,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6338844427",
+     "lat": -33.7279588,
+     "lon": 150.9868834
+    },
+    {
+     "id": "gtfs:entrance_exit_400",
+     "lat": -33.727955,
+     "lon": 150.98681240000005,
+     "name": "Hills Showground Station, Doran Dr - Lift"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Homebush station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6618892734",
+   "lat": -33.8668117,
+   "lon": 151.0864608,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_407",
+     "lat": -33.866421,
+     "lon": 151.086426,
+     "name": "Homebush Station, Loftus Cres - Stairs"
+    },
+    {
+     "id": "gtfs:214010-exit2",
+     "lat": -33.8663467,
+     "lon": 151.08628869999995,
+     "name": "Loftus Cres"
+    },
+    {
+     "id": "gtfs:entrance_exit_406",
+     "lat": -33.8669347,
+     "lon": 151.0860855,
+     "name": "Homebush Station, The Crescent - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_405",
+     "lat": -33.8669457,
+     "lon": 151.0860959,
+     "name": "Homebush Station, The Crescent - Ramp"
+    },
+    {
+     "id": "gtfs:214010-exit5",
+     "lat": -33.866881,
+     "lon": 151.0859493,
+     "name": "The Crescent"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Hornsby station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/4329364693",
+   "lat": -33.7034849,
+   "lon": 151.0983925,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_412",
+     "lat": -33.7037881,
+     "lon": 151.0987366,
+     "name": "Hornsby Station, George St - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_409",
+     "lat": -33.70348,
+     "lon": 151.098099,
+     "name": "Hornsby Station, Station St - Path"
+    },
+    {
+     "id": "gtfs:entrance_exit_411",
+     "lat": -33.7038381,
+     "lon": 151.0990864,
+     "name": "Hornsby Station, George St - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_410",
+     "lat": -33.7035725,
+     "lon": 151.09863380000004,
+     "name": "Hornsby Station, George St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_408",
+     "lat": -33.70385220000001,
+     "lon": 151.099386,
+     "name": "Hornsby Station, Hunter Lane - Ramp"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Kellyville station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/677568477",
+   "lat": -33.7131238,
+   "lon": 150.9350813,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/13695090882",
+     "lat": -33.7130818,
+     "lon": 150.9350941
+    },
+    {
+     "id": "node/13695090879",
+     "lat": -33.7133929,
+     "lon": 150.9353293
+    },
+    {
+     "id": "node/13695090880",
+     "lat": -33.7134387,
+     "lon": 150.9351974
+    },
+    {
+     "id": "gtfs:2155382-exit2",
+     "lat": -33.7130847,
+     "lon": 150.9351046,
+     "name": ""
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Kensington light rail station",
+   "schedule": 11,
+   "light_rail": true,
+   "osm": "way/822364731",
+   "lat": -33.9094123,
+   "lon": 151.2233468,
+   "candidates": 1,
+   "entrances": [],
+   "no_mapped_entrance": true,
+   "footprint": {
+    "outlines_used": 3,
+    "span_m": 107,
+    "hull_lonlat": [
+     [
+      151.2233779,
+      -33.909893
+     ],
+     [
+      151.2232098,
+      -33.909873100000006
+     ],
+     [
+      151.2233538,
+      -33.908931499999994
+     ],
+     [
+      151.2234838,
+      -33.908944799999986
+     ],
+     [
+      151.2233779,
+      -33.909893
+     ]
+    ]
+   }
+  },
+  {
+   "name": "Killara station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/1001065439",
+   "lat": -33.7654902,
+   "lon": 151.1616904,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4865552048",
+     "lat": -33.7656541,
+     "lon": 151.1618134,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454296",
+     "lat": -33.7658723,
+     "lon": 151.1618123,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454299",
+     "lat": -33.7657243,
+     "lon": 151.1620896,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454300",
+     "lat": -33.765827,
+     "lon": 151.1619392,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454319",
+     "lat": -33.7658143,
+     "lon": 151.1619356,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454320",
+     "lat": -33.7657179,
+     "lon": 151.1621019,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454321",
+     "lat": -33.7658783,
+     "lon": 151.1618004,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454322",
+     "lat": -33.7658652,
+     "lon": 151.161825,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454323",
+     "lat": -33.7657307,
+     "lon": 151.1620772,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11328454324",
+     "lat": -33.7658164,
+     "lon": 151.1619316,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362394",
+     "lat": -33.7656413,
+     "lon": 151.1618128,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362395",
+     "lat": -33.7656481,
+     "lon": 151.1617919,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362396",
+     "lat": -33.7656224,
+     "lon": 151.1617991,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362397",
+     "lat": -33.7658508,
+     "lon": 151.1619593,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Kingsford Juniors light rail station",
+   "schedule": 11,
+   "light_rail": true,
+   "osm": "relation/16741089",
+   "lat": -33.9250557,
+   "lon": 151.2291876,
+   "candidates": 1,
+   "entrances": [],
+   "no_mapped_entrance": true,
+   "footprint": {
+    "outlines_used": 3,
+    "span_m": 84,
+    "hull_lonlat": [
+     [
+      151.2294357,
+      -33.925367999999985
+     ],
+     [
+      151.2287621,
+      -33.92491640000001
+     ],
+     [
+      151.2287971,
+      -33.9248794
+     ],
+     [
+      151.2288879,
+      -33.9247886
+     ],
+     [
+      151.2289159,
+      -33.92476080000001
+     ],
+     [
+      151.22893660000003,
+      -33.9247403
+     ],
+     [
+      151.2296055,
+      -33.92519339999998
+     ],
+     [
+      151.2294575,
+      -33.9253463
+     ],
+     [
+      151.2294481,
+      -33.92535569999999
+     ],
+     [
+      151.2294357,
+      -33.925367999999985
+     ]
+    ]
+   }
+  },
+  {
+   "name": "Kotara station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/4280080690",
+   "lat": -32.9413898,
+   "lon": 151.6985472,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/355007384",
+     "lat": -32.9414011,
+     "lon": 151.6976667,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4522476638",
+     "lat": -32.9417004,
+     "lon": 151.6979478,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10000995251",
+     "lat": -32.9416326,
+     "lon": 151.6977698,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Lidcombe station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/19164434",
+   "lat": -33.8638146,
+   "lon": 151.0452428,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_494",
+     "lat": -33.86338,
+     "lon": 151.044556,
+     "name": "Lidcombe Station, Church St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_495",
+     "lat": -33.863461,
+     "lon": 151.0448,
+     "name": "Lidcombe Station, Church St - Path"
+    },
+    {
+     "id": "gtfs:entrance_exit_497",
+     "lat": -33.863754,
+     "lon": 151.044281,
+     "name": "Lidcombe Station, Railway St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_499",
+     "lat": -33.863869,
+     "lon": 151.044601,
+     "name": "Lidcombe Station, Railway St - Stairs"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Lilyfield light rail station",
+   "schedule": 11,
+   "light_rail": true,
+   "osm": "node/5692088714",
+   "lat": -33.874167,
+   "lon": 151.1650692,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/5303118424",
+     "lat": -33.8741041,
+     "lon": 151.1647526
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Liverpool station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6616036388",
+   "lat": -33.9245421,
+   "lon": 150.9276398,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_518",
+     "lat": -33.924305,
+     "lon": 150.926941,
+     "name": "Liverpool Station, Biggs St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_517",
+     "lat": -33.924385,
+     "lon": 150.92700200000004,
+     "name": "Liverpool Station, Biggs St - Lift"
+    },
+    {
+     "id": "gtfs:217020-exit3",
+     "lat": -33.9245374,
+     "lon": 150.9272971,
+     "name": ""
+    },
+    {
+     "id": "gtfs:217020-exit4",
+     "lat": -33.9241861,
+     "lon": 150.927653,
+     "name": ""
+    },
+    {
+     "id": "gtfs:217020-exit6",
+     "lat": -33.9239593,
+     "lon": 150.92734309999997,
+     "name": ""
+    },
+    {
+     "id": "gtfs:217020-exit8",
+     "lat": -33.923984000000004,
+     "lon": 150.92748600000004,
+     "name": ""
+    },
+    {
+     "id": "gtfs:217020-exit9",
+     "lat": -33.924097100000004,
+     "lon": 150.9270786,
+     "name": ""
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Macquarie Park station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/677568470",
+   "lat": -33.7851282,
+   "lon": 151.1282852,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/1900396982",
+     "lat": -33.7850431,
+     "lon": 151.1279634
+    },
+    {
+     "id": "node/6338844183",
+     "lat": -33.7854215,
+     "lon": 151.1284913
+    },
+    {
+     "id": "gtfs:211340-exit2",
+     "lat": -33.7849931,
+     "lon": 151.12800780000003,
+     "name": "Lane Cove Rd"
+    },
+    {
+     "id": "gtfs:entrance_exit_533",
+     "lat": -33.7850492,
+     "lon": 151.1279404,
+     "name": "Macquarie Park Station, Lane Cove Rd - Lift"
+    },
+    {
+     "id": "gtfs:211340-exit4",
+     "lat": -33.7853742,
+     "lon": 151.1285099,
+     "name": "Lane Cove Rd"
+    },
+    {
+     "id": "gtfs:entrance_exit_535",
+     "lat": -33.78543270000001,
+     "lon": 151.12847219999998,
+     "name": "Macquarie Park Station, Lane Cove Rd South bound - Escalators"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Marrickville station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/15194910",
+   "lat": -33.9139638,
+   "lon": 151.1536185,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/5700861326",
+     "lat": -33.9138013,
+     "lon": 151.153139
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Meadowbank station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6544860724",
+   "lat": -33.8159137,
+   "lon": 151.0900998,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/5357940208",
+     "lat": -33.815611,
+     "lon": 151.0899314,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/5357940211",
+     "lat": -33.8156298,
+     "lon": 151.0899004,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/5357940212",
+     "lat": -33.8156325,
+     "lon": 151.0902184,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9840670696",
+     "lat": -33.8158039,
+     "lon": 151.090214,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9840670697",
+     "lat": -33.8158882,
+     "lon": 151.0902283,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9840670701",
+     "lat": -33.8158395,
+     "lon": 151.0900153,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9840670704",
+     "lat": -33.8158639,
+     "lon": 151.0900119,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9840682219",
+     "lat": -33.815656,
+     "lon": 151.0902449,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591001",
+     "lat": -33.8156468,
+     "lon": 151.0902217,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591002",
+     "lat": -33.8156465,
+     "lon": 151.0902174,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591003",
+     "lat": -33.8158843,
+     "lon": 151.0901891,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591005",
+     "lat": -33.8156249,
+     "lon": 151.0899345,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591006",
+     "lat": -33.8156244,
+     "lon": 151.0899257,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9852591007",
+     "lat": -33.8156246,
+     "lon": 151.0899301,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Milsons Point station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1829323375",
+   "lat": -33.8458627,
+   "lon": 151.2117909,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/3921239287",
+     "lat": -33.8458066,
+     "lon": 151.2124192
+    },
+    {
+     "id": "node/4424603475",
+     "lat": -33.8459611,
+     "lon": 151.2117458
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Minto station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886255311",
+   "lat": -34.0272394,
+   "lon": 150.8425751,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4698275787",
+     "lat": -34.0275748,
+     "lon": 150.8426482,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4698275901",
+     "lat": -34.0272986,
+     "lon": 150.842333,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4698275902",
+     "lat": -34.0275116,
+     "lon": 150.8422706,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4698275903",
+     "lat": -34.0275329,
+     "lon": 150.8423647,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9000038375",
+     "lat": -34.0273816,
+     "lon": 150.8426442,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284589744",
+     "lat": -34.02757,
+     "lon": 150.8426296,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284589751",
+     "lat": -34.0274941,
+     "lon": 150.8422688,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284589752",
+     "lat": -34.0274961,
+     "lon": 150.8422771,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284589756",
+     "lat": -34.0275179,
+     "lon": 150.8423639,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284589809",
+     "lat": -34.0275203,
+     "lon": 150.8423736,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284592952",
+     "lat": -34.0277686,
+     "lon": 150.8425859,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284592954",
+     "lat": -34.0275774,
+     "lon": 150.8426266,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284592956",
+     "lat": -34.0276224,
+     "lon": 150.8426326,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9284592957",
+     "lat": -34.0274052,
+     "lon": 150.8424288,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "North Ryde station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/677568469",
+   "lat": -33.794418,
+   "lon": 151.1380737,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/1601960169",
+     "lat": -33.7944936,
+     "lon": 151.1379201
+    },
+    {
+     "id": "gtfs:211320-exit1",
+     "lat": -33.79448970000001,
+     "lon": 151.1378792,
+     "name": "Delhi Rd"
+    },
+    {
+     "id": "gtfs:entrance_exit_660",
+     "lat": -33.794498299999994,
+     "lon": 151.1379303,
+     "name": "North Ryde Station, Delhi Rd - Lift"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "North Strathfield station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6553012245",
+   "lat": -33.8590236,
+   "lon": 151.0881331,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_676",
+     "lat": -33.857559,
+     "lon": 151.087402,
+     "name": "Noth Strathfield Station, Pomeroy St - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_662",
+     "lat": -33.859161,
+     "lon": 151.088501,
+     "name": "North Strathfield Station, Queen St - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_663",
+     "lat": -33.859707,
+     "lon": 151.088211,
+     "name": "North Strathfield Station, Hamilton St - Ramp"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Oatley station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6620600140",
+   "lat": -33.9805174,
+   "lon": 151.0790256,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_680",
+     "lat": -33.980247,
+     "lon": 151.078738,
+     "name": "Oatley Station, Mulga Rd - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_681",
+     "lat": -33.979983000000004,
+     "lon": 151.078967,
+     "name": "Oatley Station, River Rd - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_682",
+     "lat": -33.980253000000005,
+     "lon": 151.079455,
+     "name": "Oatley Station, Oatley Pde - Lift"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Penshurst station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1843679387",
+   "lat": -33.9661553,
+   "lon": 151.0891799,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/1278032025",
+     "lat": -33.9660504,
+     "lon": 151.088856,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/1278032034",
+     "lat": -33.9663222,
+     "lon": 151.0887832,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/1278032036",
+     "lat": -33.9661088,
+     "lon": 151.0887296,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786071",
+     "lat": -33.966223,
+     "lon": 151.088708,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786072",
+     "lat": -33.9661173,
+     "lon": 151.0886822,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786075",
+     "lat": -33.9661083,
+     "lon": 151.088692,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786082",
+     "lat": -33.9662202,
+     "lon": 151.0887237,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786088",
+     "lat": -33.9662253,
+     "lon": 151.0887248,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802786089",
+     "lat": -33.9661156,
+     "lon": 151.0886939,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9802805318",
+     "lat": -33.9663617,
+     "lon": 151.0887228,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9999597515",
+     "lat": -33.9662715,
+     "lon": 151.08879,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9999597516",
+     "lat": -33.9662773,
+     "lon": 151.0887485,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9999646018",
+     "lat": -33.9661354,
+     "lon": 151.0887581,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9999646019",
+     "lat": -33.9661394,
+     "lon": 151.0887304,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Petersham station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886240877",
+   "lat": -33.8939113,
+   "lon": 151.1553735,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9166164292",
+     "lat": -33.8935874,
+     "lon": 151.1557497,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9166164296",
+     "lat": -33.8938466,
+     "lon": 151.1557919,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9166164309",
+     "lat": -33.8935861,
+     "lon": 151.1557633,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9166164310",
+     "lat": -33.8935887,
+     "lon": 151.155737,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9166164311",
+     "lat": -33.8938453,
+     "lon": 151.1558045,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9166164312",
+     "lat": -33.8938481,
+     "lon": 151.1557783,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/13357377655",
+     "lat": -33.8942063,
+     "lon": 151.1544638,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/13357377661",
+     "lat": -33.8941674,
+     "lon": 151.1546921,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Pymble station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6624454793",
+   "lat": -33.7447018,
+   "lon": 151.1419726,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9186339341",
+     "lat": -33.7447509,
+     "lon": 151.1421569,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027643",
+     "lat": -33.7449861,
+     "lon": 151.1422936,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027644",
+     "lat": -33.7448299,
+     "lon": 151.1424217,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027645",
+     "lat": -33.744741,
+     "lon": 151.1424608,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027663",
+     "lat": -33.7448254,
+     "lon": 151.1424066,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027667",
+     "lat": -33.7448211,
+     "lon": 151.1424084,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027668",
+     "lat": -33.744736,
+     "lon": 151.1424451,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027669",
+     "lat": -33.744975,
+     "lon": 151.1422985,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027671",
+     "lat": -33.744998,
+     "lon": 151.1422884,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/10939027672",
+     "lat": -33.7447328,
+     "lon": 151.1424464,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Redfern station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/585998416",
+   "lat": -33.8922899,
+   "lon": 151.198334,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/3763643384",
+     "lat": -33.8918053,
+     "lon": 151.1995138
+    },
+    {
+     "id": "node/3925692002",
+     "lat": -33.8916172,
+     "lon": 151.1988333
+    },
+    {
+     "id": "node/6097699672",
+     "lat": -33.8915848,
+     "lon": 151.1986077
+    },
+    {
+     "id": "node/11168845255",
+     "lat": -33.8920407,
+     "lon": 151.1977017
+    },
+    {
+     "id": "node/11168845256",
+     "lat": -33.8927772,
+     "lon": 151.198406
+    },
+    {
+     "id": "gtfs:entrance_exit_771",
+     "lat": -33.892703999999995,
+     "lon": 151.198181,
+     "name": "Redfern Station, Marian St - Stairs"
+    },
+    {
+     "id": "gtfs:201510-exit2",
+     "lat": -33.8915565,
+     "lon": 151.1985362,
+     "name": "Lawson St"
+    },
+    {
+     "id": "gtfs:entrance_exit_770",
+     "lat": -33.891592700000004,
+     "lon": 151.1988198,
+     "name": "Redfern Station, Lawson St - Path"
+    },
+    {
+     "id": "gtfs:entrance_exit_769",
+     "lat": -33.891791600000005,
+     "lon": 151.19951369999995,
+     "name": "Redfern Station, Gibbons St - Path"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Regents Park station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6627573510",
+   "lat": -33.8828393,
+   "lon": 151.0242784,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/3923181761",
+     "lat": -33.8833253,
+     "lon": 151.0241386,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9664951966",
+     "lat": -33.8832565,
+     "lon": 151.0237005,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9664951967",
+     "lat": -33.8831307,
+     "lon": 151.0237259,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9665029239",
+     "lat": -33.8832727,
+     "lon": 151.0239683,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9665029243",
+     "lat": -33.8832881,
+     "lon": 151.0239578,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9773947638",
+     "lat": -33.8832765,
+     "lon": 151.0239759,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Roseville station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6553012213",
+   "lat": -33.7843685,
+   "lon": 151.1775506,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/25922651",
+     "lat": -33.7844683,
+     "lon": 151.1777051,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4881189896",
+     "lat": -33.784471,
+     "lon": 151.1779127,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9753196828",
+     "lat": -33.7845691,
+     "lon": 151.177855,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9753196831",
+     "lat": -33.7845723,
+     "lon": 151.1778518,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9753196833",
+     "lat": -33.784453,
+     "lon": 151.1778873,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9753196838",
+     "lat": -33.7845778,
+     "lon": 151.1778683,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9753196842",
+     "lat": -33.7844618,
+     "lon": 151.1778998,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362398",
+     "lat": -33.7845858,
+     "lon": 151.1778855,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362399",
+     "lat": -33.7844517,
+     "lon": 151.1777043,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362400",
+     "lat": -33.7844702,
+     "lon": 151.1776882,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11626362401",
+     "lat": -33.7844458,
+     "lon": 151.1776766,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Seven Hills station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/5253376705",
+   "lat": -33.7743672,
+   "lon": 150.9362605,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "gtfs:entrance_exit_831",
+     "lat": -33.7745055,
+     "lon": 150.9355169,
+     "name": "Seven Hills Station, The Hills Cres - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_832",
+     "lat": -33.774105,
+     "lon": 150.936188,
+     "name": "Seven Hills Station, Prospect Hwy - Stairs"
+    },
+    {
+     "id": "gtfs:entrance_exit_828",
+     "lat": -33.774035,
+     "lon": 150.9360756,
+     "name": "Seven Hills Station, Prospect Hwy - Lift"
+    },
+    {
+     "id": "gtfs:entrance_exit_829",
+     "lat": -33.7740638,
+     "lon": 150.935933,
+     "name": "Seven Hills Station, Prospect Hwy - Ramp"
+    },
+    {
+     "id": "gtfs:entrance_exit_830",
+     "lat": -33.7745531,
+     "lon": 150.9361706,
+     "name": "Seven Hills Station, The Hills Cres - Lift"
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "St Leonards station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/13877592",
+   "lat": -33.822438,
+   "lon": 151.1941934,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/3095383346",
+     "lat": -33.8224108,
+     "lon": 151.1941725
+    },
+    {
+     "id": "gtfs:206520-exit5",
+     "lat": -33.8223589,
+     "lon": 151.1941883,
+     "name": ""
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "St Peters station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1853644076",
+   "lat": -33.9072863,
+   "lon": 151.1806702,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4888042765",
+     "lat": -33.9074211,
+     "lon": 151.180569,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/4888042768",
+     "lat": -33.9072524,
+     "lon": 151.1804965,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397708",
+     "lat": -33.9071603,
+     "lon": 151.1807874,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397709",
+     "lat": -33.9071645,
+     "lon": 151.1807891,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397710",
+     "lat": -33.9071572,
+     "lon": 151.1808016,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397715",
+     "lat": -33.9073411,
+     "lon": 151.180861,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397716",
+     "lat": -33.9073453,
+     "lon": 151.1808629,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11182397717",
+     "lat": -33.9073392,
+     "lon": 151.1808759,
+     "kind": "elevator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Stanmore station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6618892735",
+   "lat": -33.8945133,
+   "lon": 151.1639072,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/1843479417",
+     "lat": -33.8941765,
+     "lon": 151.1641834,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/6270756736",
+     "lat": -33.8946804,
+     "lon": 151.1641498,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133112",
+     "lat": -33.8945014,
+     "lon": 151.1640466,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133114",
+     "lat": -33.8946849,
+     "lon": 151.1640789,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133116",
+     "lat": -33.8945985,
+     "lon": 151.1643934,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133120",
+     "lat": -33.894602,
+     "lon": 151.164381,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133123",
+     "lat": -33.8946055,
+     "lon": 151.1643676,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133125",
+     "lat": -33.8944459,
+     "lon": 151.1643163,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133129",
+     "lat": -33.8944456,
+     "lon": 151.1643297,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11171133131",
+     "lat": -33.8944542,
+     "lon": 151.1643189,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Turrella station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886255327",
+   "lat": -33.9299188,
+   "lon": 151.1399608,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/3700678790",
+     "lat": -33.930165,
+     "lon": 151.1402223,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3702170974",
+     "lat": -33.9303535,
+     "lon": 151.1402757,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3702170975",
+     "lat": -33.9302968,
+     "lon": 151.1403081,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3702170986",
+     "lat": -33.9303126,
+     "lon": 151.1406088,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3702170987",
+     "lat": -33.9301839,
+     "lon": 151.1406809,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3703767546",
+     "lat": -33.9301277,
+     "lon": 151.140347,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/3703767547",
+     "lat": -33.9302206,
+     "lon": 151.1400747,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9625186484",
+     "lat": -33.9297707,
+     "lon": 151.1404502,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9625186485",
+     "lat": -33.9298512,
+     "lon": 151.1401962,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11667668048",
+     "lat": -33.9297916,
+     "lon": 151.1403877,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11667668060",
+     "lat": -33.9297962,
+     "lon": 151.1403733,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11667668061",
+     "lat": -33.9297864,
+     "lon": 151.1404028,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "UNSW Anzac Parade light rail station",
+   "schedule": 11,
+   "light_rail": true,
+   "osm": "way/822292588",
+   "lat": -33.9166756,
+   "lon": 151.2259046,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/297448585",
+     "lat": -33.9166705,
+     "lon": 151.2265675,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/8597066277",
+     "lat": -33.9174853,
+     "lon": 151.2265815,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/8597066280",
+     "lat": -33.9176515,
+     "lon": 151.2266049,
+     "kind": "elevator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Victoria Cross station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "way/1255912088",
+   "lat": -33.836203,
+   "lon": 151.2077604,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/11581307556",
+     "lat": -33.8346799,
+     "lon": 151.2078872
+    },
+    {
+     "id": "node/11581307557",
+     "lat": -33.8376846,
+     "lon": 151.2072808
+    },
+    {
+     "id": "node/11585723223",
+     "lat": -33.837788,
+     "lon": 151.2078397
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Wahroonga station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886265373",
+   "lat": -33.7175388,
+   "lon": 151.1169979,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9188630310",
+     "lat": -33.7180665,
+     "lon": 151.1175674,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9546489090",
+     "lat": -33.718052,
+     "lon": 151.1175526,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9546489100",
+     "lat": -33.7180588,
+     "lon": 151.1175594,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9546489101",
+     "lat": -33.7180458,
+     "lon": 151.1175464,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Waitara station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/26391583",
+   "lat": -33.7099879,
+   "lon": 151.1042928,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/9188700768",
+     "lat": -33.7103337,
+     "lon": 151.1048864,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575635751",
+     "lat": -33.7097822,
+     "lon": 151.1037354,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575635754",
+     "lat": -33.7095384,
+     "lon": 151.1039558,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575635758",
+     "lat": -33.7096359,
+     "lon": 151.1037658,
+     "kind": "elevator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575693769",
+     "lat": -33.7096499,
+     "lon": 151.1037743,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575693773",
+     "lat": -33.7096455,
+     "lon": 151.1037795,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575693774",
+     "lat": -33.7097929,
+     "lon": 151.1037478,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/11575693775",
+     "lat": -33.7097727,
+     "lon": 151.1037246,
+     "kind": "entrance",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Waverton station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1886265376",
+   "lat": -33.8380922,
+   "lon": 151.1976471,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/9191886155",
+     "lat": -33.8376322,
+     "lon": 151.1972955
+    },
+    {
+     "id": "node/9191886156",
+     "lat": -33.8375822,
+     "lon": 151.1974635
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Westmead station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6616036413",
+   "lat": -33.8084959,
+   "lon": 150.9880176,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/11998068236",
+     "lat": -33.8077923,
+     "lon": 150.9874827
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Wollstonecraft station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/1830303527",
+   "lat": -33.8317125,
+   "lon": 151.1917276,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/4462954021",
+     "lat": -33.8319215,
+     "lon": 151.1918897
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Woolooware station",
+   "schedule": 11,
+   "light_rail": false,
+   "osm": "node/6620581678",
+   "lat": -34.0476621,
+   "lon": 151.1440873,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/634228330",
+     "lat": -34.0475306,
+     "lon": 151.1437049
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Cockle Creek station",
+   "schedule": 12,
+   "light_rail": false,
+   "osm": "node/4076066887",
+   "lat": -32.9426956,
+   "lon": 151.6237158,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "osm-estimate:node/4076067117",
+     "lat": -32.9427565,
+     "lon": 151.6237896,
+     "kind": "entrance",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994006186",
+     "lat": -32.942489,
+     "lon": 151.6242947,
+     "kind": "ticket_validator",
+     "estimated": true
+    },
+    {
+     "id": "osm-estimate:node/9994006187",
+     "lat": -32.9427478,
+     "lon": 151.6237939,
+     "kind": "ticket_validator",
+     "estimated": true
+    }
+   ],
+   "no_mapped_entrance": false,
+   "entrance_estimate_extra_m": 40
+  },
+  {
+   "name": "Punchbowl station",
+   "schedule": 12,
+   "light_rail": false,
+   "osm": "node/1886240880",
+   "lat": -33.9254126,
+   "lon": 151.0557609,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/4689609987",
+     "lat": -33.9252462,
+     "lon": 151.0555844
+    },
+    {
+     "id": "node/4689609988",
+     "lat": -33.9255949,
+     "lon": 151.0555756
+    }
+   ],
+   "no_mapped_entrance": false
+  },
+  {
+   "name": "Wiley Park station",
+   "schedule": 12,
+   "light_rail": false,
+   "osm": "node/4689599828",
+   "lat": -33.9229545,
+   "lon": 151.067336,
+   "candidates": 1,
+   "entrances": [
+    {
+     "id": "node/6104653566",
+     "lat": -33.9226962,
+     "lon": 151.0681344
+    }
+   ],
+   "no_mapped_entrance": false
+  }
+ ],
+ "not_found": [],
+ "footprint_note": "Stations with no mapped entrance carry an OSM building/platform footprint hull. The entrance lies on or near it, so a walk to its nearest edge is too short by at most span_m.",
+ "estimate_note": "Entrances marked estimated: found by rule H (entrance=yes/main, ticket validator or lift within 60 m of the station outline). Tested on 36 stations with known entrances: 96% of real entrances within 40 m, median miss 5 m, p90 25 m. Extra uncertainty 40 m."
+}

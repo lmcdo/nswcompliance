@@ -1844,6 +1844,49 @@
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
    "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
+  "DQ-152": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/lmr_area/run_lmr_area_pipeline.py",
+    "verify"
+   ],
+   "passes_when": "exit 0 - data/law/lmr_station_entrances.json and the 7 packed walking files under data/lmr_walk/ all exist and each is under the 2 MB repo limit.",
+   "red_when": "a station or walking file is missing, renamed or over 2 MB (exit 1). This proves the data is PRESENT, not that the area check is accurate: accuracy is measured by `run_lmr_area_pipeline.py test SEED` against an independent router, and the station file against the law's list by tests/test_lmr_data_files.py.",
+   "note": "Added 2026-11-07. Measured on two brand-new sets of 100 lots (seeds 20261110, 20261111; second tool = OpenStreetMap Valhalla pedestrian router): yes/no match 151/158 (96%), stated range holds 110/115 (96%), can't tell 4/200, none called yes with the router over the limit. Chapter 5 check 30/30 on 10 stations in 6 of the 12 councils. Limits: both tools read OpenStreetMap; metropolitan Sydney in 5 areas only; 24 stations use estimated entrances; no council-measured walks. This check also gives the pipeline scripts under scripts/lmr_area/ a caller."
+  },
+  "DQ-151": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/load_law_facts.py",
+    "--check"
+   ],
+   "passes_when": "exit 0 - the database table law_facts (current rows) equals data/law/housing_sepp_lmr_facts.json on every fact: value, clause, page, quote, law version date and text hash.",
+   "red_when": "the table does not exist or has not been loaded (exit 1), a row drifted from the JSON, or a fact is missing or extra. Exit 2 = no database reachable here: UNKNOWN, never clean.",
+   "note": "FIXED 2026-11-07 with the owner's named yes to each write: migrations/123_law_facts.sql applied to the live database (postgres; row level security on, anon and authenticated hold no write privilege, verified), then scripts/load_law_facts.py --apply loaded 18 rows (backup data/db_rollback_backups/law_facts_pre_2026-11-07T000630.json, 0 rows: the table was new). law_facts is in the DQ-138 probe list (scripts/dq_probe_live.py). Plan:ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2i. ADDED 2026-11-07 (owner's yes, run by the owner's session; backup data/db_rollback_backups/law_facts_pre_2026-11-07T102933.json): 3 facts from the Schedule 10 'accessible area' definition (rail/light rail/ferry 800 m walking, bus stop 400 m walking, 1 bus an hour; page 125), now 21 rows. The website reads them for the TOD parking card. CORRECTED 2026-11-07 (owner's named yes): fact s164 held paragraph wording cut at 400 characters (paragraph (g) stopped after 17 of its 23 councils); the extractor no longer caps it and `python scripts/load_law_facts.py --correct s164 --apply` updated that one row in place (3,221 -> 3,371 characters; backup data/db_rollback_backups/law_facts_pre_2026-11-07T042849.json; the other 17 rows unchanged). The table keeps one row per fact per law version, so a same-version wording fix is an in-place correction, never a second row."
+  },
+  "DQ-149": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/extract_lmr_law_facts.py",
+    "--check"
+   ],
+   "passes_when": "exit 0 - data/law/housing_sepp_lmr_facts.json equals what scripts/extract_lmr_law_facts.py extracts from data/law/sepp-housing-2021-as-at-2026-10-23.txt (text hash included).",
+   "red_when": "a stored law fact (a distance, a station, a council, an s164 paragraph, a Chapter 5 standard, its page or its quote) disagrees with the saved law text, or the text changed without the facts being regenerated.",
+   "note": "Added 2026-11-07. Proves facts-vs-SAVED-text only. Whether the saved text is the version in force is a monthly manual step: save the legislation page, run the extractor with --text <file>, read the diff. housing_sepp_standards is a different, hand-typed table with no version stamp (plan ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2h)."
+  },
+  "DQ-150": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/check_clean_feature_boundary.py"
+   ],
+   "passes_when": "exit 0 - every file in .claude/clean_feature_files.json exists and reads no council-plan data (no rules-table view, council-plan table or reader, council-mixed route, council filter, or unpinned rules-table query).",
+   "red_when": "a feature file gains a council read, or a listed file is renamed or deleted, or the list is emptied.",
+   "note": "Added 2026-11-07. Static source scan (no database). Tests inject a council read into each real file and require it to be caught. New files of the feature must be added to .claude/clean_feature_files.json."
+  },
   "OC-21": {
    "kind": "outreach_claim",
    "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json), and an address whose council has such rules says so on its page. Whether each map-based condition has map data for every council is not part of this claim.",

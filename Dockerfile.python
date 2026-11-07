@@ -31,6 +31,11 @@ COPY services/ ./services/
 # services/council_key.py reads the council-name list the website also uses (one list, two
 # readers). Without this line the yield box 502'd on 2026-10-19 (#1374).
 COPY frontend-nextjs/lib/lga-slug-renames.json ./frontend-nextjs/lib/lga-slug-renames.json
+# The low-and-mid-rise / TOD area check (services/lmr_area_*.py) reads the saved law facts, the station file and the walking files.
+# REPO_ROOT there is /app, so these must sit at /app/data/... Without them every lot would be "Not determined".
+COPY data/law/housing_sepp_lmr_facts.json ./data/law/housing_sepp_lmr_facts.json
+COPY data/law/lmr_station_entrances.json ./data/law/lmr_station_entrances.json
+COPY data/lmr_walk/ ./data/lmr_walk/
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
 COPY scripts/download_redbank_rasters.py ./scripts/download_redbank_rasters.py
 COPY scripts/download_tweed_wollongong_rasters.py ./scripts/download_tweed_wollongong_rasters.py

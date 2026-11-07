@@ -410,6 +410,7 @@ nul
 !requirements.txt
 !test-trail/*.txt
 !frontend-nextjs/public/llms.txt
+!data/law/*.txt
 corrupted_*.txt
 filter_*.txt
 dcp_*.txt
@@ -877,3 +878,6 @@ data/page_integrity/
 
 # Real alarm outputs used as test fixtures (v7 step 4)
 !tests/fixtures/verifyops/*.txt
+
+# Low-and-mid-rise area check: scratch working folder of scripts/lmr_area (downloads, caches, test results). The committed data is data/law/lmr_station_entrances.json and data/lmr_walk/*.npz.
+data/lmr_area_work/

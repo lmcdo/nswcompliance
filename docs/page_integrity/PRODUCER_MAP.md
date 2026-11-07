@@ -226,7 +226,7 @@ Columns: producer # (per fact) | file:line function | language | inputs | surfac
 | 4 | services/granny_flat.py:178 _dwelling_house_permissible | PY | zone, lga | GRANNY | Own lep_land_use_table query. |
 | 5 | services/housing_sepp_eligibility.py:272 evaluate_eligibility | PY | zone, lot area/width, heritage, gates | BRIEF SEPP card/ceiling; services/upzoning_check.py:191 | Eligible Housing-SEPP forms. |
 | 6 | frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:117-520 | TS | zoneCode, lotSize, widths, isLMRArea, lepHeight/Fsr; housing_sepp_standards :192 | ASSESS A3#18 Housing card | TS re-implementation of #5 (own zone/LMR/lot/width tests). |
-| 7 (x2) | frontend-nextjs/lib/regulatory-constants.ts:373 isLMREligibleZone, :401 permitsApartmentDevelopment | TS | zone, lmr | ASSESS show/hide of LMR and ADG sections (StateLevelControls:532,545) | Hard-coded zone lists. |
+| 7 (x2) | frontend-nextjs/lib/regulatory-constants.ts:328 isLMREligibleZone, :356 permitsApartmentDevelopment | TS | zone, lmr | ASSESS show/hide of LMR and ADG sections (StateLevelControls:532,545) | Hard-coded zone lists. |
 | 8 | frontend-nextjs/components/compliance/StateLevelControls.tsx:253 | TS | NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL | ASSESS A3#9 housing_2021 SEPP filter | Zone list again. |
 | 9 | frontend-nextjs/app/api/canibuildit/check/route.ts:402 | TS | inline housing_sepp_standards | CIBI | Own eligibility SQL. |
 | 10 | services/secondary_dwelling_paths.py:198,250,330 | PY | zone, lot area, frontage | GRANNY/CIBI paths | Own standards SQL and CDC/DA path logic. |
@@ -326,7 +326,7 @@ Columns: producer # (per fact) | file:line function | language | inputs | surfac
 | 3 | frontend-nextjs/lib/nsw-planning-portal.ts:1298,1366 lowMidRiseExcluded | TS | layer 776 | unused by page (Table B) | Exclusion only. |
 | 4 | frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:259-260 | TS | isLMRArea from client | ASSESS Housing card eligibility | Re-interprets null as unknown. |
 | 5 | services/intelligence_brief.py:1588 _lmr_uplift_form | PY | eligibility results | BRIEF ceiling_from_lmr | Derived 'LMR uplift' form. |
-| 6 | frontend-nextjs/lib/regulatory-constants.ts:401 permitsApartmentDevelopment | TS | zone, lmr | ASSESS ADG section show/hide | R1-R3 apartments only if lmr === true. |
+| 6 | frontend-nextjs/lib/regulatory-constants.ts:356 permitsApartmentDevelopment | TS | zone, lmr | ASSESS ADG section show/hide | R1-R3 apartments only if lmr === true. |
 
 **Verdict: DUPLICATED (6 producer sites in 6 code locations).**
 
@@ -607,7 +607,7 @@ Baseline hits (file:line): scripts/conveyancing_db.py:495,497,505,876; services/
 FROM lep_land_use_table|export function permitsApartmentDevelopment|export function isLMREligibleZone|FROM housing_sepp_standards|eligibleTypes\.push|const eligibleTypes
 ```
 
-Baseline hits (file:line): frontend-nextjs/app/api/tod/parking-rates/route.ts:120; frontend-nextjs/app/planning-standards/page.tsx:66; frontend-nextjs/app/api/canibuildit/check/route.ts:402; frontend-nextjs/app/api/compliance/parking/route.ts:100; frontend-nextjs/lib/regulatory-constants.ts:373,401; frontend-nextjs/app/api/lep/permissibility/route.ts:50; frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:192; frontend-nextjs/app/api/permissibility/check/route.ts:77,108,135,161
+Baseline hits (file:line): frontend-nextjs/app/api/tod/parking-rates/route.ts:120; frontend-nextjs/app/planning-standards/page.tsx:66; frontend-nextjs/app/api/canibuildit/check/route.ts:402; frontend-nextjs/app/api/compliance/parking/route.ts:100; frontend-nextjs/lib/regulatory-constants.ts:328,356; frontend-nextjs/app/api/lep/permissibility/route.ts:50; frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:192; frontend-nextjs/app/api/permissibility/check/route.ts:77,108,135,161
 
 **PY pattern file `perm_py`** (13 hits today):
 
@@ -679,7 +679,7 @@ Baseline hits (file:line): services/cdc_screen.py:503; services/bushfire_prescre
 lowMidRiseExcluded\s*=|lowMidRiseExclusion:|const inLMRArea|const lmrAreaKnown|requiresLMR:|export function permitsApartmentDevelopment
 ```
 
-Baseline hits (file:line): frontend-nextjs/lib/nsw-planning-portal.ts:361,1366; frontend-nextjs/lib/regulatory-constants.ts:401; frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:203,221,242,259,260
+Baseline hits (file:line): frontend-nextjs/lib/nsw-planning-portal.ts:361,1366; frontend-nextjs/lib/regulatory-constants.ts:356; frontend-nextjs/app/api/housing-sepp/eligibility/route.ts:203,221,242,259,260
 
 **PY pattern file `lmr_py`** (9 hits today):
 

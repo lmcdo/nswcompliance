@@ -100,25 +100,8 @@ export const HOUSING_SEPP_ZONES: readonly string[] = ['R1', 'R2', 'R3', 'R4', 'E
  */
 export const CDC_HOUSING_CODE_ZONES: readonly string[] = ['R1', 'R2', 'R3', 'R4', 'RU5'];
 
-/**
- * Transport Oriented Development (TOD) Thresholds
- *
- * SEPP (Housing) 2021 - Schedule 11: Definition of "accessible area"
- * @see https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#sch.11
- */
-export const TOD_THRESHOLDS = {
-  /** Maximum walking distance to heavy rail/metro station for "accessible area" (meters) */
-  HEAVY_RAIL_WALKABLE_M: 800,
-
-  /** Maximum walking distance to light rail station for "accessible area" (meters) */
-  LIGHT_RAIL_WALKABLE_M: 600,
-
-  /** Maximum walking distance to frequent bus service for parking reductions (meters) */
-  BUS_WALKABLE_M: 400,
-
-  /** Search radius for nearby transport stops when detecting TOD eligibility (meters) */
-  TRANSPORT_PROXIMITY_SEARCH_M: 1000,
-} as const;
+// The accessible-area distances and the Chapter 5 standards are NOT typed here: they are rows of the law_facts table (clause, page, law
+// version date), read through lib/law-facts.ts. A 600 m light-rail figure stood here until 2026-11-07; the law has none.
 
 /**
  * Housing SEPP Low and Mid-Rise (LMR) Standards
@@ -272,7 +255,6 @@ export const DA_TIMEFRAMES = {
  */
 export const NSW_PLANNING_CONSTANTS = {
   ZONES: NSW_STANDARD_ZONES,
-  TOD: TOD_THRESHOLDS,
   HOUSING_SEPP: HOUSING_SEPP_LMR,
   ADG: ADG_STANDARDS,
   BASIX: BASIX_STANDARDS,
@@ -338,24 +320,6 @@ export function isApartmentZone(zone: string): boolean {
 export function isIndustrialZone(zone: string): boolean {
   const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
   return (NSW_STANDARD_ZONES.INDUSTRIAL as readonly string[]).includes(zoneCode);
-}
-
-/**
- * Helper function: Check if property is in TOD accessible area
- * @param transportDistance Distance to nearest rail station in meters
- * @param transportType Type of transport ('heavy_rail', 'light_rail', 'metro')
- */
-export function isInTODAccessibleArea(
-  transportDistance: number,
-  transportType: 'heavy_rail' | 'light_rail' | 'metro'
-): boolean {
-  if (transportType === 'heavy_rail' || transportType === 'metro') {
-    return transportDistance <= TOD_THRESHOLDS.HEAVY_RAIL_WALKABLE_M;
-  }
-  if (transportType === 'light_rail') {
-    return transportDistance <= TOD_THRESHOLDS.LIGHT_RAIL_WALKABLE_M;
-  }
-  return false;
 }
 
 /**

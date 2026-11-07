@@ -30,7 +30,10 @@ import { CitationUncheckedBadge } from './CitationUncheckedBadge';
 import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { widthRange } from '@/lib/geometry/street-frontage';
-import { useLmrGates } from '@/hooks/useLmrGates';
+import { useAreaCheck, lmrFlags } from '@/hooks/useAreaCheck';
+import { AreaCheckCard } from '@/components/compliance/AreaCheckCard';
+import { useLawFacts } from '@/hooks/useLawFacts';
+import { todStandardsSentence, TOD_STANDARDS_UNAVAILABLE, accessibleAreaLimits } from '@/lib/law-facts';
 
 import { answer, heritageAnswer } from '@/lib/fact-answer';
 interface StrataInfo {
@@ -74,6 +77,8 @@ export function StateLevelControls({
   const nearbyTransportRef = useRef<any[]>([]);
   const walkingFetchedRef = useRef<string | null>(null); // tracks coords for which we've fetched
   const [transportLoading, setTransportLoading] = useState(false);
+  // True when the nearby-transport request did not succeed. An empty list after a failure is NOT "no transport nearby".
+  const [transportFailed, setTransportFailed] = useState(false);
   const [walkingDistance, setWalkingDistance] = useState<{
     walking_m: number | null;
     crow_flies_m: number | null;
@@ -136,12 +141,15 @@ export function StateLevelControls({
   };
   const { lat: propertyLat, lng: propertyLng } = getCoordinates();
 
-  // Low and Mid-Rise housing area, answered by the planning map (null while loading or when it did not answer).
-  const { gates: lmrGates } = useLmrGates(
+  // Low and Mid-Rise housing area, from the state-law area check: the walking limit of s163 measured on footpaths, the Chapter 5 map,
+  // and the s164 exclusions (replaces a straight-line circle). null while loading or when the check was not determined, never a guess.
+  const { facts: lawFacts } = useLawFacts();
+  const lawFactsRef = useRef(lawFacts);
+  lawFactsRef.current = lawFacts;
+  const areaCheck = useAreaCheck(
     propertyLat != null && propertyLng != null ? { lat: propertyLat, lng: propertyLng } : null,
   );
-  const isLMRArea: boolean | null = lmrGates?.in_lmr_area ?? null;
-  const lmrExcluded: boolean | null = lmrGates?.lmr_excluded ?? null;
+  const { inLmrArea: isLMRArea, lmrExcluded } = lmrFlags(areaCheck.result);
 
   // Try to load LGA config. If LGA is not configured yet (returns null),
   // the component will fall back to NSW-wide defaults.
@@ -348,22 +356,27 @@ export function StateLevelControls({
 
     const fetchTransport = async () => {
       setTransportLoading(true);
+      setTransportFailed(false);
       try {
         const response = await fetch(
           `/api/tod/transport-autocomplete?lat=${propertyLat}&lng=${propertyLng}&limit=15`
         );
         if (response.ok) {
           const data = await response.json();
-          // Filter to stops within 1km
-          const nearby = (data.suggestions || []).filter((s: any) => s.distance <= NSW_PLANNING_CONSTANTS.TOD.TRANSPORT_PROXIMITY_SEARCH_M);
+          // No distance filter here: the distances that matter come from the law (accessibleAreaLimits), applied where each stop is used.
+          const nearby = data.suggestions || [];
           nearbyTransportRef.current = nearby;
           setNearbyTransport(nearby);
           // Reset walking fetch guard when transport data arrives for new coords
           walkingFetchedRef.current = null;
+        } else {
+          setNearbyTransport([]);
+          setTransportFailed(true);
         }
       } catch (err) {
         console.error('Failed to fetch transport:', err);
         setNearbyTransport([]);
+        setTransportFailed(true);
       } finally {
         setTransportLoading(false);
       }
@@ -385,16 +398,17 @@ export function StateLevelControls({
 
     walkingFetchedRef.current = coordKey;
 
+    // The law's distance (Schedule 10 accessible area) is the same for a railway, metro or light rail station. No stored figure, no check.
+    const limitM = accessibleAreaLimits(lawFactsRef.current)?.railM;
+    if (limitM == null) return;
     const railStation = stops.find(
       (s: any) => (s.type === 'heavy_rail' || s.type === 'light_rail') &&
-        s.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M &&
+        s.distance <= limitM &&
         s.lat && s.lng
     );
     if (!railStation) return;
 
-    const threshold = railStation.type === 'light_rail'
-      ? NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M
-      : NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M;
+    const threshold = limitM;
 
     const controller = new AbortController();
     setWalkingDistanceLoading(true);
@@ -605,11 +619,13 @@ export function StateLevelControls({
   const isInDesignatedTOD = !!(todSitesLayer?.results?.length || acceleratedTodLayer?.results?.length);
 
   // Check if any nearby transport qualifies for parking reductions (regulatory thresholds)
-  const hasQualifyingTransport = nearbyTransport.some(stop => {
-    if (stop.type === 'heavy_rail' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M) return true;
-    if (stop.type === 'light_rail' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M) return true;
-    if (stop.type === 'bus' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M &&
-        (stop.frequency === 'high' || stop.frequency === 'medium')) return true;
+  // Distances come from the law (Schedule 10 accessible area, stored in law_facts). The stop distances here are straight lines, the law's are
+  // walking distances, so a stop inside the figure can still be outside it on foot: the wording below says "may apply". No stored figure: no claim.
+  const accessLimits = accessibleAreaLimits(lawFacts);
+  const hasQualifyingTransport = accessLimits != null && nearbyTransport.some(stop => {
+    if ((stop.type === 'heavy_rail' || stop.type === 'light_rail') && stop.distance <= accessLimits.railM) return true;
+    // A bus stop inside the distance is shown as a possibility only: the law also tests the timetable (see the wording below), which is not read here.
+    if (stop.type === 'bus' && stop.distance <= accessLimits.busM) return true;
     return false;
   });
 
@@ -661,6 +677,7 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
+      <AreaCheckCard result={areaCheck.result} loading={areaCheck.loading} failed={areaCheck.failed} lawFacts={lawFacts} />
       {/* Data currency indicator */}
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
@@ -1222,16 +1239,18 @@ export function StateLevelControls({
                 ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021.'
                 : (() => {
                     const reasons: string[] = [];
-                    if (nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M)) {
-                      reasons.push(`heavy rail station within ${NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M}m`);
+                    if (accessLimits && nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= accessLimits.railM)) {
+                      reasons.push(`a railway or metro station within ${accessLimits.railM}m in a straight line`);
                     }
-                    if (nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M)) {
-                      reasons.push(`light rail stop within ${NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M}m`);
+                    if (accessLimits && nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= accessLimits.railM)) {
+                      reasons.push(`a light rail stop within ${accessLimits.railM}m in a straight line`);
                     }
-                    if (nearbyTransport.some(s => s.type === 'bus' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M && (s.frequency === 'high' || s.frequency === 'medium'))) {
-                      reasons.push(`frequent bus service within ${NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M}m`);
+                    if (accessLimits && nearbyTransport.some(s => s.type === 'bus' && s.distance <= accessLimits.busM)) {
+                      reasons.push(`a bus stop within ${accessLimits.busM}m in a straight line (the law also requires`
+                        + `${accessLimits.busPerHour != null ? ` at least ${accessLimits.busPerHour} bus per hour in the periods it lists` : ' a regular bus service'}; the timetable was not checked)`);
                     }
-                    return `Parking reductions may apply due to ${reasons.join(' and ')}.`;
+                    return `Parking reductions may apply due to ${reasons.join(' and ')}. The law measures walking distance`
+                      + (accessLimits ? ` (${accessLimits.clause}, page ${accessLimits.pdfPage}; law as at ${accessLimits.lawVersionDate})` : '') + '.';
                   })()
               }
             </p>
@@ -1262,11 +1281,10 @@ export function StateLevelControls({
                       <p className="text-xs font-semibold text-purple-900 mb-1">
                         TOD development standards
                       </p>
+                      {/* The figures come from the law_facts table (clause, page and law version date with each),
+                        * never from this file. Without them the sentence below carries no figure at all. */}
                       <p className="text-xs text-purple-800">
-                        Section 155 identifies height and floor space ratio standards that
-                        differ by what is proposed — 22m for a residential flat building,
-                        24m for seniors or shop top housing, and a floor space ratio of
-                        2.5:1 for those types in a relevant residential or employment zone.
+                        {todStandardsSentence(lawFacts) ?? TOD_STANDARDS_UNAVAILABLE}
                       </p>
                       {/* s155(5): "This section does not apply to the extent a provision of
                         * another chapter of this policy or another environmental planning
@@ -1590,10 +1608,22 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
+      ) : accessLimits == null || transportFailed || propertyLat == null || propertyLng == null ? (
+        // "No qualifying transport" needs BOTH the law's distances (law_facts) and a successful nearby-transport lookup for a located property.
+        // If either is missing it is not known: say so.
+        <Card className="border-amber-200 bg-amber-50/40" data-testid="tod-parking-not-checked">
+          <CardContent className="p-4 text-sm text-gray-700">
+            Transit Oriented Development (TOD) Parking: not checked. The transport distances in the law, or the list of nearby stops, could not
+            be loaded, so this page cannot say whether the property has public transport within them.
+          </CardContent>
+        </Card>
       ) : (
         <NotApplicableCard
           title="Transit Oriented Development (TOD) Parking"
-          reason="Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within regulatory thresholds (800m rail, 600m light rail, 400m frequent bus)."
+          reason={
+            'Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within the distances in the law'
+            + ` (${accessLimits.railM}m to a railway, metro or light rail station, ${accessLimits.busM}m to a bus stop with the service the law requires, in a straight line; ${accessLimits.clause}, page ${accessLimits.pdfPage}).`
+          }
           color="purple"
         />
       )}
