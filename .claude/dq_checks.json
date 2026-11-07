@@ -1853,7 +1853,7 @@
    ],
    "passes_when": "exit 0 - the database table law_facts (current rows) equals data/law/housing_sepp_lmr_facts.json on every fact: value, clause, page, quote, law version date and text hash.",
    "red_when": "the table does not exist or has not been loaded (exit 1, the state on 2026-11-07), a row drifted from the JSON, or a fact is missing or extra. Exit 2 = no database reachable here: UNKNOWN, never clean.",
-   "note": "Added 2026-11-07, declared open until the table is created and loaded (each a write the owner confirms by name). Then flip to fixed. After the table exists add law_facts to the hard-coded table list of the DQ-138 probe in scripts/dq_probe_live.py. Plan: ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2i."
+   "note": "Added 2026-11-07, declared open until the table is created (migrations/123_law_facts.sql, dry run clean and rolled back 2026-11-07, owner approved the SQL) and loaded (scripts/load_law_facts.py --apply): each a write the owner confirms by name. Then flip to fixed. After the table exists add law_facts to the hard-coded table list of the DQ-138 probe in scripts/dq_probe_live.py. Plan: ce-lmr-tod-clean-state-law-PLAN-2026-11-07.md section 2i."
   },
   "DQ-149": {
    "declared": "fixed",
