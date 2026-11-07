@@ -295,7 +295,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
-    m["lot_outline"] = bool(rings)
+    m["lot_outline"] = bool(rings) and len(rings) >= 4   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)
     if "sydney_anef" not in m:
         try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. A lot wholly off the chart's map is "outside".
             m["sydney_anef"] = sydney_anef.classify_all(lat, lng, rings)

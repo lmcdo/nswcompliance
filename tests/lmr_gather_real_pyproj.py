@@ -88,3 +88,10 @@ def test_gather_reads_sydney_airports_chart_and_the_decision_uses_it():
     assert rules and rules[0]["outcome"] == "excludes"
     far = inp.gather(-33.8148, 151.0017, rings=None, stations=stations_doc(near_name="none"))["sydney_anef"]
     assert far["25"]["state"] == "outside" and far["25"]["outside_frame"] is True
+
+
+def test_a_ring_of_fewer_than_four_points_is_not_a_lot_outline():
+    """gather() and the Sydney chart must agree on what counts as an outline: a one-point ring is neither."""
+    m = inp.gather(-33.9460, 151.1773, rings=[[151.1773, -33.9460]], stations=stations_doc(near_name="none"))
+    assert m["lot_outline"] is False
+    assert dec.decide(m)["lmr"]["answer"] != "yes"
