@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-  rowsToFacts, todStandardsSentence, TOD_STANDARDS_UNAVAILABLE, LAW_FACT_KEYS, type LawFactRow,
+  rowsToFacts, todStandardsSentence, TOD_STANDARDS_UNAVAILABLE, LAW_FACT_KEYS, accessibleAreaLimits, type LawFactRow,
 } from '@/lib/law-facts';
 
 const read = (rel: string) => fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8');
@@ -94,5 +94,41 @@ describe('no planning figure is typed where the page shows Chapter 5 standards',
     const c = code(read('components/compliance/StateLevelControls.tsx'));
     expect(c).toMatch(/todStandardsSentence\(lawFacts\)/);
     expect(c).not.toMatch(/\b22m\b|\b24m\b|2\.5:1/);
+  });
+});
+
+describe('accessibleAreaLimits (the law distances behind the parking-reduction card)', () => {
+  const R = (k: string, n: number) => ({ ...ROW(k, null, n, 'Schedule 10 dictionary, accessible area (a)', 125), value: null });
+  const rows: LawFactRow[] = [R('accessible_area_rail_distance', 800), R('accessible_area_bus_distance', 400)];
+
+  it('reads both distances with clause, page and law version date', () => {
+    const l = accessibleAreaLimits(rowsToFacts(rows))!;
+    expect(l).toMatchObject({ railM: 800, busM: 400, pdfPage: 125, lawVersionDate: '2026-10-23' });
+    expect(l.clause).toMatch(/accessible area/);
+  });
+
+  it('follows the stored figures — nothing is typed', () => {
+    expect(accessibleAreaLimits(rowsToFacts([R('accessible_area_rail_distance', 900), R('accessible_area_bus_distance', 450)]))).toMatchObject({ railM: 900, busM: 450 });
+  });
+
+  it('is null unless BOTH are present and positive, so the page makes no distance claim', () => {
+    expect(accessibleAreaLimits(rowsToFacts([rows[0]]))).toBeNull();
+    expect(accessibleAreaLimits(rowsToFacts([rows[1]]))).toBeNull();
+    expect(accessibleAreaLimits(rowsToFacts([R('accessible_area_rail_distance', 0), rows[1]]))).toBeNull();
+    expect(accessibleAreaLimits(null)).toBeNull();
+    expect(accessibleAreaLimits(undefined)).toBeNull();
+  });
+});
+
+describe('the page no longer types transport distances', () => {
+  it('the component and constants file carry no 600 m light rail figure, 1000 m search radius or TOD_THRESHOLDS', () => {
+    const comp = code(read('components/compliance/StateLevelControls.tsx'));
+    const consts = code(read('lib/regulatory-constants.ts'));
+    for (const src of [comp, consts]) {
+      expect(src).not.toMatch(/WALKABLE_M|TRANSPORT_PROXIMITY|TOD_THRESHOLDS|isInTODAccessibleArea/);
+      // A distance-shaped number: a figure followed by m / metres, or a *_M constant assigned one. Colour classes such as text-purple-600 are not distances.
+      expect(src).not.toMatch(/\b(600|1000)\s?(m\b|metres)|_M:\s*(600|1000)\b/);
+    }
+    expect(comp).toMatch(/accessibleAreaLimits\(lawFacts\)/);
   });
 });

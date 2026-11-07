@@ -115,8 +115,8 @@ def test_every_fact_has_clause_page_and_a_quote_that_is_in_the_law_text():
             probe = quote[:200] if it.get("words") else quote
             assert probe in body, (name, probe[:80])
             checked += 1
-    # 15 plain facts (18 minus the 2 station lists minus the s164 block) + 14 s164 paragraphs
-    assert checked == 29
+    # 18 plain facts (21 minus the 2 station lists minus the s164 block) + 14 s164 paragraphs
+    assert checked == 32   # 29 + the 3 accessible-area facts
 
 
 def test_every_station_name_is_a_line_of_the_law_text():

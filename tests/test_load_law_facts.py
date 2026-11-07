@@ -21,6 +21,7 @@ import load_law_facts as lf  # noqa: E402
 
 DOC = json.loads(law.FACTS_PATH.read_text(encoding="utf-8"))
 ROWS = lf.build_rows(DOC)
+N_FACTS = len(ROWS)
 
 
 def as_db(rows, current=True):
@@ -41,7 +42,7 @@ def as_db(rows, current=True):
 
 def test_one_row_per_fact_with_clause_page_quote_and_hash():
     assert [r["fact_key"] for r in ROWS] == list(DOC["facts"])
-    assert len(ROWS) == 18
+    assert len(ROWS) == N_FACTS == 21   # 18 + the 3 'accessible area' facts added 2026-11-07
     for r in ROWS:
         assert r["clause"] and r["quote"] and isinstance(r["pdf_page"], int)
         assert r["text_sha256"] == DOC["text_sha256"] and r["law_version_date"] == "2026-10-23"
@@ -95,12 +96,12 @@ def test_missing_and_extra_rows_are_reported():
 
 def test_empty_database_inserts_everything():
     p = lf.plan_changes(ROWS, [])
-    assert (len(p["insert"]), p["supersede"], p["unchanged"], p["conflicts"]) == (18, [], 0, [])
+    assert (len(p["insert"]), p["supersede"], p["unchanged"], p["conflicts"]) == (N_FACTS, [], 0, [])
 
 
 def test_identical_current_rows_are_left_alone():
     p = lf.plan_changes(ROWS, as_db(ROWS))
-    assert (p["insert"], p["unchanged"], p["conflicts"]) == ([], 18, [])
+    assert (p["insert"], p["unchanged"], p["conflicts"]) == ([], N_FACTS, [])
 
 
 def test_a_newer_law_version_supersedes_and_keeps_history():
@@ -108,7 +109,7 @@ def test_a_newer_law_version_supersedes_and_keeps_history():
     for r in old:
         r["law_version_date"] = date(2026, 2, 6)
     p = lf.plan_changes(ROWS, old)
-    assert len(p["insert"]) == 18 and len(p["supersede"]) == 18 and p["conflicts"] == []
+    assert len(p["insert"]) == N_FACTS and len(p["supersede"]) == N_FACTS and p["conflicts"] == []
 
 
 def test_same_version_different_content_is_a_conflict_not_an_overwrite():
@@ -144,7 +145,7 @@ def test_a_newer_version_in_the_database_is_a_conflict():
 
 def test_history_rows_are_ignored_by_the_plan():
     hist = as_db(ROWS, current=False)
-    assert len(lf.plan_changes(ROWS, hist)["insert"]) == 18
+    assert len(lf.plan_changes(ROWS, hist)["insert"]) == N_FACTS
 
 
 # ---- a recorder in place of the database -----------------------------------------------------
@@ -216,7 +217,7 @@ def test_apply_backs_up_writes_verifies_and_commits(db, monkeypatch):
 
     monkeypatch.setattr(lf, "_fetch", fetch)
     assert lf.run(apply=True) == 0
-    assert len([w for w in writes(db) if w.startswith("INSERT")]) == 18
+    assert len([w for w in writes(db) if w.startswith("INSERT")]) == N_FACTS
     assert db.events.count("commit") == 1 and "readonly=False" in db.events
     assert len(list(db.tmp.glob("law_facts_pre_*.json"))) == 1
     assert any(sql.startswith("SET LOCAL statement_timeout") for sql, _ in db.log)

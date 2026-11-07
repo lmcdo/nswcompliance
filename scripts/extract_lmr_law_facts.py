@@ -130,6 +130,23 @@ def _lgas(lines, pages) -> dict:
     return _fact(names, "s152(1)", pages[start], _joined(lines, start, start + 2), count=len(names))
 
 
+def _accessible_area(lines, pages) -> dict:
+    """The dictionary meaning of "accessible area": walking distances to a station / light rail platform / wharf and to a regular bus stop.
+
+    These (not s163) are the distances the parking-rate paragraphs use ("0.2 parking spaces ... on land within an accessible area").
+    """
+    i = _last(lines, r"^accessible area means land within", "accessible area definition")
+    chunk = _joined(lines, i, i + 14)
+    rail, q_rail = _num(r"\(a\)\s*(\d+)m walking distance of.{0,260}?(?:wharf from which a Sydney Ferries ferry service operates)", chunk, "accessible area (a)")
+    bus, q_bus = _num(r"\(c\)\s*(\d+)m walking distance of a bus stop used by a regular bus service", chunk, "accessible area (c)")
+    per_hour, q_hour = _num(r"has at least (\d+) bus per hour servicing the bus stop", chunk, "accessible area bus frequency")
+    return {
+        "accessible_area_rail_distance": _fact(int(rail), "Schedule 10 dictionary, accessible area (a)", pages[i], q_rail, unit="m", measured="walking distance"),
+        "accessible_area_bus_distance": _fact(int(bus), "Schedule 10 dictionary, accessible area (c)", pages[i], q_bus, unit="m", measured="walking distance"),
+        "accessible_area_bus_min_per_hour": _fact(int(per_hour), "Schedule 10 dictionary, accessible area (c)", pages[i], q_hour, unit="buses per hour"),
+    }
+
+
 def _s164(lines, pages) -> dict:
     s164 = _last(lines, r"^164\s+Land to which chapter applies$", "s164 heading")
     start = _first(lines, r"^\(1\)\s+This chapter applies to the whole of the State, other than the following—$", "s164(1)", s164)
@@ -218,6 +235,8 @@ def extract(text: str, text_file: str, version_date: str) -> dict:
 
     i = _last(lines, r"^walking distance means", "walking distance definition")
     facts["walking_distance_definition"] = _fact(None, "Schedule 10 dictionary, walking distance", pages[i], _joined(lines, i, i + 2))
+
+    facts.update(_accessible_area(lines, pages))
 
     j = _last(lines, r"^low and mid rise housing area means—$", "s163 outer definition")
     whole = _joined(lines, j, j + 12)

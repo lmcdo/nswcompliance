@@ -16,6 +16,9 @@ export const LAW_FACT_KEYS = [
   'tod_fsr',
   'lmr_outer_distance',
   'lmr_inner_distance',
+  'accessible_area_rail_distance',
+  'accessible_area_bus_distance',
+  'accessible_area_bus_min_per_hour',
 ] as const;
 
 export type LawFactKey = (typeof LAW_FACT_KEYS)[number];
@@ -90,6 +93,23 @@ export function todStandardsSentence(facts: LawFacts | null | undefined): string
     `${fsr.value} for those types in a relevant residential or employment zone (${fsr.clause}, page ${fsr.pdfPage}). ` +
     `Law as at ${rfb.lawVersionDate}.`
   );
+}
+
+/**
+ * The distances in the law's definition of "accessible area" (Schedule 10 dictionary): walking distance to a station entrance, a light rail
+ * platform or a ferry wharf, and walking distance to a bus stop with a regular service. Null unless BOTH distances were read, so a caller
+ * that gets null makes no distance claim at all.
+ */
+export function accessibleAreaLimits(
+  facts: LawFacts | null | undefined,
+): { railM: number; busM: number; clause: string; pdfPage: number; lawVersionDate: string } | null {
+  const rail = facts?.accessible_area_rail_distance;
+  const bus = facts?.accessible_area_bus_distance;
+  if (!rail || !bus) return null;
+  const railM = Number(rail.value);
+  const busM = Number(bus.value);
+  if (!Number.isFinite(railM) || !Number.isFinite(busM) || railM <= 0 || busM <= 0) return null;
+  return { railM, busM, clause: 'Schedule 10 dictionary, accessible area', pdfPage: rail.pdfPage, lawVersionDate: rail.lawVersionDate };
 }
 
 /** The sentence shown when the stored figures could not be read. It contains no figure. */

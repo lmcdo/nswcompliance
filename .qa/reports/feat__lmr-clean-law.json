@@ -40,7 +40,8 @@
     "frontend-nextjs/app/api/housing-sepp/area-check/route.ts",
     "frontend-nextjs/hooks/useAreaCheck.ts",
     "frontend-nextjs/components/compliance/AreaCheckCard.tsx",
-    "tests/test_housing_sepp_area_check_api.py"
+    "tests/test_housing_sepp_area_check_api.py",
+    "frontend-nextjs/lib/regulatory-constants.ts"
   ],
   "falsifiable_check": {
     "command": "python scripts/lmr_area/area_check_score.py test_results.json",
@@ -217,6 +218,13 @@
       "mitigated": true,
       "how": "frontend-nextjs/app/api/housing-sepp/area-check/route.ts returns 502 for any service error; hooks/useAreaCheck.ts lmrFlags maps borderline, undetermined and missing results to null; components/compliance/AreaCheckCard.tsx prints Not determined with a next step",
       "repro": "cd frontend-nextjs && npx jest __tests__/api/area-check-proxy.test.ts __tests__/hooks/useAreaCheck.test.ts __tests__/components/area-check-card.test.tsx"
+    },
+    {
+      "scenario": "The TOD parking card keeps typed distances (800 m rail, 600 m light rail, 400 m bus, 1,000 m search) that disagree with the law's accessible-area definition (800 m rail, light rail and ferry; 400 m bus)",
+      "what_happens": "A lot is told parking reductions may apply or not apply on a figure the law does not contain",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/law-facts.ts accessibleAreaLimits reads the stored figures and returns null unless both exist; StateLevelControls.tsx makes no distance claim without them; the typed constants are deleted and frontend-nextjs/__tests__/lib/law-facts.test.ts fails if a distance-shaped 600 or 1000 or a *_M constant returns",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/law-facts.test.ts"
     }
   ],
   "post_merge": {

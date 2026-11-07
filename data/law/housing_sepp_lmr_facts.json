@@ -27,6 +27,29 @@
       "page": 128,
       "quote": "walking distance means the shortest distance between 2 points measured along a route that may be safely walked by a pedestrian using, as far as reasonably practicable, public footpaths and pedestrian crossings."
     },
+    "accessible_area_rail_distance": {
+      "value": 800,
+      "clause": "Schedule 10 dictionary, accessible area (a)",
+      "page": 125,
+      "quote": "(a) 800m walking distance of— (i) a public entrance to a railway, metro or light rail station, or (ii) for a light rail station with no entrance—a platform of the light rail station, or (iii) a public entrance to a wharf from which a Sydney Ferries ferry service operates",
+      "unit": "m",
+      "measured": "walking distance"
+    },
+    "accessible_area_bus_distance": {
+      "value": 400,
+      "clause": "Schedule 10 dictionary, accessible area (c)",
+      "page": 125,
+      "quote": "(c) 400m walking distance of a bus stop used by a regular bus service",
+      "unit": "m",
+      "measured": "walking distance"
+    },
+    "accessible_area_bus_min_per_hour": {
+      "value": 1,
+      "clause": "Schedule 10 dictionary, accessible area (c)",
+      "page": 125,
+      "quote": "has at least 1 bus per hour servicing the bus stop",
+      "unit": "buses per hour"
+    },
     "lmr_site_area_rule": {
       "value": null,
       "clause": "s163 low and mid rise housing area (b)",
