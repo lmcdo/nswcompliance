@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New state-law-only area check (low and mid-rise walking limit, Chapter 5 TOD map rule, s164 exclusions) built as pure rules plus live public map-service reads. It reads no database, writes nothing, and is not yet wired to any page or served number, so it is not Critical; it is more than Minor because a wrong answer here would later tell a person a lot is or is not in a reform area.",
-  "commit_hash": "afd7b098",
+  "commit_hash": "9aa4aabb",
   "files": [
     "services/lmr_area_decision.py",
     "services/lmr_area_inputs.py",
@@ -34,7 +34,13 @@
     "frontend-nextjs/components/compliance/StateLevelControls.tsx",
     "frontend-nextjs/__tests__/lib/law-facts.test.ts",
     "frontend-nextjs/__tests__/api/law-facts.test.ts",
-    "frontend-nextjs/__tests__/lib/tod-no-fabricated-standards.test.ts"
+    "frontend-nextjs/__tests__/lib/tod-no-fabricated-standards.test.ts",
+    "services/housing_sepp_gates_api.py",
+    "Dockerfile.python",
+    "frontend-nextjs/app/api/housing-sepp/area-check/route.ts",
+    "frontend-nextjs/hooks/useAreaCheck.ts",
+    "frontend-nextjs/components/compliance/AreaCheckCard.tsx",
+    "tests/test_housing_sepp_area_check_api.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/lmr_area/area_check_score.py test_results.json",
@@ -197,6 +203,20 @@
       "mitigated": true,
       "how": "services/lmr_area_inputs.py queries layer 251 by lot outline like the other maps; a hit excludes, a part or a failed query blocks a yes; a point inside a real area hit on a live check 2026-11-07",
       "repro": "python -m pytest tests/test_lmr_area_decision.py -k b_coastal"
+    },
+    {
+      "scenario": "The Python image copies only services/, so the law facts, station file and walking files are missing in production and every lot returns Not determined (or worse, a stale answer from a partial copy)",
+      "what_happens": "The area check card shows Not determined for every address after deploy",
+      "mitigated": true,
+      "how": "Dockerfile.python now copies data/law/housing_sepp_lmr_facts.json, data/law/lmr_station_entrances.json and data/lmr_walk/; tests/test_lmr_data_files.py fails if any COPY line is removed",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -k python_image"
+    },
+    {
+      "scenario": "The area check service is slow, down or returns an error and the page turns that into a yes or a no for the lot",
+      "what_happens": "A person is told a lot is or is not in a reform area when no measurement was made",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/api/housing-sepp/area-check/route.ts returns 502 for any service error; hooks/useAreaCheck.ts lmrFlags maps borderline, undetermined and missing results to null; components/compliance/AreaCheckCard.tsx prints Not determined with a next step",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/area-check-proxy.test.ts __tests__/hooks/useAreaCheck.test.ts __tests__/components/area-check-card.test.tsx"
     }
   ],
   "post_merge": {

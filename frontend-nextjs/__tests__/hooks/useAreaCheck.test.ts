@@ -1,0 +1,44 @@
+/**
+ * lmrFlags turns the area check's answer into the true / false / null the rest of the page already understands.
+ * The rule that matters: a borderline or undetermined lot is null, never true and never false, so no page claims an area it did not measure.
+ * @jest-environment node
+ */
+import { lmrFlags, areaKey, type AreaCheck } from '@/hooks/useAreaCheck';
+
+const base = (lmr: Partial<AreaCheck['lmr']>): AreaCheck => ({
+  pathway: 'lmr', headline: 'h', tod: { answer: 'no' }, warnings: [], not_checked: [], notes: [], law_version_date: '2026-10-23',
+  lmr: { answer: 'yes', ...lmr },
+});
+
+describe('lmrFlags', () => {
+  it('yes is true; no is false', () => {
+    expect(lmrFlags(base({ answer: 'yes' }))).toEqual({ inLmrArea: true, lmrExcluded: null });
+    expect(lmrFlags(base({ answer: 'no', reason_code: 'beyond_straight_line' }))).toEqual({ inLmrArea: false, lmrExcluded: null });
+  });
+
+  it('a lot on the exclusion map is excluded (true) as well as not in the area', () => {
+    expect(lmrFlags(base({ answer: 'no', reason_code: 'exclusion_map' }))).toEqual({ inLmrArea: false, lmrExcluded: true });
+  });
+
+  it('borderline, not determined, a missing result or a malformed one are null — never a guess', () => {
+    for (const a of ['borderline', 'cant_tell'] as const) {
+      expect(lmrFlags(base({ answer: a }))).toEqual({ inLmrArea: null, lmrExcluded: null });
+    }
+    expect(lmrFlags(null)).toEqual({ inLmrArea: null, lmrExcluded: null });
+    expect(lmrFlags({} as AreaCheck)).toEqual({ inLmrArea: null, lmrExcluded: null });
+  });
+
+  it('a yes with warnings is still a yes (the warnings are shown beside it)', () => {
+    const r = base({ answer: 'yes' });
+    r.warnings = [{ clause: 's164(1)(f1)', page: 78, detail: 'flood extent not checked' }];
+    expect(lmrFlags(r).inLmrArea).toBe(true);
+  });
+});
+
+describe('areaKey', () => {
+  it('is null unless both coordinates are finite numbers', () => {
+    expect(areaKey(undefined, 151)).toBeNull();
+    expect(areaKey(-33.8, NaN)).toBeNull();
+    expect(areaKey(-33.8, 151.1)).toBe('-33.8,151.1');
+  });
+});

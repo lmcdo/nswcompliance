@@ -98,3 +98,12 @@ def test_cut_strips_overlap_so_a_lot_on_the_cut_is_still_covered():
         assert a[2] - b[0] >= 300.0, "neighbouring strips must overlap by at least 300 m"
     for f in strips:  # every strip of one area keeps the full anchor list
         assert len(ws.load_surface(str(f)).anchors) == len(ws.load_surface(str(strips[0])).anchors)
+
+
+def test_the_python_image_copies_every_file_the_area_check_reads():
+    """Dockerfile.python copied only services/. The area check reads data/law and data/lmr_walk at REPO_ROOT (/app in the image), so
+    without these COPY lines every deployed lot would come back 'Not determined'."""
+    docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
+    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/"):
+        assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
+    assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()

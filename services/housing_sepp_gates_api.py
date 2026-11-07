@@ -94,3 +94,35 @@ def housing_sepp_gates(lat: float, lng: float) -> dict:
     if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
         raise HTTPException(status_code=422, detail="lat/lng outside NSW")
     return lmr_gates(lat, lng)
+
+
+def _flood_answer_for(lat: float, lng: float):
+    """The existing one-answer flood function, as a callable the area check can use. Never raises: a failure is value None."""
+    def _fn(lot_wkt):
+        try:
+            try:
+                from scripts.generate_conveyancing_report import get_flood_planning_status
+            except ImportError:  # the image copies scripts/ files flat next to services/
+                from generate_conveyancing_report import get_flood_planning_status
+            return get_flood_planning_status(lat, lng, lot_wkt)
+        except Exception as e:  # noqa: BLE001 -- an unreachable flood answer is unknown, never a clear
+            logger.warning("area check: flood answer failed: %s", e)
+            return {"value": None, "reason": "flood answer unavailable"}
+    return _fn
+
+
+@router.get("/housing-sepp/area-check")
+def housing_sepp_area_check(lat: float, lng: float) -> dict:
+    """GET /pipeline/housing-sepp/area-check?lat=&lng=
+
+    The full state-law area answer for the lot at this point: low and mid-rise walking limit, Chapter 5 (TOD) map rule and the
+    s164 exclusions (bush fire, coastal, flood), each with clause, page and law version date. Reads state law and live state map
+    layers only (see services/lmr_area_decision.py). A check that could not be completed says so; it is never a guessed yes or no.
+
+    prior-art-checked: /housing-sepp/gates (above) answers four point checks and a straight-line circle; it is kept for the existing
+    page until the page reads this one. This endpoint reuses lmr_area_inputs.area_check and flood_planning, adding no new source.
+    """
+    if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
+        raise HTTPException(status_code=422, detail="lat/lng outside NSW")
+    from services.lmr_area_inputs import area_check
+    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng))

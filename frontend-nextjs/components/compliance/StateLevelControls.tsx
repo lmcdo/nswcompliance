@@ -30,7 +30,8 @@ import { CitationUncheckedBadge } from './CitationUncheckedBadge';
 import { SeppCitationLink,SUSTAINABLE_BUILDINGS_SEPP_PORTAL_URL, seppHousingProvisionUrl } from './SeppCitationLink';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 import { widthRange } from '@/lib/geometry/street-frontage';
-import { useLmrGates } from '@/hooks/useLmrGates';
+import { useAreaCheck, lmrFlags } from '@/hooks/useAreaCheck';
+import { AreaCheckCard } from '@/components/compliance/AreaCheckCard';
 import { useLawFacts } from '@/hooks/useLawFacts';
 import { todStandardsSentence, TOD_STANDARDS_UNAVAILABLE } from '@/lib/law-facts';
 
@@ -138,13 +139,13 @@ export function StateLevelControls({
   };
   const { lat: propertyLat, lng: propertyLng } = getCoordinates();
 
-  // Low and Mid-Rise housing area, answered by the planning map (null while loading or when it did not answer).
+  // Low and Mid-Rise housing area, from the state-law area check: the walking limit of s163 measured on footpaths, the Chapter 5 map,
+  // and the s164 exclusions (replaces a straight-line circle). null while loading or when the check was not determined, never a guess.
   const { facts: lawFacts } = useLawFacts();
-  const { gates: lmrGates } = useLmrGates(
+  const areaCheck = useAreaCheck(
     propertyLat != null && propertyLng != null ? { lat: propertyLat, lng: propertyLng } : null,
   );
-  const isLMRArea: boolean | null = lmrGates?.in_lmr_area ?? null;
-  const lmrExcluded: boolean | null = lmrGates?.lmr_excluded ?? null;
+  const { inLmrArea: isLMRArea, lmrExcluded } = lmrFlags(areaCheck.result);
 
   // Try to load LGA config. If LGA is not configured yet (returns null),
   // the component will fall back to NSW-wide defaults.
@@ -664,6 +665,7 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
+      <AreaCheckCard result={areaCheck.result} loading={areaCheck.loading} failed={areaCheck.failed} />
       {/* Data currency indicator */}
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
