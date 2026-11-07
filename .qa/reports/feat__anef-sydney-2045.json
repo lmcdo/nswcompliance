@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New aircraft-noise rule for Sydney Airport: it reads the four contours of the endorsed ANEF 2045 chart from one committed file and compares a lot outline with the ANEF 25 line. It reads no database, writes nothing and is not yet shown on any page as a served number, so it is not Critical. It is more than Minor because a wrong answer would tell a person their lot is or is not excluded by the law's aircraft-noise paragraph.",
-  "commit_hash": "3f6cb322",
+  "commit_hash": "12496d2d",
   "files": [
     "services/sydney_anef.py",
     "services/lmr_area_decision.py",

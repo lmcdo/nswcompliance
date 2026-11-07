@@ -241,6 +241,11 @@ def _sydney_noise_rule(m: dict, facts: LawFacts) -> Optional[dict]:
         return _rule("aircraft_noise_sydney", ph, "excludes",
                      f"part of the lot is inside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart (endorsed by Airservices Australia); "
                      f"the law excludes ANEF {anef_min:g} or greater", margin_m=margin, inside_by_m=c.get("inside_by_m"))
+    if c["state"] == "outside" and m.get("lot_outline") is False:  # noqa: bracket-access -- state was checked above
+        # Without the lot's outline only the address point was tested; a point outside the line cannot show the rest of the lot is.
+        return _rule("aircraft_noise_sydney", ph, "unknown",
+                     "the lot's outline was not available, so only the address point was tested against Sydney Airport's 2045 chart and the rest of the lot could be inside",
+                     margin_m=margin)
     if c["state"] == "outside":  # noqa: bracket-access -- state was checked above
         if c.get("outside_frame") is True:
             return _rule("aircraft_noise_sydney", ph, "clear",

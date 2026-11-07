@@ -271,6 +271,17 @@ def test_a_missing_or_bad_accuracy_figure_is_no_answer_not_a_crash(margin):
         assert r["lmr"]["answer"] == "cant_tell" and rule(r)["outcome"] == "unknown" and "accuracy figure" in rule(r)["detail"]
 
 
+def test_outside_without_the_lots_outline_is_no_answer_but_inside_still_excludes():
+    """With no outline only the address point was tested: a point outside the line cannot show the rest of the lot is clear."""
+    out = d.decide(lot(lot_outline=False, sydney_anef=state("outside")), FACTS)
+    assert out["lmr"]["answer"] == "cant_tell" and rule(out)["outcome"] == "unknown" and "outline was not available" in rule(out)["detail"]
+    far = d.decide(lot(lot_outline=False, sydney_anef={"25": {"state": "outside", "margin_m": 53.0, "outside_frame": True, "level": 25}}), FACTS)
+    assert rule(far)["outcome"] == "unknown"
+    inside = d.decide(lot(lot_outline=False, sydney_anef=state("inside")), FACTS)   # a point inside the line means part of the lot is inside
+    assert rule(inside)["outcome"] == "excludes"
+    assert rule(d.decide(lot(lot_outline=True, sydney_anef=state("outside")), FACTS))["outcome"] == "clear"
+
+
 def test_not_measured_adds_no_rule():
     for m in (lot(sydney_anef=None), lot()):  # None and an absent key both mean the measurement was not taken
         r = d.decide(m, FACTS)
