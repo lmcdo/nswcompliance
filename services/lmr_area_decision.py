@@ -235,6 +235,9 @@ def _sydney_noise_rule(m: dict, facts: LawFacts) -> Optional[dict]:
     if isinstance(margin, bool) or not isinstance(margin, (int, float)) or not 0 < margin < 100000:   # also false for NaN
         return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks its accuracy figure, so a lot cannot be placed against its line")
     if c["state"] == "inside":  # noqa: bracket-access -- state was checked above
+        depth = c.get("inside_by_m")
+        if isinstance(depth, bool) or not isinstance(depth, (int, float)) or not margin < depth < 100000000:   # an exclusion rests on this depth; also false for NaN
+            return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks how far the lot is inside the line, so it cannot be called excluded")
         return _rule("aircraft_noise_sydney", ph, "excludes",
                      f"part of the lot is inside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart (endorsed by Airservices Australia); "
                      f"the law excludes ANEF {anef_min:g} or greater", margin_m=margin, inside_by_m=c.get("inside_by_m"))

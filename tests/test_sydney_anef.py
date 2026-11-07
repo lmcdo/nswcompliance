@@ -51,8 +51,9 @@ def test_the_source_and_the_measured_accuracy_are_recorded():
     assert s["url"].startswith("https://www.sydneyairport.com.au/") and s["endorsed_by_airservices_australia"] == "2026-02-26"
     assert len(s["pdf_sha256"]) == 64 and s["pdf_page"] == 25
     assert a["share_of_chart_road_points_within_m"]["20"] >= 0.99
+    assert a["share_of_chart_road_points_within_m"]["30"] == 1.0, "the margin assumes no chart road point is further than the stated bound from a real road"
     assert max(a["chance_share_within_20m_when_shifted"]) <= 0.5, "the alignment must beat a wrong alignment by a wide margin"
-    assert a["margin_m"] == math.ceil(a["half_drawn_line_width_m"] + a["alignment_p995_m"]) and a["margin_m"] >= 37
+    assert a["alignment_bound_m"] == 30.0 and a["margin_m"] == math.ceil(a["half_drawn_line_width_m"] + a["alignment_bound_m"]) and a["margin_m"] >= 67
 
 
 def test_the_georeference_file_belongs_to_the_same_pdf_and_was_accepted():
@@ -193,6 +194,13 @@ def lot(**over):
 
 def state(s, **kw):
     return {"25": {"state": s, "margin_m": 53.0, "inside_by_m": 300.0 if s == "inside" else None, "nearest_m": 120.0, "level": 25, **kw}}
+
+
+@pytest.mark.parametrize("depth", [None, "300", True, 10.0, 53.0, float("nan"), -1.0])
+def test_excluded_needs_a_depth_beyond_the_margin_or_it_is_no_answer(depth):
+    """`inside` rests on how far inside the line the lot is; a missing, non-numeric or too-small depth cannot be called excluded."""
+    r = d.decide(lot(sydney_anef=state("inside", inside_by_m=depth)), FACTS)
+    assert r["lmr"]["answer"] == "cant_tell" and rule(r)["outcome"] == "unknown" and "inside the line" in rule(r)["detail"]
 
 
 @pytest.mark.parametrize("nearest", [None, "120", True, 10.0, 53.0, float("nan"), -1.0])
