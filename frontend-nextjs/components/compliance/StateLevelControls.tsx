@@ -77,6 +77,8 @@ export function StateLevelControls({
   const nearbyTransportRef = useRef<any[]>([]);
   const walkingFetchedRef = useRef<string | null>(null); // tracks coords for which we've fetched
   const [transportLoading, setTransportLoading] = useState(false);
+  // True when the nearby-transport request did not succeed. An empty list after a failure is NOT "no transport nearby".
+  const [transportFailed, setTransportFailed] = useState(false);
   const [walkingDistance, setWalkingDistance] = useState<{
     walking_m: number | null;
     crow_flies_m: number | null;
@@ -354,6 +356,7 @@ export function StateLevelControls({
 
     const fetchTransport = async () => {
       setTransportLoading(true);
+      setTransportFailed(false);
       try {
         const response = await fetch(
           `/api/tod/transport-autocomplete?lat=${propertyLat}&lng=${propertyLng}&limit=15`
@@ -366,10 +369,14 @@ export function StateLevelControls({
           setNearbyTransport(nearby);
           // Reset walking fetch guard when transport data arrives for new coords
           walkingFetchedRef.current = null;
+        } else {
+          setNearbyTransport([]);
+          setTransportFailed(true);
         }
       } catch (err) {
         console.error('Failed to fetch transport:', err);
         setNearbyTransport([]);
+        setTransportFailed(true);
       } finally {
         setTransportLoading(false);
       }
@@ -1601,12 +1608,13 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
-      ) : accessLimits == null ? (
-        // The distances come from law_facts. While they are loading, or if they failed, "no qualifying transport" is not known: say so.
+      ) : accessLimits == null || transportFailed || propertyLat == null || propertyLng == null ? (
+        // "No qualifying transport" needs BOTH the law's distances (law_facts) and a successful nearby-transport lookup for a located property.
+        // If either is missing it is not known: say so.
         <Card className="border-amber-200 bg-amber-50/40" data-testid="tod-parking-not-checked">
           <CardContent className="p-4 text-sm text-gray-700">
-            Transit Oriented Development (TOD) Parking: not checked. The transport distances in the law could not be loaded, so this page
-            cannot say whether the property has public transport within them.
+            Transit Oriented Development (TOD) Parking: not checked. The transport distances in the law, or the list of nearby stops, could not
+            be loaded, so this page cannot say whether the property has public transport within them.
           </CardContent>
         </Card>
       ) : (

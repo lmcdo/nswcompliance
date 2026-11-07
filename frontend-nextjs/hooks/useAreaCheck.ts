@@ -41,6 +41,16 @@ export interface AreaCheck {
   law_version_date: string | null;
 }
 
+const ANSWERS: readonly string[] = ['yes', 'no', 'borderline', 'cant_tell'];
+const isBlock = (b: unknown): boolean => !!b && typeof b === 'object' && ANSWERS.includes((b as { answer?: unknown }).answer as string);
+
+/** True only for a payload with every field the card and the flags read. A partial or mismatched payload is a failure, never an answer. */
+export function isAreaCheck(x: unknown): x is AreaCheck {
+  const r = x as Partial<AreaCheck> | null;
+  return !!r && typeof r === 'object' && typeof r.headline === 'string' && isBlock(r.lmr) && isBlock(r.tod)
+    && Array.isArray(r.warnings) && Array.isArray(r.not_checked) && Array.isArray(r.notes);
+}
+
 export interface UseAreaCheckResult {
   result: AreaCheck | null;
   loading: boolean;
@@ -82,7 +92,9 @@ export function useAreaCheck(coordinates: { lat: number; lng: number } | null): 
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(`area-check ${res.status}`);
-        return (await res.json()) as AreaCheck;
+        const body: unknown = await res.json();
+        if (!isAreaCheck(body)) throw new Error('area-check answer has the wrong shape');
+        return body;
       })
       .then((result) => setState({ result, loading: false, failed: false, key }))
       .catch((err) => {

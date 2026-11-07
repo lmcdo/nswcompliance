@@ -3,7 +3,7 @@
  * The rule that matters: a borderline or undetermined lot is null, never true and never false, so no page claims an area it did not measure.
  * @jest-environment node
  */
-import { lmrFlags, areaKey, type AreaCheck } from '@/hooks/useAreaCheck';
+import { lmrFlags, areaKey, isAreaCheck, type AreaCheck } from '@/hooks/useAreaCheck';
 
 const base = (lmr: Partial<AreaCheck['lmr']>): AreaCheck => ({
   pathway: 'lmr', headline: 'h', tod: { answer: 'no' }, warnings: [], not_checked: [], notes: [], law_version_date: '2026-10-23',
@@ -40,5 +40,19 @@ describe('areaKey', () => {
     expect(areaKey(undefined, 151)).toBeNull();
     expect(areaKey(-33.8, NaN)).toBeNull();
     expect(areaKey(-33.8, 151.1)).toBe('-33.8,151.1');
+  });
+});
+
+describe('isAreaCheck', () => {
+  it('accepts a full answer', () => {
+    expect(isAreaCheck(base({ answer: 'yes' }))).toBe(true);
+  });
+
+  it('rejects a partial or mismatched payload, so it becomes a failure and not a yes', () => {
+    expect(isAreaCheck({ lmr: { answer: 'yes' } })).toBe(false);
+    expect(isAreaCheck(null)).toBe(false);
+    expect(isAreaCheck({ ...base({ answer: 'yes' }), tod: undefined })).toBe(false);
+    expect(isAreaCheck({ ...base({ answer: 'yes' }), warnings: undefined })).toBe(false);
+    expect(isAreaCheck(base({ answer: 'maybe' as never }))).toBe(false);
   });
 });

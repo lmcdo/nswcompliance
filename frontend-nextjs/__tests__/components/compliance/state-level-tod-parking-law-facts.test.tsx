@@ -46,13 +46,28 @@ describe('TOD parking card and the law facts', () => {
     expect(todNotApplicable()).toHaveLength(0);
   });
 
-  it('still says Not applicable when the law facts loaded and no stop is within them', async () => {
+  const located = { ...propertyData, location: { lat: -33.89, lng: 151.12 } };
+  const transportAnswer = (ok: boolean, suggestions: unknown[] = []) => jest.fn((url: string) => String(url).includes('/api/tod/transport-autocomplete')
+    ? Promise.resolve({ ok, status: ok ? 200 : 500, json: () => Promise.resolve({ suggestions }) })
+    : Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })) as unknown as typeof fetch;
+
+  it('says Not applicable only when the law facts loaded AND the transport lookup succeeded with nothing in range', async () => {
     mockFacts = { accessible_area_rail_distance: fact(800), accessible_area_bus_distance: fact(400) };
-    render(<StateLevelControls propertyData={propertyData} developmentType="dual_occupancy" />);
+    global.fetch = transportAnswer(true, []);
+    render(<StateLevelControls propertyData={located} developmentType="dual_occupancy" />);
     expect(await screen.findAllByTestId('not-applicable')).not.toHaveLength(0);
     expect(screen.queryByTestId('tod-parking-not-checked')).toBeNull();
     expect(todNotApplicable()).toHaveLength(1);
   });
+
+  it('says not checked, never Not applicable, when the nearby-transport request fails', async () => {
+    mockFacts = { accessible_area_rail_distance: fact(800), accessible_area_bus_distance: fact(400) };
+    global.fetch = transportAnswer(false);
+    render(<StateLevelControls propertyData={located} developmentType="dual_occupancy" />);
+    expect(await screen.findByTestId('tod-parking-not-checked')).toBeInTheDocument();
+    expect(todNotApplicable()).toHaveLength(0);
+  });
+
   it('a bus stop inside the distance is shown as a possibility with the timetable test named as not checked, whatever its label says', async () => {
     mockFacts = { accessible_area_rail_distance: fact(800), accessible_area_bus_distance: fact(400), accessible_area_bus_min_per_hour: fact(1) };
     global.fetch = jest.fn((url: string) => String(url).includes('/api/tod/transport-autocomplete')
