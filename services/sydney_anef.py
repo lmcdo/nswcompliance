@@ -62,7 +62,7 @@ def _dist_to_ring(poly: list[tuple[float, float]], x: float, y: float) -> float:
 
 def _outline_points(lat: float, lng: float, ring: Optional[list]) -> list[tuple[float, float]]:
     """The lot's outline (one ring of [lon, lat]) densified to at most about 5 m between points, as (lon, lat); the address point alone when no outline is held."""
-    if not ring:
+    if not ring or len(ring) < 4:   # fewer than 4 points (a closed triangle) is not a lot outline
         return [(lng, lat)]
     pts: list[tuple[float, float]] = []
     for (x1, y1), (x2, y2) in zip(ring[:-1], ring[1:]):

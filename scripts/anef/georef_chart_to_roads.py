@@ -54,7 +54,10 @@ def fetch_roads() -> np.ndarray:
             "spatialRel": "esriSpatialRelIntersects", "outFields": "objectid", "returnGeometry": "true", "maxAllowableOffset": 5, "f": "json"}
     out, off = [], 0
     while True:
-        feats = _get({**base, "resultOffset": off, "resultRecordCount": 2000}).get("features") or []
+        page = _get({**base, "resultOffset": off, "resultRecordCount": 2000})
+        if "error" in page or "features" not in page:  # an ArcGIS error comes back as HTTP 200; it is a failure, never an empty last page
+            raise RuntimeError(f"road layer returned an error page at offset {off}: {str(page)[:200]}")
+        feats = page["features"]
         for f in feats:
             for path in f["geometry"]["paths"]:
                 r = np.array(path)

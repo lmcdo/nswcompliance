@@ -182,6 +182,11 @@ def test_a_lot_holding_part_of_the_line_is_never_outside_even_if_the_inside_grid
     assert r["state"] in ("near", "inside") and r["nearest_m"] == 0.0
 
 
+def test_a_ring_too_short_to_be_an_outline_is_treated_as_no_outline():
+    assert sa._outline_points(LAT0, LON0, [[LON0, LAT0]]) == [(LON0, LAT0)]
+    assert sa._outline_points(LAT0, LON0, [[LON0, LAT0], [LON0 + 1e-4, LAT0], [LON0, LAT0]]) == [(LON0, LAT0)]
+
+
 def test_the_outline_is_sampled_at_five_metres_or_less_and_closed():
     ring, _, _ = _square(10.0)   # a 20 m square
     pts = sa._outline_points(LAT0, LON0, ring)
@@ -204,7 +209,7 @@ def test_a_level_the_chart_does_not_have_is_an_error_not_a_guess(square):
 
 # ---- the rule --------------------------------------------------------------------------------------------------------------------------------
 def lot(**over):
-    base = {"lga": "Inner West", "tod_map": {"point": False, "lot": False}, "accelerated": {"point": False, "lot": False},
+    base = {"lga": "Inner West", "lot_outline": True, "tod_map": {"point": False, "lot": False}, "accelerated": {"point": False, "lot": False},
             "exclusion": {"point": False, "lot": False}, "bushfire": {"point": False, "lot": False},
             "heritage": {"item": False, "conservation_area": False, "state_register": False}, "sched12_straight_m": 5000.0, "straight_m": 300.0,
             "walk": {"m": 450.0, "anchor": "Ashfield station", "entrance_id": "node/1", "valid": True}}
@@ -273,8 +278,12 @@ def test_a_missing_or_bad_accuracy_figure_is_no_answer_not_a_crash(margin):
 
 def test_outside_without_the_lots_outline_is_no_answer_but_inside_still_excludes():
     """With no outline only the address point was tested: a point outside the line cannot show the rest of the lot is clear."""
-    out = d.decide(lot(lot_outline=False, sydney_anef=state("outside")), FACTS)
-    assert out["lmr"]["answer"] == "cant_tell" and rule(out)["outcome"] == "unknown" and "outline was not available" in rule(out)["detail"]
+    for flag in (False, None):   # an outline flag that is False or null both mean no outline was available
+        out = d.decide(lot(lot_outline=flag, sydney_anef=state("outside")), FACTS)
+        assert out["lmr"]["answer"] == "cant_tell" and rule(out)["outcome"] == "unknown" and "outline was not available" in rule(out)["detail"]
+    missing = lot(sydney_anef=state("outside"))
+    del missing["lot_outline"]
+    assert rule(d.decide(missing, FACTS))["outcome"] == "unknown"
     far = d.decide(lot(lot_outline=False, sydney_anef={"25": {"state": "outside", "margin_m": 53.0, "outside_frame": True, "level": 25}}), FACTS)
     assert rule(far)["outcome"] == "unknown"
     inside = d.decide(lot(lot_outline=False, sydney_anef=state("inside")), FACTS)   # a point inside the line means part of the lot is inside
