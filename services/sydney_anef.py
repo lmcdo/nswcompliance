@@ -61,14 +61,15 @@ def _dist_to_ring(poly: list[tuple[float, float]], x: float, y: float) -> float:
 
 
 def _outline_points(lat: float, lng: float, ring: Optional[list]) -> list[tuple[float, float]]:
-    """The lot's outline (one ring of [lon, lat]) densified to about 10 m, as (lon, lat); the address point alone when no outline is held."""
+    """The lot's outline (one ring of [lon, lat]) densified to at most about 5 m between points, as (lon, lat); the address point alone when no outline is held."""
     if not ring:
         return [(lng, lat)]
     pts: list[tuple[float, float]] = []
     for (x1, y1), (x2, y2) in zip(ring[:-1], ring[1:]):
-        n = max(1, int(math.hypot((x2 - x1) * 91000.0, (y2 - y1) * 111000.0) / 10.0))
+        n = max(1, math.ceil(math.hypot((x2 - x1) * 91000.0, (y2 - y1) * 111000.0) / 5.0))
         pts += [(x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n) for k in range(n)]
-    return pts or [(lng, lat)]
+    pts.append((ring[-1][0], ring[-1][1]))
+    return pts
 
 
 def classify_all(lat: float, lng: float, ring: Optional[list] = None) -> dict:
@@ -103,17 +104,19 @@ def classify(lat: float, lng: float, ring: Optional[list] = None, level: float =
     kx, ky = _M_PER_DEG * math.cos(math.radians(lat)), _M_PER_DEG
     poly = [((x - lng) * kx, (y - lat) * ky) for x, y in contour["ring_lonlat"]]  # noqa: bracket-access -- committed file, fails closed
     samples = [((x - lng) * kx, (y - lat) * ky) for x, y in pts]
+    encloses = False
     if ring and len(ring) >= 4:
         lot = [((x - lng) * kx, (y - lat) * ky) for x, y in ring]
         # A lot that encloses part of the contour has none of its boundary inside the line, so its inside must be sampled too.
-        if any(_inside(lot, vx, vy) for vx, vy in poly):
+        encloses = any(_inside(lot, vx, vy) for vx, vy in poly)
+        if encloses:
             xs, ys = [p[0] for p in lot], [p[1] for p in lot]
             step = max(10.0, max(max(xs) - min(xs), max(ys) - min(ys)) / MAX_INTERIOR_SAMPLES)
             gx = [min(xs) + step * (i + 0.5) for i in range(int((max(xs) - min(xs)) / step) + 1)]
             gy = [min(ys) + step * (j + 0.5) for j in range(int((max(ys) - min(ys)) / step) + 1)]
             samples += [(x, y) for x in gx for y in gy if _inside(lot, x, y)]
     deepest_inside: Optional[float] = None  # the lot's most-inside point, in metres inside the line
-    nearest = float("inf")  # the lot's closest point to the line, either side
+    nearest = 0.0 if encloses else float("inf")  # the lot's closest point to the line, either side; a lot that holds part of the line touches it
     for px, py in samples:
         d = _dist_to_ring(poly, px, py)
         nearest = min(nearest, d)

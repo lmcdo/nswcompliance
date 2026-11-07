@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New aircraft-noise rule for Sydney Airport: it reads the four contours of the endorsed ANEF 2045 chart from one committed file and compares a lot outline with the ANEF 25 line. It reads no database, writes nothing and is not yet shown on any page as a served number, so it is not Critical. It is more than Minor because a wrong answer would tell a person their lot is or is not excluded by the law's aircraft-noise paragraph.",
-  "commit_hash": "1b3afa37",
+  "commit_hash": "0c0c60fb",
   "files": [
     "services/sydney_anef.py",
     "services/lmr_area_decision.py",
@@ -32,14 +32,14 @@
   "functions": [
     {
       "name": "classify",
-      "file_line": "services/sydney_anef.py:80",
+      "file_line": "services/sydney_anef.py:81",
       "input": "lat, lng, optional lot outline ring of lon/lat pairs, and a contour level",
       "output": "a dict with state inside, outside or near, the margin and distances in metres, and whether the lot is wholly off the chart's map",
       "if_none": "never None: a lot wholly outside the map frame is outside every contour; a missing level raises an error rather than guessing"
     },
     {
       "name": "classify_all",
-      "file_line": "services/sydney_anef.py:74",
+      "file_line": "services/sydney_anef.py:75",
       "input": "lat, lng and an optional lot outline ring",
       "output": "dict keyed by contour level (20, 25, 30, 35) of classify results",
       "if_none": "never None; a missing data file raises and gather() stores the text error"
@@ -55,14 +55,14 @@
   "values": [
     {
       "value": "margin_m (53)",
-      "read_at": "services/sydney_anef.py:92",
+      "read_at": "services/sydney_anef.py:93",
       "nullable": "no",
       "guard_at": "tests/test_sydney_anef.py:test_the_source_and_the_measured_accuracy_are_recorded",
       "if_missing": "KeyError from the committed file; gather() catches it and the decision reports no answer"
     },
     {
       "value": "frame_lonlat",
-      "read_at": "services/sydney_anef.py:94",
+      "read_at": "services/sydney_anef.py:95",
       "nullable": "no",
       "guard_at": "tests/test_sydney_anef.py:test_each_contour_lies_wholly_inside_the_one_outside_it_and_in_sydney",
       "if_missing": "KeyError from the committed file; gather() catches it and the decision reports no answer"

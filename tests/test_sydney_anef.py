@@ -169,6 +169,22 @@ def test_a_lot_that_encloses_the_whole_map_is_measured_not_called_off_the_map(mo
     assert r["outside_frame"] is False and r["state"] == "inside"
 
 
+def test_a_lot_holding_part_of_the_line_is_never_outside_even_if_the_inside_grid_misses(square, monkeypatch):
+    """With a one-point grid the sample lands outside the contour; the lot still contains the line, so it cannot be called outside."""
+    monkeypatch.setattr(sa, "MAX_INTERIOR_SAMPLES", 1)
+    (n_lat, e_lng), (s_lat, w_lng) = at(0, 0, east_m=800, north_m=3000), at(0, 0, east_m=-3000, north_m=-3000)
+    ring = [[w_lng, s_lat], [e_lng, s_lat], [e_lng, n_lat], [w_lng, n_lat], [w_lng, s_lat]]
+    r = sa.classify(LAT0, LON0, ring)
+    assert r["state"] in ("near", "inside") and r["nearest_m"] == 0.0
+
+
+def test_the_outline_is_sampled_at_five_metres_or_less_and_closed():
+    ring, _, _ = _square(10.0)   # a 20 m square
+    pts = sa._outline_points(LAT0, LON0, ring)
+    assert len(pts) >= 16 and pts[-1] == (ring[-1][0], ring[-1][1])
+    assert sa._outline_points(LAT0, LON0, None) == [(LON0, LAT0)]
+
+
 def test_a_lot_that_encloses_the_whole_contour_is_inside_even_though_no_boundary_point_is(square):
     big = at(0, 0, east_m=2000, north_m=2000), at(0, 0, east_m=-2000, north_m=-2000)
     (n_lat, e_lng), (s_lat, w_lng) = big
