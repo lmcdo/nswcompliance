@@ -28,10 +28,14 @@ describe('lmrFlags', () => {
     expect(lmrFlags({} as AreaCheck)).toEqual({ inLmrArea: null, lmrExcluded: null });
   });
 
-  it('a yes with warnings is still a yes (the warnings are shown beside it)', () => {
-    const r = base({ answer: 'yes' });
-    r.warnings = [{ clause: 's164(1)(f1)', page: 78, detail: 'flood extent not checked' }];
-    expect(lmrFlags(r).inLmrArea).toBe(true);
+  it('a yes that carries a warning (an exclusion not ruled out) is null for the rest of the page; the card still shows the warning', () => {
+    const w = { clause: 's164(1)(f1)', page: 78, detail: 'flood extent not checked' };
+    const top = base({ answer: 'yes' });
+    top.warnings = [w];
+    expect(lmrFlags(top)).toEqual({ inLmrArea: null, lmrExcluded: null });
+    const inner = base({ answer: 'yes', warnings: [w] });
+    expect(lmrFlags(inner).inLmrArea).toBeNull();
+    expect(lmrFlags(base({ answer: 'yes' })).inLmrArea).toBe(true);
   });
 });
 

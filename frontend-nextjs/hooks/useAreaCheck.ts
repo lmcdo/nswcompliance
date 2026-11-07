@@ -26,6 +26,7 @@ export interface AreaAnswerBlock {
   share_of_range_inside?: number;
   heuristic?: string;
   rules?: AreaRule[];
+  warnings?: { clause: string; page: number; detail: string }[];
   standards?: Record<string, { value: number | string; clause: string; page: number; law_version_date: string }>;
 }
 
@@ -61,8 +62,11 @@ export interface UseAreaCheckResult {
 export function lmrFlags(result: AreaCheck | null): { inLmrArea: boolean | null; lmrExcluded: boolean | null } {
   if (!result || !result.lmr) return { inLmrArea: null, lmrExcluded: null };
   const a = result.lmr.answer;
+  // A yes that still carries a warning has an exclusion the check could not rule out (flood extent, pipeline). The card shows the
+  // warning beside the yes; every other panel gets null (not decided), the same as a borderline lot.
+  const unresolved = (result.warnings?.length ?? 0) > 0 || (result.lmr.warnings?.length ?? 0) > 0;
   return {
-    inLmrArea: a === 'yes' ? true : a === 'no' ? false : null,
+    inLmrArea: a === 'yes' ? (unresolved ? null : true) : a === 'no' ? false : null,
     lmrExcluded: a === 'no' && result.lmr.reason_code === 'exclusion_map' ? true : null,
   };
 }
