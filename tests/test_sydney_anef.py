@@ -158,6 +158,16 @@ def test_a_lot_whose_address_point_is_off_the_map_but_whose_outline_reaches_the_
     assert r["state"] == "inside" and r["outside_frame"] is False and 90 < r["inside_by_m"] < 110   # 100 m inside the line, beyond the 50 m margin
 
 
+def test_a_lot_that_encloses_the_whole_map_is_measured_not_called_off_the_map(monkeypatch):
+    ring, _, _ = _square()
+    doc = {"frame_lonlat": {"west": LON0 - 0.01, "east": LON0 + 0.01, "south": LAT0 - 0.01, "north": LAT0 + 0.01},
+           "accuracy": {"margin_m": 50.0}, "contours": [{"anef": 25, "ring_lonlat": ring}]}
+    monkeypatch.setattr(sa, "load", lambda: doc)
+    big = [[LON0 - 0.05, LAT0 - 0.05], [LON0 + 0.05, LAT0 - 0.05], [LON0 + 0.05, LAT0 + 0.05], [LON0 - 0.05, LAT0 + 0.05], [LON0 - 0.05, LAT0 - 0.05]]
+    r = sa.classify(LAT0, LON0, big)
+    assert r["outside_frame"] is False and r["state"] == "inside"
+
+
 def test_a_lot_that_encloses_the_whole_contour_is_inside_even_though_no_boundary_point_is(square):
     big = at(0, 0, east_m=2000, north_m=2000), at(0, 0, east_m=-2000, north_m=-2000)
     (n_lat, e_lng), (s_lat, w_lng) = big
@@ -183,6 +193,13 @@ def lot(**over):
 
 def state(s, **kw):
     return {"25": {"state": s, "margin_m": 53.0, "inside_by_m": 300.0 if s == "inside" else None, "nearest_m": 120.0, "level": 25, **kw}}
+
+
+@pytest.mark.parametrize("nearest", [None, "120", True, 10.0, 53.0, float("nan"), -1.0])
+def test_clear_needs_a_distance_beyond_the_margin_or_it_is_no_answer(nearest):
+    """`outside` rests on the lot's distance from the line; a missing, non-numeric or too-small distance cannot be called clear."""
+    r = d.decide(lot(sydney_anef=state("outside", nearest_m=nearest)), FACTS)
+    assert r["lmr"]["answer"] == "cant_tell" and rule(r)["outcome"] == "unknown" and "distance" in rule(r)["detail"]
 
 
 def rule(r):

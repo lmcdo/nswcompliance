@@ -93,7 +93,11 @@ def classify(lat: float, lng: float, ring: Optional[list] = None, level: float =
     levels = [c["anef"] for c in doc["contours"]]  # noqa: bracket-access -- committed file, fails closed
     f = doc["frame_lonlat"]  # noqa: bracket-access -- committed file, fails closed
     pts = _outline_points(lat, lng, ring)
-    if not any(f["west"] <= x <= f["east"] and f["south"] <= y <= f["north"] for x, y in pts):  # noqa: bracket-access -- committed file, fails closed
+    on_map = any(f["west"] <= x <= f["east"] and f["south"] <= y <= f["north"] for x, y in pts)  # noqa: bracket-access -- committed file, fails closed
+    if not on_map and ring and len(ring) >= 4:  # a lot big enough to enclose the whole map has no boundary point on it
+        corners = [(f["west"], f["south"]), (f["east"], f["south"]), (f["east"], f["north"]), (f["west"], f["north"])]  # noqa: bracket-access -- committed file, fails closed
+        on_map = any(_inside(ring, x, y) for x, y in corners)
+    if not on_map:
         # no part of the lot is on the chart's map; the frame wholly contains the outermost contour, so the lot is outside every contour
         return {"state": "outside", "margin_m": margin, "inside_by_m": None, "nearest_m": None, "level": level, "outside_frame": True, "contour_levels": levels}
     kx, ky = _M_PER_DEG * math.cos(math.radians(lat)), _M_PER_DEG

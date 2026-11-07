@@ -243,9 +243,12 @@ def _sydney_noise_rule(m: dict, facts: LawFacts) -> Optional[dict]:
             return _rule("aircraft_noise_sydney", ph, "clear",
                          f"the lot is wholly outside the map of Sydney Airport's 2045 aircraft noise chart, which shows all of its outermost (ANEF 20) line, "
                          f"so it is clear of the ANEF {anef_min:g} line", margin_m=margin)
+        nearest = c.get("nearest_m")
+        if isinstance(nearest, bool) or not isinstance(nearest, (int, float)) or not margin < nearest < 100000000:   # clear rests on this distance; also false for NaN
+            return _rule("aircraft_noise_sydney", ph, "unknown", "Sydney Airport's 2045 chart answer lacks the lot's distance from the line, so it cannot be called clear")
         return _rule("aircraft_noise_sydney", ph, "clear",
                      f"the lot is outside the ANEF {anef_min:g} line on Sydney Airport's 2045 chart by more than the chart's accuracy of {margin:g} m",
-                     margin_m=margin, nearest_m=c.get("nearest_m"))
+                     margin_m=margin, nearest_m=nearest)
     return _rule("aircraft_noise_sydney", ph, "unknown",
                  f"the lot is within {margin:g} m of the ANEF {anef_min:g} line on Sydney Airport's 2045 chart, which is as close as the chart can be read",
                  margin_m=margin, nearest_m=c.get("nearest_m"))
