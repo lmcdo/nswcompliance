@@ -1844,6 +1844,17 @@
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
    "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
+  "DQ-152": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/lmr_area/run_lmr_area_pipeline.py",
+    "verify"
+   ],
+   "passes_when": "exit 0 - data/law/lmr_station_entrances.json and the 7 packed walking files under data/lmr_walk/ all exist and each is under the 2 MB repo limit.",
+   "red_when": "a station or walking file is missing, renamed or over 2 MB (exit 1). This proves the data is PRESENT, not that the area check is accurate: accuracy is measured by `run_lmr_area_pipeline.py test SEED` against an independent router, and the station file against the law's list by tests/test_lmr_data_files.py.",
+   "note": "Added 2026-11-07. Measured on two brand-new sets of 100 lots (seeds 20261110, 20261111; second tool = OpenStreetMap Valhalla pedestrian router): yes/no match 151/158 (96%), stated range holds 110/115 (96%), can't tell 4/200, none called yes with the router over the limit. Chapter 5 check 30/30 on 10 stations in 6 of the 12 councils. Limits: both tools read OpenStreetMap; metropolitan Sydney in 5 areas only; 24 stations use estimated entrances; no council-measured walks. This check also gives the pipeline scripts under scripts/lmr_area/ a caller."
+  },
   "DQ-151": {
    "declared": "fixed",
    "check": [

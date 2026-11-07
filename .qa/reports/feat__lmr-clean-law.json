@@ -1,0 +1,154 @@
+{
+  "tier": "standard",
+  "justification": "New state-law-only area check (low and mid-rise walking limit, Chapter 5 TOD map rule, s164 exclusions) built as pure rules plus live public map-service reads. It reads no database, writes nothing, and is not yet wired to any page or served number, so it is not Critical; it is more than Minor because a wrong answer here would later tell a person a lot is or is not in a reform area.",
+  "commit_hash": "eb80ef69",
+  "files": [
+    "services/lmr_area_decision.py",
+    "services/lmr_area_inputs.py",
+    "services/lmr_walk_surface.py",
+    "tests/test_lmr_area_decision.py",
+    "tests/test_lmr_area_inputs.py",
+    "tests/test_lmr_area_gather.py",
+    "tests/test_lmr_walk_surface.py",
+    "tests/test_lmr_data_files.py",
+    "scripts/lmr_area/build_station_entrances.py",
+    "scripts/lmr_area/merge_gtfs_entrances.py",
+    "scripts/lmr_area/add_station_footprints.py",
+    "scripts/lmr_area/entrance_rule_test.py",
+    "scripts/lmr_area/apply_entrance_rule.py",
+    "scripts/lmr_area/build_walk_surfaces.py",
+    "scripts/lmr_area/pack_walk_surfaces.py",
+    "scripts/lmr_area/area_check_test.py",
+    "scripts/lmr_area/area_check_score.py",
+    "scripts/lmr_area/tod_check.py",
+    "data/law/lmr_station_entrances.json",
+    ".claude/clean_feature_files.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/lmr_area/area_check_score.py test_results.json",
+    "fails_when": "Prints FAIL on the ALL line whenever the independent walking router's distance falls outside our stated range for more than 10 percent of lots, or any yes/no answer is opposite to the router, or real can't-tell exceeds 5 percent. Always-yes and always-no versions are scored in the same run and must also print FAIL.",
+    "observed_red": "[ALL] lots 100: yes/no 79 (match router 75/79 = 95%, wrong-yes 0, wrong-no 0) | borderline 20 (lean matches router 14/20) | real can't-tell 1 (1%) / range validity: router's walk inside our range for 56/64 lots = 88% | median range width 300 m / => FAIL  (also: both fresh sets combined 103/120 = 86% before the range was made lopsided; always-yes matched the router on 42/100 and always-no on 38/100)",
+    "external_authority": "The OpenStreetMap Valhalla pedestrian router is the judge. It is a different routing engine from our own footpath files and is never used by the check being tested. Both read OpenStreetMap, so a path missing from the map would fool both; that limit is stated in the report to the user."
+  },
+  "pre_impl": {
+    "existing_data": "No database table is read or written. Reads are public NSW map layers (SEPP maps 752/759/776/766, EPI heritage 16 and State Heritage Register 221, bush fire prone land, council area, lot outline) and committed files: the saved SEPP Housing text facts (data/law/housing_sepp_lmr_facts.json), the station entrance file, and the packed walking files.",
+    "assumption_mismatch": "If a map layer returns an unexpected shape or no answer, the value becomes None and the answer becomes cant_tell, never a clear. If a heritage class this code has not seen appears, the heritage answer is unknown. If a lot has no outline, no distance is computed. If a station is missing from the station file, no distances are computed.",
+    "new_vs_existing": "Applies to every lot asked about at request time; nothing is stored per lot. The walking files cover five Sydney areas only; a lot outside them gets cant_tell with the reason 'no walking surface built for this area'.",
+    "external_source_error": "A failed or empty public map call returns None (services/lmr_area_inputs.py _get_json), which layer_state reads as unknown. An ArcGIS error body without 'features' is treated as a failure, not as an empty result.",
+    "frontend_type": "Not applicable: no frontend or API route is changed in this commit.",
+    "user_failure_mode": "Not yet served to users. The answer carries clause, page and law version date; borderline lots show the walking range and the share of it under the limit; a failed measurement says cant_tell with the reason."
+  },
+  "functions": [
+    {
+      "name": "decide",
+      "file_line": "services/lmr_area_decision.py:338",
+      "input": "dict of measurements (layer hits, council, distances, walk range) plus the saved law facts",
+      "output": "dict with pathway, headline, lmr answer, tod answer, not_checked list, notes",
+      "if_none": "any missing measurement gives cant_tell for that rule; a no from any rule is final; a yes needs every rule clear and the whole walking range under the limit; the function never raises"
+    },
+    {
+      "name": "walk_from_lot",
+      "file_line": "services/lmr_walk_surface.py:129",
+      "input": "lot outline in metres, straight distance, packed walking surfaces, set of nearby anchors that must be built",
+      "output": "dict with walk metres, valid flag, reason, anchor, extra uncertainty for unmapped entrances",
+      "if_none": "no covering surface, thin network, no footpath within 40 m of the outline, a missing nearby anchor, or an impossible walk (shorter than the straight line) all give valid false with a reason, never a number"
+    },
+    {
+      "name": "gather",
+      "file_line": "services/lmr_area_inputs.py:222",
+      "input": "latitude, longitude, optional lot outline, station file, walking surfaces, saved layer results",
+      "output": "measurement dict that is ready for decide",
+      "if_none": "no lot outline, unreadable station file or failed town centre map leaves distances None, so the answer is cant_tell"
+    }
+  ],
+  "values": [
+    {
+      "value": "WALK_MARGIN_LOW_M and WALK_MARGIN_HIGH_M",
+      "read_at": "services/lmr_area_decision.py:63",
+      "nullable": "no",
+      "guard_at": "services/lmr_area_decision.py:281",
+      "if_missing": "constants; the printed explanation states the numbers and that they were measured on 248 lots against an independent router"
+    },
+    {
+      "name": "heritage item class",
+      "value": "LAY_CLASS from the EPI heritage layer",
+      "read_at": "services/lmr_area_inputs.py:164",
+      "nullable": "yes",
+      "guard_at": "services/lmr_area_inputs.py:62",
+      "if_missing": "an unknown class or a failed query makes the heritage answer unknown, which blocks a yes"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Which lot outline contains the address point (smallest containing polygon), with a fallback service",
+      "file_line": "services/lmr_area_inputs.py:111",
+      "where_clause": "point intersects NSW Property layer 4, then NSW Cadastre layer 9; only a polygon that contains the point is kept",
+      "if_zero": "None, so no lot-outline rules or distances run and the answer is cant_tell",
+      "if_wrong": "a neighbouring polygon that does not contain the point is rejected by the contains test"
+    },
+    {
+      "purpose": "Is the address point or the lot outline on the TOD, accelerated TOD, exclusion or bush fire map",
+      "file_line": "services/lmr_area_inputs.py:185",
+      "where_clause": "point query and polygon query against each ePlanning or BFPL layer, outFields OBJECTID only",
+      "if_zero": "a successful empty answer means clear; a failed call means None and unknown, never clear",
+      "if_wrong": "a lot only partly on a map is reported as part, not hit, and the decision does not treat part as clear"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A lot near two anchors where only the farther anchor has a built walking file, so the shorter walk to the nearer anchor is never seen",
+      "what_happens": "A wrong 'no' or a too-long walk would be shown with confidence",
+      "mitigated": true,
+      "how": "services/lmr_walk_surface.py:153 — every anchor within the straight-line limit must exist in a covering surface or the walk is invalid",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -k nearby_anchor"
+    },
+    {
+      "scenario": "A lot on a long street whose start point jumps sideways to a junction on another street because walking files only stored junctions (seen live on 2/87 Dunmore St South Bexley: walk 485 m against about 850 m)",
+      "what_happens": "A wrong 'yes' that the independent router contradicts",
+      "mitigated": true,
+      "how": "services/lmr_walk_surface.py:42 and :175 — start reach cut to 40 m, snap slack 10 m, and the builder now stores a point about every 15 m along every street; the lot is now borderline with range 569-869 m and the router's 851 m falls inside it",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -k gap_limit"
+    },
+    {
+      "scenario": "The lot outline service returns a neighbouring or common-property polygon that does not contain the address point, or both outline services fail, so the smallest containing polygon is the wrong lot or missing",
+      "what_happens": "Whole-lot rules and distances would be measured for the wrong parcel, or silently skipped",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py:111 — only a valid polygon that contains the address point is kept, the smallest one wins, the Cadastre is the fallback service, and no outline means no distances and a cant_tell answer",
+      "repro": "python -m pytest tests/test_lmr_area_inputs.py -k lot_must_contain"
+    },
+    {
+      "scenario": "A public map layer times out or returns an error body and the code reads it as 'not on the exclusion map'",
+      "what_happens": "A lot on an excluded map would be told it is clear",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py:70 — _get_json returns None unless the body has features and no error; layer_state turns None into unknown; a yes needs every rule clear",
+      "repro": "python -m pytest tests/test_lmr_area_inputs.py -k failure"
+    },
+    {
+      "scenario": "A heritage layer class the code has not seen, such as Local Heritage - General or an Aboriginal class, is treated as no heritage item",
+      "what_happens": "A heritage-listed lot would be told it is clear for the low and mid-rise pathway",
+      "mitigated": true,
+      "how": "services/lmr_area_inputs.py:62 — item classes are listed explicitly, undecided classes and unknown classes give None, and only a successful query with no item class gives False",
+      "repro": "python -m pytest tests/test_lmr_area_inputs.py -k heritage_class_mapping"
+    },
+    {
+      "scenario": "A station with no mapped entrance gets a guessed entrance that is presented as official",
+      "what_happens": "A person reads an estimated point as a real public entrance",
+      "mitigated": true,
+      "how": "scripts/lmr_area/apply_entrance_rule.py — estimated entrances carry estimated true and 40 m extra uncertainty (measured: 96 percent of real entrances within 40 m); tests/test_lmr_data_files.py fails if an estimated entrance is unlabelled",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -k estimates_are_labelled"
+    },
+    {
+      "scenario": "The repo test setup replaces pyproj with a stub whose transform returns zero, so every distance is 0 and distance tests pass or fail for the wrong reason",
+      "what_happens": "Projection tests would silently measure nothing",
+      "mitigated": true,
+      "how": "tests/test_lmr_area_gather.py skips under the stub and tests/test_lmr_area_inputs.py runs it in a child pytest with --noconftest; test_the_real_projection_is_in_use fails if the projection returns zero",
+      "repro": "python -m pytest --noconftest tests/test_lmr_area_gather.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: a person reads the printed Chapter 5 table and the lots listed as outside our range before any outreach; the outreach hold stays on"
+  }
+}
