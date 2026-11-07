@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "New aircraft-noise rule for Sydney Airport: it reads the four contours of the endorsed ANEF 2045 chart from one committed file and compares a lot outline with the ANEF 25 line. It reads no database, writes nothing and is not yet shown on any page as a served number, so it is not Critical. It is more than Minor because a wrong answer would tell a person their lot is or is not excluded by the law's aircraft-noise paragraph.",
-  "commit_hash": "68aa76d0",
+  "commit_hash": "7ab35934",
   "files": [
     "services/sydney_anef.py",
     "services/lmr_area_decision.py",
@@ -17,9 +17,9 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_sydney_anef.py -q",
-    "fails_when": "Fails whenever a lot well inside the line is not excluded, a lot clear of it is not cleared, a lot within the margin (68 m) gets a yes or no, a contour is not closed or not nested 20 > 25 > 30 > 35, or the recorded alignment no longer beats a wrong alignment by a wide margin.",
+    "fails_when": "Fails whenever a lot well inside the line is not excluded, a lot clear of it is not cleared, a lot within the margin gets a yes or no, a contour is not closed or not nested 20 > 25 > 30 > 35, or the recorded alignment no longer beats a wrong alignment by a wide margin.",
     "observed_red": "Six deliberate breaks of the module were each caught by at least one test: inside needs no margin, outside needs no margin, nearest uses the furthest point, clear becomes excludes, near becomes clear, and the point-in-polygon toggle never flipping back. That last one first SURVIVED; west, north, south and U-shaped contour tests were added and it is now caught.",
-    "external_authority": "NSW road centrelines (NSW_Transport_Theme layer 5) are independent of the chart. 2,677 chart road points were matched to 320,226 road samples: 99.5% land within 15 m, 99.9% within 20 m and every one within 30 m (the bound the margin uses), against 24 to 36% within 20 m for a wrong alignment. The fitted scale (42.26 m per point) equals the chart's own scale bar (42.2). Limit stated to the user: the chart is the airport's forecast and carries its own uncertainty; the margin covers drawing width and alignment only."
+    "external_authority": "NSW road centrelines (NSW_Transport_Theme layer 5) are independent of the chart. 24,467 chart road points over the whole map were matched to 781,262 road samples: 97.5% land within 10 m and 99.8% within 20 m, against 40 to 42% within 20 m for a wrong alignment. In the area the 25 line covers, 5,944 points: 99.95% within 50 m and the largest distance is 61 m, which is the bound the margin uses. The fitted scale (42.32 m per point) is within 0.3% of the chart's own scale bar (42.2). Limit stated to the user: the chart is the airport's forecast and carries its own uncertainty; the margin covers drawing width and alignment only."
   },
   "pre_impl": {
     "existing_data": "No database table is read or written. The rule reads one committed file, data/anef/sydney_anef_2045.json, built offline from Sydney Airport Master Plan 2045 Appendix H Map H-1. The old data/anef zones file (5-point polygons that flagged 223 of 400 test lots) is not used.",
@@ -27,7 +27,7 @@
     "new_vs_existing": "Applies at request time to every lot inside the chart's map frame, which covers the inner Sydney airport area only. Lots elsewhere are unchanged. Western Sydney Airport noise still comes from the planning portal layer.",
     "external_source_error": "No network is used at request time. The two offline scripts call the NSW road layer; a failed call raises after three tries and no data file is written.",
     "frontend_type": "Not applicable: the frontend reads the same area-check reply shape; only a rule id and its wording are new.",
-    "user_failure_mode": "A lot inside the line is shown as excluded with the clause, page and chart named; a lot within the margin (68 m) of the line says 'Why:' and gives no yes or no; an unreadable chart says no answer."
+    "user_failure_mode": "A lot inside the line is shown as excluded with the clause, page and chart named; a lot within the margin (102 m) of the line says 'Why:' and gives no yes or no; an unreadable chart says no answer."
   },
   "functions": [
     {
@@ -70,9 +70,9 @@
   ],
   "queries": [
     {
-      "purpose": "Offline only: NSW RoadSegment centrelines in a box round the airport, used once to align the chart",
-      "file_line": "scripts/anef/georef_chart_to_roads.py:51",
-      "where_clause": "NSW_Transport_Theme FeatureServer layer 5, envelope 151.12,-34.00,151.27,-33.86, paged 2000 at a time",
+      "purpose": "Offline only: NSW RoadSegment centrelines over the whole chart map, used once to align the chart and measure its accuracy",
+      "file_line": "scripts/anef/georef_chart_to_roads.py:52",
+      "where_clause": "NSW_Transport_Theme FeatureServer layer 5, envelope 151.03,-34.08,151.25,-33.80, paged until an empty page",
       "if_zero": "the fit has nothing to match and is refused (accepted false)",
       "if_wrong": "a wrong layer would not give a clear peak: the fit is refused unless 95% of chart road points land within 20 m and a shifted fit scores 50% or less"
     },
@@ -85,7 +85,7 @@
     },
     {
       "purpose": "Offline only: contour paths read straight from the vector chart page (no query)",
-      "file_line": "scripts/anef/build_sydney_anef_2045.py:94",
+      "file_line": "scripts/anef/build_sydney_anef_2045.py:93",
       "where_clause": "page 25 of the Appendices PDF, stroke colour 0.082,0.216,0.345, at least 500 segments each",
       "if_zero": "the build refuses unless exactly four contours are found",
       "if_wrong": "the build refuses unless every ring is closed and the rings nest 20 > 25 > 30 > 35"
@@ -149,7 +149,7 @@
       "repro": "python -m pytest tests/test_sydney_anef.py -q -k accuracy_figure"
     },
     {
-      "scenario": "The NSW RoadSegment centrelines used to align the chart come back empty, from the wrong layer or in a box that misses the airport, so every contour is shifted on the ground",
+      "scenario": "The NSW RoadSegment centrelines used to align the chart come back empty, from the wrong layer or in a box that misses part of the map, so every contour is shifted on the ground",
       "what_happens": "Lots near the line would get the wrong side with confidence",
       "mitigated": true,
       "how": "scripts/anef/georef_chart_to_roads.py refuses a fit unless 95% of chart road points are within 20 m of real roads and a shifted fit scores 50% or less; the recorded numbers are tested",

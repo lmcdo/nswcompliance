@@ -30,10 +30,11 @@ from scipy.spatial import cKDTree
 
 PAGE_INDEX = 24  # PDF page 25: Map H-1 "ANEF 2045"
 ROADS_URL = "https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Transport_Theme/FeatureServer/5/query"
-ROAD_BOX = "151.12,-34.00,151.27,-33.86"  # lon/lat box round the airport
+ROAD_BOX = "151.03,-34.08,151.25,-33.80"  # lon/lat box over the WHOLE chart map (the 20 line reaches lat -34.06 to -33.84), not just the airport
 ROAD_GREYS = {1.01, 1.44}  # stroke widths of the chart's road lines (colour 0.74 grey)
 CENTRE_PT = (285.0, 526.0)  # chart point near the middle of the airport; only the search starts here
-RADIUS_PT = 90  # use chart roads within this many points of it (the real roads fetched cover this)
+FRAME_PT = (0.0, 195.0, 420.0, 830.0)  # the map frame on the page, in points (x0, y0, x1, y1); every chart road point inside it is used
+CONTOUR_BBOX_PT = {"20": (136.0, 251.0, 405.0, 821.0), "25": (189.0, 339.0, 363.0, 706.0)}  # where the 20 and 25 lines lie on the page; accuracy is reported there
 
 
 def _get(params: dict) -> dict:
@@ -61,9 +62,9 @@ def fetch_roads() -> np.ndarray:
                     k = max(2, int(np.hypot(*(b - a)) / 10))
                     out.append(a + (b - a) * np.linspace(0, 1, k)[:, None])
         print(f"roads fetched {off + len(feats)}", flush=True)
-        if len(feats) < 2000:
+        if not feats:  # only an EMPTY page ends the download: a server may cap a page below the 2,000 asked for and say exceededTransferLimit
             return np.vstack(out)
-        off += 2000
+        off += len(feats)
 
 
 def chart_road_points(pdf: Path) -> np.ndarray:
@@ -77,12 +78,13 @@ def chart_road_points(pdf: Path) -> np.ndarray:
                     a, b = np.array([it[1].x, it[1].y]), np.array([it[2].x, it[2].y])
                     pts.append(a + (b - a) * np.linspace(0, 1, max(2, int(np.hypot(*(b - a)) / 2.5)))[:, None])
     c = np.vstack(pts)
-    return c[np.hypot(c[:, 0] - CENTRE_PT[0], c[:, 1] - CENTRE_PT[1]) < RADIUS_PT]
+    x0, y0, x1, y1 = FRAME_PT
+    return c[(c[:, 0] >= x0) & (c[:, 0] <= x1) & (c[:, 1] >= y0) & (c[:, 1] <= y1)]
 
 
 def fit(chart: np.ndarray, real: np.ndarray) -> dict:
     tree = cKDTree(real)
-    sub = chart[np.random.default_rng(1).choice(len(chart), min(1500, len(chart)), replace=False)]
+    sub = chart[np.random.default_rng(1).choice(len(chart), min(3000, len(chart)), replace=False)]
     x0, y0 = Transformer.from_crs(28356, 3857, always_xy=True).transform(331452.0, 6242242.5)  # middle of runway 16R/34L (published ends)
 
     def share(s: float, ox: float, oy: float, pts: np.ndarray = sub, thr: float = 15) -> float:
@@ -106,16 +108,33 @@ def fit(chart: np.ndarray, real: np.ndarray) -> dict:
                     if v > best[0]:
                         best = (v, (float(ss), ox + dx, oy + dy))
         s, ox, oy = best[1]
+    for _ in range(20):  # trimmed least squares on every chart road point near a road: the grid above fixes the peak, this removes its scale bias
+        d, idx = tree.query(np.c_[ox + s * chart[:, 0], oy - s * chart[:, 1]])
+        keep = d < 25
+        c, r = chart[keep], real[idx[keep]]
+        A = np.zeros((2 * len(c), 3))
+        b = np.zeros(2 * len(c))
+        A[0::2] = np.c_[c[:, 0], np.ones(len(c)), np.zeros(len(c))]
+        b[0::2] = r[:, 0]
+        A[1::2] = np.c_[-c[:, 1], np.zeros(len(c)), np.ones(len(c))]
+        b[1::2] = r[:, 1]
+        s, ox, oy = (float(v) for v in np.linalg.lstsq(A, b, rcond=None)[0])
     d, _ = tree.query(np.c_[ox + s * chart[:, 0], oy - s * chart[:, 1]])
     chance = []
     for dx, dy in ((500, 300), (-700, 400), (300, -800)):
         d2, _ = tree.query(np.c_[ox + dx + s * chart[:, 0], oy + dy - s * chart[:, 1]])
         chance.append(float((d2 < 20).mean()))
     lat_factor = math.cos(math.radians(33.93))
+    regions = {}  # accuracy where the lines actually lie, not just where the fit was easiest
+    for name, (bx0, by0, bx1, by1) in CONTOUR_BBOX_PT.items():
+        m = (chart[:, 0] >= bx0) & (chart[:, 0] <= bx1) & (chart[:, 1] >= by0) & (chart[:, 1] <= by1)
+        dm = d[m]
+        regions[name] = {"chart_road_points": int(m.sum()), "share_within_m": {str(t): float((dm < t).mean()) for t in (10, 20, 30, 40, 50)},
+                         "max_distance_m_of_points_matched_within_100m": float(dm[dm < 100].max()), "share_matched_within_100m": float((dm < 100).mean())}
     return {"scale_mercator_m_per_pt": s, "x_offset_3857": ox, "y_offset_3857": oy, "ground_m_per_pt": s * lat_factor,
             "chart_road_points": int(len(chart)), "real_road_samples": int(len(real)),
             "share_within_m": {str(t): float((d < t).mean()) for t in (5, 10, 15, 20, 30)},
-            "chance_share_within_20m_when_shifted": chance}
+            "chance_share_within_20m_when_shifted": chance, "region_accuracy": regions}
 
 
 def main(argv: list[str]) -> int:

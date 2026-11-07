@@ -35,7 +35,6 @@ SIMPLIFY_M = 3.0  # drop points that move the line by less than this
 SOURCE_URL = "https://www.sydneyairport.com.au/corporate/planning-and-projects/master-plan/master-plan-2045-downloads"
 ENDORSED = "2026-02-26"
 FRAME_PT = (0.0, 195.0, 420.0, 830.0)  # the map frame on the page, in points (x0, y0, x1, y1)
-ALIGNMENT_BOUND_M = 30.0  # EVERY chart road point lands within 30 m of a real road (share_within_m["30"] is 1.0 in the georef file); the build refuses otherwise
 LINE_WIDTH_PT = 1.785  # drawn width of a contour on the chart
 
 
@@ -101,9 +100,11 @@ def main(argv: list[str]) -> int:
     if not g.get("accepted"):
         print("georeference was not accepted; refusing to build")
         return 1
-    if g.get("share_within_m", {}).get("30", 0.0) < 1.0:  # the margin below assumes no chart road point is more than ALIGNMENT_BOUND_M from a real road
-        print(f"some chart road points are more than {ALIGNMENT_BOUND_M:g} m from a real road; the margin cannot be stated; refusing to build")
+    region = g.get("region_accuracy", {}).get("25")  # the area the ANEF 25 line covers: the bound is measured THERE, not near the airport only
+    if not region or region.get("share_matched_within_100m", 0.0) < 1.0 or region.get("chart_road_points", 0) < 1000:
+        print("the georeference has no measured bound for the area of the 25 line (every road point there must match a road within 100 m); refusing to build")
         return 1
+    bound = math.ceil(region["max_distance_m_of_points_matched_within_100m"])  # the LARGEST distance of any chart road point there from a real road
     pdf = Path(a.pdf)
     if hashlib.sha256(pdf.read_bytes()).hexdigest() != g["pdf_sha256"]:
         print("the PDF is not the one the georeference was fitted to")
@@ -138,7 +139,7 @@ def main(argv: list[str]) -> int:
             return 1
     ground = g["ground_m_per_pt"]
     half_width = 0.5 * LINE_WIDTH_PT * ground
-    margin = math.ceil(half_width + ALIGNMENT_BOUND_M)
+    margin = math.ceil(half_width + bound + SIMPLIFY_M)  # drawn half-width + the largest measured alignment error + what simplifying the line can move it
     x0, y0, x1, y1 = FRAME_PT
     fl, fb = to_ll.transform(ox + s * x0, oy - s * y1)
     fr, ft = to_ll.transform(ox + s * x1, oy - s * y0)
@@ -150,7 +151,8 @@ def main(argv: list[str]) -> int:
         "frame_lonlat": {"west": round(fl, 6), "south": round(fb, 6), "east": round(fr, 6), "north": round(ft, 6)},
         "accuracy": {"alignment": "chart streets matched to NSW road centrelines", "share_of_chart_road_points_within_m": g["share_within_m"],
                      "chance_share_within_20m_when_shifted": g["chance_share_within_20m_when_shifted"],
-                     "half_drawn_line_width_m": round(half_width, 1), "alignment_bound_m": ALIGNMENT_BOUND_M, "margin_m": margin,
+                     "alignment_region_25": {"chart_road_points": region["chart_road_points"], "share_within_m": region["share_within_m"]},
+                     "half_drawn_line_width_m": round(half_width, 1), "alignment_bound_m": bound, "simplify_m": SIMPLIFY_M, "margin_m": margin,
                      "note": "A lot closer to a contour than margin_m cannot be placed on one side of it from this chart."},
         "contours": [{"anef": lv, "ring_lonlat": r["lonlat"]} for lv, r in zip(LEVELS, rings)],
     }

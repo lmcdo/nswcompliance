@@ -51,15 +51,19 @@ def test_the_source_and_the_measured_accuracy_are_recorded():
     assert s["url"].startswith("https://www.sydneyairport.com.au/") and s["endorsed_by_airservices_australia"] == "2026-02-26"
     assert len(s["pdf_sha256"]) == 64 and s["pdf_page"] == 25
     assert a["share_of_chart_road_points_within_m"]["20"] >= 0.99
-    assert a["share_of_chart_road_points_within_m"]["30"] == 1.0, "the margin assumes no chart road point is further than the stated bound from a real road"
+    r25 = a["alignment_region_25"]
+    assert r25["chart_road_points"] >= 1000 and r25["share_within_m"]["50"] >= 0.999, "accuracy must be measured where the 25 line lies, on many road points"
     assert max(a["chance_share_within_20m_when_shifted"]) <= 0.5, "the alignment must beat a wrong alignment by a wide margin"
-    assert a["alignment_bound_m"] == 30.0 and a["margin_m"] == math.ceil(a["half_drawn_line_width_m"] + a["alignment_bound_m"]) and a["margin_m"] >= 67
+    assert a["alignment_bound_m"] >= 50 and a["simplify_m"] == 3.0
+    assert a["margin_m"] == math.ceil(a["half_drawn_line_width_m"] + a["alignment_bound_m"] + a["simplify_m"]) and a["margin_m"] >= 90
 
 
 def test_the_georeference_file_belongs_to_the_same_pdf_and_was_accepted():
     g = json.loads((ROOT / "data" / "anef" / "sydney_anef_2045_georef.json").read_text(encoding="utf-8"))
     assert g["accepted"] is True and g["pdf_sha256"] == DOC["source"]["pdf_sha256"]
     assert g["share_within_m"]["15"] >= 0.99 and abs(g["ground_m_per_pt"] - 42.2) < 0.5  # the chart's own scale bar says 42.2 m per point
+    assert g["region_accuracy"]["25"]["share_matched_within_100m"] == 1.0 and g["chart_road_points"] > 10000, "fitted on the whole map, not just near the airport"
+    assert g["real_road_samples"] > 500000
 
 
 def test_real_geography_that_holds_whatever_the_lines_are():
