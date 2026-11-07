@@ -36,6 +36,8 @@ COPY frontend-nextjs/lib/lga-slug-renames.json ./frontend-nextjs/lib/lga-slug-re
 COPY data/law/housing_sepp_lmr_facts.json ./data/law/housing_sepp_lmr_facts.json
 COPY data/law/lmr_station_entrances.json ./data/law/lmr_station_entrances.json
 COPY data/lmr_walk/ ./data/lmr_walk/
+# Sydney Airport's endorsed 2045 ANEF contours (services/sydney_anef.py reads this one file; without it every lot near the airport would answer "chart could not be read").
+COPY data/anef/sydney_anef_2045.json ./data/anef/sydney_anef_2045.json
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
 COPY scripts/download_redbank_rasters.py ./scripts/download_redbank_rasters.py
 COPY scripts/download_tweed_wollongong_rasters.py ./scripts/download_tweed_wollongong_rasters.py
