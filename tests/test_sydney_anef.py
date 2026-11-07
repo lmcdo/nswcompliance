@@ -64,8 +64,10 @@ def test_the_georeference_file_belongs_to_the_same_pdf_and_was_accepted():
 def test_real_geography_that_holds_whatever_the_lines_are():
     centre = sa.classify_all(-33.9461, 151.1772)  # the airport itself
     assert all(centre[k]["state"] == "inside" for k in ("20", "25", "30", "35"))
-    assert sa.classify_all(-33.8148, 151.0017) is None  # Parramatta: outside the chart's map frame
-    assert sa.classify_all(-33.7500, 150.6900) is None  # Penrith
+    for lat, lng in ((-33.8148, 151.0017), (-33.7500, 150.6900)):  # Parramatta, Penrith: wholly outside the chart's map frame
+        r = sa.classify_all(lat, lng)
+        assert all(v["state"] == "outside" and v["outside_frame"] is True for v in r.values())
+    assert sa.classify_all(-33.9461, 151.1772)["25"]["outside_frame"] is False
 
 
 # ---- the geometry, on a synthetic 1 km square so the answers are known ----------------------------------------------------------------------
@@ -136,8 +138,32 @@ def test_a_lot_wholly_outside_by_more_than_the_margin_is_outside(square):
     assert sa.classify(*at(*square, east_m=750), ring)["state"] == "outside"
 
 
-def test_outside_the_map_frame_the_chart_says_nothing(square):
-    assert sa.classify(LAT0 + 0.5, LON0) is None and sa.classify_all(LAT0, LON0 + 0.5) is None
+def test_a_lot_wholly_outside_the_map_frame_is_outside_every_contour(square):
+    """The frame wholly contains the outermost line, so a lot entirely outside it is outside every contour."""
+    r = sa.classify(LAT0 + 0.5, LON0)
+    assert r["state"] == "outside" and r["outside_frame"] is True and r["nearest_m"] is None
+    assert all(v["outside_frame"] for v in sa.classify_all(LAT0, LON0 + 0.5).values())
+
+
+def test_a_lot_whose_address_point_is_off_the_map_but_whose_outline_reaches_the_line_is_still_measured(monkeypatch):
+    ring, _, _ = _square()
+    doc = {"frame_lonlat": {"west": LON0 - 0.0054, "east": LON0 + 0.0072, "south": LAT0 - 0.0054, "north": LAT0 + 0.0054},   # about 600 m east of centre
+           "accuracy": {"margin_m": 50.0}, "contours": [{"anef": 25, "ring_lonlat": ring}]}
+    monkeypatch.setattr(sa, "load", lambda: doc)
+    a, b = at(0, 0, east_m=400), at(0, 0, east_m=900)   # the outline runs from 100 m inside the line to well outside the frame
+    lot_ring = [[a[1], a[0]], [b[1], a[0]], [b[1], b[0]], [a[1], b[0]], [a[1], a[0]]]
+    addr = at(0, 0, east_m=800)
+    assert addr[1] > doc["frame_lonlat"]["east"]
+    r = sa.classify(addr[0], addr[1], lot_ring)
+    assert r["state"] == "inside" and r["outside_frame"] is False and 90 < r["inside_by_m"] < 110   # 100 m inside the line, beyond the 50 m margin
+
+
+def test_a_lot_that_encloses_the_whole_contour_is_inside_even_though_no_boundary_point_is(square):
+    big = at(0, 0, east_m=2000, north_m=2000), at(0, 0, east_m=-2000, north_m=-2000)
+    (n_lat, e_lng), (s_lat, w_lng) = big
+    ring = [[w_lng, s_lat], [e_lng, s_lat], [e_lng, n_lat], [w_lng, n_lat], [w_lng, s_lat]]
+    r = sa.classify(LAT0, LON0, ring)
+    assert r["state"] == "inside" and r["inside_by_m"] > 400
 
 
 def test_a_level_the_chart_does_not_have_is_an_error_not_a_guess(square):
@@ -187,8 +213,21 @@ def test_an_unreadable_or_incomplete_chart_answer_is_no_answer_never_clear(bad):
     assert r["lmr"]["answer"] == "cant_tell" and rule(r)["outcome"] == "unknown"
 
 
-def test_outside_the_map_frame_or_not_measured_adds_no_rule():
-    for m in (lot(sydney_anef=None), lot()):
+def test_a_lot_wholly_outside_the_chart_is_clear_with_the_reason():
+    r = d.decide(lot(sydney_anef={"25": {"state": "outside", "margin_m": 53.0, "outside_frame": True, "level": 25}}), FACTS)
+    x = rule(r)
+    assert r["lmr"]["answer"] == "yes" and x["outcome"] == "clear" and "wholly outside the map" in x["detail"] and "ANEF 20" in x["detail"]
+
+
+@pytest.mark.parametrize("margin", [None, "53", True, 0, -5, float("nan"), float("inf")])
+def test_a_missing_or_bad_accuracy_figure_is_no_answer_not_a_crash(margin):
+    for st in ("inside", "outside", "near"):
+        r = d.decide(lot(sydney_anef={"25": {"state": st, "margin_m": margin, "level": 25}}), FACTS)
+        assert r["lmr"]["answer"] == "cant_tell" and rule(r)["outcome"] == "unknown" and "accuracy figure" in rule(r)["detail"]
+
+
+def test_not_measured_adds_no_rule():
+    for m in (lot(sydney_anef=None), lot()):  # None and an absent key both mean the measurement was not taken
         r = d.decide(m, FACTS)
         assert r["lmr"]["answer"] == "yes" and not [x for x in r["lmr"]["rules"] if x["rule"] == "aircraft_noise_sydney"]
 

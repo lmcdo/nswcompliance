@@ -86,4 +86,5 @@ def test_gather_reads_sydney_airports_chart_and_the_decision_uses_it():
     assert m["sydney_anef"]["25"]["state"] == "inside"
     rules = [x for x in dec.decide(m)["lmr"]["rules"] if x["rule"] == "aircraft_noise_sydney"]
     assert rules and rules[0]["outcome"] == "excludes"
-    assert inp.gather(-33.8148, 151.0017, rings=None, stations=stations_doc(near_name="none"))["sydney_anef"] is None
+    far = inp.gather(-33.8148, 151.0017, rings=None, stations=stations_doc(near_name="none"))["sydney_anef"]
+    assert far["25"]["state"] == "outside" and far["25"]["outside_frame"] is True

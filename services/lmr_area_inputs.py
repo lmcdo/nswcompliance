@@ -297,7 +297,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
     m["lot_outline"] = bool(rings)
     if "sydney_anef" not in m:
-        try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. None = the lot is outside the chart's map frame.
+        try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. A lot wholly off the chart's map is "outside".
             m["sydney_anef"] = sydney_anef.classify_all(lat, lng, rings)
         except Exception as exc:  # noqa: BLE001 -- the decision reports this as "no answer", never as clear
             logger.warning("sydney anef chart failed: %s", exc)
