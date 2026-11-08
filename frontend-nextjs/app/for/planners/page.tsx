@@ -176,7 +176,7 @@ export default function PlannersPage() {
             { stat: 'NSW-wide', label: 'Any address', sub: 'Zone, LEP + SEPP, live from the Planning Portal' },
             { stat: 'Source links', label: 'On every line', sub: 'Government layer or council page' },
             { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
-            { stat: 'Full plan', label: 'Nothing hidden', sub: 'The whole council plan sits below the Site Report' },
+            { stat: 'Full plan', label: 'Nothing hidden', sub: 'The whole council plan sits below Council Rules' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
               <p className="text-2xl font-bold text-gray-900">{stat}</p>
@@ -199,7 +199,7 @@ export default function PlannersPage() {
           cta="bottom_open_verify"
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
         >
-          Open a Site Report <ArrowRight className="w-4 h-4" />
+          Open Council Rules <ArrowRight className="w-4 h-4" />
         </TrackedLink>
       </section>
 

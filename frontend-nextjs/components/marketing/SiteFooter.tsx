@@ -18,7 +18,7 @@ const FREE_TOOL_LINKS = [
 
 const PLATFORM_LINKS = [
   { label: 'What You Get', href: '/what-you-get' },
-  { label: 'Site Report', href: '/assessment' },
+  { label: 'Council Rules', href: '/assessment' },
   { label: 'Scout (Map Explorer)', href: 'https://map.plotdetect.com.au' },
   { label: 'Validate (DA Analytics)', href: 'https://charts.plotdetect.com.au' },
   { label: 'Browse Councils', href: '/browse' },

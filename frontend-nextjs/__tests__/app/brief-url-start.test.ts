@@ -1,5 +1,5 @@
 /**
- * Starting a Site Report from the link (?address=&plan=).
+ * Starting a Site Facts from the link (?address=&plan=).
  *
  * The plotdetect.com.au hero form sends visitors here. The rule this file
  * protects: what the link carries is untrusted — an address must be real text

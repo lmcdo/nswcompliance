@@ -12,7 +12,7 @@ import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
 // Copy that describes the plan-brief rows follows the same flag as the rows (lib/site-report.ts).
 
 /* ------------------------------------------------------------------ */
-/*  What a Site Report holds                                           */
+/*  What Council Rules holds                                           */
 /* ------------------------------------------------------------------ */
 
 const REPORT_PARTS = [
@@ -43,7 +43,7 @@ const REPORT_PARTS = [
 const STEPS = [
   { n: '1', title: 'Enter an address', body: 'Any NSW address. No account needed.' },
   { n: '2', title: 'Say what you want to build', body: 'Dwelling, secondary dwelling, subdivision and so on. A corner lot, main road or heritage item changes the rules, so you can say so.' },
-  { n: '3', title: 'Read your Site Report', body: 'A table for your project, every row linked to its source.' },
+  { n: '3', title: 'Read your Council Rules', body: 'A table for your project, every row linked to its source.' },
   { n: '4', title: 'Open the full plan if you want it', body: 'Nothing is hidden. The whole council plan sits below the report.' },
 ];
 
@@ -147,7 +147,7 @@ export default function HomePage() {
 
         <div className="relative px-6 pt-32 pb-24 max-w-3xl mx-auto text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-teal-400 mb-4">
-            Site Report
+            Council Rules
           </p>
           <h1 className="text-5xl sm:text-6xl font-bold leading-[1.08] text-white mb-6 tracking-tight">
             Your address. Your project.{' '}
@@ -157,8 +157,8 @@ export default function HomePage() {
           </h1>
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
             {PLAN_BRIEF_ON
-              ? "A Site Report for any NSW address: what the government maps and state law say about that lot, and what the council plan says about your project. Each line links to its source and, for council rules, gives the council's own words and the page. Where we cannot find something, it says so."
-              : "A Site Report for any NSW address: what the government maps and state law say about that lot, and the council plan chapters that apply to it, linked to the council's own pages. Each line links to its source. Where a source could not be consulted, the report says so."}
+              ? "Council Rules for any NSW address: what the government maps and state law say about that lot, and what the council plan says about your project. Each line links to its source and, for council rules, gives the council's own words and the page. Where we cannot find something, it says so."
+              : "Council Rules for any NSW address: what the government maps and state law say about that lot, and the council plan chapters that apply to it, linked to the council's own pages. Each line links to its source. Where a source could not be consulted, the report says so."}
           </p>
 
           <HeroAddressSearch />
@@ -170,7 +170,7 @@ export default function HomePage() {
               cta="hero_open_site_report"
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
             >
-              Open a Site Report
+              Open Council Rules
               <ArrowRight className="w-3.5 h-3.5" />
             </TrackedLink>
             <Link
@@ -183,11 +183,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── What a Site Report holds ── */}
+      {/* ── What Council Rules holds ── */}
       <section className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
-            What is in a Site Report
+            What is in Council Rules
           </h2>
           <p className="text-slate-500 max-w-xl mb-10">
             Three layers, each tied to where it came from. Only the rules for your lot and your project come first.
@@ -231,7 +231,7 @@ export default function HomePage() {
       <section className="py-20 px-6 bg-slate-950">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-white tracking-tight mb-3">
-            What a Site Report does not do
+            What Council Rules does not do
           </h2>
           <p className="text-slate-400 mb-8">
             It is a fast first look at how far a lot is from the rules that decide a project.
@@ -251,7 +251,7 @@ export default function HomePage() {
               cta="limits_open_site_report"
               className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-500 transition-colors"
             >
-              Open a Site Report
+              Open Council Rules
               <ArrowRight className="w-4 h-4" />
             </TrackedLink>
           </div>

@@ -1,4 +1,4 @@
-// Reading a Site Report start from the link — pure helper extracted so the
+// Reading a Site Facts start from the link — pure helper extracted so the
 // rules are unit-testable, the same way unavailable.ts and provenance.ts were.
 //
 // The plotdetect.com.au hero form submits to brief.plotdetect.com.au with

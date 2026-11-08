@@ -1,4 +1,4 @@
-// "Data sources" footer provenance for the Site Report — pure helpers
+// "Data sources" footer provenance for the Site Facts — pure helpers
 // extracted from page.tsx so the per-run derivation is unit-testable.
 //
 // The footer must describe THIS run, not a static union (issue #753): a source

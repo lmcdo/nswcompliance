@@ -16,13 +16,13 @@ describe('HeroAddressSearch', () => {
     expect(screen.queryByRole('link')).toBeNull();
   });
 
-  it('routes a typed address to the reports hub, carrying it as ?address=', () => {
+  it('routes a typed address to the Council Rules page, carrying it as ?address=', () => {
     render(<HeroAddressSearch />);
     fireEvent.change(screen.getByPlaceholderText('Enter any NSW address...'), {
       target: { value: '14 Hunter St, Lewisham NSW' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Search this address' }));
-    expect(mockPush).toHaveBeenCalledWith('/reports?address=14%20Hunter%20St%2C%20Lewisham%20NSW');
+    expect(mockPush).toHaveBeenCalledWith('/assessment?address=14%20Hunter%20St%2C%20Lewisham%20NSW');
   });
 
   it('does not navigate when the address is empty or whitespace', () => {

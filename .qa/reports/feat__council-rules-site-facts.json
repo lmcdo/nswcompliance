@@ -1,0 +1,122 @@
+{
+  "tier": "standard",
+  "justification": "Product names on 34 files (labels, an email subject) plus a 9-line effect so the address page starts from ?address=. Not Minor: more than 3 substantive files and one user-facing email subject. Not Critical: no data, query or API behaviour changes.",
+  "commit_hash": "6a56f13c",
+  "files": [
+    "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
+    "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
+    "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
+    "frontend-nextjs/__tests__/app/brief-url-start.test.ts",
+    "frontend-nextjs/__tests__/components/marketing/HeroAddressSearch.test.tsx",
+    "frontend-nextjs/__tests__/hooks/usePropertyAssessment.test.ts",
+    "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
+    "frontend-nextjs/__tests__/lib/product-names.test.ts",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/app/api/constraint-arithmetic/route.ts",
+    "frontend-nextjs/app/api/servicing/route.ts",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "frontend-nextjs/app/for/councils/page.tsx",
+    "frontend-nextjs/app/for/planners/page.tsx",
+    "frontend-nextjs/app/for/students/page.tsx",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/internal/page.tsx",
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/layout.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/provenance.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/unavailable.ts",
+    "frontend-nextjs/app/reports/intelligence-brief/url-start.ts",
+    "frontend-nextjs/app/reports/layout.tsx",
+    "frontend-nextjs/app/reports/page.tsx",
+    "frontend-nextjs/app/site-directory/page.tsx",
+    "frontend-nextjs/app/what-you-get/page.tsx",
+    "frontend-nextjs/components/compliance/ConstraintArithmeticCard.tsx",
+    "frontend-nextjs/components/compliance/DcpRequestCta.tsx",
+    "frontend-nextjs/components/marketing/HeroAddressSearch.tsx",
+    "frontend-nextjs/components/marketing/HomeNav.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/components/marketing/SiteNav.tsx",
+    "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
+    "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts",
+    "frontend-nextjs/hooks/usePropertyAssessment.ts",
+    "frontend-nextjs/lib/coverage.ts",
+    "frontend-nextjs/lib/site-report.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts && grep -rIl 'Site Report' app components lib; test $? -eq 1",
+    "fails_when": "The retired name Site Report appears anywhere in app, components or lib, Site Facts appears on the address page or marketing shell, or Council Rules appears inside the generated report.",
+    "observed_red": "Both halves seen red. grep: 34 files contained Site Report before the rename, 0 after. Hook: with the latest-selection guard removed, usePropertyAssessment.test.ts fails (Expected BETA, Received ALPHA); with it restored it passes. Jest run locally: 11 suites, 134 tests, exit 0. CI also caught a test pinning the old homepage box target (HeroAddressSearch.test.tsx); updated. Full Jest: 209 suites, 2,565 tests, exit 0."
+  },
+  "pre_impl": {
+    "existing_data": "none - labels, one email subject, and a URL query read on page load.",
+    "assumption_mismatch": "If ?address= is absent or empty the page behaves exactly as before; only a non-empty address with nothing selected triggers handleAddressSelect.",
+    "new_vs_existing": "Applies to every page view after deploy; no stored data changes.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "If the address lookup fails the page shows its existing error state, as when a user types the address."
+  },
+  "functions": [
+    {
+      "name": "AssessmentPage",
+      "file_line": "frontend-nextjs/app/assessment/page.tsx:80",
+      "input": "the ?address= value read from window.location.search",
+      "output": "calls handleAddressSelect(address) once on load",
+      "if_none": "no address in the link: nothing happens"
+    },
+    {
+      "name": "handleAddressSelect",
+      "file_line": "frontend-nextjs/hooks/usePropertyAssessment.ts:150",
+      "input": "an address string and optional coordinates from the visitor",
+      "output": "sets property, error and loading state for the newest request only",
+      "if_none": "an empty address still follows the existing error path"
+    }
+  ],
+  "values": [
+    {
+      "value": "fromLink",
+      "read_at": "frontend-nextjs/app/assessment/page.tsx:107",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/assessment/page.tsx:108",
+      "if_missing": "the page loads empty as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The link carries an address but the user has already chosen another.",
+      "what_happens": "It could overwrite the visitor's own choice.",
+      "mitigated": true,
+      "how": "The effect runs once on mount and only when selectedAddress is empty.",
+      "repro": "Open /assessment?address=1 Martin Place Sydney, then pick another address in the box."
+    },
+    {
+      "scenario": "The Your Site Facts email subject changed and a test still pins the old subject.",
+      "what_happens": "CI fails on lead-abuse or lead-email tests.",
+      "mitigated": true,
+      "how": "Both tests were updated in the same change to match /Site Facts/i.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/canibuildit"
+    },
+    {
+      "scenario": "Someone reintroduces Site Report in new copy.",
+      "what_happens": "Two products carry one name again.",
+      "mitigated": true,
+      "how": "product-names.test.ts scans app, components and lib.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts"
+    },
+    {
+      "scenario": "Two address lookups overlap and the older one answers last.",
+      "what_happens": "The older response could replace the newer property.",
+      "mitigated": true,
+      "how": "Each call takes a request number; only the newest may set property, error or loading.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/hooks/usePropertyAssessment.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open the preview homepage, type an address in the box and confirm /assessment loads that property."
+  }
+}

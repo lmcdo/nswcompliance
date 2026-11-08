@@ -23,7 +23,7 @@ interface RequestBody {
   maxFsr?: number | null;
   frontage?: number | null;
   depth?: number | null;
-  // For the capacity range (same producer as the Site Report). Absent -> the yield box
+  // For the capacity range (same producer as the Site Facts). Absent -> the yield box
   // says the highest permitted form was not checked; it never assumes one house.
   lat?: number | null;
   lng?: number | null;

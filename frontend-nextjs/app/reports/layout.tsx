@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 const NAV_ITEMS = [
-  { href: '/reports/intelligence-brief', label: 'Site Report' },
+  { href: '/reports/intelligence-brief', label: 'Site Facts' },
   { href: '/reports/threat-radar', label: 'Development Monitoring' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
   { href: '/reports/flood', label: 'Flood' },

@@ -71,7 +71,7 @@ export default function WhatYouGetPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed mb-8">
-            A Site Report holds what the government maps and state law say about the lot,
+            Council Rules holds what the government maps and state law say about the lot,
             and what the council plan says about your project, each line linked to its source.
             Hazards, satellite imagery and nearby development are separate checks.
             Pick your role below to see what applies to you.

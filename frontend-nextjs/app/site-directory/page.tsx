@@ -42,7 +42,7 @@ const GROUPS: DirGroup[] = [
       { href: '/reports/threat-radar', label: 'Development monitoring', desc: 'Track nearby development applications.', badge: `${THREAT_RADAR_LGAS.length} councils` },
       { href: '/reports/pre-da-history', label: 'Site history', desc: "A lot's past development-application history.", badge: `${PRE_DA_HISTORY_LGAS.length} councils` },
       { href: '/reports/conveyancing', label: 'Conveyancing disclosure', desc: 'Planning-disclosure report for a transaction.', badge: `${CONVEYANCING_LGAS.length} councils` },
-      { href: '/reports/intelligence-brief', label: 'Site Report', desc: 'The full property planning report.' },
+      { href: '/reports/intelligence-brief', label: 'Site Facts', desc: 'The mapped facts about a property.' },
     ],
   },
   {

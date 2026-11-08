@@ -130,7 +130,7 @@ describe('(6) project summary (lib/project-summary.ts)', () => {
   });
 });
 
-describe('Site Report bushfire label (app/reports/intelligence-brief/unavailable.ts)', () => {
+describe('Site Facts bushfire label (app/reports/intelligence-brief/unavailable.ts)', () => {
   it('a pre-screen whose RFS query failed is "Not checked", not "Not bushfire-prone"', () => {
     expect(describeBushfireWithoutCategory({ is_bushfire_prone: null, category: null })!.label).toBe('Not checked');
   });

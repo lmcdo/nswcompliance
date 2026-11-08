@@ -59,7 +59,7 @@ export function HomeNav() {
             href="/assessment"
             className="hidden sm:inline-flex items-center px-4 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
           >
-            Open a Site Report
+            Open Council Rules
           </Link>
         </div>
       </div>
