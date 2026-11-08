@@ -104,7 +104,8 @@ export function tidyText(raw: string | null | undefined, limit = BRIEF_TEXT_LIMI
 const OPENER = /(:\s*$)|following (table|controls|requirements|standards)|as follows|in accordance with (the )?(table|figure)|refer to (table|figure)|shown in (table|figure)/i;
 export function needsFollowOn(text: string): boolean {
   const body = text.replace(/^#.*?\n/, '').replace(/\s+/g, ' ').trim();
-  return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body);   // a short clause that holds a figure is complete
+  // a short clause that holds a figure is complete; a clause that names a table but holds no figure points at the table rows that follow
+  return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(body));
 }
 
 /** Rows of a printed table: two or more lines that each hold two or more ' | ' separated cells. */
