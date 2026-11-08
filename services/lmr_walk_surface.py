@@ -63,7 +63,7 @@ class Surface:
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
         # A station is only "built" when at least one of its entrances reaches a stored footpath node. The anchor list holds every
         # station name, including ones whose entrances sit outside the footpath download (46 to 52 of 83 names in the Inner West files).
-        used = {int(i) for i in np.unique(self.anchor_idx)}
+        used = set(np.unique(self.anchor_idx).tolist())
         self.names_with_nodes = {a.get("name") for i, a in enumerate(self.anchors) if i in used}
 
     def covers(self, minx: float, miny: float, maxx: float, maxy: float) -> bool:
