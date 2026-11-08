@@ -18,6 +18,7 @@ import useSWR from 'swr';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
+import { PlanBrief } from '@/components/compliance/PlanBrief';
 import {
   DEFAULT_PROJECT_TYPE,
   resolveControlsDevType,
@@ -58,6 +59,8 @@ export interface YourProjectSummaryViewProps {
   unmapped: boolean;
   flags: ReturnType<typeof buildSiteFlags>;
   defaultOpen?: boolean;
+  /** Optional block under the table: the plan's own best clauses for rows with no proven figure (PlanBrief). */
+  planBrief?: React.ReactNode;
 }
 
 function EntryCells({ entry }: { entry: SummaryEntry }) {
@@ -197,6 +200,8 @@ export function YourProjectSummaryView(p: YourProjectSummaryViewProps) {
           </div>
           {p.dcpLoadError && <p className="text-xs text-slate-600" data-testid="load-error">The council plan controls could not be loaded. {NOT_FOUND_TEXT}.</p>}
 
+          {p.planBrief}
+
           {(p.flags.flags.length > 0 || p.flags.unchecked.length > 0) && (
             <div data-testid="site-flags">
               <h3 className="mb-1 text-sm font-semibold text-slate-900">Triggered by your site</h3>
@@ -249,15 +254,24 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
     legislationUrl: zone?.['legislationUrl'] ?? null,
   };
 
+  const dcpRows = url && isLoading ? null : buildDcpRows(data);
+  // Plan brief: OFF unless NEXT_PUBLIC_PLAN_BRIEF=on (and the API's PLAN_BRIEF=on). Rows with a proven figure are left to the table.
+  const provenKeys = new Set((dcpRows ?? []).filter((r) => r.entries.length > 0).map((r) => r.key));
+  const planBrief = process.env.NEXT_PUBLIC_PLAN_BRIEF === 'on' && controlsType && dcpRows
+    ? <PlanBrief council={formerCouncil} devType={controlsType} zone={(zone?.['Zone'] as string | undefined) ?? null}
+        provenKeys={provenKeys} planUrl={dcpRows.find((r) => r.planUrl)?.planUrl ?? null} />
+    : null;
+
   return (
     <YourProjectSummaryView
       projectType={projectType}
       onProjectTypeChange={setSharedProjectType}
       lepRows={buildLepRows(lep)}
-      dcpRows={url && isLoading ? null : buildDcpRows(data)}
+      dcpRows={dcpRows}
       dcpLoadError={!!error}
       unmapped={controlsType === null}
       flags={buildSiteFlags(constraints)}
+      planBrief={planBrief}
     />
   );
 }
