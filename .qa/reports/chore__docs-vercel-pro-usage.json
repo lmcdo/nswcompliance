@@ -1,0 +1,37 @@
+{
+  "tier": "minor",
+  "justification": "Documentation only: one new section in docs/CONFIGURATION.md recording the Vercel Hobby limit pause and the measured usage. No code, data, query or served text changes.",
+  "commit_hash": "ccd53287",
+  "files": [
+    "docs/CONFIGURATION.md"
+  ],
+  "falsifiable_check": {
+    "command": "git diff --name-only origin/main...HEAD",
+    "fails_when": "Prints any path other than docs/CONFIGURATION.md, meaning the change is not documentation only.",
+    "observed_red": "Not applicable for a docs-only change; the command prints exactly one path.",
+    "external_authority": "The figures come from the Vercel usage page for 8 Oct to 7 Nov 2026 read by a person logged in; they are copied, not computed."
+  },
+  "pre_impl": {
+    "existing_data": "No data is read or written. The section records numbers read from the Vercel usage dashboard.",
+    "assumption_mismatch": "If a figure on the dashboard changes later, this note still shows the figures as read on 2026-11-08; the section says so by date.",
+    "new_vs_existing": "Adds one section before Notes; no existing text is changed.",
+    "external_source_error": "Not applicable: nothing is fetched at run time.",
+    "frontend_type": "Not applicable: no frontend change.",
+    "user_failure_mode": "Not applicable: users never see this file."
+  },
+  "break_it": [
+    {
+      "scenario": "The note states a cause for the compute use that nobody has proven",
+      "what_happens": "A later reader acts on a guess about crawlers or audit scripts",
+      "mitigated": true,
+      "how": "The section says who sends the requests was not established and names what to read next",
+      "repro": "grep -n 'was not established' docs/CONFIGURATION.md"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
