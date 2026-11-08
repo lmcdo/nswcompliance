@@ -545,6 +545,41 @@ def unproven_citations_only_fall() -> Result:
     return (PASS if n <= DQ145_CEILING else FAIL), f"DQ-145 ratchet: {n} unproven (may not exceed {DQ145_CEILING})"
 
 
+# OC-22, added 2026-11-08 (owner: yes to a narrow claim for the housing reform area card). The claim is only as strong as the last
+# recorded run of the independent-router test on the data we serve. Missing record = FAIL: the claim is not yet true.
+AREA_ACCURACY = ROOT / "data" / "lmr_area_accuracy.json"
+AREA_MIN_LOTS = 100
+
+
+def area_check_accuracy_recorded(path: Path = AREA_ACCURACY, fingerprint: Callable[[], str] | None = None) -> Result:
+    if not path.is_file():
+        return FAIL, "no recorded accuracy run (data/lmr_area_accuracy.json): python scripts/lmr_area/run_lmr_area_pipeline.py test <new seed>"
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        lots = int(rec.get("lots") or 0)
+        agree, yn = int(rec.get("yes_no_match") or 0), int(rec.get("yes_no") or 0)
+        wrong = int(rec.get("wrong_yes") or 0) + int(rec.get("wrong_no") or 0)
+        ct = int(rec.get("cant_tell") or 0)
+        holds, ranged = int(rec.get("range_holds") or 0), int(rec.get("range_checked") or 0)
+    except (ValueError, TypeError, OSError):
+        return FAIL, "data/lmr_area_accuracy.json is unreadable"
+    if rec.get("passed") is not True or lots < AREA_MIN_LOTS:
+        return FAIL, f"recorded run did not pass or is too small ({lots} lots, need {AREA_MIN_LOTS})"
+    # The scorer's own pass line, re-derived from the recorded counts so a hand-edited "passed": true cannot satisfy it.
+    if not yn or not ranged or agree * 100 < 90 * yn or wrong or holds * 100 < 90 * ranged or ct * 100 > 5 * lots:
+        return FAIL, f"recorded counts miss the bar: match {agree}/{yn}, wrong {wrong}, range {holds}/{ranged}, can't-tell {ct}/{lots}"
+    if fingerprint is None:
+        try:
+            if str(ROOT) not in sys.path:
+                sys.path.insert(0, str(ROOT))
+            from services.lmr_walk_surface import data_fingerprint as fingerprint
+        except ImportError as exc:
+            return UNKNOWN, f"could not hash the served data here: {exc}"
+    if rec.get("data_fingerprint") != fingerprint():
+        return FAIL, "the accuracy run was measured on different data than is served now: re-run the test"
+    return PASS, f"area check vs independent router on {lots} lots: match {agree}/{yn}, wrong 0, range holds {holds}/{ranged}, can't-tell {ct}"
+
+
 CLAIMS: dict[str, list[Callable[[], Result]]] = {
     # Reworded 2026-10-03 (user ruling, ce-outreach-narrowed-claims-PROMPT-2026-10-03.md section 5): the
     # claim is the two counts and nothing else, so the check is the two counts and nothing else. The
@@ -644,6 +679,10 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     # venv whose missing packages made the calibration test error on collection (2026-09-14).
     "OC-16": [
         lambda: pytest_files("tests/test_shadow_calibration.py"),
+    ],
+    "OC-22": [
+        lambda: pytest_files("tests/test_lmr_area_decision.py", "tests/test_lmr_walk_surface.py"),
+        area_check_accuracy_recorded,
     ],
     "OC-17": [
         lambda: probe("DQ-99"),
