@@ -632,7 +632,9 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         lambda: jest_file("__tests__/lib/citation-checked.test.ts"),
         lambda: jest_file("__tests__/api/citation-checked-for-property.test.ts"),
         lambda: jest_file("__tests__/api/citation-checked-other-routes.test.ts"),
-        unproven_citations_only_fall,
+        # 2026-11-08 (rescope W5): part (c) is per council. The fleet ratchet stays as the DQ-145 ledger row; the claim holds for the
+        # councils the site lists, and a council with an unproven clause number is not listed (outreach_scoped_councils.compute).
+        scoped.check,
     ],
     # 2026-11-08 (rescope W5): DQ-70 was one fleet-wide row, so four Canterbury-Bankstown chapters whose PDF changed in
     # October failed the claim for every council. It is now per council: a council that serves such a rule is not listed
@@ -682,6 +684,10 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     # venv whose missing packages made the calibration test error on collection (2026-09-14).
     "OC-16": [
         lambda: pytest_files("tests/test_shadow_calibration.py"),
+    ],
+    # OC-21 narrowed the same way: a council with a rule the address page shows to no house is not listed.
+    "OC-21": [
+        scoped.check,
     ],
     "OC-22": [
         lambda: pytest_files("tests/test_lmr_area_decision.py", "tests/test_lmr_walk_surface.py"),

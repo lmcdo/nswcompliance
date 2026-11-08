@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Outreach claims: OC-22 (area card) holds on a recorded run; OC-10 and OC-17 are scoped per council by splitting DQ-70, which removes Canterbury-Bankstown (957 stale rows) from the published council list on the what-you-get page. No other served text changes.",
+  "justification": "Outreach claims: OC-22 holds on a recorded run; OC-10, OC-17, OC-20 and OC-21 are narrowed to a computed list of councils (DQ-70, DQ-145 and DQ-146 split by council). The public council list drops from 15 to 6 councils.",
   "commit_hash": "b709bfb6",
   "files": [
     "services/lmr_walk_surface.py",
@@ -14,7 +14,8 @@
     "data/lmr_area_accuracy.json",
     "scripts/outreach_scoped_councils.py",
     "tests/test_outreach_scoped_councils.py",
-    "frontend-nextjs/shared/dcp-scoped-councils.json"
+    "frontend-nextjs/shared/dcp-scoped-councils.json",
+    "tests/test_outreach_claim_checks_oc20.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/outreach_claim_checks.py OC-22 && python scripts/outreach_claim_checks.py OC-10 && python scripts/outreach_claim_checks.py OC-17",
@@ -25,7 +26,7 @@
   "pre_impl": {
     "existing_data": "No tables read or written. Reads committed data/lmr_walk/*.npz and two data/law JSON files to hash them.",
     "assumption_mismatch": "A JSON file hashed as bytes would differ between Windows and Linux checkouts; the fingerprint hashes parsed, key-sorted JSON.",
-    "new_vs_existing": "OC-10 and OC-17 move from open to holding; readiness 17 of 21 becomes 20 of 22 (OC-20 and OC-21 open). The public council list drops Canterbury-Bankstown while it serves rules from a plan version we no longer hold.",
+    "new_vs_existing": "Readiness 17 of 21 becomes 22 of 22 when CI verifies OC-9 and OC-20's jest parts. The what-you-get council list drops to the 6 councils with no unproven, unreachable or stale rule.",
     "external_source_error": "Not applicable: nothing is fetched.",
     "frontend_type": "Not applicable.",
     "user_failure_mode": "None: users never see the claim file."
@@ -47,7 +48,7 @@
     },
     {
       "name": "no_listed_council_serves_stale_rows",
-      "file_line": "scripts/outreach_scoped_councils.py:228",
+      "file_line": "scripts/outreach_scoped_councils.py:249",
       "input": "the published council list and the per-council stale-row counts from the database",
       "output": "FAIL if any listed council serves a rule from a superseded plan version, else PASS",
       "if_none": "unreadable list is FAIL; unreachable database is UNKNOWN, never PASS"
@@ -98,6 +99,13 @@
       "mitigated": true,
       "how": "compute() adds a problem and the check FAILS when the split total differs from DQ-70",
       "repro": "python -m pytest tests/test_outreach_scoped_councils.py -k drift"
+    },
+    {
+      "scenario": "a listed council gains an unproven citation or an unreachable rule",
+      "what_happens": "OC-20 or OC-21 would keep claiming it",
+      "mitigated": true,
+      "how": "the council is computed out of the list and the check fails if it is still published",
+      "repro": "python -m pytest tests/test_outreach_scoped_councils.py -k unreachable"
     }
   ],
   "post_merge": {

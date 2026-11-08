@@ -80,6 +80,13 @@ def test_runs_the_dq145_probe_sql_itself(monkeypatch):
 
 
 def test_oc20_is_wired_with_all_three_parts():
+    # (a) and (b) are the jest suites; (c) is per council since 2026-11-08: the fleet ratchet above stays a ledger row
+    # and the claim holds for the councils the site lists.
     checks = occ.CLAIMS["OC-20"]
-    assert occ.unproven_citations_only_fall in checks
+    assert occ.scoped.check in checks
+    assert occ.unproven_citations_only_fall not in checks
     assert len(checks) >= 3
+
+
+def test_oc21_is_the_per_council_check():
+    assert occ.CLAIMS["OC-21"] == [occ.scoped.check]

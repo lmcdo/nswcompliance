@@ -160,6 +160,21 @@ def _dq115_by_council(slugs: list[str]) -> tuple[dict[str, int], list[str]]:
     return per, orphans
 
 
+def _probe_by_council(cur, dq_id: str) -> dict[str, int]:
+    """A DQ probe's own SQL, split by council: the same WHERE and params, so the split cannot drift from the probe.
+
+    The probe is `SELECT count(*) FROM regulatory_provisions ...`; this swaps the count for (council, count) and groups.
+    A NULL council (statewide law) is kept under None and never belongs to a listed council.
+    """
+    from dq_probe_live import PROBES
+
+    _h, sql, params, _m = PROBES[dq_id]
+    col = "rp.source_council" if " rp " in sql else "source_council"
+    assert sql.lstrip().startswith("SELECT count(*)"), dq_id
+    cur.execute(sql.replace("SELECT count(*)", f"SELECT {col}, count(*)", 1) + " GROUP BY 1", params)
+    return {council: n for council, n in cur.fetchall() if n}
+
+
 def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str | None], list[str]]:
     """Return ({slug: why it is NOT listed, '' if it is}, {slug: registry display name}, problems)."""
     from dq_probe_live import PROBES
@@ -181,6 +196,8 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         lep_undecided = {council: n for council, n in cur.fetchall() if n}
         cur.execute(_STALE_SQL)
         stale = {council: n for council, n in cur.fetchall() if n}
+        unproven = _probe_by_council(cur, "DQ-145")   # OC-20: clause numbers a script has not proven
+        no_map = _probe_by_council(cur, "DQ-146")     # OC-21: rules the address page shows to no house
         _h, dq70_sql, dq70_params, _m = PROBES["DQ-70"]
         cur.execute(dq70_sql, dq70_params)
         dq70_total = cur.fetchone()[0]
@@ -221,6 +238,10 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
             why.append(f"DQ-115 {dq115[slug]}")
         if stale.get(slug):
             why.append(f"DQ-70 {stale[slug]}")
+        if unproven.get(slug):
+            why.append(f"DQ-145 {unproven[slug]}")
+        if no_map.get(slug):
+            why.append(f"DQ-146 {no_map[slug]}")
         reasons[slug] = ", ".join(why)
     return reasons, names, problems
 

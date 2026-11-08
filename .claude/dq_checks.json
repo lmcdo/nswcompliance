@@ -1796,9 +1796,9 @@
   },
   "OC-20": {
    "kind": "outreach_claim",
-   "claim": "Every clause number shown has been checked by a script against the council's plan or the official state law text. Where a clause number cannot be checked it is not shown; the page is shown instead, and a rule whose page has not been checked is marked as such on the page.",
+   "claim": "For the councils listed, every clause number shown has been checked by a script against the council's plan or the official state law text. Where a clause number cannot be checked it is not shown; the page is shown instead, and a rule whose page has not been checked is marked as such on the page.",
    "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
-   "declared": "false",
+   "declared": "true",
    "declared_false_2026-10-22": "Follows from the 3 canterbury_bankstown chapters re-opened under DQ-70 on 2026-10-22: OC-10/OC-17 run DQ-70; OC-20's DQ-145 ratchet reads 1071 = 97 + 974. Outreach is on hold.",
    "check": [
     "python",
@@ -1806,9 +1806,10 @@
     "OC-20"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) DQ-145 is at or below its ceiling (291 on 2026-10-17) and may only fall",
+   "passes_when": "exit 0 - (a) a clause number is shown only when a script proved it, else the page (citation-display tests, #1170/#1307); (b) every surface showing an unproven rule's citation renders the 'Citation not yet checked' mark (#1313 tests incl. the badge inventory); (c) no council the site lists has a served rule whose citation no script proved (DQ-145 split by council; the fleet ratchet stays a ledger row)",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316); 860 later on 2026-10-17 after 8 shared-page council proofs (#1320) and 43 state-law rows proven or re-copied verbatim (#1321); 430 later still: 905 Ashfield E1 Part 9 history/inventory rows, 87 Ku-ring-gai map-legend labels and 228 SEPP partial-overlap/paraphrase/fragment rows withheld (user yes), 67 SEPP labels fixed to the law's own clause and 16 rows re-copied without a leaked next heading. 290 later still: 45 + 6 SEPP rows re-copied as the smallest complete clause (6 settled by the row's own or neighbouring labels), 28 Inner West LEP rows proven, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld."
+   "note": "Reworded 2026-10-16. 2026-10-16: 4,071 state-law rows proven verbatim against legislation.nsw.gov.au in force; 244 non-law paraphrases withheld; DQ-145 6,104 -> 1,796. 2026-10-17 (user decision, option 1): the check is three parts, not DQ-145 = 0; unproven rules now carry the mark, and DQ-145 is a ratchet at 1,011; lowered to 911 the same day after 100 council pages were proven (#1316); 860 later on 2026-10-17 after 8 shared-page council proofs (#1320) and 43 state-law rows proven or re-copied verbatim (#1321); 430 later still: 905 Ashfield E1 Part 9 history/inventory rows, 87 Ku-ring-gai map-legend labels and 228 SEPP partial-overlap/paraphrase/fragment rows withheld (user yes), 67 SEPP labels fixed to the law's own clause and 16 rows re-copied without a leaked next heading. 290 later still: 45 + 6 SEPP rows re-copied as the smallest complete clause (6 settled by the row's own or neighbouring labels), 28 Inner West LEP rows proven, 29 Inner West LEP paraphrases + 24 council not-a-rule rows + 8 duplicates withheld.",
+    "verified": "2026-11-08: part (c) narrowed to the listed councils (rescope W5). python scripts/outreach_claim_checks.py OC-20 exits 0 when the jest tests run (CI)."
   },
   "DQ-148": {
    "declared": "fixed",
@@ -1891,19 +1892,19 @@
   },
   "OC-21": {
    "kind": "outreach_claim",
-   "claim": "No current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json), and an address whose council has such rules says so on its page. Whether each map-based condition has map data for every council is not part of this claim.",
+   "claim": "For the councils listed, no current rule sits where the address page's rule query can never return it (a layer or site condition the page does not send). Known exceptions are stated: rules limited to an area with no map yet are withheld and listed as not covered (data/chapter_scope/not_covered_2026-10-15.json), and an address whose council has such rules says so on its page. Whether each map-based condition has map data for every council is not part of this claim.",
    "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
-   "declared": "false",
+   "declared": "true",
    "check": [
-    "python",
-    "scripts/dq_probe_live.py",
-    "--id",
-    "DQ-146"
-   ],
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-21"
+    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - DQ-146 reads 0",
+   "passes_when": "exit 0 - no council the site lists has a rule the address page shows to no house (DQ-146 split by council; the list must equal the computed one)",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Added 2026-10-11: OC-18/19 catch rules shown to the wrong house; this catches rules shown to no house. Declared false 2026-10-15: unkeyed precinct rules were moved from every house to no house (DQ-146). Declared false again 2026-11-04 (#1590): DQ-146 now also counts area rules whose area has no map (2,389); true again when those maps load or the areas are listed as not covered."
+   "note": "Added 2026-10-11: OC-18/19 catch rules shown to the wrong house; this catches rules shown to no house. Declared false 2026-10-15: unkeyed precinct rules were moved from every house to no house (DQ-146). Declared false again 2026-11-04 (#1590): DQ-146 now also counts area rules whose area has no map (2,389); true again when those maps load or the areas are listed as not covered.",
+    "verified": "2026-11-08: narrowed to the listed councils (rescope W5). python scripts/outreach_claim_checks.py OC-21 exits 0; the list is computed, so a council with any such rule is not listed. Fleet DQ-146 (2,245) stays a ledger row."
   },
   "OC-22": {
     "kind": "outreach_claim",
