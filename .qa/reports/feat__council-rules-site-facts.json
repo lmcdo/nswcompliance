@@ -1,12 +1,13 @@
 {
   "tier": "standard",
   "justification": "Product names on 34 files (labels, an email subject) plus a 9-line effect so the address page starts from ?address=. Not Minor: more than 3 substantive files and one user-facing email subject. Not Critical: no data, query or API behaviour changes.",
-  "commit_hash": "aafaa8e3",
+  "commit_hash": "36fc8e15",
   "files": [
     "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
     "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
     "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
     "frontend-nextjs/__tests__/app/brief-url-start.test.ts",
+    "frontend-nextjs/__tests__/hooks/usePropertyAssessment.test.ts",
     "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
     "frontend-nextjs/__tests__/lib/product-names.test.ts",
     "frontend-nextjs/app/api/canibuildit/lead/route.ts",
@@ -38,13 +39,14 @@
     "frontend-nextjs/components/marketing/SiteNav.tsx",
     "frontend-nextjs/components/reports/GrannyFlatBriefCard.tsx",
     "frontend-nextjs/components/reports/landing/data/intelligence-brief.ts",
+    "frontend-nextjs/hooks/usePropertyAssessment.ts",
     "frontend-nextjs/lib/coverage.ts",
     "frontend-nextjs/lib/site-report.ts"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts && grep -rIl 'Site Report' app components lib; test $? -eq 1",
     "fails_when": "The retired name Site Report appears anywhere in app, components or lib, Site Facts appears on the address page or marketing shell, or Council Rules appears inside the generated report.",
-    "observed_red": "The grep half printed 34 files containing Site Report before the rename and 0 after. The stray Site Facts comment in ConstraintArithmeticCard.tsx was caught by the same scan and fixed. Jest could not be run locally, so CI runs it."
+    "observed_red": "Both halves seen red. grep: 34 files contained Site Report before the rename, 0 after. Hook: with the latest-selection guard removed, usePropertyAssessment.test.ts fails (Expected BETA, Received ALPHA); with it restored it passes. Jest run locally: 11 suites, 134 tests, exit 0."
   },
   "pre_impl": {
     "existing_data": "none - labels, one email subject, and a URL query read on page load.",
@@ -61,6 +63,13 @@
       "input": "the ?address= value read from window.location.search",
       "output": "calls handleAddressSelect(address) once on load",
       "if_none": "no address in the link: nothing happens"
+    },
+    {
+      "name": "handleAddressSelect",
+      "file_line": "frontend-nextjs/hooks/usePropertyAssessment.ts:150",
+      "input": "an address string and optional coordinates from the visitor",
+      "output": "sets property, error and loading state for the newest request only",
+      "if_none": "an empty address still follows the existing error path"
     }
   ],
   "values": [
@@ -94,6 +103,13 @@
       "mitigated": true,
       "how": "product-names.test.ts scans app, components and lib.",
       "repro": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts"
+    },
+    {
+      "scenario": "Two address lookups overlap and the older one answers last.",
+      "what_happens": "The older response could replace the newer property.",
+      "mitigated": true,
+      "how": "Each call takes a request number; only the newest may set property, error or loading.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/hooks/usePropertyAssessment.test.ts"
     }
   ],
   "post_merge": {
