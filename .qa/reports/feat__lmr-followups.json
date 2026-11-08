@@ -10,7 +10,8 @@
     "frontend-nextjs/__tests__/components/area-check-card.test.tsx",
     "frontend-nextjs/app/api/tod/parking-calculator/route.ts",
     "frontend-nextjs/components/tod/TODParkingCalculator.tsx",
-    "scripts/baselines/gate-baseline.json"
+    "scripts/baselines/gate-baseline.json",
+    "data/law/transport-infrastructure-sepp-2021-s2.77-as-at-2026-11-08.txt"
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lmr_walk_surface.py -q && cd frontend-nextjs && npx jest --testPathPatterns=area-check-card",
