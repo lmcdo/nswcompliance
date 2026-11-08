@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Documentation only: one new section in docs/CONFIGURATION.md recording the Vercel Hobby limit pause and the measured usage. No code, data, query or served text changes.",
-  "commit_hash": "ccd53287",
+  "commit_hash": "3f27f97c",
   "files": [
     "docs/CONFIGURATION.md"
   ],
