@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Adds outreach claim OC-22 for the housing reform area card, declared false until an accuracy run is recorded; adds the check, the scorer's --record output and a data fingerprint. No served text changes.",
-  "commit_hash": "2c412b01",
+  "justification": "Adds outreach claim OC-22 for the housing reform area card and records the accuracy run that makes it true: two fresh 100-lot seeds against the Valhalla router, match 94% and 91%, no wrong yes or no. No served text changes.",
+  "commit_hash": "b709bfb6",
   "files": [
     "services/lmr_walk_surface.py",
     "scripts/lmr_area/area_check_score.py",
@@ -10,7 +10,8 @@
     ".claude/dq_checks.json",
     "tests/test_outreach_claim_checks_oc22.py",
     "tests/test_lmr_area_scripts.py",
-    "tests/test_dq_check_outreach.py"
+    "tests/test_dq_check_outreach.py",
+    "data/lmr_area_accuracy.json"
   ],
   "falsifiable_check": {
     "command": "python scripts/outreach_claim_checks.py OC-22",
@@ -21,7 +22,7 @@
   "pre_impl": {
     "existing_data": "No tables read or written. Reads committed data/lmr_walk/*.npz and two data/law JSON files to hash them.",
     "assumption_mismatch": "A JSON file hashed as bytes would differ between Windows and Linux checkouts; the fingerprint hashes parsed, key-sorted JSON.",
-    "new_vs_existing": "One new blocking claim: outreach readiness moves from 17 of 21 to 17 of 22 until a run is recorded.",
+    "new_vs_existing": "One new blocking claim, OC-22, declared true with its record: outreach readiness is 18 of 22 with OC-10, OC-17, OC-20 and OC-21 still open.",
     "external_source_error": "Not applicable: nothing is fetched.",
     "frontend_type": "Not applicable.",
     "user_failure_mode": "None: users never see the claim file."

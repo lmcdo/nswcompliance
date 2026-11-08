@@ -1907,7 +1907,7 @@
     "kind": "outreach_claim",
     "claim": "For an address in the five measured areas (Inner West, Georges River, Canterbury-Bankstown, Ku-ring-gai, Woollahra), the housing reform area card gives its Chapter 5 or Chapter 6 answer with the clause, the page and the law date, and in an independent test on at least 100 lots against OpenStreetMap's Valhalla walking router it matched the router's yes or no at 90% or better with no opposite answer. Outside those areas, and for flood extent, pipelines and airports other than Sydney, it says it did not check.",
     "source": "owner yes 2026-11-08; ~/.claude/plans/ce-NEXT-PROMPT-2026-11-08-after-lmr-and-anef-live.md",
-    "declared": "false",
+    "declared": "true",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -1916,7 +1916,7 @@
     "blocks_outreach": true,
     "passes_when": "exit 0 - the decision and walking tests pass AND data/lmr_area_accuracy.json records a passing run on the data served now",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "Added 2026-11-08. Declared false: no accuracy run is recorded yet. Producing one needs the TfNSW GTFS Pathways stops file saved by hand (data/lmr_area_work/gtfs_pathways/stops_0.txt); then python scripts/lmr_area/run_lmr_area_pipeline.py test <new seed> writes the record. Flip to true in the same commit that adds data/lmr_area_accuracy.json."
+    "verified": "2026-11-08: python scripts/lmr_area/run_lmr_area_pipeline.py test on two fresh seeds, 100 lots each, against the Valhalla pedestrian router. Seed 20261120: yes/no match 72/77 = 94%, wrong-yes 0, wrong-no 0, range holds 63/63, can't-tell 4. Seed 20261121: 74/81 = 91%, wrong 0, range holds 56/62 = 90%, can't-tell 4. data/lmr_area_accuracy.json records the second run. Weak spot, stated: lots whose station entrance is estimated matched the router on 7 of 12 (n small); their answers carry the label estimated."
   }
  }
 }
