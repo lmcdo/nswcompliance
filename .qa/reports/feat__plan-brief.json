@@ -1,0 +1,116 @@
+{
+  "tier": "standard",
+  "justification": "Adds a new read-only API route, a component and a loader behind two flags that are both off, so merging changes nothing on the live page. It is Standard and not Critical because it writes nothing on the live path: the loader is dry-run by default and needs two flags to write, and the route only reads project_brief_rows joined to regulatory_provisions. It is Standard and not Minor because it serves council rule text and page links to users once the flags go on, so a wrong clause or a wrong page would be shown as fact.",
+  "commit_hash": "e5cc454c",
+  "files": [
+    "frontend-nextjs/app/api/brief/for-property/route.ts",
+    "frontend-nextjs/components/compliance/PlanBrief.tsx",
+    "frontend-nextjs/lib/plan-brief.ts",
+    "scripts/load_project_brief.py",
+    "migrations/123_project_brief_rows.sql"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/plan-brief.test.tsx --ci",
+    "fails_when": "A clause is shown as a figure when it is not, a page link opens a page that is not checked, a table is drawn as one run of text, or the wording says verified, compliant or approved. The suite covers the not-found row, the 3-then-5 split, the zone mapping, the banned claim words and the empty render when the flag is off. CI ran the Jest job on this branch and it passed. It was not run locally, because the main checkout's node_modules lacks jest's core package.",
+    "external_authority": "The council's own plan PDF at the cited page. The brief shows the council's words and a link to that page; the owner reads 30 rows against the plan before the flags go on.",
+    "observed_red": "Not observed with Jest, which cannot run in this checkout (jest's core package is missing from node_modules). What was observed red on this branch: the pre-push cross-review blocked the push because PlanBrief showed a page and a page-anchored link without checking pageProven (finding 1, HIGH). The pageProven gate at PlanBrief.tsx:53 was added, and the next push passed the review. The same push was also blocked once by the language scan on a test title and once by the zone-code lint, and both were fixed."
+  },
+  "pre_impl": {
+    "existing_data": "project_brief_rows (migration 123): one row per council, zone group, project type, rule type and rank 1 to 5, pointing at regulatory_provisions.id. Read-only here. regulatory_provisions supplies the text, pdf_page, printed_page_label and page_check. dcp_chapter_registry supplies the chapter PDF address: r2_public_pdf_url, then council_url, then council_page_url.",
+    "assumption_mismatch": "A brief row can point at a provision that has since been withdrawn or has a different page. The route filters rp.is_current and rp.v2_is_actionable, so a withdrawn clause drops out and the row shows fewer clauses or says not found. A page that is not checked is shown as 'page not yet checked' and the link has no page anchor.",
+    "new_vs_existing": "New route and component only. Nothing existing is changed apart from one added block in YourProjectSummary behind NEXT_PUBLIC_PLAN_BRIEF, which is off. The existing /api/provisions/for-property and the full plan list are untouched."
+  },
+  "functions": [
+    {
+      "name": "planLink",
+      "file_line": "frontend-nextjs/lib/plan-brief.ts:91",
+      "input": "chapter PDF address (string or null) and the clause's PDF page (number or null)",
+      "output": "an object with the address and the page, or null",
+      "if_none": "returns null when there is no address, so the component shows plain text with no link; a page anchor is added only when the address is a PDF and the page is a positive number"
+    },
+    {
+      "name": "tidyText",
+      "file_line": "frontend-nextjs/lib/plan-brief.ts:99",
+      "input": "clause text from regulatory_provisions (string or null)",
+      "output": "the text with spaces collapsed and line breaks kept, cut to 1,500 characters",
+      "if_none": "null or empty input returns an empty string, and the component draws nothing for that item"
+    },
+    {
+      "name": "needsFollowOn",
+      "file_line": "frontend-nextjs/lib/plan-brief.ts:105",
+      "input": "clause text from regulatory_provisions, as a string that may be empty",
+      "output": "true when the clause is a short fragment with no figure, ends with a colon, points to a table or list below, or names a table and holds no figure",
+      "if_none": "empty text counts as a fragment with no figure, so true; the route then finds no following clauses and shows the clause alone"
+    },
+    {
+      "name": "tableRows",
+      "file_line": "frontend-nextjs/lib/plan-brief.ts:112",
+      "input": "clause text with line breaks",
+      "output": "rows of cells when at least two lines split on a bar into two or more cells and they are at least 60 percent of the lines, otherwise null",
+      "if_none": "returns null and the component shows the text as a paragraph, so nothing is lost"
+    }
+  ],
+  "values": [
+    {
+      "value": "r.source_chapter_key",
+      "read_at": "frontend-nextjs/app/api/brief/for-property/route.ts:58",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/api/brief/for-property/route.ts:58",
+      "if_missing": "the clause shows no plan link and no following clauses; the page number is still shown as text"
+    },
+    {
+      "value": "r.pdf_page",
+      "read_at": "frontend-nextjs/app/api/brief/for-property/route.ts:70",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/api/brief/for-property/route.ts:70",
+      "if_missing": "no following clauses are fetched and the link opens the plan without a page anchor"
+    },
+    {
+      "value": "item.pageProven",
+      "read_at": "frontend-nextjs/components/compliance/PlanBrief.tsx:53",
+      "nullable": "no",
+      "guard_at": "frontend-nextjs/components/compliance/PlanBrief.tsx:53",
+      "if_missing": "a page that is not checked reads 'page not yet checked' and links to the plan without a page anchor, so the user is never sent to an unproven page as fact"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "the stored best clauses for a council, project type and zone group, joined to the clause text",
+      "file_line": "frontend-nextjs/app/api/brief/for-property/route.ts:48",
+      "where_clause": "b.council, b.dev_type, b.zone_group, rp.is_current, rp.v2_is_actionable and b.rank at most 5",
+      "if_zero": "falls back to the ANY zone group; if that is also empty the component shows 'not found' with a link to the plan",
+      "if_wrong": "a brief row pointing at a clause from another council would be shown; the loader checks every id exists, is current and belongs to the council before it writes, and the cross-review notes the join does not itself re-check the council"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A clause the picker chose is for a different project type or area, such as a heritage-only rule shown for an ordinary house.",
+      "what_happens": "The user sees a real council clause that does not apply to the lot, tagged 'May apply'.",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/plan-brief.ts:68 shapes rows with the tag Applies or May apply; the build demotes area-specific and other-project clauses, and the owner reads 30 rows before the flags go on. Wording stays indicative.",
+      "repro": "Open the preview with the flags on at 75 Ocean Street, Woollahra and read the front setback row."
+    },
+    {
+      "scenario": "A clause is an opener such as 'an area of private open space that:' and its figure sits in the next clauses.",
+      "what_happens": "Without the follow-on lines the user would see a clause with no figure.",
+      "mitigated": true,
+      "how": "frontend-nextjs/app/api/brief/for-property/route.ts:70 fetches up to three following clauses on the same or next page when needsFollowOn is true, and the component shows them under the clause.",
+      "repro": "Open the brief for Campbelltown dwelling house and read the private open space row; it should show 75sqm and 3 metres beneath the opener."
+    },
+    {
+      "scenario": "A table is stored as lines of cells separated by bars.",
+      "what_happens": "Collapsing the line breaks would show the table as one run of text.",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/plan-brief.ts:99 keeps line breaks and frontend-nextjs/lib/plan-brief.ts:112 detects table rows so the component draws a table.",
+      "repro": "Open the Woollahra parking row, which holds a table, and check it draws as rows and columns."
+    }
+  ],
+  "mutation_analysis": "No mutation run was possible locally, because jest's core package is missing from the main checkout's node_modules. The Jest job ran in CI on this branch and passed. The two behaviours with real consequences are the page-proven gate and the table detection. Removing the pageProven check at PlanBrief.tsx:53 would send the user to an unchecked page as fact, and the cross-review found exactly that before the fix. A mutation of tableRows to return null always would draw every table as text, and the 'renders rows' test would go red.",
+  "residual_risk": "The owner's read of 30 rows at five addresses is not done; the machine check found 25 with the right kind of figure, 2 honest not found and 3 weak. The loader leaves older rows behind when a new build drops a rank, which was seen once with 44 rows and removed by hand; the cross-review lists it and it is not fixed in this PR. The join does not itself require the clause's council to equal the brief row's council. Both flags are off, so none of this is visible until they are turned on.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: the owner reads 30 rows on a preview with PLAN_BRIEF and NEXT_PUBLIC_PLAN_BRIEF on, before either is turned on in production"
+  }
+}
