@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Adds outreach claim OC-22 for the housing reform area card, declared false until an accuracy run is recorded; adds the check, the scorer's --record output and a data fingerprint. No served text changes.",
+  "commit_hash": "97d166af",
+  "files": [
+    "services/lmr_walk_surface.py",
+    "scripts/lmr_area/area_check_score.py",
+    "scripts/lmr_area/run_lmr_area_pipeline.py",
+    "scripts/outreach_claim_checks.py",
+    ".claude/dq_checks.json",
+    "tests/test_outreach_claim_checks_oc22.py",
+    "tests/test_lmr_area_scripts.py",
+    "tests/test_dq_check_outreach.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-22",
+    "fails_when": "no recorded accuracy run exists, the record is under 100 lots, its counts miss the bar, it says passed but the counts do not, or it was measured on different data than is served",
+    "observed_red": "With no data/lmr_area_accuracy.json the command prints 'no recorded accuracy run' and exits 1; tests/test_outreach_claim_checks_oc22.py covers each other failure (stale fingerprint, 99 lots, edited passed flag, wrong yes, range, can't-tell).",
+    "external_authority": "The accuracy figure will come from OpenStreetMap's Valhalla pedestrian router, a different engine from ours; this change records it, it does not produce it."
+  },
+  "pre_impl": {
+    "existing_data": "No tables read or written. Reads committed data/lmr_walk/*.npz and two data/law JSON files to hash them.",
+    "assumption_mismatch": "A JSON file hashed as bytes would differ between Windows and Linux checkouts; the fingerprint hashes parsed, key-sorted JSON.",
+    "new_vs_existing": "One new blocking claim: outreach readiness moves from 17 of 21 to 17 of 22 until a run is recorded.",
+    "external_source_error": "Not applicable: nothing is fetched.",
+    "frontend_type": "Not applicable.",
+    "user_failure_mode": "None: users never see the claim file."
+  },
+  "functions": [
+    {
+      "name": "area_check_accuracy_recorded",
+      "file_line": "scripts/outreach_claim_checks.py:554",
+      "input": "the recorded accuracy file and the current data fingerprint",
+      "output": "PASS only for a passing, current record of at least 100 lots; FAIL otherwise",
+      "if_none": "missing or unreadable file is FAIL; a failed import is UNKNOWN"
+    },
+    {
+      "name": "data_fingerprint",
+      "file_line": "services/lmr_walk_surface.py:114",
+      "input": "the committed walking files, station entrances and law figures",
+      "output": "one sha256 hex string covering the walking files, station entrances and law figures",
+      "if_none": "a missing file raises, so the check cannot pass on absent data"
+    }
+  ],
+  "values": [
+    {
+      "value": "rec.passed and the counts",
+      "read_at": "scripts/outreach_claim_checks.py:554",
+      "nullable": "yes",
+      "guard_at": "int(x or 0) and an explicit re-derivation of the bar from the counts",
+      "if_missing": "counts read as 0, which fails the bar"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "someone edits the record to say passed true",
+      "what_happens": "the claim could go green",
+      "mitigated": true,
+      "how": "the bar is re-derived from the recorded counts and the fingerprint must match served data",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_oc22.py -k hand_edited"
+    },
+    {
+      "scenario": "the walking data is rebuilt after the run",
+      "what_happens": "an old accuracy figure would stand for new data",
+      "mitigated": true,
+      "how": "fingerprint mismatch makes the claim red again",
+      "repro": "python -m pytest tests/test_outreach_claim_checks_oc22.py -k other_data"
+    },
+    {
+      "scenario": "a run of fewer than 100 lots or a failing run",
+      "what_happens": "it could be recorded as evidence",
+      "mitigated": true,
+      "how": "the scorer writes the record only for a passing run of 100 lots or more",
+      "repro": "python -m pytest tests/test_lmr_area_scripts.py -k no_record"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: save the GTFS Pathways stops file, run the test step with a new seed, and commit data/lmr_area_accuracy.json with OC-22 flipped to true"
+  }
+}
