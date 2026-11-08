@@ -107,6 +107,8 @@ COPY data/chapter_scope/ ./data/chapter_scope/
 COPY scripts/dq_db.py ./scripts/dq_db.py
 COPY scripts/qa_report_path.py ./scripts/qa_report_path.py
 COPY scripts/outreach_claim_checks.py ./scripts/outreach_claim_checks.py
+# outreach_claim_checks maps OC-23..OC-30 to the plan-brief checks.
+COPY scripts/plan_brief_checks.py ./scripts/plan_brief_checks.py
 # outreach_claim_checks reads the served setbacks through conveyancing_db.fetch_dcp_setbacks.
 COPY scripts/conveyancing_db.py ./scripts/conveyancing_db.py
 COPY scripts/outreach_flood_depth_probe.py ./scripts/outreach_flood_depth_probe.py

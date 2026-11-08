@@ -107,6 +107,7 @@ watchPatterns = [
     "scripts/conveyancing_db.py",
     "scripts/outreach_flood_depth_probe.py",
     "scripts/outreach_scoped_councils.py",
+    "scripts/plan_brief_checks.py",
     "scripts/dq_probe_applicability_config.py",
     "services/extracted_data_integrity.py",
     "scripts/dcp_section_code.py",
