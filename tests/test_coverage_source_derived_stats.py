@@ -42,19 +42,6 @@ def published() -> dict[str, int]:
     return {k: int(v.replace(",", "")) for k, v in re.findall(r"(\w+):\s*([\d,]+)", m.group(1))}
 
 
-def test_gov_data_sources_matches_the_list_the_homepage_renders():
-    """The stat and the list sit in the SAME file and could still disagree —
-    the number is published from coverage.ts, the names from an array below it."""
-    src = HOMEPAGE.read_text(encoding="utf-8")
-    m = re.search(r"const DATA_SOURCES = \[(.*?)\];", src, re.S)
-    assert m, "DATA_SOURCES array not found on the homepage"
-    named = [x for x in re.findall(r"'([^']+)'", m.group(1))]
-    assert published()["govDataSources"] == len(named), (
-        f"coverage.ts publishes govDataSources={published()['govDataSources']} but the "
-        f"homepage names {len(named)}: {named}"
-    )
-
-
 def test_secondary_dwelling_councils_matches_the_generated_file():
     """Verifies the published figure against the data actually shipped.
 

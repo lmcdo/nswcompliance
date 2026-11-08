@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { FileCheck, Droplets, Flame, ShieldCheck, ArrowRight } from 'lucide-react';
@@ -56,7 +57,9 @@ export default function ConveyancersPage() {
               icon: ShieldCheck,
               iconColor: 'text-teal-600',
               title: 'DCP setback controls',
-              description: `Front, side, and rear setbacks from the applicable DCP — with clause citations. ${COVERAGE_DISPLAY.dcpSetbackTripleCouncils} councils hold all three.`,
+              description: PLAN_BRIEF_ON
+                ? "Front, side and rear setbacks from the applicable DCP, with the clause and page where one was found. Where none was found the row says so."
+                : "Front, side and rear setbacks from the applicable DCP, with the clause and page where one was found.",
             },
             {
               icon: FileCheck,

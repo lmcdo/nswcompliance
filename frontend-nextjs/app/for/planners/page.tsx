@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Clock, FileText, Search, CheckSquare, ArrowRight, Layers, BarChart3 } from 'lucide-react';
@@ -35,7 +36,9 @@ const LOOKUPS = [
   },
   {
     task: 'DCP numeric controls',
-    description: `Setbacks, parking rates, landscaping, site coverage — numeric fields with their source. ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs, ${COVERAGE_DISPLAY.dcpSetbackRows} rows.`,
+    description: PLAN_BRIEF_ON
+      ? "Setbacks, parking rates, landscaping, site coverage. Each figure is shown with the council's words and the page it came from."
+      : "Setbacks, parking rates, landscaping, site coverage. Where a figure was found, it is shown with its source clause and page.",
   },
   {
     task: 'SEPP applicability check',
@@ -171,9 +174,9 @@ export default function PlannersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { stat: 'NSW-wide', label: 'Any address', sub: 'Zone, LEP + SEPP, live from the Planning Portal' },
-            { stat: '24', label: 'Sydney councils', sub: 'Structured numeric DCP controls' },
+            { stat: 'Source links', label: 'On every line', sub: 'Government layer or council page' },
             { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
-            { stat: 'Inner West', label: 'Deepest coverage', sub: 'Full DCP browser, expanding' },
+            { stat: 'Full plan', label: 'Nothing hidden', sub: 'The whole council plan sits below the Site Report' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
               <p className="text-2xl font-bold text-gray-900">{stat}</p>
@@ -196,7 +199,7 @@ export default function PlannersPage() {
           cta="bottom_open_verify"
           className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-500 transition-colors"
         >
-          Open Site Controls <ArrowRight className="w-4 h-4" />
+          Open a Site Report <ArrowRight className="w-4 h-4" />
         </TrackedLink>
       </section>
 

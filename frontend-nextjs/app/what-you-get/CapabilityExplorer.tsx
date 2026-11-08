@@ -145,7 +145,7 @@ const DOMAINS: { domain: string; items: Capability[] }[] = [
         title: 'Extracted provisions corpus',
         data: 'The full body of indexed planning provisions behind every check.',
         youCanDo: 'Filter thousands of provisions down to the ones that apply to one site.',
-        coverage: `${COVERAGE_DISPLAY.provisionsTotal} provisions`,
+        coverage: 'Council and statewide instruments',
         source: 'LEP / DCP / SEPP instruments',
         href: '/assessment',
         personas: ['planner'],

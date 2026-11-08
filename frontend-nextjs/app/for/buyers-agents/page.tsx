@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -159,7 +160,7 @@ export default function BuyersAgentsPage() {
               href="/assessment"
               className="inline-flex items-center gap-2 px-6 py-3 text-slate-300 text-sm font-medium rounded-xl border border-slate-700 hover:border-slate-600 hover:text-white transition-all"
             >
-              Open Site Controls
+              Open a Site Report
             </Link>
           </div>
         </div>
@@ -170,8 +171,10 @@ export default function BuyersAgentsPage() {
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6">
           {[
             { value: '12', label: 'Property checks' },
-            { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
-            { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
+            { value: 'Every line', label: 'Linked to its source' },
+            PLAN_BRIEF_ON
+              ? { value: 'Not found', label: 'Stated, never guessed' }
+              : { value: 'No account', label: 'Needed to start' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
               <div className="text-2xl font-bold text-white">{value}</div>

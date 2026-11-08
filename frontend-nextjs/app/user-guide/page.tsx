@@ -6,7 +6,6 @@ import {
   Zap, Clock, Landmark, AlertCircle, CheckCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export default function UserGuidePage() {
   const [activeTab, setActiveTab] = useState<'start' | 'understand' | 'workflows' | 'roles'>('start');
@@ -567,7 +566,6 @@ export default function UserGuidePage() {
                   <p className="text-xs md:text-sm text-blue-900">
                     <strong>DA prep tip:</strong> DCP is usually the longest section (100+ provisions).
                     Use topic filters to focus on relevant controls. Click "View PDF" icons to verify exact wording.
-                    PlotDetect filters {COVERAGE_DISPLAY.provisionsTotal} provisions down to ~100 relevant ones for your specific property.
                   </p>
                 </div>
               </div>

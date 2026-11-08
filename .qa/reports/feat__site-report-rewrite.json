@@ -1,0 +1,87 @@
+{
+  "tier": "standard",
+  "justification": "Public marketing copy on the homepage and 12 other pages plus one shared flag constant and one retired stats field. Not Minor: more than 3 substantive files and public-facing claims. Not Critical: no data, query, API or pipeline change.",
+  "commit_hash": "1e349719",
+  "files": [
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/lib/site-report.ts",
+    "frontend-nextjs/app/for/builders/page.tsx",
+    "frontend-nextjs/app/for/buyers-agents/page.tsx",
+    "frontend-nextjs/app/for/conveyancers/page.tsx",
+    "frontend-nextjs/app/for/councils/page.tsx",
+    "frontend-nextjs/app/for/homebuyers/page.tsx",
+    "frontend-nextjs/app/for/planners/page.tsx",
+    "frontend-nextjs/app/for/students/page.tsx",
+    "frontend-nextjs/app/how-it-works/page.tsx",
+    "frontend-nextjs/app/what-you-get/page.tsx",
+    "frontend-nextjs/app/what-you-get/CapabilityExplorer.tsx",
+    "frontend-nextjs/app/developers/page.tsx",
+    "frontend-nextjs/app/user-guide/page.tsx",
+    "frontend-nextjs/components/marketing/HomeNav.tsx",
+    "frontend-nextjs/components/marketing/SiteNav.tsx",
+    "frontend-nextjs/components/marketing/SiteFooter.tsx",
+    "frontend-nextjs/lib/coverage.ts",
+    "tests/test_coverage_source_derived_stats.py"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/hidden-products-not-linked.test.ts && grep -rn 'provisionsTotal\\|Provisions indexed' app components; test $? -eq 1",
+    "fails_when": "The homepage or any component links to a withdrawn product route, or a marketing page still renders the provisions-indexed count.",
+    "observed_red": "Both seen red. The grep half printed 14 references before the rewrite. The jest half failed in CI on this branch (Test Suites: 1 failed) because the homepage linked /climate-risk, a withdrawn product; that link is now removed."
+  },
+  "pre_impl": {
+    "existing_data": "none - copy only. Reads process.env.NEXT_PUBLIC_PLAN_BRIEF at build time, the same flag YourProjectSummary already reads.",
+    "assumption_mismatch": "If the flag is unset or not 'on', pages must not describe quoted council rules with pages; the flag-off sentences describe only chapter links and cited numeric controls.",
+    "new_vs_existing": "Applies to every page view after deploy; no stored data changes.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "A visitor reads copy that describes a feature the report does not show. Mitigated by the flag gate."
+  },
+  "functions": [
+    {
+      "name": "HomePage",
+      "file_line": "frontend-nextjs/app/page.tsx:130",
+      "input": "none (server component); PLAN_BRIEF_ON from lib/site-report.ts",
+      "output": "JSX for the homepage, rendered to the visitor",
+      "if_none": "flag unset gives the flag-off wording"
+    }
+  ],
+  "values": [
+    {
+      "value": "PLAN_BRIEF_ON",
+      "read_at": "frontend-nextjs/lib/site-report.ts:15",
+      "nullable": "no (boolean)",
+      "guard_at": "N/A",
+      "if_missing": "false, so the flag-off wording shows"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Flag is off but a page still says council rules are quoted with the page.",
+      "what_happens": "Visitor expects rows the report does not show.",
+      "mitigated": true,
+      "how": "Copy on 8 pages reads PLAN_BRIEF_ON; flag-off text names only chapter links and cited numeric controls. Found by cross-review before merge.",
+      "repro": "Unset NEXT_PUBLIC_PLAN_BRIEF, build, open /, /for/councils, /how-it-works and read the council-plan wording."
+    },
+    {
+      "scenario": "Homepage links a withdrawn product.",
+      "what_happens": "Visitor lands on an unchecked product.",
+      "mitigated": true,
+      "how": "The /climate-risk link was removed; hidden-products-not-linked.test.ts scans app, components and lib.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/hidden-products-not-linked.test.ts"
+    },
+    {
+      "scenario": "A flag-off page still shows the removed count tiles because a field was dropped from coverage.ts but a page still reads it.",
+      "what_happens": "Build fails on the missing field, or a tile renders undefined.",
+      "mitigated": true,
+      "how": "govDataSources was retired from lib/coverage.ts and every reader removed; tsc on the touched files is clean and the count tests pass (156).",
+      "repro": "cd frontend-nextjs && npx tsc --noEmit | grep -E 'app/(page|developers|what-you-get|for/)'; python -m pytest tests/test_coverage_source_derived_stats.py tests/test_no_hardcoded_council_counts.py -q"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open the Vercel preview homepage and read it once with NEXT_PUBLIC_PLAN_BRIEF unset."
+  }
+}

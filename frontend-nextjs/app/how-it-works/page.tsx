@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
@@ -69,12 +70,14 @@ const TOOLS = [
     href: '/reports/conveyancing',
     sources: [
       { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, FSR, height, heritage, environmental overlays, LEP provisions' },
-      { name: 'Council DCP provisions', use: `Setback controls, parking rates, and landscaping standards for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs` },
+      { name: 'Council DCP provisions', use: PLAN_BRIEF_ON ? "The council's own setback, parking and landscaping rules, quoted with the page. Where none is found the report says so and links to the plan" : "Council plan chapters that apply to the lot, and numeric setback, parking and landscaping controls where they were found, with the clause and page" },
       { name: 'NSW Rural Fire Service', use: 'Bushfire-prone land status' },
       { name: 'NSW Government spatial overlays', use: 'Flood control lot status from LEP and council flood studies' },
     ],
-    cadence: 'Planning Portal data is queried live. DCP provisions are updated when new LGAs are onboarded or instruments are amended.',
-    limitations: `DCP setback controls are available for ${COVERAGE_DISPLAY.dcpNumericCouncils} LGAs. Full DCP coverage (all provision types) is available for Inner West Council. The conveyancing disclosure does not replace a section 10.7 planning certificate.`,
+    cadence: 'Planning Portal data is queried live. Council plan text is read from the published plan and carries the plan date, so it can be older than the current council version.',
+    limitations: PLAN_BRIEF_ON
+      ? 'Council plan rules are shown only where they could be found and matched to the page. Where they could not, the report says so and links to the council. The conveyancing disclosure does not replace a section 10.7 planning certificate.'
+      : 'Numeric council controls are shown only for councils where they were found and matched to the page. Elsewhere the report links to the council plan. The conveyancing disclosure does not replace a section 10.7 planning certificate.',
   },
 ];
 

@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -6,7 +7,6 @@ import {
 } from 'lucide-react';
 import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
-import { COVERAGE_DISPLAY } from '@/lib/coverage';
 
 export const metadata: Metadata = {
   title: 'For Homeowners & Buyers — PlotDetect',
@@ -132,8 +132,10 @@ export default function HomebuyersPage() {
       <section className="bg-slate-950 border-t border-slate-800/50 py-8 px-6">
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6">
           {[
-            { value: COVERAGE_DISPLAY.lgasCovered, label: 'LGAs covered' },
-            { value: COVERAGE_DISPLAY.govDataSources, label: 'Gov data sources' },
+            { value: 'Every line', label: 'Linked to its source' },
+            PLAN_BRIEF_ON
+              ? { value: 'Not found', label: 'Stated, never guessed' }
+              : { value: 'No account', label: 'Needed to start' },
             { value: 'Free', label: 'To start' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">

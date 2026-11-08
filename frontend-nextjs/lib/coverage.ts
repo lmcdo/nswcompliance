@@ -78,7 +78,7 @@
  * never a reason a number COULD NOT be verified — only a reason nobody had written
  * the check, which is how `lgasCovered: 130` claimed more councils than NSW has.
  * Two of them are now checked against their real source by
- * tests/test_coverage_source_derived_stats.py: govDataSources (the homepage's own
+ * tests/test_coverage_source_derived_stats.py: (govDataSources, retired; the homepage's own
  * DATA_SOURCES list) and secondaryDwellingCouncils (the generated stats file).
  *
  * dcpFullCouncils ("7 councils with full structured provisions") was RETIRED on
@@ -128,7 +128,9 @@
  *                                "130+" until 2026-08-24, i.e. more councils than NSW has.
  *                                Live: SELECT count(DISTINCT lga_name) FROM spatial_overlays
  *                                WHERE layer_type='zone' -> 128, and the CDC record -> 128.
- *   govDataSources             named on the homepage (DATA_SOURCES)
+ *   govDataSources             RETIRED 2026-11-08 with the homepage Site Report rewrite: the stats strip and
+ *                                the DATA_SOURCES list it counted were removed (the offer is no longer a
+ *                                coverage count). Do not re-add without a surface that renders it.
  */
 
 /** Exact integers — each either DB-verified (see header) or a frozen editorial fact. */
@@ -147,7 +149,6 @@ export const COVERAGE = {
   floodDepthStudies: 3,
   totalNswCouncils: 128,
   lgasCovered: 128,
-  govDataSources: 7,
 } as const;
 
 /**
@@ -169,7 +170,6 @@ export const COVERAGE_DISPLAY = {
   floodDepthStudies: '3',
   totalNswCouncils: '128',
   lgasCovered: '128',
-  govDataSources: '7',
 } as const;
 
 export type CoverageKey = keyof typeof COVERAGE;
