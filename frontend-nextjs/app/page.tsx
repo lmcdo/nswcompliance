@@ -50,7 +50,7 @@ const STEPS = [
 ];
 
 const LIMITS = [
-  'It is not a verdict. It does not say whether a project will be approved.',
+  'It is not a verdict. It does not predict the outcome of a development application.',
   'It is not a section 10.7 planning certificate and not legal advice.',
   "It shows the council's published words. It does not interpret them.",
   'When a figure or clause cannot be found, the row says "not found" and links to the source. It never fills the gap with a guess.',
