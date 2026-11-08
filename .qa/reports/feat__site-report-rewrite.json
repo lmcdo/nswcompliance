@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Public marketing copy on the homepage and 12 other pages plus one shared flag constant and one retired stats field. Not Minor: more than 3 substantive files and public-facing claims. Not Critical: no data, query, API or pipeline change.",
-  "commit_hash": "40e1a60b",
+  "commit_hash": "1e349719",
   "files": [
     "frontend-nextjs/app/page.tsx",
     "frontend-nextjs/lib/site-report.ts",
