@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 
 interface LotDimensions {
@@ -146,6 +146,10 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     fetchLepClauses();
   }, [selectedProperty, developmentType, selectedCoordinates]);
 
+  // Latest-selection-wins: a slow lookup for an earlier address must never replace the property,
+  // error or loading state of a later one (it would silently show the wrong property).
+  const latestSelection = useRef(0);
+
   // Handle address selection and property fetch
   const handleAddressSelect = useCallback(async (
     address: string,
@@ -156,6 +160,8 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
 
     // Normalize address for consistent API calls across platforms
     const normalizedAddress = normalizeAddress(address);
+    const requestId = ++latestSelection.current;
+    const isCurrent = () => requestId === latestSelection.current;
     console.log('Address (normalized):', normalizedAddress);
     console.log('Coordinates:', coordinates);
 
@@ -185,7 +191,7 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
 
         if (apiResponse.success) {
           console.log('✅ Success! Property data:', apiResponse.data);
-          setSelectedProperty(apiResponse.data);
+          if (isCurrent()) setSelectedProperty(apiResponse.data);
         } else {
           console.error('❌ API returned error:', apiResponse.error);
           throw new Error(apiResponse.error || 'Failed to load property');
@@ -205,15 +211,17 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
       }
     } catch (err) {
       console.error('❌ Fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load property');
-      setSelectedProperty(null);
+      if (isCurrent()) {
+        setError(err instanceof Error ? err.message : 'Failed to load property');
+        setSelectedProperty(null);
+      }
     } finally {
       // Ensure minimum loading time for visible feedback
       const elapsed = Date.now() - startTime;
       if (elapsed < MIN_LOADING_MS) {
         await new Promise(resolve => setTimeout(resolve, MIN_LOADING_MS - elapsed));
       }
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
       console.log('=== handleAddressSelect COMPLETE ===');
     }
   }, []);
