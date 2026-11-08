@@ -1,12 +1,13 @@
 {
   "tier": "standard",
   "justification": "Product names on 34 files (labels, an email subject) plus a 9-line effect so the address page starts from ?address=. Not Minor: more than 3 substantive files and one user-facing email subject. Not Critical: no data, query or API behaviour changes.",
-  "commit_hash": "36fc8e15",
+  "commit_hash": "6a56f13c",
   "files": [
     "frontend-nextjs/__tests__/api/canibuildit/lead-abuse.test.ts",
     "frontend-nextjs/__tests__/api/canibuildit/lead-email.test.ts",
     "frontend-nextjs/__tests__/app/brief-unavailable-copy.test.ts",
     "frontend-nextjs/__tests__/app/brief-url-start.test.ts",
+    "frontend-nextjs/__tests__/components/marketing/HeroAddressSearch.test.tsx",
     "frontend-nextjs/__tests__/hooks/usePropertyAssessment.test.ts",
     "frontend-nextjs/__tests__/lib/hazard-lookup-unknown.test.ts",
     "frontend-nextjs/__tests__/lib/product-names.test.ts",
@@ -46,7 +47,7 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts && grep -rIl 'Site Report' app components lib; test $? -eq 1",
     "fails_when": "The retired name Site Report appears anywhere in app, components or lib, Site Facts appears on the address page or marketing shell, or Council Rules appears inside the generated report.",
-    "observed_red": "Both halves seen red. grep: 34 files contained Site Report before the rename, 0 after. Hook: with the latest-selection guard removed, usePropertyAssessment.test.ts fails (Expected BETA, Received ALPHA); with it restored it passes. Jest run locally: 11 suites, 134 tests, exit 0."
+    "observed_red": "Both halves seen red. grep: 34 files contained Site Report before the rename, 0 after. Hook: with the latest-selection guard removed, usePropertyAssessment.test.ts fails (Expected BETA, Received ALPHA); with it restored it passes. Jest run locally: 11 suites, 134 tests, exit 0. CI also caught a test pinning the old homepage box target (HeroAddressSearch.test.tsx); updated. Full Jest: 209 suites, 2,565 tests, exit 0."
   },
   "pre_impl": {
     "existing_data": "none - labels, one email subject, and a URL query read on page load.",
