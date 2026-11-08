@@ -1920,6 +1920,111 @@
     "passes_when": "exit 0 - the decision and walking tests pass AND data/lmr_area_accuracy.json records a passing run on the data served now",
     "red_when": "the declared state and the check disagree in either direction",
     "verified": "2026-11-08: python scripts/lmr_area/run_lmr_area_pipeline.py test on two fresh seeds, 100 lots each, against the Valhalla pedestrian router. Seed 20261120: yes/no match 72/77 = 94%, wrong-yes 0, wrong-no 0, range holds 63/63, can't-tell 4. Seed 20261121: 74/81 = 91%, wrong 0, range holds 56/62 = 90%, can't-tell 4. data/lmr_area_accuracy.json records the second run. Weak spot, stated: lots whose station entrance is estimated matched the router on 7 of 12 (n small); their answers carry the label estimated."
+  },
+  "OC-23": {
+    "kind": "outreach_claim",
+    "claim": "At least 98% of plan-brief rows have page_check = on_page, and a clause label is shown only when its citation is proven.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-2",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-23"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - brief rows whose clause has page_check = on_page / all brief rows >= 0.98",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-2. 2026-11-08: 9,026 of 9,039 = 99.9% before the stale-chapter exclusion."
+  },
+  "OC-24": {
+    "kind": "outreach_claim",
+    "claim": "Every brief row with no candidate shows the 'not found, open the plan' text, and no row ever shows a figure we did not extract. Where a table's numbers are missing from the data, the row points to the page and states no number.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-3",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-24"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - every brief row points at a current, actionable clause of its own council (so no figure can be invented), and the component tests (empty row says so, nothing rendered without rows) pass",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-3. Where a table's numbers are missing from the data (Marrickville, Hornsby), the served row says 'Wording not shown here - read it on page N' and states no number."
+  },
+  "OC-25": {
+    "kind": "outreach_claim",
+    "claim": "For each council named in outreach, one confirmed plan in force is behind every brief row; rows from stale chapters are excluded or flagged.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-4",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-25"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - every served council has a plan date and one confirmed plan in force, AND no brief row comes from a chapter whose PDF changed since it was read (the DQ-70 predicate applied to the brief)",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-4. 2026-11-08: 9 brief rows from Canterbury-Bankstown chapters 7.3 and 7.6 (changed PDFs) were found by this check and excluded (stale_exclude.py). The older fleet-wide DQ-70 still fails for those chapters (OC-10/OC-17, data session)."
+  },
+  "OC-26": {
+    "kind": "outreach_claim",
+    "claim": "With the brief flags on, the full plan list shown is byte-identical to flags off; scope-based ranking changes order only and nothing is hidden.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-5",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-26"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - the API route returns {enabled:false} unless PLAN_BRIEF=on, the page renders the block only if NEXT_PUBLIC_PLAN_BRIEF=on, and the component tests pass",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-5. Source-guard plus component tests; a live on/off byte-compare of the whole plan list was not done. The only edit to an existing frontend file is YourProjectSummary.tsx (an optional block, null when the flag is off)."
+  },
+  "OC-27": {
+    "kind": "outreach_claim",
+    "claim": "The plan-brief call returns in under 2 seconds at the 95th percentile.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-6",
+    "declared": "false",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-27"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - p95 of 60 brief calls < 2 s against a deployment with PLAN_BRIEF=on (PLAN_BRIEF_URL, optional PLAN_BRIEF_HEADERS)",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-6. NOT VERIFIED here by design: the feature is not live in production, so the check needs a deployment URL. Measured by hand 2026-11-08 on a preview: p50 0.98 s, p95 1.19 s over 102 calls."
+  },
+  "OC-28": {
+    "kind": "outreach_claim",
+    "claim": "No brief row uses a verdict word (such as 'verified' or 'compliant'); the wording is 'indicative'.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-7",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-28"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - the plan-brief component test 'wording is indicative and never says verified, compliant or approved' passes",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-7. Test exists and passes; it has not been mutation-tested (break the wording, see it fail)."
+  },
+  "OC-29": {
+    "kind": "outreach_claim",
+    "claim": "A read of 30 brief rows across 5 named councils finds fewer than 2 serious errors (a rule for another project type or area, another plan, or a made-up figure). Read by the Claude session against the plan's own section titles and page text. NOT an independent human read.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-29"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - the recorded session read of 30 rows (data/plan_brief_session_read_2026-11-08.json) has fewer than 2 WRONG first clauses AND every recorded first clause is still the row's first clause now",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-8. 2026-11-08: read by the Claude session across 5 named councils (Penrith, Wollongong, Ashfield, Georges River, Waverley): 0 WRONG, 2 weak. Not independent of the build; OC-18 covers independence. Goes stale (FAIL) if the brief is rebuilt, so it has to be re-read."
   }
  }
 }
