@@ -1,0 +1,19 @@
+State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77 only
+Source: https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0732 (status "In force"), read 2026-11-08 in a browser.
+Line breaks below were added between subclauses; the words are as published. Footnote line as published: "s 2.77: Am 2026 (286), Sch 1.11[2]."
+Why saved: s164(1)(i) of the Housing SEPP excludes land near a "relevant pipeline"; s2.77(3) is the law's list of which pipelines those are.
+
+Subdivision 2 Development adjacent to pipeline corridors
+
+2.77   Determination of development applications
+(1)  Before determining a development application for development adjacent to land in a pipeline corridor, the consent authority must—
+(a)  be satisfied that the potential safety risks or risks to the integrity of the pipeline that are associated with the development to which the application relates have been identified, and
+(b)  take those risks into consideration.
+(c), (d)    (Repealed)
+(2)  Land is in a pipeline corridor for the purposes of this section if the land is located—
+(a)  within the licence area of a pipeline for gas, or for petroleum or other liquid fuels, licensed under the Pipelines Act 1967, or
+(b)  within 20m of the centreline (measured radially) of a relevant pipeline, or
+(c)  within 20m of land the subject of an easement for a relevant pipeline.
+(3)  The following pipelines for gas, or for petroleum or other liquid fuels, are relevant pipelines for the purposes of this section—
+(a)  the pipelines with licence numbers 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 32, 33, 35 and 42 licensed under the Pipelines Act 1967,
+(b)  the Clyde to Gore Bay pipeline.

@@ -16,7 +16,12 @@ interface Props {
 }
 
 /** One plain sentence for each answer. The server's own wording (clause, page, range) is shown beneath it. */
-function lead(r: AreaCheck): string {
+function lead(r: AreaCheck, warned: boolean): string {
+  // A yes that carries a warning is no answer (the same rule as useAreaCheck's inLmrArea): say what was measured, give no yes or no.
+  if (warned && (r.pathway === 'tod' || r.pathway === 'lmr')) {
+    const where = r.pathway === 'tod' ? 'a Chapter 5 (Transport Oriented Development)' : 'a Chapter 6 (low and mid-rise)';
+    return `The measurements place this lot in ${where} area, but the warning below has not been ruled out, so this card gives no yes or no.`;
+  }
   if (r.pathway === 'tod') return 'This lot is in a Transport Oriented Development area (Chapter 5).';
   if (r.pathway === 'lmr') return 'This lot is within the low and mid-rise walking distance (Chapter 6).';
   if (r.pathway === 'borderline') return 'This lot is close to the low and mid-rise walking limit.';
@@ -43,10 +48,11 @@ export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
     );
   }
 
-  const rates = result.lmr.answer === 'yes' || result.lmr.answer === 'borderline' ? reformParkingRates(lawFacts) : [];
+  const warned = result.warnings.length > 0 || (result.lmr.warnings?.length ?? 0) > 0;
+  const rates = !warned && (result.lmr.answer === 'yes' || result.lmr.answer === 'borderline') ? reformParkingRates(lawFacts) : [];
   // TOD (Chapter 5) affordable-housing parking, from the stored law facts only (the same source as the Chapter 6 rates above):
   // with no facts there is no figure, never one taken from the Python answer.
-  const todParking = result.tod.answer === 'yes' ? todAffordableParkingRates(lawFacts) : [];
+  const todParking = !warned && result.tod.answer === 'yes' ? todAffordableParkingRates(lawFacts) : [];
   const f = result.lmr.figures;
   const showRange = (result.lmr.answer === 'yes' || result.lmr.answer === 'borderline') && f?.walk_low_m != null && f?.walk_high_m != null;
   return (
@@ -55,8 +61,8 @@ export function AreaCheckCard({ result, loading, failed, lawFacts }: Props) {
         <CardTitle className="text-base text-indigo-900">Housing reform area</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 text-sm text-gray-800">
-        <p className="font-medium" data-testid="area-check-lead">{lead(result)}</p>
-        <p data-testid="area-check-headline">{result.headline}</p>
+        <p className="font-medium" data-testid="area-check-lead">{lead(result, warned)}</p>
+        {!warned && <p data-testid="area-check-headline">{result.headline}</p>}
         {showRange && (
           <p className="text-xs text-gray-700" data-testid="area-check-range">
             Walking distance to {f?.anchor ?? 'the nearest station or town centre'}: probably between {f?.walk_low_m} and {f?.walk_high_m} m;

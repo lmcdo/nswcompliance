@@ -176,7 +176,7 @@ if __name__ == "__main__":
     stations = json.loads((HERE / STATIONS_FIX).read_text(encoding="utf-8"))
     stations_judge = json.loads((HERE / STATIONS_JUDGE).read_text(encoding="utf-8"))
     tcs = inp.town_centre_polygons()
-    surfaces = [ws.load_surface(str(p)) for p in sorted(SURF.glob("*.json.gz"))]
+    surfaces = [ws.load_surface(str(p)) for p in sorted(list(SURF.glob("*.json.gz")) + list(SURF.glob("*.npz")))]
     print("surfaces", len(surfaces), flush=True)
     boxes = [(-33.99, 150.99, -33.78, 151.30), (-34.06, 151.00, -33.93, 151.17), (-33.95, 150.98, -33.88, 151.08),
              (-33.82, 151.10, -33.70, 151.20), (-33.93, 151.20, -33.85, 151.29)]
