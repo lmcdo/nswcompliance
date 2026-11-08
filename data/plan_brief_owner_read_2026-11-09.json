@@ -1,0 +1,311 @@
+{
+ "read_by": "Lawrence McDonell (owner), 2026-11-09, on the 'Council Rules read' page. Rows 1-14, 16, 18-22, 24-30 were marked right by him. Row 17 he marked not sure. Rows 15 and 23 he had not marked; he told Claude 'pass them' and Claude recorded them as right WITHOUT him opening those two cards.",
+ "method": "Each row is the rank-1 clause shown for a dwelling house in zone group R2. Question: is this the council's rule for a normal house on this lot, for this topic? WRONG = flats, townhouses, dual occupancy, centre or heritage-area clause, or a figure the words do not contain.",
+ "passes_when": "30 rows recorded, at least 28 right, fewer than 2 wrong, and every recorded first clause is still the row's first clause now.",
+ "owner_instructed_rows": [
+  15,
+  23
+ ],
+ "rows": [
+  {
+   "n": 1,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 211091,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 2,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 211125,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 3,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 211125,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 4,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 210998,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 5,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 211144,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 6,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 211154,
+   "mark": "right",
+   "address": "39 Byrarong Avenue Mangerton"
+  },
+  {
+   "n": 7,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 170503,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 8,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 170558,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 9,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 170765,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 10,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 181926,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 11,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 170505,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 12,
+   "council": "georges_river",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 170607,
+   "mark": "right",
+   "address": "39A Neirbo Avenue Hurstville"
+  },
+  {
+   "n": 13,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 240900,
+   "mark": "right",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 14,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 240903,
+   "mark": "right",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 15,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 241080,
+   "mark": "right",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 16,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 250565,
+   "mark": "right",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 17,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 240919,
+   "mark": "unsure",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 18,
+   "council": "ashfield",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 240922,
+   "mark": "right",
+   "address": "6 Logan Avenue Haberfield"
+  },
+  {
+   "n": 19,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 261261,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 20,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 261268,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 21,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 261269,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 22,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 262003,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 23,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 261304,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 24,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 261383,
+   "mark": "right",
+   "address": "6 William Howell Drive Glenmore Park"
+  },
+  {
+   "n": 25,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 226415,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  },
+  {
+   "n": 26,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 226420,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  },
+  {
+   "n": 27,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 226415,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  },
+  {
+   "n": 28,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 225942,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  },
+  {
+   "n": 29,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 226533,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  },
+  {
+   "n": 30,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 226537,
+   "mark": "right",
+   "address": "20 Loombah Road Dover Heights"
+  }
+ ]
+}

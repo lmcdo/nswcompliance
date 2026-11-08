@@ -2015,16 +2015,16 @@
     "kind": "outreach_claim",
     "claim": "The owner reads 30 brief rows at 5 real addresses in the named councils: at least 28 are right, and fewer than 2 are a serious error (a rule for another project type or area, another plan, or a made-up figure).",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
-    "declared": "false",
+    "declared": "true",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
       "OC-29"
     ],
     "blocks_outreach": true,
-    "passes_when": "exit 0 - the owner's recorded read of 30 rows has at least 28 right and fewer than 2 serious errors. No owner read is recorded yet, so this fails and the claim stays declared false",
+    "passes_when": "exit 0 - the owner's recorded read of 30 rows (data/plan_brief_owner_read_2026-11-09.json) has at least 28 right and fewer than 2 wrong AND every recorded first clause is still the row's first clause now",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "OB-8, owner-approved 2026-11-08: the OWNER reads 30 rows. Declared false 2026-11-09 (a claim declared true while its check failed broke CI on PR 1614). A Claude-session read on 2026-11-08 across Penrith, Wollongong, Ashfield, Georges River and Waverley found 0 wrong at rank 1; it is supporting evidence only, is not on main, and goes stale when the brief is rebuilt. A separate read on 2026-11-09 of ranks 1 to 3 across Hornsby, Wollongong, Woollahra, Ashfield and Georges River found 22 of 137 rows from another housing type or area (ce-NOTE-2026-11-09-brief-rows-wrong-area-and-housing-type.md)."
+    "note": "OB-8, owner read 2026-11-09 on the Council Rules read page: 5 councils (Wollongong, Georges River, Inner West/Ashfield, Penrith, Waverley), 30 rows: 29 right, 0 wrong, 1 not sure. Rows 15 and 23 were passed on the owner's instruction without him opening those cards (27 right are his own marks), recorded in the data file. Hornsby and Woollahra were NOT read. The read goes stale (FAIL) if the brief is rebuilt or reloaded, so it has to be read again. A 2026-11-09 read of ranks 1 to 3 found 22 of 137 rows from another housing type or area (ce-NOTE-2026-11-09-brief-rows-wrong-area-and-housing-type.md), mostly Hornsby and Woollahra."
   },
   "OC-30": {
     "kind": "outreach_claim",

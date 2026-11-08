@@ -260,3 +260,33 @@ def session_read() -> Result:
     return (PASS if len(wrong) < 2 else FAIL), (f"session read (Claude, not independent of the build): {len(rec)} rows across "
                                                 f"{len({r['council'] for r in rec})} councils, {len(wrong)} WRONG (limit: fewer than 2), "
                                                 f"{sum(r['grade'] == 'WEAK' for r in rec)} weak; every recorded first clause is still the row's first clause")
+
+
+def owner_read() -> Result:
+    """OC-29: the owner's recorded read of 30 brief rows (data/plan_brief_owner_read_2026-11-09.json).
+    Passes only when 30 rows are recorded, at least 28 are right, fewer than 2 are wrong, and every recorded
+    first clause is still the row's first clause now (a rebuilt or reloaded brief makes the read stale)."""
+    path = ROOT / "data" / "plan_brief_owner_read_2026-11-09.json"
+    if not path.exists():
+        return FAIL, "owner read: no recorded read yet (data/plan_brief_owner_read_2026-11-09.json is missing)"
+    rec = json.loads(path.read_text(encoding="utf-8"))["rows"]
+    right = [r for r in rec if r["mark"] == "right"]
+    wrong = [r for r in rec if r["mark"] == "wrong"]
+    if len(rec) < 30:
+        return FAIL, f"owner read: only {len(rec)} rows recorded, need 30"
+    conn = _conn()
+    if conn is None:
+        return UNKNOWN, "owner read: database unreachable"
+    try:
+        with conn.cursor() as cur:
+            top = _brief_top5(cur)
+    finally:
+        conn.close()
+    stale = [(r["council"], r["row_type"]) for r in rec
+             if ((top.get((r["council"], r["dev_type"], r["zone_group"], r["row_type"])) or [None])[0]) != r["first_provision_id"]]
+    if stale:
+        return FAIL, f"owner read is STALE: {len(stale)} of {len(rec)} rows have a different first clause now (e.g. {stale[:3]}). Read them again"
+    ok = len(right) >= 28 and len(wrong) < 2
+    return (PASS if ok else FAIL), (f"owner read: {len(rec)} rows across {len({r['council'] for r in rec})} councils, {len(right)} right, "
+                                    f"{len(wrong)} wrong, {sum(r['mark'] == 'unsure' for r in rec)} not sure (bar: 28 or more right, fewer than 2 wrong); "
+                                    f"every recorded first clause is still the row's first clause")

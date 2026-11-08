@@ -743,7 +743,7 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
     "OC-26": [brief.flag_guard_route, brief.flag_guard_ui, brief.brief_jest],
     "OC-27": [brief.brief_speed],
     "OC-28": [brief.brief_jest],
-    "OC-29": [brief.session_read],
+    "OC-29": [brief.owner_read],
     "OC-30": [brief.brief_recall],
 }
 
