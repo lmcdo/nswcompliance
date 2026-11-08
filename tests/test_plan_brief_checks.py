@@ -39,3 +39,18 @@ def test_a_header_value_that_is_none_does_not_break_the_speed_check(monkeypatch)
     monkeypatch.delenv("PLAN_BRIEF_HEADERS", raising=False)
     status, _why = pbc.brief_speed()
     assert status in (pbc.UNKNOWN, pbc.FAIL)
+
+
+# --- real layer: the database-backed checks against the live catalog, read-only ---------------------------------
+import os  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.database
+@pytest.mark.skipif(not (os.environ.get("PYTEST_REAL_DB") and os.environ.get("DATABASE_URL")),
+                    reason="needs PYTEST_REAL_DB=1 and DATABASE_URL; the checks only read")
+def test_page_proof_check_returns_a_status_and_a_reason():
+    status, why = pbc.brief_page_proof()
+    assert status in (pbc.PASS, pbc.FAIL, pbc.UNKNOWN)
+    assert isinstance(why, str) and why

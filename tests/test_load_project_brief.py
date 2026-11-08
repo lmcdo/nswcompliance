@@ -62,3 +62,21 @@ def test_apply_without_the_confirm_flag_writes_nothing_and_exits():
                        capture_output=True, text=True, timeout=60)
     assert r.returncode != 0
     assert "--confirm-production-write" in (r.stdout + r.stderr)
+
+
+# --- real layer: the dry run against the live database, read-only -----------------------------------------------
+import os  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.database
+@pytest.mark.skipif(not (os.environ.get("PYTEST_REAL_DB") and os.environ.get("DATABASE_URL")),
+                    reason="needs PYTEST_REAL_DB=1 and DATABASE_URL; the dry run opens a read-only session")
+def test_dry_run_reads_the_database_and_writes_nothing(tmp_path):
+    f = write(tmp_path, [row()])
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "load_project_brief.py"), f],
+                       capture_output=True, text=True, timeout=120, env=dict(os.environ))
+    out = r.stdout + r.stderr
+    assert "mode: dry run (read-only)" in out
+    assert "Nothing written" in out or "does not exist" in out
