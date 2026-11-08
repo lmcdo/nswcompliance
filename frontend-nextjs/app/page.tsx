@@ -313,8 +313,7 @@ export default function HomePage() {
             <Link href="/scout" className="text-teal-600 hover:text-teal-500">Scout</Link>
             {' '}(map explorer),{' '}
             <Link href="/validate" className="text-teal-600 hover:text-teal-500">Validate</Link>
-            {' '}(DA approval patterns) and{' '}
-            <Link href="/climate-risk" className="text-teal-600 hover:text-teal-500">climate risk</Link>.
+            {' '}(DA approval patterns).
           </p>
         </div>
       </section>
