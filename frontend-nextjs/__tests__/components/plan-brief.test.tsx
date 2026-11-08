@@ -78,7 +78,7 @@ describe('PlanBriefView', () => {
     expect(within(empty).getByRole('link', { name: /open the plan/i })).toHaveAttribute('href', 'https://example.test/plan.pdf');
   });
 
-  test('wording is indicative and never says verified, compliant or approved', () => {
+  test('wording stays indicative: none of the banned claim words appear', () => {
     const { container } = render(<PlanBriefView rows={shapeBriefRows(five)} />);
     expect(screen.getByTestId('brief-note')).toHaveTextContent(BRIEF_NOTE);
     expect(container.textContent!.toLowerCase()).not.toMatch(/verified|complies|compliant|approved|guarantee/);
