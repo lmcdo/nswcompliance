@@ -1,0 +1,74 @@
+{
+  "tier": "standard",
+  "justification": "Product names on 34 files (labels, an email subject) plus a 9-line effect so the address page starts from ?address=. Not Minor: more than 3 substantive files and one user-facing email subject. Not Critical: no data, query or API behaviour changes.",
+  "commit_hash": "aafaa8e3",
+  "files": [
+    "frontend-nextjs/app/page.tsx",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/components/marketing/HeroAddressSearch.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/app/api/canibuildit/lead/route.ts",
+    "frontend-nextjs/__tests__/lib/product-names.test.ts"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts && grep -rIl 'Site Report' app components lib; test $? -eq 1",
+    "fails_when": "The retired name Site Report appears anywhere in app, components or lib, Site Facts appears on the address page or marketing shell, or Council Rules appears inside the generated report.",
+    "observed_red": "The grep half printed 34 files containing Site Report before the rename and 0 after. The stray Site Facts comment in ConstraintArithmeticCard.tsx was caught by the same scan and fixed. Jest could not be run locally, so CI runs it."
+  },
+  "pre_impl": {
+    "existing_data": "none - labels, one email subject, and a URL query read on page load.",
+    "assumption_mismatch": "If ?address= is absent or empty the page behaves exactly as before; only a non-empty address with nothing selected triggers handleAddressSelect.",
+    "new_vs_existing": "Applies to every page view after deploy; no stored data changes.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "If the address lookup fails the page shows its existing error state, as when a user types the address."
+  },
+  "functions": [
+    {
+      "name": "AssessmentPage",
+      "file_line": "frontend-nextjs/app/assessment/page.tsx:80",
+      "input": "the ?address= value read from window.location.search",
+      "output": "calls handleAddressSelect(address) once on load",
+      "if_none": "no address in the link: nothing happens"
+    }
+  ],
+  "values": [
+    {
+      "value": "fromLink",
+      "read_at": "frontend-nextjs/app/assessment/page.tsx:107",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/assessment/page.tsx:108",
+      "if_missing": "the page loads empty as before"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The link carries an address but the user has already chosen another.",
+      "what_happens": "It could overwrite the visitor's own choice.",
+      "mitigated": true,
+      "how": "The effect runs once on mount and only when selectedAddress is empty.",
+      "repro": "Open /assessment?address=1 Martin Place Sydney, then pick another address in the box."
+    },
+    {
+      "scenario": "The Your Site Facts email subject changed and a test still pins the old subject.",
+      "what_happens": "CI fails on lead-abuse or lead-email tests.",
+      "mitigated": true,
+      "how": "Both tests were updated in the same change to match /Site Facts/i.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/api/canibuildit"
+    },
+    {
+      "scenario": "Someone reintroduces Site Report in new copy.",
+      "what_happens": "Two products carry one name again.",
+      "mitigated": true,
+      "how": "product-names.test.ts scans app, components and lib.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Open the preview homepage, type an address in the box and confirm /assessment loads that property."
+  }
+}

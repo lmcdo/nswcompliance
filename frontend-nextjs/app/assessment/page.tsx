@@ -100,6 +100,14 @@ export default function AssessmentPage() {
     setIsDaMode,
   } = useAssessmentUI(selectedAddress);
 
+  // Start from the address in the link (?address=...), e.g. from the homepage box. Runs once, and only when no address is chosen yet.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const fromLink = new URLSearchParams(window.location.search).get('address')?.trim();
+    if (fromLink && !selectedAddress) void handleAddressSelect(fromLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const heritageClass = useMemo(
     () => classifyHeritageType(selectedProperty?.heritage?.heritageType),
     [selectedProperty?.heritage?.heritageType]

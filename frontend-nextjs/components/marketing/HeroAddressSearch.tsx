@@ -25,7 +25,7 @@ export function HeroAddressSearch() {
   const go = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
-    const href = `/reports?address=${encodeURIComponent(trimmed)}`;
+    const href = `/assessment?address=${encodeURIComponent(trimmed)}`;
     trackFunnelCta('home', 'hero_search', href);
     router.push(href);
   };
