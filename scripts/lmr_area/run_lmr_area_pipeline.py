@@ -69,7 +69,7 @@ def pack() -> None:
 def test(seed: str) -> None:
     env = {"LMR_STATIONS": "lmr_station_entrances_v3.json", "LMR_SURF_DIR": "walk_surfaces", "LMR_RESULTS": f"results_{seed}.json"}
     run("area_check_test.py", "--n", "100", "--seed", seed, env=env)
-    run("area_check_score.py", f"results_{seed}.json")
+    run("area_check_score.py", f"results_{seed}.json", "--record")  # writes data/lmr_area_accuracy.json (outreach claim OC-22) on a pass
 
 
 def verify() -> int:

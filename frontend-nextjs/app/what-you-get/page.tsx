@@ -43,7 +43,9 @@ const LISTED = new Set(scopedCouncils.councils.map((c) => c.slug));
 /* The file is in slug order; a former-council plan is named by its merged council, so sort by what is shown. */
 const COUNCIL_PLAN_NAMES = scopedCouncils.councils.map((c) => c.name).sort((a, b) => a.localeCompare(b));
 /* Only exceptions for a listed council are stated here: the claim is made for those councils alone. */
-const SCOPE_EXCEPTIONS = scopedCouncils.exceptions.filter((e) => LISTED.has(e.council));
+/* Typed here because the list can be empty, and an empty JSON array is inferred as never[]. */
+interface ScopeException { council: string; field: string; statement: string }
+const SCOPE_EXCEPTIONS = (scopedCouncils.exceptions as ScopeException[]).filter((e) => LISTED.has(e.council));
 
 export default function WhatYouGetPage() {
   return (

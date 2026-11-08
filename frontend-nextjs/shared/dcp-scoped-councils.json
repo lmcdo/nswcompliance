@@ -3,24 +3,12 @@
   "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
   "councils": [
     {
-      "slug": "ashfield",
-      "name": "Inner West (former Ashfield area only)"
-    },
-    {
       "slug": "blacktown",
       "name": "Blacktown"
     },
     {
       "slug": "campbelltown",
       "name": "Campbelltown"
-    },
-    {
-      "slug": "canterbury_bankstown",
-      "name": "Canterbury-Bankstown"
-    },
-    {
-      "slug": "city_of_sydney",
-      "name": "City of Sydney"
     },
     {
       "slug": "cumberland",
@@ -31,53 +19,13 @@
       "name": "Georges River"
     },
     {
-      "slug": "hornsby",
-      "name": "Hornsby"
-    },
-    {
-      "slug": "inner_west",
-      "name": "Inner West"
-    },
-    {
       "slug": "ku_ring_gai",
       "name": "Ku-ring-gai"
-    },
-    {
-      "slug": "leichhardt",
-      "name": "Inner West (former Leichhardt area only)"
-    },
-    {
-      "slug": "marrickville",
-      "name": "Inner West (former Marrickville area only)"
-    },
-    {
-      "slug": "penrith",
-      "name": "Penrith"
-    },
-    {
-      "slug": "waverley",
-      "name": "Waverley"
-    },
-    {
-      "slug": "wollongong",
-      "name": "Wollongong"
     },
     {
       "slug": "woollahra",
       "name": "Woollahra"
     }
   ],
-  "exceptions": [
-    {
-      "council": "canterbury_bankstown",
-      "field": "applicable_dev_types",
-      "chapters": [
-        "chapter-10-2-schools",
-        "chapter-10-3-home-businesses",
-        "chapter-10-4-non-residential-land-uses",
-        "chapter-10-5-places-of-public-worship"
-      ],
-      "statement": "Canterbury-Bankstown chapters 10.2 Schools, 10.3 Home businesses, 10.4 Non-residential land uses and 10.5 Places of public worship are shown for every development type, because the property search cannot yet ask for those uses."
-    }
-  ]
+  "exceptions": []
 }

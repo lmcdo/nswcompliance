@@ -46,3 +46,28 @@ def test_test_script_imports_without_name_error():
     r = subprocess.run([sys.executable, str(TEST_SCRIPT), "--help"], capture_output=True, text=True, timeout=60, cwd=ROOT)
     assert "NameError" not in r.stderr, r.stderr[-600:]
     assert r.returncode == 0, r.stderr[-600:]
+
+
+def run_record(tmp_path: Path, lots: list[dict]) -> tuple[subprocess.CompletedProcess, Path]:
+    out = tmp_path / "acc.json"
+    (tmp_path / "r.json").write_text(json.dumps({"lots": lots}), encoding="utf-8")
+    r = subprocess.run([sys.executable, str(SCORE), "r.json", "--record"], capture_output=True, text=True, timeout=60,
+                       env={**os.environ, "LMR_WORK": str(tmp_path), "LMR_ACCURACY_OUT": str(out)})
+    return r, out
+
+
+def test_record_is_written_for_a_passing_run_of_100_lots(tmp_path):
+    lots = [lot("yes", "yes", 500) for _ in range(50)] + [lot("no", "no", 1500) for _ in range(50)]
+    r, out = run_record(tmp_path, lots)
+    assert r.returncode == 0, r.stdout[-400:] + r.stderr[-400:]
+    rec = json.loads(out.read_text(encoding="utf-8"))
+    assert rec["lots"] == 100 and rec["passed"] is True and rec["wrong_yes"] == 0 and len(rec["data_fingerprint"]) == 64
+
+
+def test_no_record_for_a_run_under_100_lots_or_a_failing_run(tmp_path):
+    small = [lot("yes", "yes", 500) for _ in range(10)] + [lot("no", "no", 1500) for _ in range(10)]
+    r, out = run_record(tmp_path, small)
+    assert not out.exists() and "NOT recorded" in r.stdout
+    bad = [lot("yes", "no", 1500) for _ in range(50)] + [lot("no", "no", 1500) for _ in range(50)]
+    r, out = run_record(tmp_path, bad)
+    assert not out.exists() and r.returncode == 1

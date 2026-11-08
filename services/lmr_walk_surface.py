@@ -113,6 +113,24 @@ def available_surfaces(directory: Path = SURFACE_DIR) -> list[Path]:
     return sorted(list(directory.glob("*.npz")) + list(directory.glob("*.json.gz")))
 
 
+# prior-art-checked: nothing in services/ or scripts/ hashes the walking files; the accuracy record (data/lmr_area_accuracy.json,
+# written by scripts/lmr_area/area_check_score.py, read by scripts/outreach_claim_checks.py OC-22) needs one shared definition.
+def data_fingerprint(root: Path = REPO_ROOT) -> str:
+    """One hash of the data the area check serves: every walking file, the station entrances and the saved law figures.
+
+    JSON files are hashed as parsed (sorted keys), so a Windows and a Linux checkout of the same file give the same hash.
+    """
+    import hashlib
+
+    h = hashlib.sha256()
+    for p in sorted((root / "data" / "lmr_walk").glob("*.npz")):
+        h.update(p.name.encode())
+        h.update(p.read_bytes())
+    for rel in ("data/law/lmr_station_entrances.json", "data/law/housing_sepp_lmr_facts.json"):
+        h.update(json.dumps(json.loads((root / rel).read_text(encoding="utf-8")), sort_keys=True).encode())
+    return h.hexdigest()
+
+
 def sample_outline(coords_m: list[tuple[float, float]], step: float = SAMPLE_STEP_M) -> np.ndarray:
     """Points along a polygon ring every `step` metres, including every vertex."""
     pts: list[tuple[float, float]] = []

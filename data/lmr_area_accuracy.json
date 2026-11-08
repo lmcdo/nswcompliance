@@ -1,0 +1,16 @@
+{
+  "lots": 100,
+  "yes_no": 81,
+  "yes_no_match": 74,
+  "wrong_yes": 0,
+  "wrong_no": 0,
+  "borderline": 15,
+  "cant_tell": 4,
+  "range_checked": 62,
+  "range_holds": 56,
+  "results_file": "results_20261121.json",
+  "judge": "OpenStreetMap Valhalla pedestrian router",
+  "passed": true,
+  "data_fingerprint": "3ef0543835c75ac4963aef131cc91a892bd4957b0a63def5a0ce899b0479bedc",
+  "law_version_date": "2026-10-23"
+}

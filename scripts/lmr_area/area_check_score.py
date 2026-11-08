@@ -45,11 +45,14 @@ def report(rows, label):
     passed = pct(len(agree), len(yn)) >= 90 and len(wy) + len(wn) == 0 and pct(len(inrange), len(ranged)) >= 90 and pct(len(ct), n) <= 5
     print("      =>", "PASS" if passed else "FAIL")
     report.last_passed = passed
+    report.last_stats = {"lots": n, "yes_no": len(yn), "yes_no_match": len(agree), "wrong_yes": len(wy), "wrong_no": len(wn),
+                         "borderline": len(bd), "cant_tell": len(ct), "range_checked": len(ranged), "range_holds": len(inrange)}
     return wy, wn, [r for r in ranged if r not in inrange], [r for r in bd if r not in lean_ok and r["judge_walk"] is not None]
 
 
 wy, wn, outside, badlean = report(R, "ALL")
 all_passed = report.last_passed
+all_stats = dict(report.last_stats)
 report([r for r in R if r.get("fix_extra_m")], "stations with unmapped entrance")
 report([r for r in R if r["fix_code"] not in ("chapter5", "beyond_straight_line")], "walk-decided lots only")
 print("--- break-it versions (each must FAIL the yes/no match) ---")
@@ -65,6 +68,20 @@ for r in outside:
 print("--- borderline lots whose lean points the wrong side ---")
 for r in badlean:
     print(r["address"], "| range", r["fix_low"], "-", r["fix_high"], "| lean", r["fix_lean"], "| router", round(r["judge_walk"]))
+
+# `--record` writes the result that outreach claim OC-22 reads (data/lmr_area_accuracy.json). It is written only for a run that passed
+# on at least 100 lots, and carries the hash of the data it was measured on: the claim goes red again when that data changes.
+if "--record" in sys.argv and all_passed and not weak_controls and all_stats["lots"] >= 100:
+    sys.path.insert(0, str(REPO))
+    from services.lmr_walk_surface import data_fingerprint
+
+    rec = {**all_stats, "results_file": sys.argv[1], "judge": "OpenStreetMap Valhalla pedestrian router", "passed": True,
+           "data_fingerprint": data_fingerprint(), "law_version_date": json.loads((REPO / "data" / "law" / "housing_sepp_lmr_facts.json").read_text(encoding="utf-8")).get("law_version_date")}
+    out_path = Path(__import__("os").environ.get("LMR_ACCURACY_OUT", REPO / "data" / "lmr_area_accuracy.json"))  # tests point this elsewhere
+    out_path.write_text(json.dumps(rec, indent=2) + "\n", encoding="utf-8")
+    print("recorded", out_path.name)
+elif "--record" in sys.argv:
+    print("NOT recorded: the run did not pass, a control was too weak, or fewer than 100 lots")
 
 # A failed accuracy result or a break-it control that passes must fail the pipeline step, not just print FAIL.
 sys.exit(0 if all_passed and not weak_controls else 1)

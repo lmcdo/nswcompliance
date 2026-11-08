@@ -111,7 +111,7 @@ def test_the_committed_claim_set_matches_the_decision():
     outreach, and every declared state is one the runner enforces."""
     checks = json.loads(_CHECKS.read_text(encoding="utf-8"))["checks"]
     oc = {k: v for k, v in checks.items() if k.startswith("OC-")}
-    assert sorted(oc, key=lambda k: int(k[3:])) == [f"OC-{i}" for i in range(1, 22)]
+    assert sorted(oc, key=lambda k: int(k[3:])) == [f"OC-{i}" for i in range(1, 23)]
     for cid, row in oc.items():
         assert row.get("blocks_outreach") is True, cid
         assert row.get("declared") in {"true", "false", "unverifiable"}, cid
