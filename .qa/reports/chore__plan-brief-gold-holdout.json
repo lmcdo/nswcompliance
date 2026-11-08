@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "One data file is added and no code changes. plan_brief_checks.brief_recall reads data/plan_brief_gold_holdout.json, and without it the check reports unknown on main. A wrong file could make the recall number wrong, which is why the check also reads the proven rules from the database and the file only adds the held-out councils.",
+  "commit_hash": "ee17c473",
+  "files": [
+    "data/plan_brief_gold_holdout.json"
+  ],
+  "pre_impl": {
+    "existing_data": "plan_brief_checks.brief_recall joins this file's ids to regulatory_provisions and compares them with project_brief_rows.",
+    "assumption_mismatch": "If an id in the file is no longer a current clause it does not match any brief row, and the recall number goes down, not up, so a stale file cannot inflate the result.",
+    "new_vs_existing": "Applies to the next run of the check only. No table or row is written."
+  },
+  "residual_risk": "The file was produced by the applies-when session from the councils' own plans and was not independently read. The check reports hold-out recall separately from the tuning councils, 94 percent on 50 cases, with a 95 percent lower bound of 84 percent against a bar of 90 percent, so the hold-out figure alone does not prove the bar.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "break_it": [
+    {
+      "scenario": "The file holds an id for a clause that has since been withdrawn or re-extracted under a new id.",
+      "what_happens": "That rule no longer matches any brief row, so the hold-out recall goes down and the check can fail. It cannot report a higher number than the truth.",
+      "mitigated": true,
+      "how": "scripts/plan_brief_checks.py:98 reads this file and joins its ids to current, actionable clauses, so a stale id counts as a miss.",
+      "repro": "python scripts/plan_brief_checks.py via brief_recall(), after withdrawing one clause id listed in the file"
+    }
+  ]
+}
