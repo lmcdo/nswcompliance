@@ -219,7 +219,7 @@ def brief_speed() -> Result:
     if not base:
         return UNKNOWN, ("speed: set PLAN_BRIEF_URL to a deployment with PLAN_BRIEF=on (and PLAN_BRIEF_HEADERS if protected) "
                          "to time it. Measured by hand 2026-11-08 on a preview: p50 0.98 s, p95 1.19 s over 102 calls; not a pass here")
-    headers = dict(h.split(":", 1) for h in os.environ.get("PLAN_BRIEF_HEADERS", "").split(";") if ":" in h)
+    headers = dict(h.split(":", 1) for h in (os.environ.get("PLAN_BRIEF_HEADERS") or "").split(";") if ":" in h)
     combos = [(c, d) for c in ("ashfield", "penrith", "waverley", "wollongong", "georges_river", "hornsby") for d in CORE_ZONE]
     times = []
     for council, dev in combos * 2:

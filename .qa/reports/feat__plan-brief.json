@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds a new read-only API route, a component and a loader behind two flags that are both off, so merging changes nothing on the live page. It is Standard and not Critical because it writes nothing on the live path: the loader is dry-run by default and needs two flags to write, and the route only reads project_brief_rows joined to regulatory_provisions. It is Standard and not Minor because it serves council rule text and page links to users once the flags go on, so a wrong clause or a wrong page would be shown as fact.",
-  "commit_hash": "e5cc454c",
+  "commit_hash": "f359d604",
   "files": [
     "frontend-nextjs/app/api/brief/for-property/route.ts",
     "frontend-nextjs/components/compliance/PlanBrief.tsx",

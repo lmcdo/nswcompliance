@@ -62,6 +62,13 @@ def main():
     from dotenv import load_dotenv
     load_dotenv()
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        _run(conn, a, writing)
+    finally:
+        conn.close()
+
+
+def _run(conn, a, writing):
     conn.set_session(readonly=not writing)
     cur = conn.cursor()
     cur.execute("SELECT current_database()")
