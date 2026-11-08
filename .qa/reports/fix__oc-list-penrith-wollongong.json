@@ -1,0 +1,37 @@
+{
+  "tier": "minor",
+  "justification": "Published council list updated to the list the check computes (adds Penrith and Wollongong). No code, query or served logic changes.",
+  "commit_hash": "56d4dc23",
+  "files": [
+    "frontend-nextjs/shared/dcp-scoped-councils.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_scoped_councils.py",
+    "fails_when": "the published list differs from the computed list in either direction",
+    "observed_red": "On main it prints 'passes but not published: penrith, wollongong' and exits 1; after the change it prints PASS with 8 of 18 listed.",
+    "external_authority": "The list is computed from the database by the check itself; nothing is typed by hand."
+  },
+  "pre_impl": {
+    "existing_data": "No data read or written by this change.",
+    "assumption_mismatch": "Another session proved the last unproven rows in Penrith and Wollongong, so both now pass.",
+    "new_vs_existing": "Two councils join the what-you-get list (6 to 8).",
+    "external_source_error": "Not applicable.",
+    "frontend_type": "Not applicable: JSON data only.",
+    "user_failure_mode": "None."
+  },
+  "break_it": [
+    {
+      "scenario": "a listed council later gains an unproven rule",
+      "what_happens": "the claim would overstate it",
+      "mitigated": true,
+      "how": "the check fails until the list is updated",
+      "repro": "python scripts/outreach_scoped_councils.py"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

@@ -23,6 +23,14 @@
       "name": "Ku-ring-gai"
     },
     {
+      "slug": "penrith",
+      "name": "Penrith"
+    },
+    {
+      "slug": "wollongong",
+      "name": "Wollongong"
+    },
+    {
       "slug": "woollahra",
       "name": "Woollahra"
     }
