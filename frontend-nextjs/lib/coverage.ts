@@ -128,7 +128,7 @@
  *                                "130+" until 2026-08-24, i.e. more councils than NSW has.
  *                                Live: SELECT count(DISTINCT lga_name) FROM spatial_overlays
  *                                WHERE layer_type='zone' -> 128, and the CDC record -> 128.
- *   govDataSources             RETIRED 2026-11-08 with the homepage Site Report rewrite: the stats strip and
+ *   govDataSources             RETIRED 2026-11-08 with the homepage Council Rules rewrite: the stats strip and
  *                                the DATA_SOURCES list it counted were removed (the offer is no longer a
  *                                coverage count). Do not re-add without a surface that renders it.
  */

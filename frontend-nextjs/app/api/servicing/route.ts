@@ -1,5 +1,5 @@
 // prior-art-checked: no existing route queries sydney_water_gsp_servicing. The Python
-// pipeline (services/gsp_servicing.py) feeds the Site Report + conveyancer PDF; the
+// pipeline (services/gsp_servicing.py) feeds the Site Facts + conveyancer PDF; the
 // /assessment workbench uses the client TS constraint pipeline which can't reach this
 // table, so this thin route exposes the same point-in-polygon lookup via @/lib/db
 // (same pattern as /api/dcp-interest). No new table.

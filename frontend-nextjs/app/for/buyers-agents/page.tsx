@@ -160,7 +160,7 @@ export default function BuyersAgentsPage() {
               href="/assessment"
               className="inline-flex items-center gap-2 px-6 py-3 text-slate-300 text-sm font-medium rounded-xl border border-slate-700 hover:border-slate-600 hover:text-white transition-all"
             >
-              Open a Site Report
+              Open Council Rules
             </Link>
           </div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * Site Report copy gate.
+ * Council Rules copy gate.
  *
  * prior-art-checked: reuse not viable because no module exports the plan-brief flag.
  *   components/compliance/YourProjectSummary.tsx reads process.env.NEXT_PUBLIC_PLAN_BRIEF

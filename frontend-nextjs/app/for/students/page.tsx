@@ -136,7 +136,7 @@ export default function StudentsPage() {
               href={SITE_CONTROLS}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
-              Open a Site Report
+              Open Council Rules
               <ArrowRight className="w-4 h-4" />
             </a>
           </div>

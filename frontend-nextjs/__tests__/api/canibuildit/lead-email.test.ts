@@ -126,9 +126,9 @@ describe('buildEmailContent', () => {
   });
 
   describe('intelligence-brief', () => {
-    it('returns Site Report subject with address', () => {
+    it('returns Site Facts subject with address', () => {
       const { subject } = buildEmailContent('intelligence-brief', ADDR);
-      expect(subject).toMatch(/Site Report/i);
+      expect(subject).toMatch(/Site Facts/i);
       expect(subject).toContain(ADDR);
     });
 

@@ -162,7 +162,7 @@ describe('POST /api/canibuildit/lead — happy path', () => {
   });
 
   // Regression: interest_type 'intelligence-brief' was missing from INTEREST_TYPES,
-  // so the Site Report page's PostResultEmailStrip 400'd on every submission while
+  // so the Site Facts page's PostResultEmailStrip 400'd on every submission while
   // the UI (by deliberate design — see PostResultEmailStrip.test.tsx) always showed
   // "Thanks — we'll be in touch", masking a 100%-failure integration as success.
   it('accepts interest_type "intelligence-brief" and returns ok:true', async () => {
@@ -187,7 +187,7 @@ describe('POST /api/canibuildit/lead — happy path', () => {
     const call = emailSendMock.mock.calls[0][0];
     expect(call.from).toBe('PlotDetect <info@plotdetect.com.au>');
     expect(call.replyTo).toBeUndefined();
-    expect(call.subject).toMatch(/Site Report/i);
+    expect(call.subject).toMatch(/Site Facts/i);
     // Footer must match the from-name brand — a "PlotDetect" sender with a
     // "Can I Build It?" footer would look like a mismatched/phishy email.
     expect(call.html).toContain('PlotDetect &middot;');

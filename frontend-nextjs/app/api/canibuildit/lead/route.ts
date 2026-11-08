@@ -173,7 +173,7 @@ export async function recomputeDualOccEligible(address: string): Promise<boolean
 // ============================================================================
 
 // Union of two independent additions to this list, both added since the base
-// commit this branch forked from: 'intelligence-brief' (Site Report product)
+// commit this branch forked from: 'intelligence-brief' (Site Facts product)
 // and 'duplex-result' (this branch's email-my-result feature). Neither
 // supersedes the other.
 const INTEREST_TYPES = ['granny-flat', 'flood', 'flood-truth', 'solar-yield', 'solar', 'threat-radar', 'conveyancing', 'pre-da-history', 'dual-occ-referral', 'lga-request', 'intelligence-brief', 'duplex-result', 'granny-flat-referral'] as const;
@@ -638,11 +638,11 @@ export function buildEmailContent(product: string, address: string, eligible: bo
       };
     case 'intelligence-brief':
       return {
-        subject: `Your Site Report — ${address}`,
+        subject: `Your Site Facts — ${address}`,
         body: `
-          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Site Report is ready.</p>
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your Site Facts are ready.</p>
           <p style="color: #555; font-size: 14px; line-height: 1.6;">
-            Your Site Report for <strong>${safeAddress}</strong> is complete — planning controls,
+            Your Site Facts for <strong>${safeAddress}</strong> are complete — planning controls,
             environmental constraints and development capacity, each figure traced to its source.
             Visit <a href="https://verify.plotdetect.com.au/reports/intelligence-brief" style="color: #0d9488;">verify.plotdetect.com.au/reports/intelligence-brief</a>
             to run this or another address again.

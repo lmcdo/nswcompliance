@@ -227,7 +227,7 @@ interface ConstraintArithmeticCardProps {
   envelopeGap?: EnvelopeGap | null;
   /** Subject address, threaded into the missing-DCP request for alert context. */
   address?: string | null;
-  /** Inputs for the highest permitted housing form (same producer as the Site Report). */
+  /** Inputs for the highest permitted housing form (same producer as the Site Facts). */
   lat?: number | null;
   lng?: number | null;
   heritage?: boolean | null;

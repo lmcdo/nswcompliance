@@ -1,4 +1,4 @@
-// "Why is this empty" copy for the Site Report — pure helpers extracted
+// "Why is this empty" copy for the Site Facts — pure helpers extracted
 // from page.tsx so the wording is unit-testable, the same way provenance.ts was.
 //
 // Every branch returns BOTH a short label and a plain-English detail. Callers

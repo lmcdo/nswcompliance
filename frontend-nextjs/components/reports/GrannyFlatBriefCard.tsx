@@ -7,7 +7,7 @@
 // card; the confirm request shape below mirrors that page's runConfirm against the
 // SAME /api/satellite/granny-flat route rather than re-implementing the API.
 
-// Secondary Dwelling card for the Site Report — extracted from
+// Secondary Dwelling card for the Site Facts — extracted from
 // app/reports/intelligence-brief/page.tsx (#752) so the confirm/calculate step
 // is independently testable. The detect flow is unchanged: the brief fires the
 // same gated /api/satellite/granny-flat route the standalone tool uses (which

@@ -1,5 +1,5 @@
 /**
- * The "why is this empty" copy for the Site Report.
+ * The "why is this empty" copy for the Site Facts.
  *
  * The rule this file protects: a reader must never be left with a bare label
  * that cannot distinguish "we checked and there is nothing here" from "we did

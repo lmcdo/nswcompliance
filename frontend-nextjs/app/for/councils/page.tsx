@@ -26,7 +26,7 @@ export default function CouncilsPage() {
           Let applicants find the right council rules before they lodge
         </h1>
         <p className="text-gray-500 text-lg max-w-xl">
-          A PlotDetect Site Report sets out the SEPP, LEP, and DCP rules for any property
+          PlotDetect Council Rules sets out the SEPP, LEP, and DCP rules for any property
           and development type — before the applicant lodges. Zero integration with
           your systems. No IT project. Embed as an iframe on your council website.
         </p>
@@ -69,9 +69,9 @@ export default function CouncilsPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
-              { step: '1', title: 'Embed on your website', body: 'Add the Site Report iframe to your pre-DA guidance page. No IT project, no procurement.' },
+              { step: '1', title: 'Embed on your website', body: 'Add the Council Rules iframe to your pre-DA guidance page. No IT project, no procurement.' },
               { step: '2', title: 'Applicant enters address', body: 'They get the SEPP, LEP, and DCP rules for their property and development type, each linked to its source.' },
-              { step: '3', title: 'Applicants arrive informed', body: 'Applicants who have read the Site Report can see the constraints before they lodge.' },
+              { step: '3', title: 'Applicants arrive informed', body: 'Applicants who have read Council Rules can see the constraints before they lodge.' },
             ].map(({ step, title, body }) => (
               <div key={step} className="space-y-2">
                 <div className="w-8 h-8 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center">
@@ -92,7 +92,7 @@ export default function CouncilsPage() {
             Request a council demo
           </h2>
           <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-            See a Site Report running against your council area. We will show you exactly
+            See Council Rules running against your council area. We will show you exactly
             what applicants see — with your plan's rules and planning controls.
           </p>
           <a

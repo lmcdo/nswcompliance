@@ -8,10 +8,10 @@ import type { ProductLandingConfig } from "../types"
 export const intelligenceBriefConfig: ProductLandingConfig = {
   badge: "Live government data + satellite + computed analysis",
   badgeIcon: FileText,
-  title: "Property Site Report",
+  title: "Site Facts",
   subtitle:
     "One address — planning controls, hazards, valuation, nearby applications and computed development capacity, with every figure traced to its source.",
-  ctaLabel: "Generate Site Report",
+  ctaLabel: "Generate Site Facts",
   heroImage: undefined,
   heroStats: [
     { value: "15+", label: "Data layers" },

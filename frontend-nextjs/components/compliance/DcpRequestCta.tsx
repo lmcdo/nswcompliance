@@ -3,7 +3,7 @@
 // prior-art-checked: posts to the EXISTING /api/dcp-interest route (dcp_interest table
 // + off-domain NOTIFY_EMAIL alert). The UX mirrors DcpSnapshotCard's request form, but
 // that one posts to /api/canibuildit/lead in the consumer duplex tool; this is the pro
-// DCP-gap point-of-pain (Site Report / assessment), so it uses the dedicated
+// DCP-gap point-of-pain (Council Rules / assessment), so it uses the dedicated
 // dcp-interest endpoint. No new endpoint, no new table.
 
 import { useState } from 'react';
