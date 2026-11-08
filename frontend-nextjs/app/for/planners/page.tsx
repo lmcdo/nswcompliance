@@ -174,7 +174,7 @@ export default function PlannersPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { stat: 'NSW-wide', label: 'Any address', sub: 'Zone, LEP + SEPP, live from the Planning Portal' },
-            { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
+            { stat: 'Source links', label: 'On every line', sub: 'Government layer or council page' },
             { stat: 'Clause + page', label: 'Every control cited', sub: 'Check any value against the source document' },
             { stat: 'Full plan', label: 'Nothing hidden', sub: 'The whole council plan sits below the Site Report' },
           ].map(({ stat, label, sub }) => (
