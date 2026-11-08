@@ -1,7 +1,7 @@
 {
  "read_by": "Lawrence McDonell (owner), 2026-11-09, on the 'Council Rules read' page. Rows 1-14, 16, 18-22, 24-30 were marked right by him. Row 17 he marked not sure. Rows 15 and 23 he had not marked; he told Claude 'pass them' and Claude recorded them as right WITHOUT him opening those two cards.",
  "method": "Each row is the rank-1 clause shown for a dwelling house in zone group R2. Question: is this the council's rule for a normal house on this lot, for this topic? WRONG = flats, townhouses, dual occupancy, centre or heritage-area clause, or a figure the words do not contain.",
- "passes_when": "30 rows recorded, at least 28 right, fewer than 2 wrong, and every recorded first clause is still the row's first clause now.",
+ "passes_when": "exactly 30 rows (n 1-30, each once), at least 28 right-or-passed, fewer than 2 wrong, and every recorded first clause is still the row's first clause now.",
  "owner_instructed_rows": [
   15,
   23
@@ -154,7 +154,7 @@
    "zone_group": "R2",
    "row_type": "rear_setback",
    "first_provision_id": 241080,
-   "mark": "right",
+   "mark": "passed",
    "address": "6 Logan Avenue Haberfield"
   },
   {
@@ -234,7 +234,7 @@
    "zone_group": "R2",
    "row_type": "landscaping_min",
    "first_provision_id": 261304,
-   "mark": "right",
+   "mark": "passed",
    "address": "6 William Howell Drive Glenmore Park"
   },
   {
@@ -307,5 +307,6 @@
    "mark": "right",
    "address": "20 Loombah Road Dover Heights"
   }
- ]
+ ],
+ "marks_key": "right = the owner marked it after viewing the card; wrong; unsure; passed = the owner told Claude 'pass them' and did not open the card"
 }

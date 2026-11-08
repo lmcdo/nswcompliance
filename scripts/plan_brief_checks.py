@@ -264,16 +264,26 @@ def session_read() -> Result:
 
 def owner_read() -> Result:
     """OC-29: the owner's recorded read of 30 brief rows (data/plan_brief_owner_read_2026-11-09.json).
-    Passes only when 30 rows are recorded, at least 28 are right, fewer than 2 are wrong, and every recorded
-    first clause is still the row's first clause now (a rebuilt or reloaded brief makes the read stale)."""
+    Passes only when exactly 30 distinct rows (n 1-30) from at least 5 councils are recorded with valid marks, at least 28 are
+    right or passed (a card the owner passed on instruction without opening is counted as passed and reported separately),
+    fewer than 2 are wrong, and every recorded first clause is still the row's first clause now (a rebuilt or reloaded brief
+    makes the read stale)."""
     path = ROOT / "data" / "plan_brief_owner_read_2026-11-09.json"
     if not path.exists():
         return FAIL, "owner read: no recorded read yet (data/plan_brief_owner_read_2026-11-09.json is missing)"
     rec = json.loads(path.read_text(encoding="utf-8"))["rows"]
+    if sorted(r.get("n") for r in rec) != list(range(1, 31)):
+        return FAIL, f"owner read: need exactly 30 rows numbered 1 to 30, each once; found {len(rec)}"
+    if any(r.get("mark") not in ("right", "wrong", "unsure", "passed") for r in rec):
+        return FAIL, "owner read: a mark is not one of right, wrong, unsure, passed"
+    if len({r["council"] for r in rec}) < 5:
+        return FAIL, "owner read: rows must cover at least 5 councils"
+    keys = {(r["council"], r["dev_type"], r["zone_group"], r["row_type"]) for r in rec}
+    if len(keys) != 30:
+        return FAIL, "owner read: the 30 rows are not 30 distinct council, topic rows"
     right = [r for r in rec if r["mark"] == "right"]
+    passed = [r for r in rec if r["mark"] == "passed"]
     wrong = [r for r in rec if r["mark"] == "wrong"]
-    if len(rec) < 30:
-        return FAIL, f"owner read: only {len(rec)} rows recorded, need 30"
     conn = _conn()
     if conn is None:
         return UNKNOWN, "owner read: database unreachable"
@@ -286,7 +296,8 @@ def owner_read() -> Result:
              if ((top.get((r["council"], r["dev_type"], r["zone_group"], r["row_type"])) or [None])[0]) != r["first_provision_id"]]
     if stale:
         return FAIL, f"owner read is STALE: {len(stale)} of {len(rec)} rows have a different first clause now (e.g. {stale[:3]}). Read them again"
-    ok = len(right) >= 28 and len(wrong) < 2
-    return (PASS if ok else FAIL), (f"owner read: {len(rec)} rows across {len({r['council'] for r in rec})} councils, {len(right)} right, "
-                                    f"{len(wrong)} wrong, {sum(r['mark'] == 'unsure' for r in rec)} not sure (bar: 28 or more right, fewer than 2 wrong); "
+    ok = len(right) + len(passed) >= 28 and len(wrong) < 2
+    return (PASS if ok else FAIL), (f"owner read: 30 rows across {len({r['council'] for r in rec})} councils: {len(right)} right after viewing, "
+                                    f"{len(passed)} passed on the owner's instruction without opening, {len(wrong)} wrong, "
+                                    f"{sum(r['mark'] == 'unsure' for r in rec)} not sure (bar: 28 or more right or passed, fewer than 2 wrong); "
                                     f"every recorded first clause is still the row's first clause")

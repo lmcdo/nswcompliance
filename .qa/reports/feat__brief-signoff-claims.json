@@ -81,7 +81,7 @@
       "scenario": "A claim is declared true while its check cannot pass.",
       "what_happens": "CI fails with a contradicted claim.",
       "mitigated": true,
-      "how": "OC-29 is declared false until the owner's read is recorded; dq_check --outreach exits clean on a declared-false failing check.",
+      "how": "OC-29 was declared false until the owner's read was recorded; it is now declared true on a recorded read (27 right after viewing, 2 passed on instruction, 0 wrong) and the check reports that split.",
       "repro": "python scripts/dq_check.py --outreach"
     },
     {
@@ -90,6 +90,13 @@
       "mitigated": true,
       "how": "owner_read compares every recorded first clause to the row's first clause now and returns FAIL when any differs.",
       "repro": "python scripts/outreach_claim_checks.py OC-29 after any reload of project_brief_rows"
+    },
+    {
+      "scenario": "A marks file with duplicate rows or invalid marks is recorded.",
+      "what_happens": "A false sign-off could read PASS.",
+      "mitigated": true,
+      "how": "owner_read requires exactly 30 distinct rows numbered 1 to 30, valid marks, at least 5 councils, and 30 distinct council-topic keys.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after duplicating a row in the data file"
     }
   ],
   "post_merge": {
