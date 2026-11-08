@@ -22,8 +22,10 @@ EXC = {"council": "cb", "field": "applicable_dev_types", "chapters": ["ch-school
 
 
 class _Cur:
-    def __init__(self, universe, split, total, no_config=(), declined=(), lep=()):
-        self._answers = [universe, split, [(total,)], list(no_config), list(declined), list(lep)]
+    def __init__(self, universe, split, total, no_config=(), declined=(), lep=(), stale=()):
+        # The order compute() asks in: universe, split, DQ-114 total, no_config, declined, LEP, stale split, DQ-70 total.
+        self._answers = [universe, split, [(total,)], list(no_config), list(declined), list(lep), list(stale),
+                         [(sum(n for _c, n in stale),)]]
         self._last = None
 
     def __enter__(self):
@@ -43,8 +45,8 @@ class _Cur:
 
 
 class _Conn:
-    def __init__(self, universe, split, total, no_config=(), declined=(), lep=()):
-        self.cur = _Cur(universe, split, total, no_config, declined, lep)
+    def __init__(self, universe, split, total, no_config=(), declined=(), lep=(), stale=()):
+        self.cur = _Cur(universe, split, total, no_config, declined, lep, stale)
 
     def cursor(self):
         return self.cur
@@ -61,13 +63,13 @@ SPLIT = [("bb", "ch-x", "applicable_zones", 2), ("cb", "ch-schools", "applicable
 @pytest.fixture
 def world(monkeypatch, tmp_path):
     state = {"universe": UNIVERSE, "split": SPLIT, "total": 9, "dq115": {}, "orphans": [], "no_config": [],
-             "declined": [], "lep": []}
+             "declined": [], "lep": [], "stale": []}
     monkeypatch.setattr(osc, "_dq115_by_council",
                         lambda slugs: (state["dq115"], state["orphans"]))
     import dq_db
     monkeypatch.setattr(dq_db, "connect",
                         lambda: _Conn(state["universe"], state["split"], state["total"],
-                                      state["no_config"], state["declined"], state["lep"]))
+                                      state["no_config"], state["declined"], state["lep"], state["stale"]))
     pub = tmp_path / "pub.json"
     monkeypatch.setattr(osc, "PUBLISHED", pub)
 
@@ -197,3 +199,42 @@ def test_undecided_lep_scope_delists_a_council_whose_dcp_rows_are_clean(world):
     assert verdict == "FAIL" and "aa (DQ-140 4)" in text
     world["publish"]([("cb", "Cb")])
     assert osc.check()[0] == "PASS"
+
+
+def test_stale_rows_delist_a_council_and_publishing_it_fails(world):
+    world["stale"] = [("aa", 5)]
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == osc.FAIL and "published but fails: aa (DQ-70 5)" in text
+
+
+def test_a_delisted_council_with_stale_rows_passes(world):
+    world["stale"] = [("aa", 5)]
+    world["publish"]([("cb", "Cb")])
+    verdict, text = osc.check()
+    assert verdict == osc.PASS, text
+    assert "aa (DQ-70 5)" in text
+
+
+def test_oc10_fails_when_a_listed_council_serves_stale_rows_and_passes_when_only_unlisted_do(world):
+    world["publish"]([("aa", "Aa"), ("cb", "Cb")])
+
+    class _C:
+        def __init__(self, rows): self.rows = rows
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None): pass
+        def fetchall(self): return self.rows
+
+    class _K:
+        def __init__(self, rows): self.rows = rows
+        def cursor(self): return _C(self.rows)
+        def close(self): pass
+
+    import dq_db
+    dq_db.connect = lambda: _K([("aa", 3)])
+    assert osc.no_listed_council_serves_stale_rows()[0] == osc.FAIL
+    dq_db.connect = lambda: _K([("bb", 957)])
+    assert osc.no_listed_council_serves_stale_rows()[0] == osc.PASS
+    dq_db.connect = lambda: _K([])
+    assert osc.no_listed_council_serves_stale_rows()[0] == osc.PASS

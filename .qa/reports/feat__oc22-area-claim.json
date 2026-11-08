@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Adds outreach claim OC-22 for the housing reform area card and records the accuracy run that makes it true: two fresh 100-lot seeds against the Valhalla router, match 94% and 91%, no wrong yes or no. No served text changes.",
+  "justification": "Outreach claims: OC-22 (area card) holds on a recorded run; OC-10 and OC-17 are scoped per council by splitting DQ-70, which removes Canterbury-Bankstown (957 stale rows) from the published council list on the what-you-get page. No other served text changes.",
   "commit_hash": "b709bfb6",
   "files": [
     "services/lmr_walk_surface.py",
@@ -11,18 +11,21 @@
     "tests/test_outreach_claim_checks_oc22.py",
     "tests/test_lmr_area_scripts.py",
     "tests/test_dq_check_outreach.py",
-    "data/lmr_area_accuracy.json"
+    "data/lmr_area_accuracy.json",
+    "scripts/outreach_scoped_councils.py",
+    "tests/test_outreach_scoped_councils.py",
+    "frontend-nextjs/shared/dcp-scoped-councils.json"
   ],
   "falsifiable_check": {
-    "command": "python scripts/outreach_claim_checks.py OC-22",
-    "fails_when": "no recorded accuracy run exists, the record is under 100 lots, its counts miss the bar, it says passed but the counts do not, or it was measured on different data than is served",
-    "observed_red": "With no data/lmr_area_accuracy.json the command prints 'no recorded accuracy run' and exits 1; tests/test_outreach_claim_checks_oc22.py covers each other failure (stale fingerprint, 99 lots, edited passed flag, wrong yes, range, can't-tell).",
+    "command": "python scripts/outreach_claim_checks.py OC-22 && python scripts/outreach_claim_checks.py OC-10 && python scripts/outreach_claim_checks.py OC-17",
+    "fails_when": "no recorded accuracy run exists, the record is under 100 lots, its counts miss the bar, it says passed but the counts do not, or it was measured on different data than is served; or a council that serves a rule read from a plan version we no longer hold is published, or a listed council gains such rows",
+    "observed_red": "With no data/lmr_area_accuracy.json the command prints 'no recorded accuracy run' and exits 1; tests/test_outreach_claim_checks_oc22.py covers each other failure (stale fingerprint, 99 lots, edited passed flag, wrong yes, range, can't-tell). Before this change OC-10 and OC-17 each failed on DQ-70 (957 rows, all in four canterbury_bankstown chapters); outreach_scoped_councils.py printed 'published but fails: canterbury_bankstown (DQ-70 957)' until the list was updated.",
     "external_authority": "The accuracy figure will come from OpenStreetMap's Valhalla pedestrian router, a different engine from ours; this change records it, it does not produce it."
   },
   "pre_impl": {
     "existing_data": "No tables read or written. Reads committed data/lmr_walk/*.npz and two data/law JSON files to hash them.",
     "assumption_mismatch": "A JSON file hashed as bytes would differ between Windows and Linux checkouts; the fingerprint hashes parsed, key-sorted JSON.",
-    "new_vs_existing": "One new blocking claim, OC-22, declared true with its record: outreach readiness is 18 of 22 with OC-10, OC-17, OC-20 and OC-21 still open.",
+    "new_vs_existing": "OC-10 and OC-17 move from open to holding; readiness 17 of 21 becomes 20 of 22 (OC-20 and OC-21 open). The public council list drops Canterbury-Bankstown while it serves rules from a plan version we no longer hold.",
     "external_source_error": "Not applicable: nothing is fetched.",
     "frontend_type": "Not applicable.",
     "user_failure_mode": "None: users never see the claim file."
@@ -41,6 +44,13 @@
       "input": "the committed walking files, station entrances and law figures",
       "output": "one sha256 hex string covering the walking files, station entrances and law figures",
       "if_none": "a missing file raises, so the check cannot pass on absent data"
+    },
+    {
+      "name": "no_listed_council_serves_stale_rows",
+      "file_line": "scripts/outreach_scoped_councils.py:228",
+      "input": "the published council list and the per-council stale-row counts from the database",
+      "output": "FAIL if any listed council serves a rule from a superseded plan version, else PASS",
+      "if_none": "unreadable list is FAIL; unreachable database is UNKNOWN, never PASS"
     }
   ],
   "values": [
@@ -74,6 +84,20 @@
       "mitigated": true,
       "how": "the scorer writes the record only for a passing run of 100 lots or more",
       "repro": "python -m pytest tests/test_lmr_area_scripts.py -k no_record"
+    },
+    {
+      "scenario": "a listed council gains stale rows after the list was checked",
+      "what_happens": "OC-10 and OC-17 would keep claiming it",
+      "mitigated": true,
+      "how": "the per-council DQ-70 split makes the council unlisted, and OC-10 fails if a listed council has stale rows",
+      "repro": "python -m pytest tests/test_outreach_scoped_councils.py -k stale"
+    },
+    {
+      "scenario": "the per-council split drifts from DQ-70's own count",
+      "what_happens": "a council could carry stale rows the ledger does not count",
+      "mitigated": true,
+      "how": "compute() adds a problem and the check FAILS when the split total differs from DQ-70",
+      "repro": "python -m pytest tests/test_outreach_scoped_councils.py -k drift"
     }
   ],
   "post_merge": {

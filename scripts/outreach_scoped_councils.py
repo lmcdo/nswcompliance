@@ -111,6 +111,19 @@ SELECT source_council,
  WHERE is_current AND v2_is_actionable AND source_council IS NOT NULL
  GROUP BY 1"""
 
+#: Served rules read from a version of the plan we no longer hold -- DQ-70's population, split by council
+#: (2026-11-08). It was a fleet-wide row in OC-17 and OC-10, so four Canterbury-Bankstown chapters whose PDF
+#: changed in October (957 rows, needs_extraction set) failed both claims for every council. A council that
+#: serves such a rule is not listed; the rest are. Same join and filter as DQ-70, so the totals must agree.
+_STALE_SQL = """
+SELECT p.source_council, count(*)
+  FROM regulatory_provisions p
+  JOIN dcp_chapter_registry r ON r.council = p.source_council AND r.chapter_key = p.source_chapter_key
+ WHERE p.is_current AND p.v2_is_actionable AND r.is_active
+   AND r.provisions_extracted_from_hash IS NOT NULL AND r.content_hash IS NOT NULL
+   AND r.content_hash <> r.provisions_extracted_from_hash
+ GROUP BY 1"""
+
 #: A FORMER council (lga_registry.parent_lga set) is published as its merged council and the area its plan
 #: covers -- "Inner West (former Leichhardt area only)" -- because it is a plan, not a council, and naming the
 #: merged council alone would claim its other former areas too (DQ-129, user ruling 2026-10-04).
@@ -166,6 +179,14 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
         declined = {tuple(row) for row in cur.fetchall()}
         cur.execute(_LEP_SQL)
         lep_undecided = {council: n for council, n in cur.fetchall() if n}
+        cur.execute(_STALE_SQL)
+        stale = {council: n for council, n in cur.fetchall() if n}
+        _h, dq70_sql, dq70_params, _m = PROBES["DQ-70"]
+        cur.execute(dq70_sql, dq70_params)
+        dq70_total = cur.fetchone()[0]
+        if sum(stale.values()) != dq70_total:
+            problems.append(f"the per-council stale split counts {sum(stale.values())} rows but DQ-70 counts "
+                            f"{dq70_total}: the two queries have drifted apart")
 
     split_total = sum(row[3] for row in split)
     if split_total != dq114_total:
@@ -198,8 +219,38 @@ def compute(conn, exceptions: list[dict]) -> tuple[dict[str, str], dict[str, str
             why.append(f"no_config {no_config[slug]}")
         if dq115.get(slug):
             why.append(f"DQ-115 {dq115[slug]}")
+        if stale.get(slug):
+            why.append(f"DQ-70 {stale[slug]}")
         reasons[slug] = ", ".join(why)
     return reasons, names, problems
+
+
+def no_listed_council_serves_stale_rows() -> tuple[str, str]:
+    """OC-10 (2026-11-08, W5 of the rescope: narrow OC-10 to the councils named): no council the site lists serves a
+    rule read from a version of its plan we no longer hold. Councils that do are not listed (see compute), so this
+    fails only if a listed council gained stale rows after the list was last checked."""
+    try:
+        listed = {c["slug"] for c in load_published()["councils"]}
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return FAIL, f"stale rows in listed councils: {PUBLISHED.name} unreadable ({exc})"
+    try:
+        from dq_db import connect
+        conn = connect()
+    except Exception as exc:  # noqa: BLE001 - unreachable is UNKNOWN, never a pass
+        return UNKNOWN, f"stale rows in listed councils: database unreachable ({exc})"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(_STALE_SQL)
+            stale = {council: n for council, n in cur.fetchall() if n}
+    except Exception as exc:  # noqa: BLE001 - a check that no longer runs is broken: FAIL
+        return FAIL, f"stale rows in listed councils: could not compute ({exc})"
+    finally:
+        conn.close()
+    bad = {s: n for s, n in stale.items() if s in listed}
+    elsewhere = sum(n for s, n in stale.items() if s not in listed)
+    if bad:
+        return FAIL, f"listed councils serving rules from a plan version we no longer hold: {bad}"
+    return PASS, f"no listed council serves a rule from a plan version we no longer hold ({elsewhere} such rows sit in unlisted councils: {sorted(stale)})"
 
 
 def check() -> tuple[str, str]:

@@ -1116,9 +1116,9 @@
   },
   "OC-10": {
    "kind": "outreach_claim",
-   "claim": "Planning Portal data is queried live; DCP data is dated to the plan it came from.",
+   "claim": "Planning Portal data is queried live; for the councils listed, DCP data is dated to the plan it came from.",
    "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-   "declared": "false",
+   "declared": "true",
    "declared_false_2026-10-22": "Follows from the 3 canterbury_bankstown chapters re-opened under DQ-70 on 2026-10-22: OC-10/OC-17 run DQ-70; OC-20's DQ-145 ratchet reads 1071 = 97 + 974. Outreach is on hold.",
    "check": [
     "python",
@@ -1126,8 +1126,9 @@
     "OC-10"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - every served council resolves a plan date, and DQ-61 and DQ-70 are clean",
-   "red_when": "the declared state and the check disagree in either direction"
+   "passes_when": "exit 0 - every served council resolves a plan date, and DQ-61 is clean and no listed council serves a rule from a plan version we no longer hold (DQ-70, split by council)",
+   "red_when": "the declared state and the check disagree in either direction",
+    "verified": "2026-11-08: DQ-70 split by council (outreach_scoped_councils._STALE_SQL; the split equals DQ-70's own count). All 957 stale rows sit in four canterbury_bankstown chapters (PDF changed 2026-10-21 and 2026-10-30, needs_extraction set); Canterbury-Bankstown is no longer listed. python scripts/outreach_claim_checks.py OC-10 exits 0."
   },
   "OC-11": {
    "kind": "outreach_claim",
@@ -1222,7 +1223,7 @@
    "kind": "outreach_claim",
    "claim": "For the councils listed, every rule shown carries the council's own sentence and the clause it came from, in the plan registered as in force. Known exceptions are stated.",
    "source": "~/.claude/plans/ce-outreach-readiness-benchmark-SPEC-2026-09-11.md#10",
-   "declared": "false",
+   "declared": "true",
    "declared_false_2026-10-22": "Follows from the 3 canterbury_bankstown chapters re-opened under DQ-70 on 2026-10-22: OC-10/OC-17 run DQ-70; OC-20's DQ-145 ratchet reads 1071 = 97 + 974. Outreach is on hold.",
    "declared_false_2026-10-05": "User ruling 2026-10-05 (option 1 of 3). Sub-check DQ-88 reads 6: the six SEPPs registered under DQ-130 (Transport and Infrastructure, Biodiversity and Conservation, Planning Systems, Primary Production, Resilience and Hazards, Sustainable Buildings) start needs_review=TRUE because their stored text predates the law in force -- Sustainable Buildings is 4 substantive changes behind (amended 31 Oct 2025). The claim was already untrue for that text before registration; it was invisible. Returns to true when ce-lep-sepp-currency-integration-PROMPT Step 3 refreshes each SEPP and DQ-88 reads 0. Clearing the flags to make this green was rejected: the monitor would then stamp older text verified current.",
    "check": [
@@ -1231,10 +1232,11 @@
     "OC-17"
    ],
    "blocks_outreach": true,
-   "passes_when": "exit 0 - every fleet-wide sub-check passes (DQ-99, DQ-66, DQ-32c, DQ-61, DQ-70, no active chapter from a repealed plan, no range printed as a maximum, every council's served numbers trace to one plan a person confirmed in force within 90 days, no retired-zone-code loss, DQ-88, DQ-33, DQ-116) AND frontend-nextjs/shared/dcp-scoped-councils.json names exactly the councils in which DQ-114 finds nothing outside a stated exception and DQ-115 finds nothing and no served rule takes a scope key from no_config (scripts/outreach_scoped_councils.py). Over-listing, under-listing, a misnamed council, a stale exception, or the per-council split drifting from DQ-114's own total all fail.",
+   "passes_when": "exit 0 - every fleet-wide sub-check passes (DQ-99, DQ-66, DQ-32c, DQ-61, no active chapter from a repealed plan, no range printed as a maximum, every council's served numbers trace to one plan a person confirmed in force within 90 days, no retired-zone-code loss, DQ-88, DQ-33, DQ-116) AND frontend-nextjs/shared/dcp-scoped-councils.json names exactly the councils in which DQ-114 finds nothing outside a stated exception and DQ-115 finds nothing and no served rule takes a scope key from no_config (scripts/outreach_scoped_councils.py). Over-listing, under-listing, a misnamed council, a stale exception, or the per-council split drifting from DQ-114's own total all fail.",
    "red_when": "the declared state and the check disagree in either direction",
    "note": "WAS GREEN WHILE THE CLAIM WAS UNSUPPORTED, and that is why the last three were added on 2026-09-27. OC-17 asserts the rules shown APPLY TO THIS PROPERTY. Measured that day it PASSED, while DQ-114 read 4,374 scope keys nobody had decided, DQ-115 read 193 declarations resting on authority no machine can read, and DQ-116 read 2 repealed sections being served. None of the three was in its list, so it went green by not asking - feedback-a-check-can-watch-the-field-the-fix-abandoned, on the single claim the product rests on. DQ-33 was already here and does NOT cover them: it counts `no_config` only. The repealed-plan entry is a URL STRING match (r2_current_path ILIKE '%repealed%') and cannot see a repealed SECTION inside a live chapter - woollahra B3.3 sits in a path with no such word. `declared` moved true -> false in the same change, because with the three wired in the claim is now demonstrably unsupported and saying otherwise would make the ledger lie in the direction nobody checks.",
-   "reworded_2026-10-03": "User ruling: the claim was 'The rules and numbers shown apply to this property, from the plan in force', fleet-wide. It now names its councils, and the check COMPUTES the list rather than trusting it. DQ-114 and DQ-115 moved from fleet-wide probes into the per-council computation; every other sub-check still has to pass for the whole fleet, which is stricter than splitting them by council. First run 2026-10-04 listed 15 of 18 and was WRONG: it read DQ-114, which leaves no_config to DQ-33, and DQ-33 is a fleet floor rather than a zero, so five councils serving unscoped rows (ashfield, marrickville, northern_beaches, inner_west, cumberland) were listed. Caught by DQ-105 going red before merge. Corrected: 10 of 18 -- blacktown, campbelltown, city_of_sydney, georges_river, hornsby, ku_ring_gai, leichhardt, penrith, waverley, wollongong. The one stated exception is Canterbury-Bankstown chapters 10.2-10.5 on development type (21 served keys)."
+   "reworded_2026-10-03": "User ruling: the claim was 'The rules and numbers shown apply to this property, from the plan in force', fleet-wide. It now names its councils, and the check COMPUTES the list rather than trusting it. DQ-114 and DQ-115 moved from fleet-wide probes into the per-council computation; every other sub-check still has to pass for the whole fleet, which is stricter than splitting them by council. First run 2026-10-04 listed 15 of 18 and was WRONG: it read DQ-114, which leaves no_config to DQ-33, and DQ-33 is a fleet floor rather than a zero, so five councils serving unscoped rows (ashfield, marrickville, northern_beaches, inner_west, cumberland) were listed. Caught by DQ-105 going red before merge. Corrected: 10 of 18 -- blacktown, campbelltown, city_of_sydney, georges_river, hornsby, ku_ring_gai, leichhardt, penrith, waverley, wollongong. The one stated exception is Canterbury-Bankstown chapters 10.2-10.5 on development type (21 served keys).",
+    "verified": "2026-11-08: DQ-70 moved from a fleet-wide row into the per-council list (a council serving a rule from a plan version we no longer hold is not listed). Listed 15 of 18; Canterbury-Bankstown (DQ-70 957), northern_beaches and parramatta (no_config) are not. python scripts/outreach_claim_checks.py OC-17 exits 0."
   },
   "DQ-102": {
    "declared": "open",

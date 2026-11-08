@@ -634,10 +634,13 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         lambda: jest_file("__tests__/api/citation-checked-other-routes.test.ts"),
         unproven_citations_only_fall,
     ],
+    # 2026-11-08 (rescope W5): DQ-70 was one fleet-wide row, so four Canterbury-Bankstown chapters whose PDF changed in
+    # October failed the claim for every council. It is now per council: a council that serves such a rule is not listed
+    # (outreach_scoped_councils.compute), and no LISTED council may serve one. DQ-70 itself stays a ledger row.
     "OC-10": [
         dcp_plans_are_dated,
         lambda: probe("DQ-61"),
-        lambda: probe("DQ-70"),
+        scoped.no_listed_council_serves_stale_rows,
     ],
     "OC-11": [
         lambda: sql_count("councils whose LEP zones are all complete",
@@ -689,7 +692,8 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         lambda: probe("DQ-66"),
         lambda: probe("DQ-32c"),
         lambda: probe("DQ-61"),
-        lambda: probe("DQ-70"),
+        # DQ-70 moved into scoped.check on 2026-11-08: it is split by council there, and a council serving a rule
+        # from a plan version we no longer hold is not listed.
         lambda: sql_count("active chapters sourced from a repealed plan",
                           "SELECT count(*) FROM dcp_chapter_registry WHERE is_active AND ("
                           "council_url ILIKE '%repealed%' OR r2_current_path ILIKE '%repealed%' "

@@ -15,10 +15,6 @@
       "name": "Campbelltown"
     },
     {
-      "slug": "canterbury_bankstown",
-      "name": "Canterbury-Bankstown"
-    },
-    {
       "slug": "city_of_sydney",
       "name": "City of Sydney"
     },
@@ -67,17 +63,5 @@
       "name": "Woollahra"
     }
   ],
-  "exceptions": [
-    {
-      "council": "canterbury_bankstown",
-      "field": "applicable_dev_types",
-      "chapters": [
-        "chapter-10-2-schools",
-        "chapter-10-3-home-businesses",
-        "chapter-10-4-non-residential-land-uses",
-        "chapter-10-5-places-of-public-worship"
-      ],
-      "statement": "Canterbury-Bankstown chapters 10.2 Schools, 10.3 Home businesses, 10.4 Non-residential land uses and 10.5 Places of public worship are shown for every development type, because the property search cannot yet ask for those uses."
-    }
-  ]
+  "exceptions": []
 }
