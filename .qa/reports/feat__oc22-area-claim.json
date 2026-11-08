@@ -15,7 +15,8 @@
     "scripts/outreach_scoped_councils.py",
     "tests/test_outreach_scoped_councils.py",
     "frontend-nextjs/shared/dcp-scoped-councils.json",
-    "tests/test_outreach_claim_checks_oc20.py"
+    "tests/test_outreach_claim_checks_oc20.py",
+    "frontend-nextjs/app/what-you-get/page.tsx"
   ],
   "falsifiable_check": {
     "command": "python scripts/outreach_claim_checks.py OC-22 && python scripts/outreach_claim_checks.py OC-10 && python scripts/outreach_claim_checks.py OC-17",
@@ -28,7 +29,7 @@
     "assumption_mismatch": "A JSON file hashed as bytes would differ between Windows and Linux checkouts; the fingerprint hashes parsed, key-sorted JSON.",
     "new_vs_existing": "Readiness 17 of 21 becomes 22 of 22 when CI verifies OC-9 and OC-20's jest parts. The what-you-get council list drops to the 6 councils with no unproven, unreachable or stale rule.",
     "external_source_error": "Not applicable: nothing is fetched.",
-    "frontend_type": "Not applicable.",
+    "frontend_type": "The scoped-council JSON now has an empty exceptions list, which TypeScript infers as never[]; the page casts it to a named interface. tsc --noEmit passes.",
     "user_failure_mode": "None: users never see the claim file."
   },
   "functions": [
