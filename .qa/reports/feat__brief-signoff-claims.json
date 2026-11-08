@@ -1,10 +1,11 @@
 {
   "tier": "standard",
   "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes.",
-  "commit_hash": "dbf3ecf4",
+  "commit_hash": "a34864c4",
   "files": [
     ".claude/dq_checks.json",
     "Dockerfile.monitors",
+    "data/plan_brief_owner_read_2026-11-09.json",
     "railway.alerts.toml",
     "railway.dcp-commit.toml",
     "railway.dcp-extract-all.toml",
@@ -12,6 +13,7 @@
     "railway.dcp-monitor.toml",
     "railway.monitors.toml",
     "scripts/outreach_claim_checks.py",
+    "scripts/plan_brief_checks.py",
     "tests/test_dq_check_outreach.py"
   ],
   "falsifiable_check": {
@@ -34,6 +36,13 @@
       "input": "claim id from the command line, looked up in the CHECKS map (OC-23..OC-30 added)",
       "output": "PASS, FAIL or UNKNOWN lines and an exit code",
       "if_none": "an unknown claim id exits 2 with a usage message"
+    },
+    {
+      "name": "owner_read",
+      "file_line": "scripts/plan_brief_checks.py:265",
+      "input": "the owner's recorded marks file and the live brief rows",
+      "output": "PASS, FAIL or UNKNOWN with the counts of right, wrong and not sure",
+      "if_none": "a missing marks file reads FAIL with a clear message, never a pass"
     }
   ],
   "values": [
@@ -74,6 +83,13 @@
       "mitigated": true,
       "how": "OC-29 is declared false until the owner's read is recorded; dq_check --outreach exits clean on a declared-false failing check.",
       "repro": "python scripts/dq_check.py --outreach"
+    },
+    {
+      "scenario": "The brief is rebuilt or reloaded after the owner read.",
+      "what_happens": "The recorded first clauses no longer match the rows.",
+      "mitigated": true,
+      "how": "owner_read compares every recorded first clause to the row's first clause now and returns FAIL when any differs.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after any reload of project_brief_rows"
     }
   ],
   "post_merge": {
