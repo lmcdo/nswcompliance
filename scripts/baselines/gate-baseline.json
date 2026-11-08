@@ -3,14 +3,14 @@
   "note": "Heuristic findings \u2014 an upper bound; some are false positives (e.g. is_current guard on tables lacking that column). Burn down 'production' first; delete dead 'throwaway' scripts. The gate is diff-scoped, so this does not block; it is a worklist.",
   "totals": {
     "other": 205,
-    "production": 117,
+    "production": 116,
     "throwaway": 113
   },
-  "total": 435,
+  "total": 434,
   "production_by_scanner": {
     "py-adversarial": 28,
     "db-guard": 35,
-    "type-boundary": 26,
+    "type-boundary": 25,
     "untyped-method": 9,
     "silent-failure": 16,
     "null-guard": 3
@@ -1877,13 +1877,6 @@
       "line": 510,
       "bucket": "production",
       "message": "Type boundary: frontend-nextjs/components/pdf/ContextSection.tsx:510 uses '=== null' but API/DB values can also be undefined. Use '== null' (catches both) or add explicit undefined check."
-    },
-    {
-      "scanner": "type-boundary",
-      "file": "frontend-nextjs/components/tod/TODParkingCalculator.tsx",
-      "line": 269,
-      "bucket": "production",
-      "message": "Type boundary: frontend-nextjs/components/tod/TODParkingCalculator.tsx:269 uses '{rateSource && <...>}' but rateSource may be numeric (0 is falsy). Use '{rateSource != null && <...>}' or '{!!rateSource && <...>}' instead."
     },
     {
       "scanner": "type-boundary",

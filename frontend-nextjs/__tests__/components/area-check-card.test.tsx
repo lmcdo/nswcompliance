@@ -29,6 +29,16 @@ describe('AreaCheckCard', () => {
     expect(screen.getByTestId('area-check-card').textContent).toMatch(/law as at 2026-10-23/);
   });
 
+  it('gives no yes or no, no headline and no parking figures when a yes carries a warning', () => {
+    const r = result({ warnings: [{ clause: 's164(1)(f1)', page: 78, detail: 'flood extent not checked' }] });
+    render(<AreaCheckCard result={r} loading={false} failed={false} />);
+    expect(screen.getByTestId('area-check-lead').textContent).toMatch(/no yes or no/);
+    expect(screen.getByTestId('area-check-lead').textContent).not.toMatch(/is within the low and mid-rise walking distance/);
+    expect(screen.queryByTestId('area-check-headline')).toBeNull();
+    expect(screen.queryByTestId('area-check-parking')).toBeNull();
+    expect(screen.getByTestId('area-check-warnings').textContent).toMatch(/flood extent not checked/);
+  });
+
   it('lists each warning with its clause and page', () => {
     const r = result({ warnings: [{ clause: 's164(1)(f1)', page: 78, detail: 'flood extent not checked' }] });
     render(<AreaCheckCard result={r} loading={false} failed={false} />);

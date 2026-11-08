@@ -61,6 +61,10 @@ class Surface:
         self.dist = arr[:, 2]
         self.anchor_idx = arr[:, 3].astype(int)
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
+        # A station is only "built" when at least one of its entrances reaches a stored footpath node. The anchor list holds every
+        # station name, including ones whose entrances sit outside the footpath download (46 to 52 of 83 names in the Inner West files).
+        used = {int(i) for i in np.unique(self.anchor_idx)}
+        self.names_with_nodes = {a.get("name") for i, a in enumerate(self.anchors) if i in used}
 
     def covers(self, minx: float, miny: float, maxx: float, maxy: float) -> bool:
         b = self.bbox_m
@@ -151,7 +155,7 @@ def walk_from_lot(
     if not cands:
         return _invalid("we do not have a footpath map for this area yet, so the walk to the nearest station could not be measured")
     if required_anchors:
-        built = {a.get("name") for s in cands for a in s.anchors}
+        built = {n for s in cands for n in s.names_with_nodes}
         missing = sorted(set(required_anchors) - built)
         if missing:
             return _invalid(f"we do not have footpath data for a station or town centre near this lot ({', '.join(missing[:3])}), so the walk could not be measured")

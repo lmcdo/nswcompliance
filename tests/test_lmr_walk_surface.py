@@ -107,6 +107,14 @@ def test_every_nearby_anchor_must_have_a_built_surface():
     assert walk(ring(X0 + 400, Y0 + 15), required_anchors={"Anchor A"})["valid"] is True
 
 
+def test_a_station_named_in_the_file_but_with_no_nodes_is_not_built():
+    # "Anchor B" is listed, but no stored node walks to it (its entrances sit outside the footpath download).
+    s = surface(anchors=[{"name": "Anchor A", "entrance_id": "node/1"}, {"name": "Anchor B", "entrance_id": "node/2"}])
+    r = walk(ring(X0 + 400, Y0 + 15), surfaces=[s], required_anchors={"Anchor A", "Anchor B"})
+    assert r["valid"] is False and "Anchor B" in r["reason"]
+    assert walk(ring(X0 + 400, Y0 + 15), surfaces=[s], required_anchors={"Anchor A"})["valid"] is True
+
+
 def test_minimum_over_surfaces_is_taken():
     near = ws.Surface({**{"epsg": EPSG, "built": "d", "osm_extract": "", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500]},
                        "anchors": [{"name": "Anchor B", "entrance_id": "station outline", "optimistic_by_m": 150}],
