@@ -252,7 +252,7 @@ export default function DevelopersPage() {
             { stat: COVERAGE_DISPLAY.totalNswCouncils, label: 'NSW councils', sub: 'Zone + LEP controls' },
             { stat: COVERAGE_DISPLAY.dcpNumericCouncils, label: 'LGAs', sub: 'DCP numeric controls' },
             { stat: COVERAGE_DISPLAY.floodDepthStudies, label: 'council flood studies with depth', sub: 'Flood depth modelling' },
-            { stat: 'Clause + page', label: 'Council rules cited', sub: "Quoted in the council's words" },
+            { stat: 'Clause + page', label: 'Council controls cited', sub: 'Source clause and page where found' },
           ].map(({ stat, label, sub }) => (
             <div key={label + sub} className="text-center p-4 rounded-xl border border-gray-200">
               <p className="text-2xl font-bold text-gray-900">{stat}</p>

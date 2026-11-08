@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Building2, ArrowRight } from 'lucide-react';
@@ -141,8 +142,9 @@ export default function BuildersPage() {
             For town planners and certifiers
           </h2>
           <p className="text-gray-500 mb-4">
-            A Site Report sets out the LEP controls, SEPP standards and the council plan's rules for any
-            property and development type, each linked to its source. Free to start — no account required.
+            {PLAN_BRIEF_ON
+              ? "A Site Report sets out the LEP controls, SEPP standards and the council plan's rules for any property and development type, each linked to its source. Free to start — no account required."
+              : "A Site Report sets out the LEP controls, SEPP standards and the council plan chapters that apply to any property, with links to the source. Free to start — no account required."}
           </p>
           <Link
             href="/assessment"

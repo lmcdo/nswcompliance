@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import Link from 'next/link';
 import {
   FileCheck, Building2, Radar, Satellite,
@@ -8,10 +9,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
 
-// The plan-brief rows under "Your project" are off until NEXT_PUBLIC_PLAN_BRIEF=on
-// (components/compliance/YourProjectSummary.tsx). The council-plan column below
-// describes only what is live, so the copy follows the same flag.
-const PLAN_BRIEF_ON = process.env.NEXT_PUBLIC_PLAN_BRIEF === 'on';
+// Copy that describes the plan-brief rows follows the same flag as the rows (lib/site-report.ts).
 
 /* ------------------------------------------------------------------ */
 /*  What a Site Report holds                                           */
@@ -53,7 +51,9 @@ const LIMITS = [
   'It is not a verdict. It does not predict the outcome of a development application.',
   'It is not a section 10.7 planning certificate and not legal advice.',
   "It shows the council's published words. It does not interpret them.",
-  'When a figure or clause cannot be found, the row says "not found" and links to the source. It never fills the gap with a guess.',
+  PLAN_BRIEF_ON
+    ? 'When a figure or clause cannot be found, the row says "not found" and links to the source. It never fills the gap with a guess.'
+    : 'When a source could not be consulted, the report says so. It never fills the gap with a guess.',
   'Figures are indicative. Check the linked clause and the council before you rely on one.',
 ];
 
@@ -125,7 +125,7 @@ const PERSONAS = [
   },
   {
     title: 'Builders & Planners',
-    description: "Find the clause and the page fast. Each rule is in the council's own words.",
+    description: 'Find the clause and its page in the council plan, with a link to the source.',
     href: '/for/builders',
     cta: 'For builders and planners',
   },
@@ -156,10 +156,9 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-            A Site Report for any NSW address: what the government maps and state law say
-            about that lot, and what the council plan says about your project. Each line
-            links to its source and, for council rules, gives the council&apos;s own words and the page.
-            Where we cannot find something, it says so.
+            {PLAN_BRIEF_ON
+              ? "A Site Report for any NSW address: what the government maps and state law say about that lot, and what the council plan says about your project. Each line links to its source and, for council rules, gives the council's own words and the page. Where we cannot find something, it says so."
+              : "A Site Report for any NSW address: what the government maps and state law say about that lot, and the council plan chapters that apply to it, linked to the council's own pages. Each line links to its source. Where a source could not be consulted, the report says so."}
           </p>
 
           <HeroAddressSearch />

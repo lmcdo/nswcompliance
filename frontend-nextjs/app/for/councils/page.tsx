@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import { ShieldCheck, ArrowRight } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
@@ -36,8 +37,10 @@ export default function CouncilsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {[
             {
-              title: 'Applicants see the rules first',
-              description: "Applicants see the DCP rules that apply to their lot, in your plan's words with the page, before they lodge.",
+              title: 'Applicants see the plan first',
+              description: PLAN_BRIEF_ON
+                ? "Applicants see the DCP rules for their lot and project, in your plan's words with the page, before they lodge."
+                : "Applicants see the DCP chapters that may apply to their lot, with links to your own pages, before they lodge.",
             },
             {
               title: 'Zero integration required',

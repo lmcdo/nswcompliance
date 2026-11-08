@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -171,7 +172,9 @@ export default function BuyersAgentsPage() {
           {[
             { value: '12', label: 'Property checks' },
             { value: 'Every line', label: 'Linked to its source' },
-            { value: 'Not found', label: 'Stated, never guessed' },
+            PLAN_BRIEF_ON
+              ? { value: 'Not found', label: 'Stated, never guessed' }
+              : { value: 'No account', label: 'Needed to start' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
               <div className="text-2xl font-bold text-white">{value}</div>

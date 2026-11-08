@@ -1,3 +1,4 @@
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -132,7 +133,9 @@ export default function HomebuyersPage() {
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 gap-6">
           {[
             { value: 'Every line', label: 'Linked to its source' },
-            { value: 'Not found', label: 'Stated, never guessed' },
+            PLAN_BRIEF_ON
+              ? { value: 'Not found', label: 'Stated, never guessed' }
+              : { value: 'No account', label: 'Needed to start' },
             { value: 'Free', label: 'To start' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
