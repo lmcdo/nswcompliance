@@ -22,10 +22,10 @@ export default function CouncilsPage() {
           </span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-          Reduce non-compliant DA submissions before they reach your desk
+          Let applicants find the right council rules before they lodge
         </h1>
         <p className="text-gray-500 text-lg max-w-xl">
-          PlotDetect Site Controls checks SEPP, LEP, and DCP provisions for any property
+          A PlotDetect Site Report sets out the SEPP, LEP, and DCP rules for any property
           and development type — before the applicant lodges. Zero integration with
           your systems. No IT project. Embed as an iframe on your council website.
         </p>
@@ -36,8 +36,8 @@ export default function CouncilsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {[
             {
-              title: 'Fewer non-compliant submissions',
-              description: 'Applicants see the relevant DCP provisions and numeric controls before they lodge. Basic constraint violations are caught at the pre-DA stage.',
+              title: 'Applicants see the rules first',
+              description: "Applicants see the DCP rules that apply to their lot, in your plan's words with the page, before they lodge.",
             },
             {
               title: 'Zero integration required',
@@ -66,9 +66,9 @@ export default function CouncilsPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-6">How it works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {[
-              { step: '1', title: 'Embed on your website', body: 'Add the Site Controls iframe to your pre-DA guidance page. No IT project, no procurement.' },
-              { step: '2', title: 'Applicant enters address', body: 'They get the relevant SEPP, LEP, and DCP provisions for their property and development type.' },
-              { step: '3', title: 'Better submissions arrive', body: 'Applicants who have checked Site Controls understand the constraints before they lodge.' },
+              { step: '1', title: 'Embed on your website', body: 'Add the Site Report iframe to your pre-DA guidance page. No IT project, no procurement.' },
+              { step: '2', title: 'Applicant enters address', body: 'They get the SEPP, LEP, and DCP rules for their property and development type, each linked to its source.' },
+              { step: '3', title: 'Applicants arrive informed', body: 'Applicants who have read the Site Report can see the constraints before they lodge.' },
             ].map(({ step, title, body }) => (
               <div key={step} className="space-y-2">
                 <div className="w-8 h-8 rounded-full bg-teal-600 text-white text-sm font-bold flex items-center justify-center">
@@ -89,8 +89,8 @@ export default function CouncilsPage() {
             Request a council demo
           </h2>
           <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-            See Site Controls running against your council area. We will show you exactly
-            what applicants see — with your DCP provisions and planning controls.
+            See a Site Report running against your council area. We will show you exactly
+            what applicants see — with your plan's rules and planning controls.
           </p>
           <a
             href="mailto:hello@plotdetect.com.au?subject=Council%20demo%20request"

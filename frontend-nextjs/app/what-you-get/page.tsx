@@ -71,10 +71,10 @@ export default function WhatYouGetPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto leading-relaxed mb-8">
-            Planning controls, hazard and climate, satellite imagery, and development
-            activity — {COVERAGE_DISPLAY.provisionsTotal} indexed provisions across{' '}
-            {COVERAGE_DISPLAY.lgasCovered} LGAs and {COVERAGE_DISPLAY.govDataSources} government
-            data sources. Pick your role below to see what applies to you.
+            A Site Report holds what the government maps and state law say about the lot,
+            and what the council plan says about your project, each line linked to its source.
+            Hazards, satellite imagery and nearby development are separate checks.
+            Pick your role below to see what applies to you.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

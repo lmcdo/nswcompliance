@@ -141,14 +141,14 @@ export default function BuildersPage() {
             For town planners and certifiers
           </h2>
           <p className="text-gray-500 mb-4">
-            Site Controls extracts DCP provisions, SEPP standards, and LEP controls for any property
-            and development type. Free to use — no account required.
+            A Site Report sets out the LEP controls, SEPP standards and the council plan's rules for any
+            property and development type, each linked to its source. Free to start — no account required.
           </p>
           <Link
             href="/assessment"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
           >
-            Open Site Controls
+            Open a Site Report
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
