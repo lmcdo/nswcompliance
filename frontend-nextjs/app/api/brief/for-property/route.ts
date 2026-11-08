@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     // Exact zone group first; the 'ANY' build is the fallback for zones we did not build for.
     const sql = `
       SELECT b.row_type, b.rank, b.verdict,
-             rp.id, rp.ref_number, rp.section_header, rp.provision_text, rp.pdf_page, rp.printed_page_label, rp.page_check, rp.source_council,
+             rp.id, rp.ref_number, rp.section_header, rp.source_chapter_key, rp.provision_text, rp.pdf_page, rp.printed_page_label, rp.page_check, rp.source_council,
              ${quoteColumns('rp')}
         FROM project_brief_rows b
         JOIN regulatory_provisions rp ON rp.id = b.provision_id

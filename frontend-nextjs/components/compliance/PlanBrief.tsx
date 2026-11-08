@@ -50,9 +50,9 @@ function ItemView({ item }: { item: BriefItem }) {
         <span className={`rounded px-1.5 py-0.5 font-medium ${item.verdict === 'APPLIES' ? 'bg-teal-50 text-teal-800' : 'bg-amber-50 text-amber-800'}`} data-testid="brief-tag">
           {item.verdict === 'APPLIES' ? BRIEF_TAG_APPLIES : BRIEF_TAG_MAY}
         </span>
-        {place && (item.url
+        {place && (item.url && item.pageProven
           ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline" data-testid="brief-place">{place}{item.urlPage ? ' · open the plan at this page' : ' · open the plan'}</a>
-          : <span data-testid="brief-place">{place}</span>)}
+          : <span data-testid="brief-place">{place}{item.page && !item.pageProven ? ' (page not yet checked)' : ''}{item.url && !item.pageProven ? <>{' · '}<a href={item.url.split('#')[0]} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">open the plan</a></> : null}</span>)}
       </p>
     </li>
   );
