@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds outreach claim OC-22 for the housing reform area card, declared false until an accuracy run is recorded; adds the check, the scorer's --record output and a data fingerprint. No served text changes.",
-  "commit_hash": "97d166af",
+  "commit_hash": "2c412b01",
   "files": [
     "services/lmr_walk_surface.py",
     "scripts/lmr_area/area_check_score.py",
