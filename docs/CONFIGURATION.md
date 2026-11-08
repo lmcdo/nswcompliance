@@ -167,6 +167,30 @@ These must be set under repo Settings → Secrets and variables → Actions:
 
 ---
 
+## Vercel plan and usage
+
+On 2026-11-08 Vercel paused all deployments for this team because it passed the Hobby plan's fair-use limit for
+**Fluid Active CPU** (4 hours a month). Every domain answered `402 DEPLOYMENT_DISABLED` until the team moved to **Pro**
+the same day. Commits merged to `main` while the pause lasted (#1603, #1604) were skipped, so the next commit to `main`
+is the one that deploys them. The Python API on Railway deploys separately and was not affected.
+
+What the usage page (Settings → Usage, window 8 Oct to 7 Nov 2026) showed:
+
+| Measure | Value |
+|---|---|
+| Fluid Active CPU | 4 h 0 m 10 s (limit 4 h) |
+| `compliance-engine` share | 94.8% (3 h 47 m); `envelope-view` 4.2% |
+| Function invocations | about 151,000, so about 95 ms of CPU each, about 5,000 a day |
+| Daily pattern | steady, 5 to 13 minutes a day; no single spike |
+
+So the load is request volume, not one heavy route. Who sends the requests was not established: Hobby shows only the last
+12 hours of per-route data (Pro adds 30 days under Project → Observability → Functions). The busiest routes in that
+12 hours were `/api/health`, `/api/provisions/for-property` and `/reports`. `frontend-nextjs/app/robots.ts` already disallows
+`/api/` and deliberately allows crawlers on the pages. Next step when it matters: read the 30-day route breakdown on Pro and
+cache or cut the top callers, including our own audit scripts that call the live site.
+
+---
+
 
 ## Notes
 
