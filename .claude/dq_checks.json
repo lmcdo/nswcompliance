@@ -2025,6 +2025,21 @@
     "passes_when": "exit 0 - the recorded session read of 30 rows (data/plan_brief_session_read_2026-11-08.json) has fewer than 2 WRONG first clauses AND every recorded first clause is still the row's first clause now",
     "red_when": "the declared state and the check disagree in either direction",
     "note": "OB-8. 2026-11-08: read by the Claude session across 5 named councils (Penrith, Wollongong, Ashfield, Georges River, Waverley): 0 WRONG, 2 weak. Not independent of the build; OC-18 covers independence. Goes stale (FAIL) if the brief is rebuilt, so it has to be re-read."
+  },
+  "OC-30": {
+    "kind": "outreach_claim",
+    "claim": "For each rule type, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils (Hornsby, Wollongong, Woollahra), measured on the brief rows as loaded.",
+    "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-1",
+    "declared": "true",
+    "check": [
+      "python",
+      "scripts/outreach_claim_checks.py",
+      "OC-30"
+    ],
+    "blocks_outreach": true,
+    "passes_when": "exit 0 - top-5 recall >= 90% overall AND on the hold-out, recomputed from project_brief_rows against the proven rules (scripts/plan_brief_checks.py)",
+    "red_when": "the declared state and the check disagree in either direction",
+    "note": "OB-1. Recomputed 2026-11-08 from the live table: 156/166 = 94% overall (lower 95% bound 89%), hold-out 47/50 = 94% (bound 84%). 6 weak gold cells dropped and listed in plan_brief_checks.WEAK_GOLD. Zone group used is each project type's normal one; the any-zone fallback is weaker (92% / 85%) and the serving code must prefer the zone-specific brief."
   }
  }
 }
