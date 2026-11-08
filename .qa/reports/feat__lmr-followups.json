@@ -1,0 +1,84 @@
+{
+  "tier": "standard",
+  "justification": "Changes when the walking lookup refuses a station with no footpath data, what the area card says when a yes carries a warning, and deletes an unused parking calculator route and component.",
+  "commit_hash": "135ea93c",
+  "files": [
+    "services/lmr_walk_surface.py",
+    "tests/test_lmr_walk_surface.py",
+    "scripts/lmr_area/area_check_test.py",
+    "frontend-nextjs/components/compliance/AreaCheckCard.tsx",
+    "frontend-nextjs/__tests__/components/area-check-card.test.tsx",
+    "frontend-nextjs/app/api/tod/parking-calculator/route.ts",
+    "frontend-nextjs/components/tod/TODParkingCalculator.tsx",
+    "scripts/baselines/gate-baseline.json"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_walk_surface.py -q && cd frontend-nextjs && npx jest --testPathPatterns=area-check-card",
+    "fails_when": "a station listed in a walking file but reached by no stored node is accepted as having walking data, or a yes with a warning is shown as a yes with the headline and parking figures",
+    "observed_red": "On origin/main services/lmr_walk_surface.py a surface that lists station B with no nodes returns valid=True for required_anchors {A,B} (measured by loading the origin/main file). On origin/main AreaCheckCard.tsx the new card test fails (1 failed, 10 passed in area-check-card).",
+    "external_authority": "Before/after answers on 33 lots (25 random across the 5 areas, 8 beside Hornsby and Westmead) were identical, so the change closes a hole without moving any sampled answer. The 200-lot router test was NOT re-run: its judge input (lmr_station_entrances_final.json) needs the TfNSW GTFS Pathways file saved by hand."
+  },
+  "pre_impl": {
+    "existing_data": "data/lmr_walk/*.npz: 7 files; 16 of 62 stations have no node in any file (all outside the five areas except Hornsby and Westmead edges)",
+    "assumption_mismatch": "The old check treated every station name in a file's anchor list as built; the Inner West files list 83 names but only 31 to 37 are reached by a node",
+    "new_vs_existing": "Lots near a listed station with no data now answer 'could not be measured' instead of a number",
+    "external_source_error": "Not applicable: no fetch added",
+    "frontend_type": "warnings is an array on both result and result.lmr; both are read with optional chaining",
+    "user_failure_mode": "A person near an unbuilt station sees a reason instead of a yes or no"
+  },
+  "functions": [
+    {
+      "name": "walk_from_lot",
+      "file_line": "services/lmr_walk_surface.py:133",
+      "input": "lot ring, nearby station names",
+      "output": "walk metres or invalid with reason",
+      "if_none": "invalid with reason, never a number"
+    },
+    {
+      "name": "AreaCheckCard lead",
+      "file_line": "frontend-nextjs/components/compliance/AreaCheckCard.tsx:19",
+      "input": "area answer and whether a warning is present",
+      "output": "one sentence; no yes or no when warned",
+      "if_none": "failed or no result shows the not-answered card"
+    }
+  ],
+  "values": [
+    {
+      "value": "result.lmr.warnings",
+      "read_at": "frontend-nextjs/components/compliance/AreaCheckCard.tsx:52",
+      "nullable": "yes",
+      "guard_at": "?.length ?? 0",
+      "if_missing": "treated as no warning from this source; result.warnings still counts"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "a station has two entrances, one with nodes and one without",
+      "what_happens": "the name could be rejected",
+      "mitigated": true,
+      "how": "a name counts as built if any entrance index appears among the node anchors",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -k nodes"
+    },
+    {
+      "scenario": "a warning sits only on lmr.warnings, not on the top-level list",
+      "what_happens": "the card could still show a yes",
+      "mitigated": true,
+      "how": "the card reads both, the same rule as useAreaCheck inLmrArea",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=area-check-card"
+    },
+    {
+      "scenario": "the card gets a yes with no warning",
+      "what_happens": "it could lose its headline or parking figures",
+      "mitigated": true,
+      "how": "the warned branch only applies when a warning exists; the existing card tests for a plain yes still pass",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=area-check-card"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: open an address with a warning on the live card"
+  }
+}
