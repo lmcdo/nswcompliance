@@ -1,0 +1,91 @@
+{
+ "tier": "standard",
+ "justification": "Adds one analytics event when feedback is saved, and corrects the privacy page, which called PostHog 'anonymous usage analytics' while session recording is on. The event carries the kind of feedback only. The privacy wording is public policy text, so it needs the owner's approval before merge. Directionality: the privacy change makes the page say more of what the site already does; the event adds a counter and no personal data.",
+ "commit_hash": "63933fba",
+ "files": [
+  "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
+  "frontend-nextjs/app/privacy/page.tsx",
+  "frontend-nextjs/__tests__/components/feedback/FeedbackWidget-posthog-event.test.tsx",
+  "frontend-nextjs/__tests__/app/privacy-session-recording.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/components/feedback __tests__/app/privacy-session-recording.test.tsx",
+  "fails_when": "A saved feedback does not send feedback_submitted, the event carries the text, the email or the address, a failed save or a thrown request still sends it, or the privacy page stops saying that pages are recorded and what is recorded.",
+  "external_authority": "components/providers/PostHogProvider.tsx initialises PostHog with session recording on (session_recording set, no disable flag) on real hosts, with person_profiles identified_only; PostHog masks form-field text by default. The privacy page text before the change read 'anonymous usage analytics'.",
+  "observed_red": "Against the old FeedbackWidget.tsx and privacy page (git show origin/main), the new tests fail: 5 failed, 3 passed, 8 total. With the new source: 13 passed across the three feedback and privacy suites."
+ },
+ "pre_impl": {
+  "existing_data": "The widget saves to user_feedback and sends no analytics event; PostHog is already used for tool_run and dcp_request_submitted events with the same posthog.capture call. The privacy page said anonymous usage analytics only; production PostHog init records sessions on every real host.",
+  "assumption_mismatch": "The pilot pack assumed a line about session recording was a small addition. The page also said usage data 'is anonymised', which a recording of the screen (including a searched address) is not, so that sentence is corrected, not just extended.",
+  "new_vs_existing": "No new library or event system: one posthog.capture call, the same call and import used in DcpRequestCta, and two edits in an existing page."
+ },
+ "functions": [
+  {
+   "name": "handleSubmit analytics call",
+   "file_line": "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
+   "what": "Sends feedback_submitted after the feedback is saved.",
+   "input": "the feedback type, user type, whether an email was given, page path and cohort tag",
+   "output": "one PostHog event, no return value",
+   "if_none": "a missing cohort is sent as null, never a placeholder",
+   "edge_cases": "no text, email or address is sent; a failed save or a thrown request sends nothing.",
+   "failure_mode": "If PostHog is blocked the capture does nothing; the save and the thank-you message are unaffected."
+  },
+  {
+   "name": "privacy page usage data text",
+   "file_line": "frontend-nextjs/app/privacy/page.tsx",
+   "what": "States that pages are recorded, what is recorded, and that form text is masked.",
+   "input": "none, it is fixed page text read by every visitor",
+   "output": "the wording shown on the privacy page",
+   "if_none": "not applicable, it is page text",
+   "edge_cases": "the 'anonymised' claim is removed because a recording of the screen can include a searched address.",
+   "failure_mode": "Wording that understated would mislead a tester; the test pins the sentences."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The event carries what the tester wrote.",
+   "what_happens": "Free text, an email or an address would reach the analytics provider.",
+   "mitigated": true,
+   "how": "Only five fixed keys are sent by the event itself; the test fails on any other key and searches the payload for the text, email, street and suburb. PostHog adds the page URL to every event, as it does for page views, and some links carry ?address=; the privacy page now says the web address of a page can include a searched address.",
+   "repro": "jest: carries only the kind, never the text, the email or the address"
+  },
+  {
+   "scenario": "A failed save is counted as a submission.",
+   "what_happens": "The pilot would over-count feedback.",
+   "mitigated": true,
+   "how": "The capture sits inside the response.ok branch; tests cover a 500 and a thrown request.",
+   "repro": "jest: sends nothing when the save fails; sends nothing when the request itself throws"
+  },
+  {
+   "scenario": "The privacy page promise changes by accident.",
+   "what_happens": "The page could drop the 'not sold' statement while editing.",
+   "mitigated": true,
+   "how": "A test keeps the 'do not sell your personal information' sentence.",
+   "repro": "jest: keeps the promise that nothing is sold"
+  },
+  {
+   "scenario": "PostHog throws when the event is sent.",
+   "what_happens": "A saved feedback could show 'save failed' and be sent twice.",
+   "mitigated": true,
+   "how": "Found by cross-review. The capture sits in its own try/catch after the save succeeds; a test makes capture throw and finds the saved state shown and no second save.",
+   "repro": "jest: a PostHog failure does not turn a saved feedback into a failed save"
+  }
+ ],
+ "verified": [
+  "Old source: 5 of 8 new tests fail. New source: 13 pass across the feedback and privacy suites.",
+  "tsc --noEmit prints no errors.",
+  "The existing widget cohort tests still pass."
+ ],
+ "gaps": [
+  "The privacy wording is a draft for the owner; the terms of use and any solicitor review are parked and are not changed here.",
+  "Session recording stays on. Switching it off for the pilot is the alternative if the owner prefers not to disclose it.",
+  "The event is checked by tests and types; whether PostHog records it is to be seen on production after deploy.",
+  "Query strings in the page URL that PostHog attaches to every event are not stripped (cross-review HIGH, left): this is existing behaviour for all events, the page views included, and is now disclosed; a PostHog before_send filter is the follow-up if the owner wants it."
+ ],
+ "post_merge": {
+  "db_reset": "No data change. Revert the commit to undo.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After deploy, send a test feedback on the live site and look for feedback_submitted in PostHog Live events; read the privacy page once."
+ }
+}

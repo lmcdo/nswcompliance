@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { getCohort } from '@/lib/cohort';
+import { posthog } from '@/components/providers/PostHogProvider';
 
 interface FeedbackWidgetProps {
   propertyAddress?: string;
@@ -103,6 +104,13 @@ export default function FeedbackWidget({
       });
 
       if (response.ok) {
+        // The event's own fields are the kind of feedback only, never the text, the email or the address (those stay in user_feedback).
+        // PostHog adds the page URL to every event, as it does for page views. A failure here must not turn a saved feedback into "save failed".
+        try {
+          posthog.capture('feedback_submitted', { feedback_type: feedbackType, user_type: userType, has_email: !!email, page: pathname, cohort });
+        } catch {
+          // analytics only
+        }
         setSubmitted(true);
         setTimeout(() => {
           setIsOpen(false);
