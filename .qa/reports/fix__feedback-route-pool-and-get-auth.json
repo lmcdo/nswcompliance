@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Repairs the feedback submit path that returned 500 on production and restricts the list of submitter email addresses to the operator.",
- "commit_hash": "45559b2c",
+ "commit_hash": "e5d3109d",
  "files": [
   "frontend-nextjs/__tests__/api/feedback-route-pool-and-auth.test.ts",
   "frontend-nextjs/app/api/feedback/route.ts"
