@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes two things the reader sees under the plan brief: the standing note now says the figures are headline requirements and the wording around them can add tests or exceptions, and a clause that is only the closest the plan has (the council sets the control by map, on merit or in general wording) shows a one-line note above it. Read-only serving code and wording; no stored clause or table is changed. Directionality: more wording for the reader, never a changed figure.",
- "commit_hash": "e0d61087",
+ "commit_hash": "da8cfedf",
  "files": [
   "frontend-nextjs/lib/plan-brief.ts",
   "frontend-nextjs/app/api/brief/for-property/route.ts",
