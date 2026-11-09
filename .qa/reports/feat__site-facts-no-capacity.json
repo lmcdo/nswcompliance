@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "A served-output change: the Development Capacity card, which combines LEP limits with DCP setbacks, is withheld from Site Facts and shown in Council Rules only for a pilot council in zone R2",
- "commit_hash": "820feb1e",
+ "commit_hash": "01619a6f",
  "files": [
   ".qa/reports/feat__site-facts-no-capacity.json",
   "frontend-nextjs/__tests__/lib/capacity-card-pilot-only.test.ts",
