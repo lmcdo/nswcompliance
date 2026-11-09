@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The brief is behind two switches that are off, so this changes nothing live. It is Standard because four files change and the line it adds is shown to users as fact about where a council rule sits in the plan, so a wrong chapter name would mislead. It adds no new query: the registry query that already runs gains one column.",
-  "commit_hash": "bfe769ba",
+  "commit_hash": "d3aad27d",
   "files": [
     "frontend-nextjs/app/api/brief/for-property/route.ts",
     "frontend-nextjs/lib/plan-brief.ts",
