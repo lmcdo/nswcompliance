@@ -308,5 +308,6 @@
    "address": "20 Loombah Road Dover Heights"
   }
  ],
- "marks_key": "right = the owner marked it after viewing the card; wrong; unsure; passed = the owner told Claude 'pass them' and did not open the card"
+ "marks_key": "right = the owner marked it after viewing the card; wrong; unsure; passed = the owner told Claude 'pass them' and did not open the card",
+ "status": "SUPERSEDED 2026-11-09: this read was made on cards that did not show where each clause sits in the council's plan. The plan headings show card 12 (Georges River 6.1.3, dual occupancies) and card 15 (Inner West Part 4, multi dwelling housing) are rules for other building types, and the owner cleared cards 1-15 to read them again. Do not count this read. Record a new read after the owner finishes on the page with the plan headings."
 }

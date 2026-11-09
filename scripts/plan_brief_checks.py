@@ -271,7 +271,10 @@ def owner_read() -> Result:
     path = ROOT / "data" / "plan_brief_owner_read_2026-11-09.json"
     if not path.exists():
         return FAIL, "owner read: no recorded read yet (data/plan_brief_owner_read_2026-11-09.json is missing)"
-    rec = json.loads(path.read_text(encoding="utf-8"))["rows"]
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if doc.get("status", "").startswith("SUPERSEDED"):
+        return FAIL, "owner read: the recorded read is SUPERSEDED (cards lacked the plan headings); read again and record a new one"
+    rec = doc["rows"]
     if sorted(r.get("n") for r in rec) != list(range(1, 31)):
         return FAIL, f"owner read: need exactly 30 rows numbered 1 to 30, each once; found {len(rec)}"
     if any(r.get("mark") not in ("right", "wrong", "unsure", "passed") for r in rec):
