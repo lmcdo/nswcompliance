@@ -73,6 +73,15 @@ WRONG_GOLD_IDS = {
 MIN_CELLS_FOR_COUNCIL_FLOOR = 4
 
 
+def _late_gold_cells() -> set:
+    """Hold-out cells whose entries carry after_picks: true, added after the strict picks were seen (so they are not an unseen test of the picker)."""
+    try:
+        items = json.loads((ROOT / "data" / "plan_brief_gold_holdout.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {(it["council"], "dwelling_house", it["rule_type"]) for it in items if it.get("after_picks") is True}
+
+
 def _drop_wrong_gold(cells: dict) -> dict:
     """Remove the ids in WRONG_GOLD_IDS from every proven cell and drop a cell that is left with none."""
     out = {}
@@ -175,8 +184,12 @@ def brief_recall() -> Result:
     if alln < 40 or holdn < 15:   # the served scope (a house, named councils) has fewer proven cells by design
         return FAIL, f"recall: only {alln} gold cells ({holdn} hold-out) - too few to mean anything"
     a, h = allk / alln, holdk / holdn
+    late = _late_gold_cells() & set(cells)          # hold-out cells whose entries were added after the picks were seen
+    lk = sum(1 for k in late if k[0] in HOLDOUT and cells[k] & set(top.get((k[0], k[1], CORE_ZONE[k[1]], k[2]), [])))
+    ln = sum(1 for k in late if k[0] in HOLDOUT)
+    note = (f"; {ln} of the hold-out cells were added after the picks were seen (without them {holdk - lk}/{holdn - ln})" if ln else "")
     detail = "served rows (named councils, a house, zone R2, after the skip): " + (f"proven rule in the top 5: {allk}/{alln} = {a:.0%} overall (lower 95% bound {_wilson_lower(allk, alln):.0%}); "
-              f"hold-out {holdk}/{holdn} = {h:.0%} (bound {_wilson_lower(holdk, holdn):.0%}); bar {RECALL_BAR:.0%}")
+              f"hold-out {holdk}/{holdn} = {h:.0%} (bound {_wilson_lower(holdk, holdn):.0%}){note}; bar {RECALL_BAR:.0%}")
     return (PASS if a >= RECALL_BAR and h >= RECALL_BAR else FAIL), detail
 
 
@@ -390,4 +403,6 @@ def heading_read() -> Result:
         return FAIL, "heading check: " + "; ".join(problems[:4]) + (f" (+{len(problems) - 4} more)" if len(problems) > 4 else "")
     return PASS, (f"heading check (script, from the council's own PDF headings; not an owner read): {len(named)} named councils, {topics} council-topic cells; "
                   f"every shown clause was read, none flagged, every core topic keeps a clause except {sum(len(v) for v in known_empty.values())} documented known gap(s); recall after the skip {overall:.0%} over {tot} proven cells "
-                  f"(lowest council {min(hit[c] / n[c] for c in named if n[c]):.0%})")
+                  f"(lowest council {min(hit[c] / n[c] for c in named if n[c] >= MIN_CELLS_FOR_COUNCIL_FLOOR):.0%}; "
+                  f"council floor not applied under {MIN_CELLS_FOR_COUNCIL_FLOOR} proven cells: "
+                  + (", ".join(f"{c} {hit[c]}/{n[c]}" for c in named if 0 < n[c] < MIN_CELLS_FOR_COUNCIL_FLOOR) or "none") + ")")

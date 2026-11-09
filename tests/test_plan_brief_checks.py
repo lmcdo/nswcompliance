@@ -245,6 +245,8 @@ def test_hornsby_house_table_is_in_the_hold_out_gold_with_its_page():
     mine = [g for g in gold if g["id"] == 262143]
     assert sorted(g["rule_type"] for g in mine) == ["front_setback", "rear_setback", "secondary_street_setback", "side_setback"]
     assert all(g["council"] == "hornsby" and g["page"] == 9 and g["applies_to"] == ["dwelling_house"] for g in mine)
+    assert all(g.get("after_picks") is True for g in mine)          # disclosed in the check output: added after the picks were seen
+    assert pbc._late_gold_cells() == {("hornsby", "dwelling_house", r) for r in ("front_setback", "side_setback", "rear_setback", "secondary_street_setback")}
 
 
 def test_every_committed_pick_has_been_scanned_and_none_is_flagged():
@@ -256,3 +258,15 @@ def test_every_committed_pick_has_been_scanned_and_none_is_flagged():
             continue
         k = (r["council"], int(r["provision_id"]))
         assert k in scanned and scanned[k] is False, k
+
+
+def test_the_pass_text_names_the_councils_the_floor_was_not_applied_to(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    few = [k for k in cells if k[0] == "ashfield"][:3]
+    for k in [k for k in cells if k[0] == "ashfield" and k not in few]:
+        del cells[k]
+    for k in few:
+        cells[k] = {424242}
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.PASS and "floor not applied under 4 proven cells: ashfield 0/3" in why, why
