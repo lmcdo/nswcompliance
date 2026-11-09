@@ -1,0 +1,78 @@
+{
+ "tier": "standard",
+ "justification": "Changes which clauses the plan brief shows to a house in ten councils: 69 clauses written for other building types or named sites are added to the skip list and the heading scan is updated to match. Data and config only, no code. Directionality: a wrong skip hides a right clause (shows 'not found' for that topic); a missed skip leaves a wrong-type clause visible. Both are measured by OC-29 and OC-30.",
+ "commit_hash": "54d48ff3",
+ "files": [
+  "frontend-nextjs/shared/brief-scope.json",
+  "data/plan_brief_heading_scan_2026-11-09.json"
+ ],
+ "falsifiable_check": {
+  "command": "python scripts/outreach_claim_checks.py OC-30",
+  "fails_when": "The proven rule for a house is no longer in the top 5 after the skip list is applied, and overall recall drops under 90%. It reads the live project_brief_rows and the proven answer cells from dcp_setback_controls plus the hand-made hold-out file, so it cannot be satisfied by editing the skip list alone.",
+  "external_authority": "Proven rules come from dcp_setback_controls rows whose quote_status is verbatim against the council PDF, and data/plan_brief_gold_holdout.json. Wrong-type headings were read in the council's own PDF page tops and table of contents (Penrith Part D2, Wollongong B1, Waverley C2/E, Hornsby Part 3, Ku-ring-gai Parts 8 and 14, Northern Beaches Warringah G1/G6/G7).",
+  "observed_red": "With all 74 removals applied: OC-30 FAIL 'proven rule in the top 5: 41/47 = 87% overall (lower 95% bound 75%); hold-out 15/20 = 75% (bound 53%); bar 90%' and OC-29 FAIL 'penrith private_open_space: no clause is left to show; blacktown landscaping_min: no clause is left to show; recall under 80% for ashfield 1/2, hornsby 5/10; overall recall 87% over 47 proven cells'. With the 5 disputed removals left in: OC-30 HOLDS 45/47 = 96%. The check went red on the real change before the fix."
+ },
+ "pre_impl": {
+  "existing_data": "brief-scope.json listed 114 excluded ids. Baseline OC-29 and OC-30 both held (96%, 45/47). A revised scanner flagged 80 more served clauses; 69 are applied here, 5 are held back because the hold-out answer sheet counts them as proven, and 6 Georges River or Northern Beaches rows were judged applicable.",
+  "assumption_mismatch": "The scanner's flags were assumed to be right where it disagreed with the answer sheet. Four Hornsby clauses from the 3.2, 3.3 and 3.4 apartment and medium-density tables are marked all_housing in the hold-out sheet, which the check reads as dwelling house. They are held back, not overridden, so the test is not moved to pass.",
+  "new_vs_existing": "No new file, script or table. The existing skip list and scan file are extended in place, and the existing loader scripts/load_project_brief.py writes the 3 Blacktown landscaping replacements separately as a dry run first, backed up, in build applies-when-20261109T105740."
+ },
+ "functions": [
+  {
+   "name": "excluded_provision_ids (served-scope skip list)",
+   "file_line": "frontend-nextjs/shared/brief-scope.json",
+   "what": "Lists clause ids the brief API drops before showing a house its rules.",
+   "input": "provision ids of clauses read against the council's own headings as being for another building type, a named place or an ancillary structure",
+   "output": "188 ids, up from 114; Hornsby 4 and Ashfield 1 disputed ids are not added",
+   "if_none": "An empty list shows every stored clause, including ones for apartments or child care.",
+   "edge_cases": "A topic left with no clause shows the plain 'not found' text; Penrith private_open_space is declared in known_empty_topics because section 1 of Part D2 has no open space figure.",
+   "failure_mode": "A right clause skipped by mistake hides it and the topic shows 'not found'; this is visible, not a wrong number."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A skipped clause is the proven answer for a house.",
+   "what_happens": "Recall on proven rules falls and the brief shows the wrong or no clause for that topic.",
+   "mitigated": true,
+   "how": "OC-30 measures recall on 47 proven cells after the skip. The full 74 removals took it from 96% to 87% and failed; the 5 disputed ids are held back and recall is 96% again.",
+   "repro": "python scripts/outreach_claim_checks.py OC-30"
+  },
+  {
+   "scenario": "A topic loses its last clause.",
+   "what_happens": "The brief shows an empty row for a house in that council, which looks like a missing rule.",
+   "mitigated": true,
+   "how": "OC-29 fails when a core topic has no clause left unless the topic is in known_empty_topics. Blacktown landscaping was refilled with 3 house rules; Penrith private open space is declared a gap after reading the PDF.",
+   "repro": "python scripts/outreach_claim_checks.py OC-29"
+  },
+  {
+   "scenario": "The heading scan file disagrees with the skip list.",
+   "what_happens": "A clause is flagged in the scan but still shown, or shown without ever being read.",
+   "mitigated": true,
+   "how": "OC-29 fails if a live top-5 clause was never scanned or a flagged clause would still show. 71 rows were re-marked flagged and 3 Blacktown rows added, and OC-29 holds.",
+   "repro": "python scripts/outreach_claim_checks.py OC-29"
+  },
+  {
+   "scenario": "The scanner misses a wrong-type clause.",
+   "what_happens": "A clause for another building type stays visible.",
+   "mitigated": false,
+   "how": "The revised scanner catches 83% of wrong-type clauses on a fresh 40-clause test; about 1 in 6 gets through. Not closed here.",
+   "repro": "labels.json and holdout_labels.json in the scan scratch folder"
+  }
+ ],
+ "verified": [
+  "OC-29 HOLDS and OC-30 HOLDS (45/47 = 96%) with the 69 removals applied.",
+  "Blacktown landscaping_min R2 and ANY ranks 1 to 3 now point at 202432, 202271, 202272; the load was a dry run first (6 valid rows), then applied, build applies-when-20261109T105740.",
+  "The old Blacktown rows are backed up in ~/.claude/plans/ce-session-scripts-2026-11-09/backup_blacktown_landscaping_rows_2026-11-09.json."
+ ],
+ "gaps": [
+  "The hold-out answer sheet is probably wrong for 4 Hornsby apartment clauses and 1 Ashfield site-specific clause; they stay visible until the owner rules.",
+  "Judgements were made from headings and page tops, not a full read of every PDF; the scanner misses about 1 in 6.",
+  "Parramatta keeps 15 of 50 stored clauses; this change does not refill it."
+ ],
+ "post_merge": {
+  "db_reset": "The Blacktown rows can be restored from the backup file; the skip list is undone by reverting this commit.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After Vercel deploys, load a Blacktown and a Penrith house address on verify.plotdetect.com.au and confirm no clause for a child care centre, apartment block or named street shows."
+ }
+}
