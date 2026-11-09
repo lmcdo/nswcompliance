@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds a replace mode to the one script that writes project_brief_rows, plus the pick file it will load. The change writes nothing by itself: the mode is a dry run unless --apply, --confirm-production-write and --backup-to are all given, and it was only dry-run against the live table. Directionality: a wrong swap would empty or change what a house sees in a council's brief, so the old rows are saved first and the swap is one transaction that rolls back if the counts differ.",
- "commit_hash": "4eb81920",
+ "commit_hash": "b5978e11",
  "files": [
   "scripts/load_project_brief.py",
   "tests/test_load_project_brief.py",
