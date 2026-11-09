@@ -299,7 +299,7 @@ def heading_read() -> Result:
     section headings by script (data/plan_brief_heading_scan_2026-11-09.json), measured on the LIVE rows after the skip list in
     frontend-nextjs/shared/brief-scope.json. NOT an owner read.
     Fails when: fewer than 5 councils are named; fewer than 30 council-topic cells exist; a live top-5 clause was never scanned
-    (the brief changed since the scan); a flagged clause would still be shown; a topic has no clause left after the skip; or top-5
+    (the brief changed since the scan); a flagged clause would still be shown; a topic has no clause left after the skip (except one listed in known_empty_topics in the scope file, a declared gap); or top-5
     recall on the proven rules falls under 80% for a named council or under 90% overall."""
     try:
         scope = json.loads((ROOT / "frontend-nextjs" / "shared" / "brief-scope.json").read_text(encoding="utf-8"))
