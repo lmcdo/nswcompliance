@@ -308,7 +308,7 @@ def _restore(conn, cur, a, writing):
     """--restore-from: put back exactly what a --replace-cells backup saved: delete those cells, reinsert the saved rows, one transaction.
 
     prior-art-checked: the undo for this loader's own --replace-cells backup (its cells and rows), so it must live beside it;
-    scripts/archive/restore_from_backup.py and restore_tables_from_mineru_json.py restore other tables from other backup formats.
+    the older restore scripts in the archive restore other tables from other backup formats.
     """
     cells, rows, problems = read_backup(a.restore_from)
     if problems:
