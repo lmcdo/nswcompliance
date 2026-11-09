@@ -23,6 +23,7 @@ import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTo
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
 import { YourProjectSummary } from '@/components/compliance/YourProjectSummary';
+import { isPilotCouncil, PILOT_COUNCILS, PILOT_COUNCIL_NAMES } from '@/lib/pilot-focus';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -169,6 +170,10 @@ export default function AssessmentPage() {
     console.log('[Pattern Book Navigation] Switching to DCP tab:', { topic, hcaSlug });
   };
 
+  // Private pilot: the plan rules are read and measured for the pilot councils only (lib/pilot-focus.ts).
+  // An unknown council is NOT in the pilot.
+  const inPilot = isPilotCouncil(selectedProperty?.constraints?.formerCouncil, selectedProperty?.constraints?.lga);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Regulatory Currency Warning Banner */}
@@ -193,20 +198,6 @@ export default function AssessmentPage() {
           <p className="text-slate-400 text-xs hidden sm:block">
             Every control cited to its clause — zoning live from the NSW Planning Portal
           </p>
-        </div>
-        {/* Quick Guide */}
-        <div className="hidden sm:flex items-center">
-          <a
-            href="/quick-guide"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-teal-500/50 text-teal-400 hover:bg-teal-500/10 transition-colors"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            Quick Guide
-          </a>
         </div>
         <div className="hidden sm:flex items-center">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-slate-700 bg-slate-800 text-slate-300">
@@ -499,7 +490,27 @@ export default function AssessmentPage() {
               </div>
             )}
 
-            {!loading && selectedProperty && (
+            {/* Outside the pilot councils: say so plainly instead of showing rules we have not measured. */}
+            {!loading && selectedProperty && !inPilot && (
+              <div className="bg-white border rounded-lg p-8 shadow-md" role="status">
+                <h3 className="text-lg font-semibold mb-2 text-slate-800">
+                  Council plan rules are not shown for {selectedProperty.constraints?.lga || 'this address'} yet
+                </h3>
+                <p className="text-slate-700 mb-3">
+                  Council Rules is in a private pilot. It reads the council&apos;s own planning documents, with the clause and the page, for a house in a residential R2 zone in these councils:
+                </p>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-slate-700 mb-3 list-disc pl-5">
+                  {PILOT_COUNCILS.map((c) => (
+                    <li key={c}>{PILOT_COUNCIL_NAMES[c] || c}</li>
+                  ))}
+                </ul>
+                <p className="text-slate-600 text-sm">
+                  The property facts on the left come from the NSW Planning Portal. Check the council&apos;s own documents for this address.
+                </p>
+              </div>
+            )}
+
+            {!loading && selectedProperty && inPilot && (
               <>
                 {/* Your project: key controls passed through from existing sources, above the tabs */}
                 <ErrorBoundary fallbackTitle="Error loading project summary">

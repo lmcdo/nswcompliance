@@ -9,6 +9,7 @@ import {
 } from '@/lib/rate-limit';
 import { identifyAiCrawler } from '@/lib/ai-crawlers';
 import { isHiddenPath } from '@/lib/hidden-products';
+import { isPilotUnlisted } from '@/lib/pilot-focus';
 
 /**
  * API Authentication, Rate Limiting & CORS Middleware
@@ -151,7 +152,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     // Refresh session — must call getUser() not getSession() to avoid stale JWTs
     await supabase.auth.getUser();
 
-    if (isHiddenPath(pathname)) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    if (isHiddenPath(pathname) || isPilotUnlisted(pathname)) response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     return response;
   }
 
@@ -205,8 +206,8 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {
     const pageResponse = NextResponse.next();
-    // Withdrawn products (lib/hidden-products.ts): reachable, never indexed.
-    if (isHiddenPath(pathname)) pageResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    // Withdrawn products (lib/hidden-products.ts) and pages unlisted for the pilot (lib/pilot-focus.ts): reachable, never indexed.
+    if (isHiddenPath(pathname) || isPilotUnlisted(pathname)) pageResponse.headers.set('X-Robots-Tag', 'noindex, nofollow');
     return pageResponse;
   }
 

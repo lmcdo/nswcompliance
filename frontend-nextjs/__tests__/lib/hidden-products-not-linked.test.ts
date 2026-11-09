@@ -20,6 +20,7 @@ const EXEMPT = [
   /^app\/embed\/(flood|solar-yield)\//,
   /^app\/climate-risk\//,
   /^lib\/hidden-products\.ts$/,
+  /^lib\/pilot-focus\.ts$/, // lists these same prefixes as pilot-unlisted
   /^app\/sitemap\.ts$/,
 ];
 

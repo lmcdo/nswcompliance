@@ -85,7 +85,8 @@ describe('GET /api/dcp/structured-controls', () => {
     const res = await GET(req('council=waverley&dev_type=dwelling_house'));
     const data = await res.json();
 
-    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley');
+    // No zone supplied = no zone filter (null), never a guessed zone.
+    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley', null);
     const served = data.categories.flatMap(
       (c: { controls: { pdf_url: string | null }[] }) => c.controls,
     );
@@ -182,6 +183,36 @@ describe('GET /api/dcp/structured-controls', () => {
       unit: 'm2',
     });
     expect(parking.controls[0].pdf_url).toMatch(/#page=21$/);
+  });
+
+  test('passes the site zone to the guarded source so rows for other zones are dropped there', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([proxyRow()]));
+    const res = await GET(req('council=waverley&dev_type=dwelling_house&zone=R2'));
+    const data = await res.json();
+    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley', 'R2');
+    expect(data.zone_filter_applied).toBe('R2');
+  });
+
+  test('reduces a portal zone label to its bare code before filtering', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([proxyRow()]));
+    await GET(req('council=waverley&zone=' + encodeURIComponent('R2: Low Density Residential')));
+    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley', 'R2');
+  });
+
+  test('an unreadable zone means no filter, and the response says no filter was applied', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([proxyRow()]));
+    const res = await GET(req('council=waverley&zone=' + encodeURIComponent('Low Density')));
+    const data = await res.json();
+    expect(mockFetchDcpControls).toHaveBeenCalledWith('waverley', null);
+    expect(data.zone_filter_applied).toBeNull();
+  });
+
+  test('the no-controls answer also reports the zone filter that was applied', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([proxyRow({ dev_type: 'secondary_dwelling' })]));
+    const res = await GET(req('council=waverley&dev_type=dwelling_house&zone=R3'));
+    const data = await res.json();
+    expect(data.has_controls).toBe(false);
+    expect(data.zone_filter_applied).toBe('R3');
   });
 
   test('source-unavailable is a visible 503, never an empty success', async () => {

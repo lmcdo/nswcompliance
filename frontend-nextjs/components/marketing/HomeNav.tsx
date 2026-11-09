@@ -26,34 +26,16 @@ export function HomeNav() {
         </Link>
         <div className="flex items-center gap-6">
           <Link
-            href="/reports"
-            className="text-sm text-slate-400 hover:text-white transition-colors"
-          >
-            Tools
-          </Link>
-          <Link
-            href="/what-you-get"
+            href="/reports/intelligence-brief"
             className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
           >
-            What you get
+            Site Facts
           </Link>
           <Link
-            href="/browse"
+            href="/how-it-works"
             className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
           >
-            Browse Councils
-          </Link>
-          <Link
-            href="/blog"
-            className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
-          >
-            Insights
-          </Link>
-          <Link
-            href="/pricing"
-            className="text-sm text-slate-400 hover:text-white transition-colors hidden sm:block"
-          >
-            Pricing
+            How it works
           </Link>
           <Link
             href="/assessment"
