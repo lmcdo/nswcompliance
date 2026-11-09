@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "A public-site and serving change: every menu points at Council Rules and Site Facts only, pricing shows no prices, /assessment shows a notice outside the ten pilot councils, and the controls table now receives the site zone",
- "commit_hash": "ba24267d",
+ "commit_hash": "ba175411",
  "files": [
   ".qa/reports/feat__pilot-site-focus.json",
   "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
