@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "The brief is behind two switches that are off, so this changes nothing live. It is Standard because four files change and the line it adds is shown to users as fact about where a council rule sits in the plan, so a wrong chapter name would mislead. It adds no new query: the registry query that already runs gains one column.",
-  "commit_hash": "409da801",
+  "commit_hash": "bfe769ba",
   "files": [
     "frontend-nextjs/app/api/brief/for-property/route.ts",
     "frontend-nextjs/lib/plan-brief.ts",
@@ -32,8 +32,8 @@
       "scenario": "A very long section heading from a badly parsed clause fills the card.",
       "what_happens": "The where-line would push the council's words down the screen.",
       "mitigated": true,
-      "how": "frontend-nextjs/lib/plan-brief.ts:121 cuts the section heading to 80 characters before it is shown.",
-      "repro": "Call whereInPlan with a 300 character sectionHeader and check the result is under 200 characters"
+      "how": "frontend-nextjs/lib/plan-brief.ts:121 cuts the section heading to 120 characters before it is shown.",
+      "repro": "Call whereInPlan with a 300 character sectionHeader and check the result is under 250 characters"
     }
   ],
   "residual_risk": "This shows where a clause sits but does not stop a clause for another building type reaching a house's first three. That is a separate fix, and the other session found it for Georges River 6.1.3 and the Canterbury-Bankstown site chapters. jest could not run locally; CI runs it.",

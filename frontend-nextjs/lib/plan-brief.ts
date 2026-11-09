@@ -142,6 +142,6 @@ export function dropExcluded(stored: StoredBriefRow[], excluded: ReadonlySet<num
 /** Where a clause sits in the plan: the chapter's name, then the section heading when it adds something. */
 export function whereInPlan(item: { chapterLabel?: string | null; sectionHeader?: string | null }): string {
   const chapter = String(item.chapterLabel ?? '').replace(/\s+/g, ' ').trim();
-  const section = String(item.sectionHeader ?? '').replace(/^#+\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const section = String(item.sectionHeader ?? '').replace(/^#+\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 120);
   return [chapter, section && section !== chapter ? section : ''].filter(Boolean).join(' \u203a ');
 }
