@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds one analytics event when feedback is saved, and corrects the privacy page, which called PostHog 'anonymous usage analytics' while session recording is on. The event carries the kind of feedback only. The privacy wording is public policy text, so it needs the owner's approval before merge. Directionality: the privacy change makes the page say more of what the site already does; the event adds a counter and no personal data.",
- "commit_hash": "5d146b3d",
+ "commit_hash": "41bc7d3f",
  "files": [
   "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
   "frontend-nextjs/app/privacy/page.tsx",
