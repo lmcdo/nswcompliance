@@ -128,10 +128,11 @@ def brief_recall() -> Result:
     finally:
         conn.close()
     served = _served_scope()
-    if served:                 # measure what the page serves: named councils, a house, after the skipped clauses
-        named, excluded = served
-        cells = {k: v for k, v in cells.items() if k[0] in named and k[1] == "dwelling_house"}
-        top = {k: [p for p in v if p not in excluded] for k, v in top.items()}
+    if not served:
+        return FAIL, "recall: the serving-scope file (frontend-nextjs/shared/brief-scope.json) is missing or malformed"
+    named, excluded = served        # measure what the page serves: named councils, a house, after the skipped clauses
+    cells = {k: v for k, v in cells.items() if k[0] in named and k[1] == "dwelling_house"}
+    top = {k: [p for p in v if p not in excluded] for k, v in top.items()}
     allk = holdk = alln = holdn = 0
     for (council, dev, row), ids in cells.items():
         hit = bool(ids & set(top.get((council, dev, CORE_ZONE[dev], row), [])))
@@ -140,10 +141,10 @@ def brief_recall() -> Result:
         if council in HOLDOUT:
             holdn += 1
             holdk += hit
-    if alln < (40 if served else 100) or holdn < (15 if served else 30):   # the served scope (a house, named councils) has fewer proven cells by design
+    if alln < 40 or holdn < 15:   # the served scope (a house, named councils) has fewer proven cells by design
         return FAIL, f"recall: only {alln} gold cells ({holdn} hold-out) - too few to mean anything"
     a, h = allk / alln, holdk / holdn
-    detail = ("served rows (named councils, a house, zone R2, after the skip): " if served else "") + (f"proven rule in the top 5: {allk}/{alln} = {a:.0%} overall (lower 95% bound {_wilson_lower(allk, alln):.0%}); "
+    detail = "served rows (named councils, a house, zone R2, after the skip): " + (f"proven rule in the top 5: {allk}/{alln} = {a:.0%} overall (lower 95% bound {_wilson_lower(allk, alln):.0%}); "
               f"hold-out {holdk}/{holdn} = {h:.0%} (bound {_wilson_lower(holdk, holdn):.0%}); bar {RECALL_BAR:.0%}")
     return (PASS if a >= RECALL_BAR and h >= RECALL_BAR else FAIL), detail
 
@@ -304,6 +305,7 @@ def heading_read() -> Result:
         scope = json.loads((ROOT / "frontend-nextjs" / "shared" / "brief-scope.json").read_text(encoding="utf-8"))
         scan = json.loads((ROOT / "data" / "plan_brief_heading_scan_2026-11-09.json").read_text(encoding="utf-8"))["rows"]
         named, excluded = list(scope["councils"]), {int(i) for i in scope["excluded_provision_ids"]}
+        known_empty = {c: set(v) for c, v in (scope.get("known_empty_topics") or {}).items()}
         dev, zone = scope["dev_type"], scope["zone_group"]
         flagged = {(r["council"], int(r["pid"])) for r in scan if r["flagged"]}
         scanned = {(r["council"], int(r["pid"])) for r in scan}
@@ -330,8 +332,11 @@ def heading_read() -> Result:
             problems.append(f"{co} {row}: a clause was never read against the headings (the brief changed since the scan)")
         if any((co, p) in flagged for p in kept):
             problems.append(f"{co} {row}: a flagged clause would still be shown")
-        if not kept and row in CORE_TOPICS:
-            problems.append(f"{co} {row}: no clause is left after the skip")
+        pass
+    for c in named:
+        for row in sorted(CORE_TOPICS):
+            if row not in known_empty.get(c, set()) and not [p for p in top.get((c, dev, zone, row), []) if p not in excluded]:
+                problems.append(f"{c} {row}: no clause is left to show (none in the table, or all skipped)")
     if topics < 30:
         return FAIL, f"heading check: only {topics} council-topic cells in scope (need at least 30)"
     hit, n = collections.Counter(), collections.Counter()
@@ -340,6 +345,9 @@ def heading_read() -> Result:
             shown = [p for p in top.get((co, d, CORE_ZONE[d], row), []) if p not in excluded]
             n[co] += 1
             hit[co] += bool(ids & set(shown))
+    uncovered = [c for c in named if not n[c]]
+    if uncovered:
+        problems.append("no proven cases to measure recall for " + ", ".join(uncovered))
     low = [f"{c} {hit[c]}/{n[c]}" for c in named if n[c] and hit[c] / n[c] < 0.80]
     if low:
         problems.append("recall under 80% for " + ", ".join(low))
@@ -350,5 +358,5 @@ def heading_read() -> Result:
     if problems:
         return FAIL, "heading check: " + "; ".join(problems[:4]) + (f" (+{len(problems) - 4} more)" if len(problems) > 4 else "")
     return PASS, (f"heading check (script, from the council's own PDF headings; not an owner read): {len(named)} named councils, {topics} council-topic cells; "
-                  f"every shown clause was read, none flagged, every topic keeps a clause; recall after the skip {overall:.0%} over {tot} proven cells "
+                  f"every shown clause was read, none flagged, every core topic keeps a clause except {sum(len(v) for v in known_empty.values())} documented known gap(s); recall after the skip {overall:.0%} over {tot} proven cells "
                   f"(lowest council {min(hit[c] / n[c] for c in named if n[c]):.0%})")

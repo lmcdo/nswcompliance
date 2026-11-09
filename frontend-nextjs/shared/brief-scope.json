@@ -26,7 +26,7 @@
   "parramatta": 85,
   "hornsby": 87
  },
- "limits": "Keyword-based: it can miss a wrong-type heading and can flag a right one. Only house projects in zone R2 are covered; every other project type and zone shows no brief. Headings for ku_ring_gai are weakly classified (page footers). A clause-text match (another building type named inside the clause) does not flag a clause whose chapter is for dwelling houses or low density residential. A heading that names houses as well as another type is treated as mixed, not wrong. Garages and carports are not an ancillary structure (they belong in setback and parking sections); outbuildings, basements, pools and sheds are. A clause that names another type but also an ordinary dwelling ('a dwelling, dual occupancy, ...') is not flagged.",
+ "limits": "Keyword-based: it can miss a wrong-type heading and can flag a right one. Only house projects in zone R2 are covered; every other project type and zone shows no brief. Headings for ku_ring_gai are weakly classified (page footers). A clause-text match (another building type named inside the clause) does not flag a clause whose chapter is for dwelling houses or low density residential. A heading that names houses as well as another type is treated as mixed, not wrong. Garages and carports are not an ancillary structure (they belong in setback and parking sections); outbuildings, basements, pools and sheds are. A clause that names another type but also an ordinary dwelling ('a dwelling, dual occupancy, ...') is not flagged. Known gap: Ku-ring-gai has no landscaping rows in the table, so that topic shows the plain not-found text; any other missing core topic fails OC-29.",
  "excluded_provision_ids": [
   163699,
   163700,
@@ -142,5 +142,10 @@
   262150,
   262176,
   262761
- ]
+ ],
+ "known_empty_topics": {
+  "ku_ring_gai": [
+   "landscaping_min"
+  ]
+ }
 }

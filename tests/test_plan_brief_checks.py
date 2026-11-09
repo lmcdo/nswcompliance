@@ -172,3 +172,18 @@ def test_recorded_speed_passes_fails_and_rejects_a_short_record(monkeypatch, tmp
     assert pbc.brief_speed()[0] == pbc.FAIL
     f.write_text("{}", encoding="utf-8")
     assert pbc.brief_speed()[0] == pbc.UNKNOWN
+
+def test_heading_check_fails_on_a_missing_core_topic_unless_the_scope_file_lists_it_as_a_known_gap(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    del top[("penrith", "dwelling_house", "R2", "private_open_space")]            # the topic has no rows at all
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.FAIL and "no clause is left to show" in why
+    second = tmp_path / "second"
+    second.mkdir()
+    _setup(monkeypatch, second, top, scan, cells)
+    path = second / "frontend-nextjs" / "shared" / "brief-scope.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["known_empty_topics"] = {"penrith": ["private_open_space"]}
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    assert pbc.heading_read()[0] == pbc.PASS

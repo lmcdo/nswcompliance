@@ -28,7 +28,7 @@
   "functions": [
     {
       "name": "heading_read",
-      "file_line": "scripts/plan_brief_checks.py:296",
+      "file_line": "scripts/plan_brief_checks.py:297",
       "input": "the scope file, the recorded heading scan and the live brief rows",
       "output": "PASS, FAIL or UNKNOWN with the reason",
       "if_none": "a missing or malformed file reads FAIL; an unreachable database reads UNKNOWN"
@@ -79,6 +79,13 @@
       "mitigated": true,
       "how": "inBriefScope returns false so the route returns an empty list; covered by plan-brief-scope.test.ts.",
       "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-brief-scope.test.ts"
+    },
+    {
+      "scenario": "The serving-scope file is deleted or malformed.",
+      "what_happens": "A public claim could be measured on an unrelated dataset.",
+      "mitigated": true,
+      "how": "OC-30 and OC-29 return FAIL when the scope file is missing or malformed; no fallback to the unscoped data.",
+      "repro": "python scripts/outreach_claim_checks.py OC-30 with the scope file renamed"
     }
   ],
   "post_merge": {
