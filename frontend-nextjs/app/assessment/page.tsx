@@ -23,7 +23,7 @@ import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTo
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
 import { YourProjectSummary } from '@/components/compliance/YourProjectSummary';
-import { pilotCouncilKey, isPilotZone, PILOT_COUNCILS, PILOT_COUNCIL_NAMES, PILOT_ZONE } from '@/lib/pilot-focus';
+import { pilotCouncilKey, dataCouncilKey, isPilotZone, PILOT_COUNCILS, PILOT_COUNCIL_NAMES, PILOT_ZONE } from '@/lib/pilot-focus';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -177,7 +177,7 @@ export default function AssessmentPage() {
   const siteZone = selectedProperty?.constraints?.zone as string | undefined;
   const zoneInPilot = isPilotZone(siteZone);
   const inPilot = pilotKey !== null && zoneInPilot;
-  const councilKey = pilotKey ?? (selectedProperty?.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty?.constraints?.lga || ''));
+  const dataCouncil = dataCouncilKey(selectedProperty?.constraints?.formerCouncil, selectedProperty?.constraints?.lga);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -524,7 +524,7 @@ export default function AssessmentPage() {
                 {/* Your project: key controls passed through from existing sources, above the tabs */}
                 <ErrorBoundary fallbackTitle="Error loading project summary">
                   <YourProjectSummary
-                    formerCouncil={councilKey}
+                    formerCouncil={dataCouncil}
                     constraints={selectedProperty.constraints as any}
                     planningLayers={selectedProperty.planningLayers || []}
                   />
@@ -666,7 +666,7 @@ export default function AssessmentPage() {
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
                         lga={selectedProperty.constraints?.lga}
-                        formerCouncil={councilKey}
+                        formerCouncil={dataCouncil}
                         zone={selectedProperty.constraints?.zone}
                         heritage={heritageAnswer(selectedProperty.heritage)}
                         hcaName={heritageClass.isConservationArea

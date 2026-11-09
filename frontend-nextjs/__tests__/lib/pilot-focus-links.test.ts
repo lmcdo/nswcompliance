@@ -11,6 +11,7 @@ import {
   PILOT_COUNCIL_LABELS,
   PILOT_COUNCIL_NAMES,
   PILOT_UNLISTED_PREFIXES,
+  dataCouncilKey,
   isPilotCouncil,
   isPilotZone,
   pilotCouncilKey,
@@ -111,6 +112,13 @@ describe('pilot focus', () => {
     expect(pilotCouncilKey('marrickville', 'Inner West')).toBeNull();
     expect(pilotCouncilKey(null, null)).toBeNull();
     expect(pilotCouncilKey('', '')).toBeNull();
+  });
+
+  it('dataCouncilKey prefers the pilot key and otherwise keeps the key the page always used', () => {
+    expect(dataCouncilKey('warringah', 'Northern Beaches')).toBe('northern_beaches');
+    expect(dataCouncilKey('leichhardt', 'Inner West')).toBe('leichhardt');
+    expect(dataCouncilKey(undefined, 'Campbelltown')).toBe('campbelltown');
+    expect(dataCouncilKey(undefined, undefined)).toBe('');
   });
 
   it('every pilot council is found from its own LGA name', () => {

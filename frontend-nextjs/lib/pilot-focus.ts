@@ -115,6 +115,11 @@ export function pilotCouncilKey(formerCouncil: string | null | undefined, lga: s
   return candidates.find((k) => !!k && PILOT_COUNCILS.includes(k)) ?? null;
 }
 
+/** The council key the data calls use: the pilot key when there is one, otherwise the key the page always used. */
+export function dataCouncilKey(formerCouncil: string | null | undefined, lga: string | null | undefined): string {
+  return pilotCouncilKey(formerCouncil, lga) ?? ((formerCouncil || '').trim().toLowerCase() || toLgaSlug(lga) || '');
+}
+
 export function isPilotCouncil(formerCouncil: string | null | undefined, lga: string | null | undefined): boolean {
   return pilotCouncilKey(formerCouncil, lga) !== null;
 }
