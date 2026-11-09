@@ -26,7 +26,7 @@
   "parramatta": 85,
   "hornsby": 87
  },
- "limits": "Keyword-based: it can miss a wrong-type heading and can flag a right one. Only house projects in zone R2 are covered; every other project type and zone shows no brief. Headings for ku_ring_gai are weakly classified (page footers). A clause-text match (another building type named inside the clause) does not flag a clause whose chapter is for dwelling houses or low density residential. A heading that names houses as well as another type is treated as mixed, not wrong. Garages and carports are not an ancillary structure (they belong in setback and parking sections); outbuildings, basements, pools and sheds are. A clause that names another type but also an ordinary dwelling ('a dwelling, dual occupancy, ...') is not flagged. Known gap: Ku-ring-gai has no landscaping rows in the table, so that topic shows the plain not-found text; Penrith private_open_space is also a declared gap: the house section (D2 section 1, pages 6-20 of the Penrith Part D2 PDF) has no open space area or dimension control, only mentions; the figures start in the dual occupancy section (2.14). Any other missing core topic fails OC-29.",
+ "limits": "Keyword-based: it can miss a wrong-type heading and can flag a right one. Only house projects in zone R2 are covered; every other project type and zone shows no brief. Headings for ku_ring_gai are weakly classified (page footers). A clause-text match (another building type named inside the clause) does not flag a clause whose chapter is for dwelling houses or low density residential. A heading that names houses as well as another type is treated as mixed, not wrong. Garages and carports are not an ancillary structure (they belong in setback and parking sections); outbuildings, basements, pools and sheds are. A clause that names another type but also an ordinary dwelling ('a dwelling, dual occupancy, ...') is not flagged. Known gaps (Ku-ring-gai landscaping is declared only until the strict picks are loaded: they hold three front garden clauses for it; core topics where the plan has no clause that states a requirement for a house, so the brief says not found): Ashfield rear setback (the plan gives no house-specific rear control; an Inner West chapter gives a perimeter setback for other development); Penrith private open space (the house section has no open space figure, the figures start in the dual occupancy section). Where a council sets a control by map, on merit or in general wording (Northern Beaches front and rear setback, Ashfield front setback, Blacktown landscaping) the brief shows the closest clause and says so. Any other missing core topic fails OC-29.",
  "excluded_provision_ids": [
   160516,
   163699,
@@ -212,6 +212,9 @@
   262761
  ],
  "known_empty_topics": {
+  "ashfield": [
+   "rear_setback"
+  ],
   "ku_ring_gai": [
    "landscaping_min"
   ],

@@ -1,4 +1,5 @@
-{"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "empty": true}
+{"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "rank": 1, "provision_id": 240900, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
+{"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "rank": 2, "provision_id": 240901, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
 {"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "side_setback", "rank": 1, "provision_id": 240903, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "side_setback", "rank": 2, "provision_id": 240902, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "ashfield", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "rear_setback", "empty": true}
@@ -21,7 +22,7 @@
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "rear_setback", "rank": 3, "provision_id": 202404, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "secondary_street_setback", "rank": 1, "provision_id": 202429, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "car_parking", "rank": 1, "provision_id": 202445, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
-{"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "landscaping_min", "empty": true}
+{"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "landscaping_min", "rank": 1, "provision_id": 202272, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "private_open_space", "rank": 1, "provision_id": 202446, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "private_open_space", "rank": 2, "provision_id": 202447, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "blacktown", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "max_site_coverage", "empty": true}
@@ -70,9 +71,11 @@
 {"council": "ku_ring_gai", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "max_site_coverage", "rank": 2, "provision_id": 171445, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "ku_ring_gai", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "max_height", "empty": true}
 {"council": "ku_ring_gai", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "deep_soil_min", "empty": true}
-{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "empty": true}
+{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "rank": 1, "provision_id": 190880, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
+{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "front_setback", "rank": 2, "provision_id": 190818, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
 {"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "side_setback", "rank": 1, "provision_id": 190858, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
-{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "rear_setback", "empty": true}
+{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "rear_setback", "rank": 1, "provision_id": 190897, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
+{"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "rear_setback", "rank": 2, "provision_id": 190814, "verdict": "MIGHT", "reason": "closest clause: the council sets this by map, on merit or in general wording, not as a single figure"}
 {"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "secondary_street_setback", "rank": 1, "provision_id": 192262, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "car_parking", "rank": 1, "provision_id": 192218, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}
 {"council": "northern_beaches", "zone_group": "R2", "dev_type": "dwelling_house", "row_type": "landscaping_min", "rank": 1, "provision_id": 190828, "verdict": "MIGHT", "reason": "strict pick: the clause states the requirement for a house"}

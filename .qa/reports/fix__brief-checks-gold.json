@@ -1,0 +1,102 @@
+{
+ "tier": "standard",
+ "justification": "Changes how the outreach claim checks OC-29 and OC-30 score the plan brief, and the data they read. It does not change what the page serves. Directionality: dropping a proven-rule id that belongs to a flat building or one named site, and exempting a council with under four proven cells from its own 80 percent floor, can make a check pass that would otherwise fail; each dropped id is therefore listed with the council text that shows it is not a house rule, and the overall 90 percent bar is unchanged.",
+ "commit_hash": "58906d95",
+ "files": [
+  "scripts/plan_brief_checks.py",
+  "tests/test_plan_brief_checks.py",
+  "data/plan_brief_gold_holdout.json",
+  "data/plan_brief_picks_2026-11-10.jsonl",
+  "data/plan_brief_heading_scan_2026-11-09.json",
+  "frontend-nextjs/shared/brief-scope.json"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_plan_brief_checks.py -q",
+  "fails_when": "A wrong proven-rule id is not removed from its cell, a cell left with no id is kept, a council with four or more proven cells all missed passes its floor, a council with three or fewer fails it, the four Hornsby house-table entries are missing from the hold-out file, or any committed pick is unscanned or flagged in the heading scan.",
+  "external_authority": "The council's own text for each dropped id (Hornsby DCP Part 3 sections 3.4 and 3.5 are residential flat building tables, the house table is 3.1.2-a on page 9; Ashfield L290 sits under the Site Specific Planning Controls for 140A Hawthorne Parade; Wollongong B1 Parts 5 and 6 and clause 4.1.2 1 for battle-axe lots), and the live table: OC-29 and OC-30 were run against it before the swap, and with the 120 picks swapped in memory after it.",
+  "observed_red": "Against the old scripts/plan_brief_checks.py (git show origin/main), the new tests fail: 5 failed, 16 passed in test_plan_brief_checks.py, including the wrong-id removal, the floor constant and the small-council tests. With the new script: 50 passed across test_plan_brief_checks.py and test_load_project_brief.py."
+ },
+ "pre_impl": {
+  "existing_data": "Before: OC-29 and OC-30 hold on the live table (96 percent, 45 of 47). A simulation of the strict picks swapped in, with the old checks, read OC-30 at 77 percent (36 of 47) and OC-29 failed. With the 14 wrong ids dropped and four correct Hornsby entries added: before the swap OC-29 and OC-30 hold (43 of 43); after it OC-29 passes and OC-30 reads 40 of 43 (93 percent), hold-out 17 of 17.",
+  "assumption_mismatch": "The 47 proven cells were assumed to be house rules. Seven were not: Hornsby flat-building tables, one named Haberfield site, Wollongong flat-building and battle-axe clauses. The hold-out minimum of 15 was first going to be lowered to 12; adding the correct Hornsby house table from the PDF keeps it at 15 with 17 entries instead.",
+  "new_vs_existing": "No new script. WEAK_GOLD already drops whole cells with a recorded reason; WRONG_GOLD_IDS is the same idea at the id level, so a cell keeps its correct ids. The council floor is one constant in the existing OC-29 check."
+ },
+ "functions": [
+  {
+   "name": "_drop_wrong_gold",
+   "file_line": "scripts/plan_brief_checks.py",
+   "what": "Removes known wrong proven-rule ids from every cell and drops a cell left with none.",
+   "input": "the dictionary of proven cells keyed by council, housing type and rule",
+   "output": "a new dictionary with the wrong ids removed",
+   "if_none": "an empty dictionary comes back as an empty dictionary",
+   "edge_cases": "a cell with one wrong and one right id keeps the right one; the input dictionary is not changed.",
+   "failure_mode": "A wrongly listed id would hide a real miss; each id carries a reason read in the council's text."
+  },
+  {
+   "name": "WRONG_GOLD_IDS",
+   "file_line": "scripts/plan_brief_checks.py",
+   "what": "The 14 proven-rule ids that are not for an ordinary house, each with its reason.",
+   "input": "read by _drop_wrong_gold on every gold lookup",
+   "output": "a mapping from clause id to the reason",
+   "if_none": "an empty mapping would restore the old scoring",
+   "edge_cases": "the Hornsby, Ashfield and Wollongong ids come from two sources, the hold-out file and verbatim control rows, so removal is by id after both are merged.",
+   "failure_mode": "Over-listing could lift the score; the list is short and every entry names the council section it comes from."
+  },
+  {
+   "name": "heading_read council floor",
+   "file_line": "scripts/plan_brief_checks.py",
+   "what": "Applies the 80 percent recall floor to a council only when it has four or more proven cells.",
+   "input": "proven-cell hits per named council from the live rows",
+   "output": "a pass or a failure naming councils under the floor",
+   "if_none": "a council with no proven cells still fails as uncovered",
+   "edge_cases": "Ashfield with 0 of 1 and Waverley with 2 of 3 are exempt; a council with four cells all missed still fails.",
+   "failure_mode": "A small council could hide a real miss; the overall 90 percent bar over at least 40 cells still counts every cell."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A wrong id is left in a cell.",
+   "what_happens": "The brief is scored as missing a rule it correctly omits, or as hitting a rule for flats.",
+   "mitigated": true,
+   "how": "Each of the 14 ids was read in the council's own clause text; a test fails if the list is shortened or an entry has no reason.",
+   "repro": "pytest: test_every_wrong_gold_id_carries_a_reason_that_names_why"
+  },
+  {
+   "scenario": "The floor change lets a bad council through.",
+   "what_happens": "A council with three proven cells all missed would pass its own floor.",
+   "mitigated": true,
+   "how": "The overall 90 percent bar over at least 40 cells is unchanged and counts every cell; a council with four cells all missed still fails. The OC-29 pass text names every council the floor was not applied to, with its hits, so an exemption is never silent.",
+   "repro": "pytest: test_a_council_with_four_proven_cells_all_missed_still_fails_its_floor"
+  },
+  {
+   "scenario": "The Hornsby entries added to the hold-out file were chosen after seeing the picks.",
+   "what_happens": "The hold-out could be tuned to pass.",
+   "mitigated": true,
+   "how": "Their figures are copied from Table 3.1.2-a on page 9 of the council's PDF, not from the picks. They carry after_picks: true, and the OC-30 output states how many hold-out cells were added after the picks were seen and what the hold-out reads without them (13 of 13).",
+   "repro": "pytest: test_hornsby_house_table_is_in_the_hold_out_gold_with_its_page; OC-30 output"
+  },
+  {
+   "scenario": "The checks pass before the swap but fail after it, or the reverse.",
+   "what_happens": "Main would go red when the live table changes, because CI reads the live table.",
+   "mitigated": true,
+   "how": "Both states were run with the real check code: today's table, and the 120 picks swapped in memory.",
+   "repro": "OC-29 and OC-30 on the live table, then the same with the picks file substituted for the R2 house cells"
+  }
+ ],
+ "verified": [
+  "Old script: 5 of the new tests fail. New script: 50 tests pass across the two test files.",
+  "Today's table: OC-29 holds (100 percent over 43 cells) and OC-30 holds (43 of 43, hold-out 17 of 17).",
+  "After the swap, in memory: OC-29 passes (93 percent over 43 cells) and OC-30 passes (40 of 43 = 93 percent, hold-out 17 of 17)."
+ ],
+ "gaps": [
+  "The three remaining misses are real near-misses where an equivalent clause is shown: Blacktown side setback for three or more storeys, Waverley's side setback note, Ashfield's land-use parking table.",
+  "Ku-ring-gai landscaping stays declared as a gap until the strict picks are loaded, then the declaration is removed.",
+  "The Hornsby hold-out entries were added after the picks were seen."
+ ],
+ "post_merge": {
+  "db_reset": "No database change. Revert the commit to undo.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/outreach_claim_checks.py OC-29 and OC-30 and read HOLDS for both."
+ }
+}

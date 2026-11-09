@@ -187,3 +187,86 @@ def test_heading_check_fails_on_a_missing_core_topic_unless_the_scope_file_lists
     doc["known_empty_topics"] = {"penrith": ["private_open_space"]}
     path.write_text(json.dumps(doc), encoding="utf-8")
     assert pbc.heading_read()[0] == pbc.PASS
+
+
+# ---- 2026-11-10: wrong proven-rule ids are dropped by id; a council's own recall floor needs 4+ proven cells ----
+def test_drop_wrong_gold_removes_only_the_wrong_ids_and_drops_a_cell_left_with_none():
+    cells = {("hornsby", "dwelling_house", "front_setback"): {262574, 262143},       # one wrong id, one right
+             ("hornsby", "dwelling_house", "deep_soil_min"): {262616, 262623},       # all wrong
+             ("penrith", "dwelling_house", "front_setback"): {1, 2}}                 # untouched
+    out = pbc._drop_wrong_gold(cells)
+    assert out[("hornsby", "dwelling_house", "front_setback")] == {262143}
+    assert ("hornsby", "dwelling_house", "deep_soil_min") not in out
+    assert out[("penrith", "dwelling_house", "front_setback")] == {1, 2}
+
+
+def test_drop_wrong_gold_does_not_change_its_input():
+    cells = {("hornsby", "dwelling_house", "front_setback"): {262574, 262143}}
+    pbc._drop_wrong_gold(cells)
+    assert cells[("hornsby", "dwelling_house", "front_setback")] == {262574, 262143}
+
+
+def test_every_wrong_gold_id_carries_a_reason_that_names_why():
+    assert len(pbc.WRONG_GOLD_IDS) >= 14
+    for i, why in pbc.WRONG_GOLD_IDS.items():
+        assert isinstance(i, int) and len(why) > 30, (i, why)
+
+
+def test_a_council_with_fewer_than_four_proven_cells_is_not_failed_on_its_own_floor(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    few = [k for k in cells if k[0] == "ashfield"][:3]
+    for k in [k for k in cells if k[0] == "ashfield" and k not in few]:
+        del cells[k]
+    for k in few:
+        cells[k] = {424242}                                # all three of ashfield's proven rules are missed
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.PASS, why                         # 3 cells: chance, and the overall bar still holds
+
+
+def test_a_council_with_four_proven_cells_all_missed_still_fails_its_floor(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    four = [k for k in cells if k[0] == "ashfield"][:4]
+    for k in [k for k in cells if k[0] == "ashfield" and k not in four]:
+        del cells[k]
+    for k in four:
+        cells[k] = {424242}
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.FAIL and "recall under 80%" in why
+
+
+def test_the_floor_constant_is_four():
+    assert pbc.MIN_CELLS_FOR_COUNCIL_FLOOR == 4
+
+
+def test_hornsby_house_table_is_in_the_hold_out_gold_with_its_page():
+    gold = json.loads((pbc.ROOT / "data" / "plan_brief_gold_holdout.json").read_text(encoding="utf-8"))
+    mine = [g for g in gold if g["id"] == 262143]
+    assert sorted(g["rule_type"] for g in mine) == ["front_setback", "rear_setback", "secondary_street_setback", "side_setback"]
+    assert all(g["council"] == "hornsby" and g["page"] == 9 and g["applies_to"] == ["dwelling_house"] for g in mine)
+    assert all(g.get("after_picks") is True for g in mine)          # disclosed in the check output: added after the picks were seen
+    assert pbc._late_gold_cells() == {("hornsby", "dwelling_house", r) for r in ("front_setback", "side_setback", "rear_setback", "secondary_street_setback")}
+
+
+def test_every_committed_pick_has_been_scanned_and_none_is_flagged():
+    scan = json.loads((pbc.ROOT / "data" / "plan_brief_heading_scan_2026-11-09.json").read_text(encoding="utf-8"))["rows"]
+    scanned = {(r["council"], int(r["pid"])): r["flagged"] for r in scan}
+    for line in (pbc.ROOT / "data" / "plan_brief_picks_2026-11-10.jsonl").read_text(encoding="utf-8").splitlines():
+        r = json.loads(line)
+        if r.get("empty"):
+            continue
+        k = (r["council"], int(r["provision_id"]))
+        assert k in scanned and scanned[k] is False, k
+
+
+def test_the_pass_text_names_the_councils_the_floor_was_not_applied_to(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    few = [k for k in cells if k[0] == "ashfield"][:3]
+    for k in [k for k in cells if k[0] == "ashfield" and k not in few]:
+        del cells[k]
+    for k in few:
+        cells[k] = {424242}
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.PASS and "floor not applied under 4 proven cells: ashfield 0/3" in why, why

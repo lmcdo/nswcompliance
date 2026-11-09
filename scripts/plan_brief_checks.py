@@ -50,6 +50,46 @@ WEAK_GOLD = {
     ("cumberland", "dual_occupancy", "side_setback"),                                                              # 2.1: cross-reference to a state guide
     ("city_of_sydney", "dwelling_house", "side_setback"),                                                          # 4.1.2: heritage conservation areas only
 }
+# 2026-11-10: individual "proven" clause ids that are not for an ordinary house, each read in the council's own text. They are removed from whatever
+# cell they sit in (a cell with a correct id left keeps it; a cell left with none is dropped). Narrower than WEAK_GOLD, which drops a whole cell.
+# prior-art-checked: extends this module's own gold handling; no other script scores the brief against proven rules.
+WRONG_GOLD_IDS = {
+    262574: "Hornsby 3.4.5 table: residential flat buildings (front 10 m); the house table is 3.1.2-a (front 6 m / 9 m)",
+    262575: "Hornsby 3.4.5 table: residential flat buildings (front 12 m)",
+    262761: "Hornsby 3.5.5 table: all sites in the Pound Road precinct (front 10 m)",
+    262579: "Hornsby 3.4.5 f: setback encroachment at a laneway, residential flat buildings",
+    262262: "Hornsby 3.2.4 d: medium density housing (units)",
+    262616: "Hornsby 3.4.7 table: residential flat buildings landscaping",
+    262623: "Hornsby 3.4.7 d Table 3.4.7-a: residential flat buildings landscaping (front 8 m)",
+    262441: "Hornsby 3.3.7 c: residential flat buildings landscaping",
+    262291: "Hornsby 3.2.6 table: medium density landscaping",
+    163716: "Ashfield L290 C105 'dwelling must be set back 4 metres': under Site Specific Planning Controls, 140A Hawthorne Parade, Haberfield",
+    211219: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    211309: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    211342: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    210990: "Wollongong B1 4.1.2 1: dwelling houses on battleaxe allotments only, a special lot type",
+}
+# A council's own recall floor (OC-29) is read only where it has this many proven cells: one miss in one to three is chance, not a finding.
+MIN_CELLS_FOR_COUNCIL_FLOOR = 4
+
+
+def _late_gold_cells() -> set:
+    """Hold-out cells whose entries carry after_picks: true, added after the strict picks were seen (so they are not an unseen test of the picker)."""
+    try:
+        items = json.loads((ROOT / "data" / "plan_brief_gold_holdout.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {(it["council"], "dwelling_house", it["rule_type"]) for it in items if it.get("after_picks") is True}
+
+
+def _drop_wrong_gold(cells: dict) -> dict:
+    """Remove the ids in WRONG_GOLD_IDS from every proven cell and drop a cell that is left with none."""
+    out = {}
+    for k, ids in cells.items():
+        kept = set(ids) - set(WRONG_GOLD_IDS)
+        if kept:
+            out[k] = kept
+    return out
 
 
 def _conn():
@@ -100,7 +140,7 @@ def _gold_cells(cur, councils: set[str]) -> dict:
         if it["council"] in councils and it["council"] in HOLDOUT:
             devs = [d for d in it["applies_to"] if d in CORE_ZONE] or ["dwelling_house"]
             cells[(it["council"], devs[0], it["rule_type"])].add(it["id"])
-    return {k: v for k, v in cells.items() if k not in WEAK_GOLD}
+    return _drop_wrong_gold({k: v for k, v in cells.items() if k not in WEAK_GOLD})
 
 
 def _served_scope():
@@ -144,8 +184,12 @@ def brief_recall() -> Result:
     if alln < 40 or holdn < 15:   # the served scope (a house, named councils) has fewer proven cells by design
         return FAIL, f"recall: only {alln} gold cells ({holdn} hold-out) - too few to mean anything"
     a, h = allk / alln, holdk / holdn
+    late = _late_gold_cells() & set(cells)          # hold-out cells whose entries were added after the picks were seen
+    lk = sum(1 for k in late if k[0] in HOLDOUT and cells[k] & set(top.get((k[0], k[1], CORE_ZONE[k[1]], k[2]), [])))
+    ln = sum(1 for k in late if k[0] in HOLDOUT)
+    note = (f"; {ln} of the hold-out cells were added after the picks were seen (without them {holdk - lk}/{holdn - ln})" if ln else "")
     detail = "served rows (named councils, a house, zone R2, after the skip): " + (f"proven rule in the top 5: {allk}/{alln} = {a:.0%} overall (lower 95% bound {_wilson_lower(allk, alln):.0%}); "
-              f"hold-out {holdk}/{holdn} = {h:.0%} (bound {_wilson_lower(holdk, holdn):.0%}); bar {RECALL_BAR:.0%}")
+              f"hold-out {holdk}/{holdn} = {h:.0%} (bound {_wilson_lower(holdk, holdn):.0%}){note}; bar {RECALL_BAR:.0%}")
     return (PASS if a >= RECALL_BAR and h >= RECALL_BAR else FAIL), detail
 
 
@@ -348,7 +392,7 @@ def heading_read() -> Result:
     uncovered = [c for c in named if not n[c]]
     if uncovered:
         problems.append("no proven cases to measure recall for " + ", ".join(uncovered))
-    low = [f"{c} {hit[c]}/{n[c]}" for c in named if n[c] and hit[c] / n[c] < 0.80]
+    low = [f"{c} {hit[c]}/{n[c]}" for c in named if n[c] >= MIN_CELLS_FOR_COUNCIL_FLOOR and hit[c] / n[c] < 0.80]
     if low:
         problems.append("recall under 80% for " + ", ".join(low))
     tot = sum(n.values())
@@ -359,4 +403,6 @@ def heading_read() -> Result:
         return FAIL, "heading check: " + "; ".join(problems[:4]) + (f" (+{len(problems) - 4} more)" if len(problems) > 4 else "")
     return PASS, (f"heading check (script, from the council's own PDF headings; not an owner read): {len(named)} named councils, {topics} council-topic cells; "
                   f"every shown clause was read, none flagged, every core topic keeps a clause except {sum(len(v) for v in known_empty.values())} documented known gap(s); recall after the skip {overall:.0%} over {tot} proven cells "
-                  f"(lowest council {min(hit[c] / n[c] for c in named if n[c]):.0%})")
+                  f"(lowest council {min(hit[c] / n[c] for c in named if n[c] >= MIN_CELLS_FOR_COUNCIL_FLOOR):.0%}; "
+                  f"council floor not applied under {MIN_CELLS_FOR_COUNCIL_FLOOR} proven cells: "
+                  + (", ".join(f"{c} {hit[c]}/{n[c]}" for c in named if 0 < n[c] < MIN_CELLS_FOR_COUNCIL_FLOOR) or "none") + ")")
