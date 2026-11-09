@@ -124,7 +124,7 @@ export function usePlanBriefRows(council: string, devType: string | null, zone: 
     ? `/api/brief/for-property?council=${encodeURIComponent(council)}&dev_type=${encodeURIComponent(devType)}${zone ? `&zone=${encodeURIComponent(zone)}` : ''}`
     : null;
   const { data } = useSWR<BriefPayload>(url, fetcher, { revalidateOnFocus: false });
-  if (!data?.enabled || !data.rows.length) return null;          // off, failed, or nothing built for this council: show nothing
+  if (!data?.enabled || !Array.isArray(data.rows) || !data.rows.length) return null;          // off, failed, or nothing built for this council: show nothing
   return shapeBriefRows(data.rows, provenKeys);
 }
 

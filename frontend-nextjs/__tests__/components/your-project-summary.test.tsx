@@ -148,6 +148,12 @@ describe('no unproven citation, no empty labels (pilot)', () => {
     expect(document.body.textContent).not.toMatch(/Citation not yet checked/);
     expect(document.body.textContent).not.toMatch(/3\.1\.2|3\.1\.3|4\.2/);   // fixture clause numbers stay out of the table
   });
+  it('a control with neither page nor link gets no link label (never a dead "Open the plan")', () => {
+    const rows = buildDcpRows({ has_controls: true, categories: [{ controls: [control({ control_type: 'front_setback', value_min: 6 })] }] });
+    expect(rows.find((r) => r.key === 'front')?.entries[0].linkText).toBe('');
+    renderView({ dcpRows: rows });
+    expect(screen.queryAllByText('Open the plan')).toHaveLength(screen.queryAllByTestId('plan-link').length);
+  });
   it('never prints "Not in our data" for a row that has no words', () => {
     renderView();
     expect(document.body.textContent).not.toMatch(/Not in our data/);

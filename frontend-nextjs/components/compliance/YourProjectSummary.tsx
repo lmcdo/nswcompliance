@@ -84,7 +84,7 @@ function EntryCells({ entry }: { entry: SummaryEntry }) {
             {entry.linkText}<ExternalLink className="w-2.5 h-2.5" aria-hidden />
           </a>
         ) : (
-          <span className="text-slate-500" data-testid="no-link">{entry.linkText}</span>
+          entry.linkText ? <span className="text-slate-500" data-testid="no-link">{entry.linkText}</span> : null
         )}
       </td>
       <td className="px-2 py-2 align-top text-xs text-slate-600">
