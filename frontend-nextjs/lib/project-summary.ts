@@ -88,7 +88,7 @@ function dcpEntry(c: StructuredControl, withLabel: boolean): SummaryEntry {
     unit: c.unit,
     limit,
     document: c.dcp_name,
-    clause: c.section_ref,
+    clause: c.section_ref ?? c.section_ref_unchecked ?? null,
     page: c.pdf_page,
     // "Open the plan" only when there is a link to open; with neither page nor link there is no label.
     linkText: c.pdf_page ? `page ${c.pdf_page}` : c.pdf_url ? 'Open the plan' : '',

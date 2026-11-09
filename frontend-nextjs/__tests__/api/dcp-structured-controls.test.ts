@@ -154,7 +154,7 @@ describe('GET /api/dcp/structured-controls', () => {
     expect(rear.plain_summary).toBeNull();
   });
 
-  test('the clause shown is the proven one, else the stored unchecked label, else null (clause and page on every row)', async () => {
+  test('the proven clause stays in section_ref; an unproven one is carried apart in section_ref_unchecked', async () => {
     mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
       proxyRow({ clause: 'B2.1', clause_unchecked: '' }),
       proxyRow({ semantic_type: 'side_setback', clause: '', clause_unchecked: 'C1.2(f)' }),
@@ -163,12 +163,15 @@ describe('GET /api/dcp/structured-controls', () => {
     ]));
     const res = await GET(req('council=waverley'));
     const data = await res.json();
-    const served = data.categories.flatMap((c: { controls: { control_type: string; section_ref: string | null }[] }) => c.controls);
-    const by = (t: string) => served.find((x: { control_type: string }) => x.control_type === t).section_ref;
-    expect(by('front_setback')).toBe('B2.1');
-    expect(by('side_setback')).toBe('C1.2(f)');
-    expect(by('rear_setback')).toBeNull();
-    expect(by('max_site_coverage')).toBeNull();
+    const served = data.categories.flatMap((c: { controls: { control_type: string; section_ref: string | null; section_ref_unchecked: string | null }[] }) => c.controls);
+    const by = (t: string) => served.find((x: { control_type: string }) => x.control_type === t);
+    expect(by('front_setback').section_ref).toBe('B2.1');
+    expect(by('front_setback').section_ref_unchecked).toBeNull();
+    expect(by('side_setback').section_ref).toBeNull();                  // never mistaken for a proven citation
+    expect(by('side_setback').section_ref_unchecked).toBe('C1.2(f)');
+    expect(by('rear_setback').section_ref).toBeNull();
+    expect(by('rear_setback').section_ref_unchecked).toBeNull();
+    expect(by('max_site_coverage').section_ref_unchecked).toBeNull();
   });
 
   test('empty dev_type reports the dev types the guarded rows actually carry', async () => {

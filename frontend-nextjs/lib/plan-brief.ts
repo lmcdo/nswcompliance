@@ -115,7 +115,7 @@ export function briefClauseLabel(sectionHeader: string | null | undefined, refNu
   const tail = String(refNumber ?? '').split('__').pop()?.trim().replace(/~\d+$/, '') ?? '';
   // Only an anchored clause identifier (and an optional "a" / "(a)" item suffix) is returned, never the text after it.
   const id = tail.match(/^((?:[A-Za-z]{1,2}\d+[A-Za-z]? )?\d[\dA-Za-z]*(?:_\d[\dA-Za-z]*)*|[A-Za-z]{1,2}\d+[A-Za-z]?(?:_\d+[A-Za-z]?)*)(?: ([a-z]{1,2}|\([a-z0-9]+\)))?(?= |$)/);
-  if (!id) return null;
+  if (!id || /^\d{4,}$/.test(id[1])) return null;          // a year or a long bare number is metadata, not a clause
   return id[1].replace(/_/g, '.') + (id[2] ? ` ${id[2]}` : '');
 }
 

@@ -30,6 +30,10 @@ describe('briefClauseLabel', () => {
     expect(briefClauseLabel('Prescriptive Measures', 'H__x__4_5 Minimum setback applies to all lots')).toBe('4.5');
     expect(briefClauseLabel('Prescriptive Measures', 'H__x__3_1_2 (a) Setbacks')).toBe('3.1.2 (a)');
   });
+  test('a year or other bare long number in the ref is not a clause', () => {
+    expect(briefClauseLabel('Prescriptive Measures', 'Example_DCP__2024')).toBeNull();
+    expect(briefClauseLabel('Prescriptive Measures', 'Example_DCP__20241001')).toBeNull();
+  });
   test('a duplicate marker on the ref is dropped', () => {
     expect(briefClauseLabel('Prescriptive Measures', 'H__h__3_1_1 d~2')).toBe('3.1.1 d');
   });

@@ -167,6 +167,7 @@ export interface StructuredControl {
   unit: string | null;
   condition: string | null;
   section_ref: string | null;
+  section_ref_unchecked?: string | null;
   source_text: string | null;
   dcp_name: string | null;
   dcp_version: string | null;
@@ -305,8 +306,10 @@ export async function GET(request: NextRequest) {
         value_max: valueMax,
         unit: row.unit,
         condition: row.notes || null,
-        // The proven clause when there is one, else the stored label (owner ruling 2026-11-09: clause and page on every row).
-        section_ref: row.clause || row.clause_unchecked || null,
+        section_ref: row.clause || null,
+        // The stored label of a clause not yet proven. Kept APART from section_ref so no other consumer mistakes it for a proven
+        // citation; only the address page's figures table reads it (owner ruling 2026-11-09: clause and page on every row).
+        section_ref_unchecked: row.clause_unchecked || null,
         source_text: row.source_text,
         dcp_name: row.dcp_version,
         dcp_version: row.dcp_version,

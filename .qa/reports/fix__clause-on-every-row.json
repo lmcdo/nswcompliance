@@ -4,11 +4,14 @@
  "commit_hash": "fd4e89a3",
  "files": [
   "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+  "frontend-nextjs/__tests__/components/your-project-summary.test.tsx",
   "frontend-nextjs/__tests__/lib/brief-clause-label.test.ts",
   "frontend-nextjs/app/api/brief/for-property/route.ts",
   "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+  "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
   "frontend-nextjs/lib/dcp-controls-client.ts",
   "frontend-nextjs/lib/plan-brief.ts",
+  "frontend-nextjs/lib/project-summary.ts",
   "scripts/conveyancing_db.py",
   "tests/test_setback_citation_gate.py"
  ],
@@ -59,6 +62,20 @@
    "mitigated": true,
    "how": "the route falls back to null when the field is absent, covered by a route test",
    "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-structured-controls.test.ts"
+  },
+  {
+   "scenario": "another screen reads the structured controls route and sees an unproven clause",
+   "what_happens": "It could show the unproven clause as if it were a proven citation.",
+   "mitigated": true,
+   "how": "section_ref stays proven-only and the unchecked label travels in section_ref_unchecked, read only by the figures table",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-structured-controls.test.ts"
+  },
+  {
+   "scenario": "a reference tail is only a year such as 2024",
+   "what_happens": "The lists could print the year as a clause number.",
+   "mitigated": true,
+   "how": "a bare number of four or more digits is rejected as metadata",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/brief-clause-label.test.ts"
   }
  ],
  "post_merge": {
