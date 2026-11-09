@@ -57,24 +57,35 @@ def test_page_proof_check_returns_a_status_and_a_reason():
     assert isinstance(why, str) and why
 
 
-# ---- OC-29: the heading read (a script's read of the council's own section headings; not an owner read) ----
+# ---- OC-29: the heading check (a script's read of the council's own section headings, on the live rows after the skip) ----
 import json  # noqa: E402
 
-_COUNCILS = ["wollongong", "penrith", "waverley", "campbelltown", "ashfield"]
-_TOPICS = ["front_setback", "side_setback", "rear_setback", "car_parking", "landscaping_min", "private_open_space"]
+_NAMED = ["wollongong", "penrith", "waverley", "campbelltown", "ashfield"]
+_CORE = ["front_setback", "side_setback", "rear_setback", "car_parking", "landscaping_min", "private_open_space"]
+_EXTRA = ["max_height", "deep_soil_min", "max_site_coverage", "secondary_street_setback", "x1", "x2"]
 
 
-def _read_rows(red_at=()):
-    rows = []
-    for i, (c, t) in enumerate([(c, t) for c in _COUNCILS for t in _TOPICS], start=1):
-        rows.append({"n": i, "council": c, "dev_type": "dwelling_house", "zone_group": "R2", "row_type": t,
-                     "first_provision_id": 1000 + i, "flag": "red" if i in red_at else "none", "section": "x"})
-    return rows
+def _world():
+    """5 councils x 12 topics, 3 live clauses per topic, every clause scanned and unflagged, every proven cell hit."""
+    top, scan, cells = {}, [], {}
+    pid = 1000
+    for c in _NAMED:
+        for row in _CORE + _EXTRA:
+            pids = [pid + 1, pid + 2, pid + 3]
+            pid += 10
+            top[(c, "dwelling_house", "R2", row)] = pids
+            scan += [{"council": c, "type": row, "rank": i + 1, "pid": p, "flagged": False, "reason": None} for i, p in enumerate(pids)]
+            cells[(c, "dwelling_house", row)] = {pids[0]}
+    return top, scan, cells
 
 
-def _setup(monkeypatch, tmp_path, rows, live=None):
+def _setup(monkeypatch, tmp_path, top, scan, cells, named=None, excluded=()):
+    (tmp_path / "frontend-nextjs" / "shared").mkdir(parents=True)
     (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"named_councils": sorted({r["council"] for r in rows}), "rows": rows}), encoding="utf-8")
+    (tmp_path / "frontend-nextjs" / "shared" / "brief-scope.json").write_text(
+        json.dumps({"councils": named if named is not None else _NAMED, "dev_type": "dwelling_house", "zone_group": "R2",
+                    "excluded_provision_ids": list(excluded)}), encoding="utf-8")
+    (tmp_path / "data" / "plan_brief_heading_scan_2026-11-09.json").write_text(json.dumps({"rows": scan}), encoding="utf-8")
     monkeypatch.setattr(pbc, "ROOT", tmp_path)
 
     class _Cur:
@@ -86,68 +97,67 @@ def _setup(monkeypatch, tmp_path, rows, live=None):
         def close(self): pass
 
     monkeypatch.setattr(pbc, "_conn", lambda: _Conn())
-    live = live if live is not None else {(r["council"], r["dev_type"], r["zone_group"], r["row_type"]): [r["first_provision_id"]] for r in rows}
-    monkeypatch.setattr(pbc, "_brief_top5", lambda cur: live)
+    monkeypatch.setattr(pbc, "_brief_top5", lambda cur: top)
+    monkeypatch.setattr(pbc, "_gold_cells", lambda cur, councils: cells)
 
 
-def test_heading_read_passes_with_no_flagged_rows(monkeypatch, tmp_path):
-    _setup(monkeypatch, tmp_path, _read_rows())
-    assert pbc.heading_read()[0] == pbc.PASS
+def test_heading_check_passes_when_everything_shown_was_read_and_nothing_flagged_remains(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.PASS, why
 
 
-def test_heading_read_passes_with_one_flagged_row_and_fails_with_two(monkeypatch, tmp_path):
-    _setup(monkeypatch, tmp_path, _read_rows(red_at=(3,)))
-    assert pbc.heading_read()[0] == pbc.PASS
+def test_heading_check_fails_on_a_flagged_clause_unless_the_skip_list_removes_it(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    scan[0]["flagged"] = True                      # the first clause of wollongong front_setback
+    flagged_pid = scan[0]["pid"]
+    _setup(monkeypatch, tmp_path, top, scan, cells)
+    status, why = pbc.heading_read()
+    assert status == pbc.FAIL and "flagged" in why
     second = tmp_path / "second"
     second.mkdir()
-    _setup(monkeypatch, second, _read_rows(red_at=(3, 9)))
-    assert pbc.heading_read()[0] == pbc.FAIL
+    _setup(monkeypatch, second, top, scan, cells, excluded=[flagged_pid])
+    assert pbc.heading_read()[0] == pbc.PASS
 
 
-def test_heading_read_fails_when_a_first_clause_changed(monkeypatch, tmp_path):
-    rows = _read_rows()
-    live = {(r["council"], r["dev_type"], r["zone_group"], r["row_type"]): [r["first_provision_id"]] for r in rows}
-    live[("wollongong", "dwelling_house", "R2", "front_setback")] = [999999]
-    _setup(monkeypatch, tmp_path, rows, live)
+def test_heading_check_fails_on_a_clause_that_was_never_scanned(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    top[("penrith", "dwelling_house", "R2", "car_parking")].append(999999)     # the brief gained a clause after the scan
+    _setup(monkeypatch, tmp_path, top, scan, cells)
     status, why = pbc.heading_read()
-    assert status == pbc.FAIL and "STALE" in why
+    assert status == pbc.FAIL and "never read" in why
 
 
-def test_heading_read_fails_on_duplicate_rows_bad_flags_and_missing_file(monkeypatch, tmp_path):
-    rows = _read_rows()
-    dup = [dict(r) for r in rows]
-    dup[1]["n"] = 1                      # two rows numbered 1
-    _setup(monkeypatch, tmp_path, dup)
-    assert pbc.heading_read()[0] == pbc.FAIL
-    bad = _read_rows()
-    bad[0]["flag"] = "maybe"
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"named_councils": _COUNCILS, "rows": bad}), encoding="utf-8")
-    assert pbc.heading_read()[0] == pbc.FAIL
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text("{}", encoding="utf-8")
-    assert pbc.heading_read()[0] == pbc.FAIL
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").unlink()
-    assert pbc.heading_read()[0] == pbc.FAIL
-
-def test_heading_read_needs_at_least_thirty_rows(monkeypatch, tmp_path):
-    _setup(monkeypatch, tmp_path, _read_rows()[:29])
+def test_heading_check_needs_a_clause_left_for_every_core_topic_but_not_the_extra_ones(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    core_all = top[("waverley", "dwelling_house", "R2", "front_setback")]
+    _setup(monkeypatch, tmp_path, top, scan, cells, excluded=core_all)
     status, why = pbc.heading_read()
-    assert status == pbc.FAIL and "at least 30" in why
+    assert status == pbc.FAIL and "no clause is left" in why
+    second = tmp_path / "second"
+    second.mkdir()
+    extra_all = top[("waverley", "dwelling_house", "R2", "max_height")]
+    _setup(monkeypatch, second, top, scan, cells, excluded=extra_all)
+    assert pbc.heading_read()[0] == pbc.PASS
 
-def test_heading_read_fails_on_wrong_types_and_on_councils_outside_the_named_list(monkeypatch, tmp_path):
-    rows = _read_rows()
-    rows[2]["n"] = None
-    _setup(monkeypatch, tmp_path, rows)
+
+def test_heading_check_fails_when_recall_after_the_skip_is_too_low(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    for k in [k for k in cells if k[0] == "ashfield"]:
+        cells[k] = {424242}                           # none of ashfield's proven rules is shown
+    _setup(monkeypatch, tmp_path, top, scan, cells)
     status, why = pbc.heading_read()
-    assert status == pbc.FAIL and "wrongly typed" in why
-    other = tmp_path / "other"
-    other.mkdir()
-    _setup(monkeypatch, other, _read_rows())
-    path = other / "data" / "plan_brief_heading_read_2026-11-09.json"
-    doc = json.loads(path.read_text(encoding="utf-8"))
-    doc["named_councils"] = _COUNCILS[:-1]          # a council in the rows is not in the named list
-    path.write_text(json.dumps(doc), encoding="utf-8")
-    status, why = pbc.heading_read()
-    assert status == pbc.FAIL and "named_councils" in why
+    assert status == pbc.FAIL and "recall under 80%" in why
+
+
+def test_heading_check_fails_with_too_few_councils_or_missing_files(monkeypatch, tmp_path):
+    top, scan, cells = _world()
+    _setup(monkeypatch, tmp_path, top, scan, cells, named=_NAMED[:4])
+    assert pbc.heading_read()[0] == pbc.FAIL
+    (tmp_path / "data" / "plan_brief_heading_scan_2026-11-09.json").unlink()
+    assert pbc.heading_read()[0] == pbc.FAIL
+
 
 def test_recorded_speed_passes_fails_and_rejects_a_short_record(monkeypatch, tmp_path):
     monkeypatch.delenv("PLAN_BRIEF_URL", raising=False)

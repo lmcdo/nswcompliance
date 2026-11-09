@@ -1,0 +1,3543 @@
+{
+"read_by": "Script scan of the council's own PDFs, 2026-11-09 (scan_ranks.py). NOT an owner read.",
+"method": "For every council in project_brief_rows, each of the top-5 clauses for a dwelling house in zone group R2 across the 10 topics the brief serves, for the 10 named councils was located in the council's PDF at its cited page and the section heading path above it was read. flagged = the nearest heading naming a building type is another type, a named place, estate, precinct, campus or neighbourhood, or an ancillary structure (garages are not flagged for car parking). reason says which.",
+"limits": "Keyword based: a wrong-type heading can be missed and a right one flagged. Leichhardt and Ku-ring-gai headings come back as page footers and are weakly classified.",
+"rows": [
+{
+"council": "ashfield",
+"type": "front_setback",
+"rank": 1,
+"pid": 240900,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "front_setback",
+"rank": 2,
+"pid": 241261,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "front_setback",
+"rank": 3,
+"pid": 241160,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "front_setback",
+"rank": 4,
+"pid": 240901,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "front_setback",
+"rank": 5,
+"pid": 163716,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "side_setback",
+"rank": 1,
+"pid": 240903,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "side_setback",
+"rank": 2,
+"pid": 240902,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "side_setback",
+"rank": 3,
+"pid": 240904,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "side_setback",
+"rank": 4,
+"pid": 241263,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "side_setback",
+"rank": 5,
+"pid": 163700,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "ashfield",
+"type": "rear_setback",
+"rank": 1,
+"pid": 241080,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "rear_setback",
+"rank": 2,
+"pid": 241374,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "rear_setback",
+"rank": 3,
+"pid": 240910,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "rear_setback",
+"rank": 4,
+"pid": 251647,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ashfield",
+"type": "rear_setback",
+"rank": 5,
+"pid": 251575,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ashfield",
+"type": "car_parking",
+"rank": 1,
+"pid": 250565,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "car_parking",
+"rank": 2,
+"pid": 240906,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "car_parking",
+"rank": 3,
+"pid": 250540,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "car_parking",
+"rank": 4,
+"pid": 241266,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "car_parking",
+"rank": 5,
+"pid": 243165,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ashfield",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 240919,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 241100,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 241193,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 240901,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 241194,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "private_open_space",
+"rank": 1,
+"pid": 240922,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "private_open_space",
+"rank": 2,
+"pid": 250089,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "private_open_space",
+"rank": 3,
+"pid": 250198,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "private_open_space",
+"rank": 4,
+"pid": 250200,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "private_open_space",
+"rank": 5,
+"pid": 241257,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 251657,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ashfield",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 240860,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 240861,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 250115,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 241263,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 251519,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ashfield",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 240893,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "max_site_coverage",
+"rank": 2,
+"pid": 240920,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "max_site_coverage",
+"rank": 3,
+"pid": 240923,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "max_site_coverage",
+"rank": 4,
+"pid": 163699,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "ashfield",
+"type": "max_height",
+"rank": 1,
+"pid": 240895,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "max_height",
+"rank": 2,
+"pid": 240894,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ashfield",
+"type": "max_height",
+"rank": 3,
+"pid": 241083,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "max_height",
+"rank": 4,
+"pid": 241082,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ashfield",
+"type": "max_height",
+"rank": 5,
+"pid": 240896,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "front_setback",
+"rank": 1,
+"pid": 202429,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "front_setback",
+"rank": 2,
+"pid": 202406,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "front_setback",
+"rank": 3,
+"pid": 202407,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "front_setback",
+"rank": 4,
+"pid": 202454,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "blacktown",
+"type": "front_setback",
+"rank": 5,
+"pid": 202652,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "side_setback",
+"rank": 1,
+"pid": 202408,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "side_setback",
+"rank": 2,
+"pid": 202410,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "side_setback",
+"rank": 3,
+"pid": 202404,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "side_setback",
+"rank": 4,
+"pid": 202411,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "side_setback",
+"rank": 5,
+"pid": 202415,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "rear_setback",
+"rank": 1,
+"pid": 202408,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "rear_setback",
+"rank": 2,
+"pid": 202410,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "rear_setback",
+"rank": 3,
+"pid": 202415,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "rear_setback",
+"rank": 4,
+"pid": 202413,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "rear_setback",
+"rank": 5,
+"pid": 202404,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "car_parking",
+"rank": 1,
+"pid": 249718,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "car_parking",
+"rank": 2,
+"pid": 249720,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "car_parking",
+"rank": 3,
+"pid": 202444,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "car_parking",
+"rank": 4,
+"pid": 202445,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "car_parking",
+"rank": 5,
+"pid": 202486,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 202574,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 202686,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 202584,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 202842,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 202688,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "private_open_space",
+"rank": 1,
+"pid": 202446,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "private_open_space",
+"rank": 2,
+"pid": 202447,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "private_open_space",
+"rank": 3,
+"pid": 202571,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "private_open_space",
+"rank": 4,
+"pid": 202486,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "private_open_space",
+"rank": 5,
+"pid": 202610,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 202429,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 202430,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 202802,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 202434,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 202456,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "blacktown",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 202659,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 202693,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 202694,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 202677,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 202689,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "max_height",
+"rank": 1,
+"pid": 202416,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "max_height",
+"rank": 2,
+"pid": 202391,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "max_height",
+"rank": 3,
+"pid": 202453,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "max_height",
+"rank": 4,
+"pid": 202699,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "blacktown",
+"type": "max_height",
+"rank": 5,
+"pid": 202458,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "georges_river",
+"type": "front_setback",
+"rank": 1,
+"pid": 170503,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "front_setback",
+"rank": 2,
+"pid": 170731,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "front_setback",
+"rank": 3,
+"pid": 170722,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "front_setback",
+"rank": 4,
+"pid": 170748,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "front_setback",
+"rank": 5,
+"pid": 170745,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "side_setback",
+"rank": 1,
+"pid": 170558,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "side_setback",
+"rank": 2,
+"pid": 170769,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "side_setback",
+"rank": 3,
+"pid": 170754,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "side_setback",
+"rank": 4,
+"pid": 170843,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "side_setback",
+"rank": 5,
+"pid": 170761,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "rear_setback",
+"rank": 1,
+"pid": 170765,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "rear_setback",
+"rank": 2,
+"pid": 170547,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "rear_setback",
+"rank": 3,
+"pid": 170844,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "rear_setback",
+"rank": 4,
+"pid": 170843,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "rear_setback",
+"rank": 5,
+"pid": 170842,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "car_parking",
+"rank": 1,
+"pid": 181926,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "car_parking",
+"rank": 2,
+"pid": 170606,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "car_parking",
+"rank": 3,
+"pid": 181775,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "car_parking",
+"rank": 4,
+"pid": 170528,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "car_parking",
+"rank": 5,
+"pid": 170727,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 170505,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 170728,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 170526,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 170588,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 170626,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "private_open_space",
+"rank": 1,
+"pid": 170607,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "private_open_space",
+"rank": 2,
+"pid": 170504,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "private_open_space",
+"rank": 3,
+"pid": 170746,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "private_open_space",
+"rank": 4,
+"pid": 170657,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "private_open_space",
+"rank": 5,
+"pid": 170625,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "georges_river",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 170535,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 182851,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 182502,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "max_height",
+"rank": 1,
+"pid": 170741,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "max_height",
+"rank": 2,
+"pid": 170730,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "max_height",
+"rank": 3,
+"pid": 170534,
+"flagged": false,
+"reason": null
+},
+{
+"council": "georges_river",
+"type": "max_height",
+"rank": 4,
+"pid": 170843,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "georges_river",
+"type": "max_height",
+"rank": 5,
+"pid": 170651,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "hornsby",
+"type": "front_setback",
+"rank": 1,
+"pid": 262143,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "front_setback",
+"rank": 2,
+"pid": 262145,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "front_setback",
+"rank": 3,
+"pid": 262416,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "front_setback",
+"rank": 4,
+"pid": 262147,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "front_setback",
+"rank": 5,
+"pid": 262574,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "side_setback",
+"rank": 1,
+"pid": 262143,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "side_setback",
+"rank": 2,
+"pid": 262146,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "side_setback",
+"rank": 3,
+"pid": 262150,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "hornsby",
+"type": "side_setback",
+"rank": 4,
+"pid": 262148,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "side_setback",
+"rank": 5,
+"pid": 262267,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "rear_setback",
+"rank": 1,
+"pid": 262143,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "rear_setback",
+"rank": 2,
+"pid": 262145,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "rear_setback",
+"rank": 3,
+"pid": 262153,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "rear_setback",
+"rank": 4,
+"pid": 262268,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "rear_setback",
+"rank": 5,
+"pid": 262149,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "car_parking",
+"rank": 1,
+"pid": 244775,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "car_parking",
+"rank": 2,
+"pid": 244768,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "car_parking",
+"rank": 3,
+"pid": 244769,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "car_parking",
+"rank": 4,
+"pid": 262193,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "car_parking",
+"rank": 5,
+"pid": 244794,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 262164,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 262158,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 262159,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 262160,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 262161,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "private_open_space",
+"rank": 1,
+"pid": 262177,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "private_open_space",
+"rank": 2,
+"pid": 262174,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "private_open_space",
+"rank": 3,
+"pid": 262176,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "hornsby",
+"type": "private_open_space",
+"rank": 4,
+"pid": 262175,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "private_open_space",
+"rank": 5,
+"pid": 262641,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 262143,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 262150,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "hornsby",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 262259,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 262579,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 262576,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 262291,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 262288,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 262447,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 262290,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 262441,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 262132,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_site_coverage",
+"rank": 2,
+"pid": 262131,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_height",
+"rank": 1,
+"pid": 262117,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_height",
+"rank": 2,
+"pid": 262144,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_height",
+"rank": 3,
+"pid": 262125,
+"flagged": false,
+"reason": null
+},
+{
+"council": "hornsby",
+"type": "max_height",
+"rank": 4,
+"pid": 262761,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "hornsby",
+"type": "max_height",
+"rank": 5,
+"pid": 244824,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "front_setback",
+"rank": 1,
+"pid": 171465,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "front_setback",
+"rank": 2,
+"pid": 171468,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "front_setback",
+"rank": 3,
+"pid": 171509,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "front_setback",
+"rank": 4,
+"pid": 176123,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "front_setback",
+"rank": 5,
+"pid": 175470,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "side_setback",
+"rank": 1,
+"pid": 171476,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "side_setback",
+"rank": 2,
+"pid": 171366,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "side_setback",
+"rank": 3,
+"pid": 171475,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "side_setback",
+"rank": 4,
+"pid": 171478,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "side_setback",
+"rank": 5,
+"pid": 171477,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "rear_setback",
+"rank": 1,
+"pid": 171474,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "rear_setback",
+"rank": 2,
+"pid": 171480,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "rear_setback",
+"rank": 3,
+"pid": 171485,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "rear_setback",
+"rank": 4,
+"pid": 171481,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "rear_setback",
+"rank": 5,
+"pid": 175587,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "car_parking",
+"rank": 1,
+"pid": 171534,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "car_parking",
+"rank": 2,
+"pid": 171533,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "car_parking",
+"rank": 3,
+"pid": 171535,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "car_parking",
+"rank": 4,
+"pid": 171538,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "car_parking",
+"rank": 5,
+"pid": 171547,
+"flagged": false,
+"reason": "ancillary structure"
+},
+{
+"council": "ku_ring_gai",
+"type": "private_open_space",
+"rank": 1,
+"pid": 171604,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "private_open_space",
+"rank": 2,
+"pid": 171606,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "private_open_space",
+"rank": 3,
+"pid": 258627,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ku_ring_gai",
+"type": "private_open_space",
+"rank": 4,
+"pid": 255746,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ku_ring_gai",
+"type": "private_open_space",
+"rank": 5,
+"pid": 258482,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 171484,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 254791,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 254786,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 253920,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "ku_ring_gai",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 254673,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 197071,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 197075,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 160516,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 197074,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 197078,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 171382,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "ku_ring_gai",
+"type": "max_site_coverage",
+"rank": 2,
+"pid": 171492,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_site_coverage",
+"rank": 3,
+"pid": 171445,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "ku_ring_gai",
+"type": "max_site_coverage",
+"rank": 4,
+"pid": 171650,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "ku_ring_gai",
+"type": "max_site_coverage",
+"rank": 5,
+"pid": 171492,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_height",
+"rank": 1,
+"pid": 171569,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_height",
+"rank": 2,
+"pid": 171425,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_height",
+"rank": 3,
+"pid": 171386,
+"flagged": false,
+"reason": null
+},
+{
+"council": "ku_ring_gai",
+"type": "max_height",
+"rank": 4,
+"pid": 171650,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "ku_ring_gai",
+"type": "max_height",
+"rank": 5,
+"pid": 171415,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "front_setback",
+"rank": 1,
+"pid": 190880,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "front_setback",
+"rank": 2,
+"pid": 191560,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "front_setback",
+"rank": 3,
+"pid": 190818,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "front_setback",
+"rank": 4,
+"pid": 190891,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "front_setback",
+"rank": 5,
+"pid": 191014,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "northern_beaches",
+"type": "side_setback",
+"rank": 1,
+"pid": 190858,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "side_setback",
+"rank": 2,
+"pid": 191606,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "side_setback",
+"rank": 3,
+"pid": 192422,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "side_setback",
+"rank": 4,
+"pid": 190836,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "side_setback",
+"rank": 5,
+"pid": 192244,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "northern_beaches",
+"type": "rear_setback",
+"rank": 1,
+"pid": 191608,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "rear_setback",
+"rank": 2,
+"pid": 192279,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "rear_setback",
+"rank": 3,
+"pid": 191499,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "rear_setback",
+"rank": 4,
+"pid": 192420,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "rear_setback",
+"rank": 5,
+"pid": 192281,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "northern_beaches",
+"type": "car_parking",
+"rank": 1,
+"pid": 192218,
+"flagged": false,
+"reason": "ancillary structure"
+},
+{
+"council": "northern_beaches",
+"type": "car_parking",
+"rank": 2,
+"pid": 191206,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "car_parking",
+"rank": 3,
+"pid": 191553,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "car_parking",
+"rank": 4,
+"pid": 192152,
+"flagged": false,
+"reason": "ancillary structure"
+},
+{
+"council": "northern_beaches",
+"type": "car_parking",
+"rank": 5,
+"pid": 191555,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 190828,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 191575,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 190990,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 191033,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 191014,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "northern_beaches",
+"type": "private_open_space",
+"rank": 1,
+"pid": 190830,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "private_open_space",
+"rank": 2,
+"pid": 192429,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "private_open_space",
+"rank": 3,
+"pid": 190829,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "private_open_space",
+"rank": 4,
+"pid": 191583,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "private_open_space",
+"rank": 5,
+"pid": 191704,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 192418,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 192262,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 191106,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 192151,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 192152,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "northern_beaches",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 191575,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 191216,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 191213,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 192163,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 191170,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 190847,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "max_height",
+"rank": 1,
+"pid": 190609,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "max_height",
+"rank": 2,
+"pid": 190824,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "max_height",
+"rank": 3,
+"pid": 191510,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "northern_beaches",
+"type": "max_height",
+"rank": 4,
+"pid": 190970,
+"flagged": false,
+"reason": null
+},
+{
+"council": "northern_beaches",
+"type": "max_height",
+"rank": 5,
+"pid": 191764,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "front_setback",
+"rank": 1,
+"pid": 212286,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "front_setback",
+"rank": 2,
+"pid": 217202,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "front_setback",
+"rank": 3,
+"pid": 217203,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "front_setback",
+"rank": 4,
+"pid": 217204,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "front_setback",
+"rank": 5,
+"pid": 214132,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "side_setback",
+"rank": 1,
+"pid": 212276,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "side_setback",
+"rank": 2,
+"pid": 212547,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "side_setback",
+"rank": 3,
+"pid": 212611,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "side_setback",
+"rank": 4,
+"pid": 212464,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "side_setback",
+"rank": 5,
+"pid": 212613,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "rear_setback",
+"rank": 1,
+"pid": 217206,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "rear_setback",
+"rank": 2,
+"pid": 212278,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "rear_setback",
+"rank": 3,
+"pid": 212614,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "rear_setback",
+"rank": 4,
+"pid": 212549,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "rear_setback",
+"rank": 5,
+"pid": 212468,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "car_parking",
+"rank": 1,
+"pid": 213900,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "car_parking",
+"rank": 2,
+"pid": 213892,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "car_parking",
+"rank": 3,
+"pid": 213866,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "car_parking",
+"rank": 4,
+"pid": 213835,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "car_parking",
+"rank": 5,
+"pid": 215809,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 212304,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 215665,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 214164,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 212654,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 212508,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "private_open_space",
+"rank": 1,
+"pid": 212305,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "private_open_space",
+"rank": 2,
+"pid": 215702,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "private_open_space",
+"rank": 3,
+"pid": 215734,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "private_open_space",
+"rank": 4,
+"pid": 212509,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "private_open_space",
+"rank": 5,
+"pid": 212583,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 212274,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 212401,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 212543,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 212609,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 212546,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 212295,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 212098,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 212101,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 212574,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 212507,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 215674,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "max_site_coverage",
+"rank": 2,
+"pid": 215642,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "max_site_coverage",
+"rank": 3,
+"pid": 215797,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "max_site_coverage",
+"rank": 4,
+"pid": 219039,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "max_site_coverage",
+"rank": 5,
+"pid": 217114,
+"flagged": true,
+"reason": "specific site or area"
+},
+{
+"council": "parramatta",
+"type": "max_height",
+"rank": 1,
+"pid": 212283,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "max_height",
+"rank": 2,
+"pid": 212359,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "parramatta",
+"type": "max_height",
+"rank": 3,
+"pid": 212256,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "parramatta",
+"type": "max_height",
+"rank": 4,
+"pid": 212243,
+"flagged": false,
+"reason": null
+},
+{
+"council": "parramatta",
+"type": "max_height",
+"rank": 5,
+"pid": 212562,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "penrith",
+"type": "front_setback",
+"rank": 1,
+"pid": 261261,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "front_setback",
+"rank": 2,
+"pid": 261666,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "front_setback",
+"rank": 3,
+"pid": 261513,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "front_setback",
+"rank": 4,
+"pid": 261667,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "front_setback",
+"rank": 5,
+"pid": 261815,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "side_setback",
+"rank": 1,
+"pid": 261268,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "side_setback",
+"rank": 2,
+"pid": 261523,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "side_setback",
+"rank": 3,
+"pid": 261677,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "side_setback",
+"rank": 4,
+"pid": 261524,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "side_setback",
+"rank": 5,
+"pid": 261678,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "rear_setback",
+"rank": 1,
+"pid": 261269,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "rear_setback",
+"rank": 2,
+"pid": 261270,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "rear_setback",
+"rank": 3,
+"pid": 261813,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "rear_setback",
+"rank": 4,
+"pid": 261664,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "rear_setback",
+"rank": 5,
+"pid": 261511,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "car_parking",
+"rank": 1,
+"pid": 262003,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "car_parking",
+"rank": 2,
+"pid": 261951,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "car_parking",
+"rank": 3,
+"pid": 261320,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "car_parking",
+"rank": 4,
+"pid": 261748,
+"flagged": false,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "car_parking",
+"rank": 5,
+"pid": 261957,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 261304,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 261301,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 261302,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 261531,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "penrith",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 261303,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "private_open_space",
+"rank": 1,
+"pid": 261383,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "private_open_space",
+"rank": 2,
+"pid": 261588,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "private_open_space",
+"rank": 3,
+"pid": 261742,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "private_open_space",
+"rank": 4,
+"pid": 261687,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "private_open_space",
+"rank": 5,
+"pid": 261811,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 261264,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 261365,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 261366,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "secondary_street_setback",
+"rank": 4,
+"pid": 261367,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "secondary_street_setback",
+"rank": 5,
+"pid": 261568,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "penrith",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 261844,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "penrith",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 261512,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "max_height",
+"rank": 1,
+"pid": 261285,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "max_height",
+"rank": 2,
+"pid": 261274,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "max_height",
+"rank": 3,
+"pid": 261518,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "max_height",
+"rank": 4,
+"pid": 261519,
+"flagged": false,
+"reason": null
+},
+{
+"council": "penrith",
+"type": "max_height",
+"rank": 5,
+"pid": 261732,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "waverley",
+"type": "front_setback",
+"rank": 1,
+"pid": 226415,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "front_setback",
+"rank": 2,
+"pid": 226210,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "front_setback",
+"rank": 3,
+"pid": 226417,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "front_setback",
+"rank": 4,
+"pid": 226501,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "front_setback",
+"rank": 5,
+"pid": 226706,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "side_setback",
+"rank": 1,
+"pid": 226420,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "side_setback",
+"rank": 2,
+"pid": 226419,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "side_setback",
+"rank": 3,
+"pid": 226336,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "waverley",
+"type": "side_setback",
+"rank": 4,
+"pid": 226335,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "waverley",
+"type": "side_setback",
+"rank": 5,
+"pid": 227405,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "rear_setback",
+"rank": 1,
+"pid": 226415,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "rear_setback",
+"rank": 2,
+"pid": 226416,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "rear_setback",
+"rank": 3,
+"pid": 226963,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "rear_setback",
+"rank": 4,
+"pid": 226719,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "rear_setback",
+"rank": 5,
+"pid": 226723,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "car_parking",
+"rank": 1,
+"pid": 225942,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "car_parking",
+"rank": 2,
+"pid": 225947,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "car_parking",
+"rank": 3,
+"pid": 226493,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "car_parking",
+"rank": 4,
+"pid": 225938,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "car_parking",
+"rank": 5,
+"pid": 226520,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 226533,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 226540,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 226539,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 225763,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 226791,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "private_open_space",
+"rank": 1,
+"pid": 226537,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "private_open_space",
+"rank": 2,
+"pid": 226531,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "private_open_space",
+"rank": 3,
+"pid": 226582,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "private_open_space",
+"rank": 4,
+"pid": 226575,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "private_open_space",
+"rank": 5,
+"pid": 226573,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 227283,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 226417,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 226535,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 226793,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 226725,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 226795,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 226604,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "waverley",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 227850,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "max_height",
+"rank": 1,
+"pid": 226259,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "max_height",
+"rank": 2,
+"pid": 226261,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "max_height",
+"rank": 3,
+"pid": 226263,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "max_height",
+"rank": 4,
+"pid": 226672,
+"flagged": false,
+"reason": null
+},
+{
+"council": "waverley",
+"type": "max_height",
+"rank": 5,
+"pid": 226675,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "front_setback",
+"rank": 1,
+"pid": 211091,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "front_setback",
+"rank": 2,
+"pid": 211093,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "front_setback",
+"rank": 3,
+"pid": 211094,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "front_setback",
+"rank": 4,
+"pid": 211257,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "front_setback",
+"rank": 5,
+"pid": 211002,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "side_setback",
+"rank": 1,
+"pid": 211125,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "side_setback",
+"rank": 2,
+"pid": 211126,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "side_setback",
+"rank": 3,
+"pid": 211127,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "side_setback",
+"rank": 4,
+"pid": 211129,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "side_setback",
+"rank": 5,
+"pid": 211130,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "rear_setback",
+"rank": 1,
+"pid": 211125,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "rear_setback",
+"rank": 2,
+"pid": 211126,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "rear_setback",
+"rank": 3,
+"pid": 211127,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "rear_setback",
+"rank": 4,
+"pid": 211130,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "rear_setback",
+"rank": 5,
+"pid": 211074,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "car_parking",
+"rank": 1,
+"pid": 210998,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "car_parking",
+"rank": 2,
+"pid": 211007,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "car_parking",
+"rank": 3,
+"pid": 249201,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "car_parking",
+"rank": 4,
+"pid": 249172,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "car_parking",
+"rank": 5,
+"pid": 249212,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 211144,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 211145,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 249400,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "landscaping_min",
+"rank": 4,
+"pid": 210994,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "landscaping_min",
+"rank": 5,
+"pid": 211302,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "private_open_space",
+"rank": 1,
+"pid": 211154,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "private_open_space",
+"rank": 2,
+"pid": 249383,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "secondary_street_setback",
+"rank": 1,
+"pid": 211258,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "secondary_street_setback",
+"rank": 2,
+"pid": 211095,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "secondary_street_setback",
+"rank": 3,
+"pid": 211259,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "deep_soil_min",
+"rank": 1,
+"pid": 211116,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "deep_soil_min",
+"rank": 2,
+"pid": 211118,
+"flagged": true,
+"reason": "ancillary structure"
+},
+{
+"council": "wollongong",
+"type": "deep_soil_min",
+"rank": 3,
+"pid": 211309,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "deep_soil_min",
+"rank": 4,
+"pid": 211117,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "deep_soil_min",
+"rank": 5,
+"pid": 211119,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "max_site_coverage",
+"rank": 1,
+"pid": 211135,
+"flagged": true,
+"reason": "other building type"
+},
+{
+"council": "wollongong",
+"type": "max_height",
+"rank": 1,
+"pid": 210992,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "max_height",
+"rank": 2,
+"pid": 210991,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "max_height",
+"rank": 3,
+"pid": 210990,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "max_height",
+"rank": 4,
+"pid": 210993,
+"flagged": false,
+"reason": null
+},
+{
+"council": "wollongong",
+"type": "max_height",
+"rank": 5,
+"pid": 211471,
+"flagged": true,
+"reason": "ancillary structure"
+}
+]
+}
