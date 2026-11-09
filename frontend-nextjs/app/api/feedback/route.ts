@@ -1,17 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { Resend } from 'resend';
+import { getPool } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
 
 
 export const dynamic = 'force-dynamic';
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'nsw_planning',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  port: parseInt(process.env.DB_PORT || '5432'),
-});
+// The shared pool (PG* variables, the ones production sets). This route used to build its own Pool from
+// DB_HOST / DB_NAME / ..., names production does not define, so on production it fell back to localhost and every
+// submission returned 500 (measured 2026-11-09: POST /api/feedback -> 500 "Failed to save feedback").
+
+/**
+ * The feedback list holds submitters' email addresses, so it is for the operator only: a signed-in user whose email is
+ * the operator's (FEEDBACK_ADMIN_EMAILS, comma-separated, else the same address the alert emails go to). FAIL CLOSED:
+ * unlike the /internal helpers this does not let everyone in when auth is switched off, any error is a refusal, and a
+ * signed-in user who is not the operator gets 403, not the list.
+ */
+async function requireFeedbackAdmin(): Promise<NextResponse | null> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
+    const admins = (process.env.FEEDBACK_ADMIN_EMAILS || NOTIFY_EMAIL)
+      .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (user.email && admins.includes(user.email.toLowerCase())) return null;
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  } catch {
+    // no readable session means no access
+    return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
+  }
+}
 
 // Map our frontend feedback types to database schema
 const feedbackTypeMap: Record<string, string> = {
@@ -198,7 +215,7 @@ export async function POST(request: NextRequest) {
       clientIp,
     ];
 
-    const result = await pool.query(query, values);
+    const result = await getPool().query(query, values);
 
     console.log(`✅ Feedback submitted: ID ${result.rows[0].id}, Type: ${feedbackType}, User: ${userType}`);
 
@@ -233,6 +250,8 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to retrieve feedback (for admin dashboard)
 export async function GET(request: NextRequest) {
+  const denied = await requireFeedbackAdmin();
+  if (denied) return denied;
   try {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type');
@@ -275,7 +294,7 @@ export async function GET(request: NextRequest) {
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
     params.push(limit);
 
-    const result = await pool.query(query, params);
+    const result = await getPool().query(query, params);
 
     return NextResponse.json(result.rows, { status: 200 });
   } catch (error) {
