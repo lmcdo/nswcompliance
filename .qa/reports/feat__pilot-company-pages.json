@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "A public-copy change: how-it-works, about and contact are rewritten for the private pilot, terms gains a pilot notice, and the link test now covers these pages",
- "commit_hash": "30767bb3",
+ "commit_hash": "98664c49",
  "files": [
   ".claude/regulatory_figure_ledger.json",
   ".qa/reports/feat__pilot-company-pages.json",
