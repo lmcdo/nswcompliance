@@ -1,0 +1,32 @@
+{
+  "tier": "minor",
+  "justification": "The brief is behind two switches that are off, so this changes nothing live. The change adds a line above each clause saying which chapter and section of the plan it comes from, read from dcp_chapter_registry.chapter_label and the clause's own section heading. It adds no new query: the registry query already runs and one column is added to it.",
+  "commit_hash": "e4fa9cfb",
+  "files": [
+    "frontend-nextjs/app/api/brief/for-property/route.ts",
+    "frontend-nextjs/lib/plan-brief.ts",
+    "frontend-nextjs/components/compliance/PlanBrief.tsx",
+    "frontend-nextjs/__tests__/components/plan-brief.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry.chapter_label, already read by the main provisions route, and regulatory_provisions.section_header, already returned by the brief route.",
+    "assumption_mismatch": "A chapter may have no label, or a heading may repeat the chapter name. whereInPlan returns an empty string when it has neither and shows a repeated heading once, so no empty line is drawn.",
+    "new_vs_existing": "New field on the item, optional. Older stored payloads without it render exactly as before."
+  },
+  "break_it": [
+    {
+      "scenario": "The chapter label is missing in the registry for a chapter key.",
+      "what_happens": "The card shows only the section heading, or no where-line if that is empty too; nothing breaks.",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/plan-brief.ts whereInPlan handles null and empty values, and the test 'nothing is shown when the plan gives neither' covers it.",
+      "repro": "npx jest __tests__/components/plan-brief.test.tsx -t 'nothing is shown'"
+    }
+  ],
+  "residual_risk": "This shows where a clause sits but does not stop a clause for another building type reaching a house's first three. That is a separate fix, and the other session found it for Georges River 6.1.3 and the Canterbury-Bankstown site chapters. jest could not run locally; CI runs it.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
