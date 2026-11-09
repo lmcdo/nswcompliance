@@ -63,12 +63,13 @@ export async function GET(request: NextRequest) {
     // The plan's own address per chapter: our R2 copy first (the page anchor is only right against the PDF we paginated), then the council's.
     const chapterKeys = Array.from(new Set(result.rows.map((r: any) => r.source_chapter_key).filter(Boolean)));
     const chapterUrls: Record<string, string> = {};
+    const chapterLabels: Record<string, string> = {};
     if (chapterKeys.length > 0) {
       const reg = await client.query(
-        `SELECT chapter_key, r2_public_pdf_url, council_url, council_page_url FROM dcp_chapter_registry
+        `SELECT chapter_key, r2_public_pdf_url, council_url, council_page_url, chapter_label FROM dcp_chapter_registry
           WHERE council = $1 AND is_active = TRUE AND chapter_key = ANY($2::text[])`,
         [council, chapterKeys]);
-      for (const x of reg.rows) { const u = x.r2_public_pdf_url || x.council_url || x.council_page_url; if (u) chapterUrls[x.chapter_key] = u; }
+      for (const x of reg.rows) { const u = x.r2_public_pdf_url || x.council_url || x.council_page_url; if (u) chapterUrls[x.chapter_key] = u; if (x.chapter_label) chapterLabels[x.chapter_key] = String(x.chapter_label); }
     }
     // A fragment or an opener shows the clauses that follow it on the page, so the figure is visible without opening the plan.
     const followOn: Record<number, string[]> = {};
@@ -100,6 +101,7 @@ export async function GET(request: NextRequest) {
           clauseLabel: served.clause_label ?? null,
           sectionHeader: r.section_header ?? null,
           chapterKey: r.source_chapter_key ?? null,
+          chapterLabel: r.source_chapter_key ? (chapterLabels[r.source_chapter_key] ?? null) : null,
           pageProven: r.page_check === 'on_page',   // migration 079: the page really holds this clause
           url: link?.href ?? null,
           urlPage: link?.page ?? null,

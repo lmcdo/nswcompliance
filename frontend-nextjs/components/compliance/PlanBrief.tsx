@@ -13,7 +13,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import {
   BRIEF_EMPTY_TEXT, BRIEF_FIRST_SHOWN, BRIEF_NOTE, BRIEF_TAG_APPLIES, BRIEF_TAG_MAY,
-  shapeBriefRows, tableRows, BRIEF_TEXT_LIMIT, type BriefItem, type BriefRow, type StoredBriefRow,
+  shapeBriefRows, tableRows, whereInPlan, BRIEF_TEXT_LIMIT, type BriefItem, type BriefRow, type StoredBriefRow,
 } from '@/lib/plan-brief';
 
 function TextView({ text }: { text: string }) {
@@ -40,6 +40,7 @@ function ItemView({ item }: { item: BriefItem }) {
   const place = [item.clauseLabel ? `clause ${item.clauseLabel}` : null, item.page ? `page ${item.pageLabel || item.page}` : null].filter(Boolean).join(', ');
   return (
     <li className="py-2 border-t border-slate-100 first:border-t-0" data-testid="brief-item">
+      {whereInPlan(item) && <p className="mb-1 text-xs text-slate-500" data-testid="brief-where">{whereInPlan(item)}</p>}
       <TextView text={item.text} />
       {item.continues && item.continues.length > 0 && (
         <div className="mt-1 border-l-2 border-slate-200 pl-2 text-xs text-slate-600 space-y-1" data-testid="brief-continues">
