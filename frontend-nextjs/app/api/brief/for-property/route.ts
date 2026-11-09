@@ -16,8 +16,7 @@ import { toLgaSlug } from '@/lib/lga-slug';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { withServedCitation } from '@/lib/citation-display';
-import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
-import { BRIEF_ROW_LIMIT, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
+import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
 import briefScope from '@/shared/brief-scope.json';
 
 const EXCLUDED = new Set<number>(briefScope.excluded_provision_ids);
@@ -86,7 +85,7 @@ export async function GET(request: NextRequest) {
     }));
 
     const rows: StoredBriefRow[] = result.rows.map((r: any) => {
-      const clauseLabel = inferSectionNumberFromHeader(r.section_header);
+      const clauseLabel = briefClauseLabel(r.section_header, r.ref_number);
       const served: any = withServedCitation(withCouncilWords(r), clauseLabel);
       const link = planLink(r.source_chapter_key ? chapterUrls[r.source_chapter_key] : null, r.pdf_page != null ? Number(r.pdf_page) : null);
       return {

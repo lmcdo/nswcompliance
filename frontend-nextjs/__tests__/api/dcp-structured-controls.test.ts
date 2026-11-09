@@ -154,6 +154,23 @@ describe('GET /api/dcp/structured-controls', () => {
     expect(rear.plain_summary).toBeNull();
   });
 
+  test('the clause shown is the proven one, else the stored unchecked label, else null (clause and page on every row)', async () => {
+    mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
+      proxyRow({ clause: 'B2.1', clause_unchecked: '' }),
+      proxyRow({ semantic_type: 'side_setback', clause: '', clause_unchecked: 'C1.2(f)' }),
+      proxyRow({ semantic_type: 'rear_setback', clause: '', clause_unchecked: '' }),
+      proxyRow({ semantic_type: 'max_site_coverage', clause: '' }),   // an older backend: no clause_unchecked at all
+    ]));
+    const res = await GET(req('council=waverley'));
+    const data = await res.json();
+    const served = data.categories.flatMap((c: { controls: { control_type: string; section_ref: string | null }[] }) => c.controls);
+    const by = (t: string) => served.find((x: { control_type: string }) => x.control_type === t).section_ref;
+    expect(by('front_setback')).toBe('B2.1');
+    expect(by('side_setback')).toBe('C1.2(f)');
+    expect(by('rear_setback')).toBeNull();
+    expect(by('max_site_coverage')).toBeNull();
+  });
+
   test('empty dev_type reports the dev types the guarded rows actually carry', async () => {
     mockFetchDcpControls.mockResolvedValueOnce(proxyResult([
       proxyRow({ dev_type: 'secondary_dwelling' }),

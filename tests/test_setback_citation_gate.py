@@ -87,6 +87,20 @@ def test_fetch_dcp_setbacks_shows_a_clause_only_when_proven(status, shown):
     assert e["pdf_page"] == 12                  # the page is always served
 
 
+@pytest.mark.parametrize("status, shown", [("proven", True), ("partial", False), ("not_proven", False), (None, False)])
+def test_an_unproven_clause_is_carried_separately_never_in_clause(status, shown):
+    e = _fetch([_row("C2.1", status)])["setbacks"][0]
+    assert e["clause_unchecked"] == ("" if shown else "C2.1")
+    assert (e["clause"] == "C2.1") is shown                 # the guarded field is unchanged
+
+
+def test_reports_never_read_the_unchecked_clause():
+    hidden = {"clause": "", "clause_shown": False, "clause_unchecked": "C9.9", "pdf_page": 7}
+    assert cdb.served_source_ref(hidden, "C2.1") == "p. 7"
+    got = _fetch([_row("C9.9", "not_proven"), _row("C2.1", "proven")])
+    assert got["clause_ref"] == "C2.1"
+
+
 def test_select_reads_the_verdict_without_requiring_the_column():
     cur = MagicMock()
     cur.fetchall.side_effect = [[]] + [[]] * 5

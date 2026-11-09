@@ -305,7 +305,8 @@ export async function GET(request: NextRequest) {
         value_max: valueMax,
         unit: row.unit,
         condition: row.notes || null,
-        section_ref: row.clause || null,
+        // The proven clause when there is one, else the stored label (owner ruling 2026-11-09: clause and page on every row).
+        section_ref: row.clause || row.clause_unchecked || null,
         source_text: row.source_text,
         dcp_name: row.dcp_version,
         dcp_version: row.dcp_version,
