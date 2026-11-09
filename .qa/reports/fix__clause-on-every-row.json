@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which clause label and page the address page prints beside every rule, and adds one field to the guarded setback entry that conveyancing reports also read.",
- "commit_hash": "e3b22826",
+ "commit_hash": "fd4e89a3",
  "files": [
   "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
   "frontend-nextjs/__tests__/lib/brief-clause-label.test.ts",
