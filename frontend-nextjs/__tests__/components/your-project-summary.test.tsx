@@ -154,6 +154,11 @@ describe('no unproven citation, no empty labels (pilot)', () => {
     renderView({ dcpRows: rows });
     expect(screen.queryAllByText('Open the plan')).toHaveLength(screen.queryAllByTestId('plan-link').length);
   });
+  it('a control with no proven clause shows its stored unchecked clause beside the document', () => {
+    const rows = buildDcpRows({ has_controls: true, categories: [{ controls: [control({ control_type: 'front_setback', value_min: 6, section_ref: null, section_ref_unchecked: 'C.05', pdf_page: 60, pdf_url: 'https://example.test/dcp.pdf#page=60' })] }] });
+    renderView({ dcpRows: rows });
+    expect(within(screen.getAllByTestId('row-front')[0]).getByTestId('place').textContent).toBe('Fixture Council DCP 2000, clause C.05');
+  });
   it('never prints "Not in our data" for a row that has no words', () => {
     renderView();
     expect(document.body.textContent).not.toMatch(/Not in our data/);

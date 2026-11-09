@@ -29,6 +29,8 @@ export interface StructuredControl {
   unit: string | null;
   condition: string | null;
   section_ref: string | null;
+  /** Stored label of a clause not yet proven; read only by the "Your project" figures table. Absent from older responses. */
+  section_ref_unchecked?: string | null;
   source_text: string | null;
   dcp_name: string | null;
   dcp_version: string | null;

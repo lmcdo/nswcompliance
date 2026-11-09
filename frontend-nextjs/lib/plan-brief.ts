@@ -6,6 +6,8 @@
  * rule type) when no proven figure exists. This module only groups rows that the API already proved (page, council words).
  */
 
+import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
+
 export const BRIEF_DEV_TYPES = [
   'dwelling_house', 'dual_occupancy', 'secondary_dwelling', 'multi_dwelling_housing', 'residential_flat_building', 'shop_top_housing',
 ] as const;
@@ -97,6 +99,26 @@ export function planLink(url: string | null | undefined, page: number | null | u
 }
 
 /** Collapse spaces but KEEP line breaks, so a table the plan printed as rows stays rows. */
+/**
+ * The clause label to print for a stored rule. The caller still prints it only when the clause is proven
+ * (withServedCitation / citationIsShown), so this chooses WHICH label, never WHETHER to show one.
+ *  1. a numeric section number at the start of the heading ("3.2.3"): the existing behaviour, unchanged;
+ *  2. else a dotted lettered heading code ("DS3.3", "4A.2", "14B.10");
+ *  3. else the tail of ref_number, which is the label the checker judged ("...__3_1_2 a" -> "3.1.2 a", "C1 1_2_1 a" -> "C1 1.2.1 a", "O17").
+ * Null when none of them reads as a clause label ("Prescriptive Measures", "Part 8", an empty heading).
+ */
+export function briefClauseLabel(sectionHeader: string | null | undefined, refNumber: string | null | undefined): string | null {
+  const fromHeader = inferSectionNumberFromHeader(sectionHeader);
+  if (fromHeader) return fromHeader;
+  const dotted = String(sectionHeader ?? '').trim().match(/^([A-Z]{1,2}\d+[A-Z]?(?:\.\d+)+|\d+[A-Z](?:\.\d+)+)(?=\s|$)/);
+  if (dotted) return dotted[1];
+  const tail = String(refNumber ?? '').split('__').pop()?.trim().replace(/~\d+$/, '') ?? '';
+  // Only an anchored clause identifier (and an optional "a" / "(a)" item suffix) is returned, never the text after it.
+  const id = tail.match(/^((?:[A-Za-z]{1,2}\d+[A-Za-z]? )?\d[\dA-Za-z]*(?:_\d[\dA-Za-z]*)*|[A-Za-z]{1,2}\d+[A-Za-z]?(?:_\d+[A-Za-z]?)*)(?: ([a-z]{1,2}|\([a-z0-9]+\)))?(?= |$)/);
+  if (!id || /^\d{4,}$/.test(id[1])) return null;          // a year or a long bare number is metadata, not a clause
+  return id[1].replace(/_/g, '.') + (id[2] ? ` ${id[2]}` : '');
+}
+
 export function tidyText(raw: string | null | undefined, limit = BRIEF_TEXT_LIMIT): string {
   return String(raw ?? '').replace(/[\t\f\v ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, limit);
 }

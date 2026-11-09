@@ -1,0 +1,87 @@
+{
+ "tier": "standard",
+ "justification": "Changes which clause label and page the address page prints beside every rule, and adds one field to the guarded setback entry that conveyancing reports also read.",
+ "commit_hash": "3a54268f",
+ "files": [
+  "frontend-nextjs/__tests__/api/dcp-structured-controls.test.ts",
+  "frontend-nextjs/__tests__/components/your-project-summary.test.tsx",
+  "frontend-nextjs/__tests__/lib/brief-clause-label.test.ts",
+  "frontend-nextjs/app/api/brief/for-property/route.ts",
+  "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+  "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+  "frontend-nextjs/lib/dcp-controls-client.ts",
+  "frontend-nextjs/lib/plan-brief.ts",
+  "frontend-nextjs/lib/project-summary.ts",
+  "scripts/conveyancing_db.py",
+  "tests/test_setback_citation_gate.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_setback_citation_gate.py -q && cd frontend-nextjs && npx jest __tests__/lib/brief-clause-label.test.ts __tests__/api/dcp-structured-controls.test.ts",
+  "fails_when": "an unproven clause lands in the guarded clause field, or a proven label is not printed",
+  "observed_red": "Against the old source: 9 Jest tests failed, 11 passed, and 4 pytest tests failed, 33 passed."
+ },
+ "pre_impl": {
+  "existing_data": "No data change. Read-only counts on 2026-11-09 over 322 displayed clause items: labels printed rose from 57 to 165, all of them rows already proven.",
+  "assumption_mismatch": "The handoff assumed proven clauses always print. The label came only from a numeric section heading, so 111 proven clauses printed the page alone.",
+  "new_vs_existing": "No new mechanism. One helper chooses the label; the proven or imprecise gate still decides whether any label prints."
+ },
+ "functions": [
+  {
+   "name": "fetch_dcp_setbacks",
+   "file_line": "scripts/conveyancing_db.py:641",
+   "input": "A database connection and a council slug, with optional zone filters.",
+   "output": "Setback entries, each now also carrying clause_unchecked for unproven clauses.",
+   "if_none": "A row with no section_ref gets an empty clause_unchecked, never a guess."
+  },
+  {
+   "name": "briefClauseLabel",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts:110",
+   "input": "A rule's section heading and its stored reference number.",
+   "output": "A clause label read from the heading or reference tail, or null.",
+   "if_none": "Null when nothing reads as a clause, so the page shows the page alone."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "an unproven clause label reaches a conveyancing report",
+   "what_happens": "A report would print a clause number no script has checked.",
+   "mitigated": true,
+   "how": "the guarded clause field is unchanged and reports never read clause_unchecked, covered by a test",
+   "repro": "python -m pytest tests/test_setback_citation_gate.py -q"
+  },
+  {
+   "scenario": "a reference tail carries descriptive words after the clause code",
+   "what_happens": "The page could print a long sentence as a clause label.",
+   "mitigated": true,
+   "how": "a dotted heading code is preferred over the reference tail, covered by a Ku-ring-gai case",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/brief-clause-label.test.ts"
+  },
+  {
+   "scenario": "an older backend sends no clause_unchecked field",
+   "what_happens": "The route could print undefined as a clause.",
+   "mitigated": true,
+   "how": "the route falls back to null when the field is absent, covered by a route test",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-structured-controls.test.ts"
+  },
+  {
+   "scenario": "another screen reads the structured controls route and sees an unproven clause",
+   "what_happens": "It could show the unproven clause as if it were a proven citation.",
+   "mitigated": true,
+   "how": "section_ref stays proven-only and the unchecked label travels in section_ref_unchecked, read only by the figures table",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/dcp-structured-controls.test.ts"
+  },
+  {
+   "scenario": "a reference tail is only a year such as 2024",
+   "what_happens": "The lists could print the year as a clause number.",
+   "mitigated": true,
+   "how": "a bare number of four or more digits is rejected as metadata",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/brief-clause-label.test.ts"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - the Python change must deploy to the API host before figure rows show unproven clauses; then check Parramatta."
+ }
+}

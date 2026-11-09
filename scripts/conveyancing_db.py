@@ -911,6 +911,10 @@ def fetch_dcp_setbacks(
                                          {**sibling, "page": pdf_page} if sibling else None)
                              if shown else ""),
             "clause_shown": shown,
+            # The stored label of a clause that is NOT yet proven, for the address page's figures table only (owner ruling
+            # 2026-11-09: clause and page on every row; proof status stays in citation_status). Reports and every other
+            # consumer keep reading "clause", which stays "" unless proven. "" when the clause is shown or there is none.
+            "clause_unchecked": (cite_clause(section_ref, lga_slug, source_chapter_key, None) if not shown else ""),
             "control_id": evidence.get("id"),
             "citation_status": citation_status,
             "citation_source_path": evidence.get("source"),

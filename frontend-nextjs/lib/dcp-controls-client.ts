@@ -20,6 +20,8 @@ export interface DcpControlRow {
   value_max: number | null;
   unit: string;
   clause: string;
+  // The stored label of a clause not yet proven; used only by the address page's figures table. Absent from older backends.
+  clause_unchecked?: string | null;
   notes: string;
   source_text: string | null;
   source_chapter_key: string | null;
