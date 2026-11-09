@@ -1,0 +1,99 @@
+{
+ "tier": "standard",
+ "justification": "Adds a replace mode to the one script that writes project_brief_rows, plus the pick file it will load. The change writes nothing by itself: the mode is a dry run unless --apply, --confirm-production-write and --backup-to are all given, and it was only dry-run against the live table. Directionality: a wrong swap would empty or change what a house sees in a council's brief, so the old rows are saved first and the swap is one transaction that rolls back if the counts differ.",
+ "commit_hash": "c83cecb6",
+ "files": [
+  "scripts/load_project_brief.py",
+  "tests/test_load_project_brief.py",
+  "data/plan_brief_picks_2026-11-10.jsonl"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_load_project_brief.py -q",
+  "fails_when": "A replace file with a gap or repeat in a cell's ranks, a cell both picked and named empty, a bad line, or an apply with no --backup-to is accepted; or the committed picks file stops covering 100 cells (10 councils x 10 topics) with ranks running 1..n.",
+  "external_authority": "The live table's own constraints (read with pg_get_constraintdef): UNIQUE (council, zone_group, dev_type, row_type, rank), CHECK rank 1..5, FK provision_id to regulatory_provisions. A dry run against the live table read 442 existing R2 house rows in the 100 cells and 113 rows to insert, with every pick a current, actionable clause of its own council.",
+  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 12 failed, 7 passed, including every read_cells, replace_problems and --replace-cells argument test and the committed-picks-file test. With the new loader: 19 passed."
+ },
+ "pre_impl": {
+  "existing_data": "project_brief_rows holds 8,976 rows; the replace touches the 442 R2 dwelling_house rows of ten councils (ashfield 45, blacktown 45, georges_river 38, hornsby 47, ku_ring_gai 45, northern_beaches 46, parramatta 50, penrith 42, waverley 43, wollongong 41). The 113 new picks are the clauses two blind Sonnet readers chose as stating a requirement for an ordinary house (28 of 30 cells identical on a second run).",
+  "assumption_mismatch": "The loader was assumed able to correct a cell. It only adds or overwrites by rank, so a weaker old row at a rank the new set does not use stays, and an empty cell cannot be written. Cross-checked by reading the loader's ON CONFLICT upsert and the unique key.",
+  "new_vs_existing": "No new script or table: --replace-cells extends scripts/load_project_brief.py, the only writer of project_brief_rows (the loader's own header says so). Deleting rows by hand with SQL was rejected: it has no backup, no count check and no dry run."
+ },
+ "functions": [
+  {
+   "name": "read_cells",
+   "file_line": "scripts/load_project_brief.py",
+   "what": "Reads a replace file: pick lines, and {\"empty\": true} lines that name a cell with no pick.",
+   "input": "path to a JSONL file of picks and empty-cell lines",
+   "output": "(picks, empty cells, bad line numbers)",
+   "if_none": "a blank line is skipped; a broken or invalid line is listed in the bad line numbers",
+   "edge_cases": "empty must be the value true; a false flag is read as a pick and fails for want of a rank.",
+   "failure_mode": "A bad line makes the run stop before anything is written."
+  },
+  {
+   "name": "replace_problems",
+   "file_line": "scripts/load_project_brief.py",
+   "what": "Lists reasons a replace file cannot be applied as written.",
+   "input": "the pick lines and the empty-cell lines from the file",
+   "output": "a list of plain-English problems, empty when the file is fine",
+   "if_none": "an empty list of problems",
+   "edge_cases": "ranks are judged per cell; a cell both picked and named empty, or named empty twice, is a problem.",
+   "failure_mode": "None of its own: a missed problem would be caught by the unique key at insert, which rolls the swap back."
+  },
+  {
+   "name": "_replace_cells",
+   "file_line": "scripts/load_project_brief.py",
+   "what": "Saves the old rows of every named cell, deletes them and inserts the new ones in one transaction.",
+   "input": "an open connection, the arguments, and the writing flag",
+   "output": "a dry-run report, or a committed swap with its counts",
+   "if_none": "a file with no picks and no empty cells stops the run",
+   "edge_cases": "a pick that is missing, not current, or from another council stops the run before any delete; the delete count must equal the backup; the row count after must equal the picks.",
+   "failure_mode": "Any error rolls the transaction back, leaving the old rows in place; the backup file stays on disk."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A pick names a clause that is no longer current or belongs to another council.",
+   "what_happens": "The swap would delete a cell's rows and insert nothing for it.",
+   "mitigated": true,
+   "how": "Every pick is checked against regulatory_provisions (current, actionable, same council) before any delete; one failure stops the run.",
+   "repro": "load a file naming a made-up provision id with --replace-cells: it exits with 'name a clause that is missing'"
+  },
+  {
+   "scenario": "The backup is short or the delete removes more than was saved.",
+   "what_happens": "Rows would be lost with no way back.",
+   "mitigated": true,
+   "how": "The backup is read back and counted before the delete; the delete count must equal it or the transaction rolls back.",
+   "repro": "code path in _replace_cells: the backup count check and the cur.rowcount check"
+  },
+  {
+   "scenario": "Apply is run without a backup path.",
+   "what_happens": "Rows would be deleted with nothing saved.",
+   "mitigated": true,
+   "how": "--replace-cells --apply exits before connecting unless --backup-to is given.",
+   "repro": "pytest: test_replace_apply_without_a_backup_path_writes_nothing_and_exits"
+  },
+  {
+   "scenario": "A file with a rank gap or a cell named both picked and empty is applied.",
+   "what_happens": "A cell would show ranks 1 and 3 only, or be written and emptied at once.",
+   "mitigated": true,
+   "how": "replace_problems rejects both before the database is opened for writing.",
+   "repro": "pytest: test_replace_problems_rejects_a_gap_or_a_repeat_in_the_ranks and ..._both_picked_and_empty"
+  }
+ ],
+ "verified": [
+  "Old loader: 12 of 19 tests fail. New loader: 19 pass.",
+  "Dry run against the live table: 100 cells, 442 existing rows to delete, 113 to insert, nothing written.",
+  "The committed picks file reads clean: 113 picks, 24 empty-cell lines, ranks 1..n in every cell."
+ ],
+ "gaps": [
+  "The write itself has not been run. The loader's apply path is tested only through its argument checks and the dry run, not against a database that can be rolled back.",
+  "The checks OC-29 and OC-30 would not pass on the post-write state as they stand: five invalid answer-sheet cells in the hold-out, a per-council 80 percent floor that fails on one to three cells, and one picked clause (192218) still on the old global skip list. Those are handled outside this change, so main stays green.",
+  "A full rebuild of the brief by the builder outside the repo would overwrite the picks; reloading this file restores them."
+ ],
+ "post_merge": {
+  "db_reset": "Nothing is written by this change. If a later apply is made, restore from the --backup-to file by loading it back.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Run: python scripts/load_project_brief.py data/plan_brief_picks_2026-11-10.jsonl --replace-cells and confirm it prints 100 cells, 442 to delete, 113 to insert and 'Nothing written'."
+ }
+}
