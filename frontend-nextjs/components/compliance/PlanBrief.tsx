@@ -40,6 +40,7 @@ function ItemView({ item }: { item: BriefItem }) {
   const place = [item.clauseLabel ? `clause ${item.clauseLabel}` : null, item.page ? `page ${item.pageLabel || item.page}` : null].filter(Boolean).join(', ');
   return (
     <li className="py-2 border-t border-slate-100 first:border-t-0" data-testid="brief-item">
+      {item.note && <p className="mb-1 text-xs italic text-amber-800" data-testid="brief-closest">Closest clause in the plan: {item.note}</p>}
       {whereInPlan(item) && <p className="mb-1 text-xs text-slate-500" data-testid="brief-where">{whereInPlan(item)}</p>}
       <TextView text={item.text} />
       {item.continues && item.continues.length > 0 && (
