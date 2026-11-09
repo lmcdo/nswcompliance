@@ -31,6 +31,11 @@ const NAV_FILES = [
   'app/reports/page.tsx',
   'app/page.tsx',
   'app/pricing/page.tsx',
+  // The company pages the menu and footer link to.
+  'app/how-it-works/page.tsx',
+  'app/about/page.tsx',
+  'app/contact/page.tsx',
+  'app/terms/page.tsx',
 ];
 
 // href="..." / href='...' / href={'...'} / href: '...' (the footer's link tables).

@@ -17,6 +17,15 @@ export default function TermsPage() {
         <h1>Terms of Service</h1>
         <p className="text-gray-500 text-sm">Last updated: April 2026</p>
 
+        <h2>Private pilot (from 9 November 2026)</h2>
+        <p>
+          Council Rules and Site Facts are offered free during a private pilot with chosen
+          professionals. They are a preliminary reading of public sources and council documents.
+          Check the council&apos;s own document before relying on any rule shown. The paid reports,
+          subscriptions and other tools described below are not offered during the pilot. If
+          anything in these terms conflicts with this notice, this notice applies during the pilot.
+        </p>
+
         <h2>1. Acceptance</h2>
         <p>
           By using plotdetect.com.au (&ldquo;the Service&rdquo;), you agree to these terms. If you
