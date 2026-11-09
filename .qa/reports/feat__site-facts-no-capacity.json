@@ -1,0 +1,86 @@
+{
+ "tier": "standard",
+ "justification": "A served-output change: the Development Capacity card, which combines LEP limits with DCP setbacks, is withheld from Site Facts and shown in Council Rules only for a pilot council in zone R2",
+ "commit_hash": "820feb1e",
+ "files": [
+  ".qa/reports/feat__site-facts-no-capacity.json",
+  "frontend-nextjs/__tests__/lib/capacity-card-pilot-only.test.ts",
+  "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+  "frontend-nextjs/components/compliance/LepControls.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/capacity-card-pilot-only.test.ts",
+  "fails_when": "Site Facts stops dropping the constraint_arithmetic section, the section is added back to the expected list, or the Council Rules card loses its pilot council and zone guard",
+  "observed_red": "Removing the section filter fails the first test and re-adding the section to the expected list fails the second; both restored before commit"
+ },
+ "pre_impl": {
+  "existing_data": "Reads the existing constraint_arithmetic stream section and the pilot helpers in lib/pilot-focus.ts; nothing is written and the backend is unchanged",
+  "assumption_mismatch": "If the section is renamed in the backend the filter silently stops matching and the card returns; the source-scan test names the section string",
+  "new_vs_existing": "Applies to every Site Facts and Council Rules page view after deploy; the card code is kept so it can be re-enabled",
+  "external_source_error": "N/A",
+  "frontend_type": "No type changes; one array filter and one added condition",
+  "user_failure_mode": "A visitor outside the ten councils sees no capacity card in the Planning Controls tab and Site Facts shows no Development Capacity section"
+ },
+ "functions": [
+  {
+   "name": "IntelligenceBriefInner",
+   "file_line": "frontend-nextjs/app/reports/intelligence-brief/page.tsx:2648",
+   "input": "the streamed Site Facts sections for one address",
+   "output": "the rendered report without the Development Capacity section",
+   "if_none": "an empty stream renders the existing loading and error states"
+  },
+  {
+   "name": "LepControls",
+   "file_line": "frontend-nextjs/components/compliance/LepControls.tsx:40",
+   "input": "the property constraints, former council and lot data",
+   "output": "the Planning Controls tab, with the capacity card only for a pilot council in zone R2",
+   "if_none": "a missing council or zone hides the capacity card"
+  }
+ ],
+ "values": [
+  {
+   "value": "constraints.zone",
+   "read_at": "frontend-nextjs/components/compliance/LepControls.tsx:217",
+   "nullable": "yes",
+   "guard_at": "frontend-nextjs/lib/pilot-focus.ts:131",
+   "if_missing": "the capacity card is not shown"
+  },
+  {
+   "value": "formerCouncil",
+   "read_at": "frontend-nextjs/components/compliance/LepControls.tsx:217",
+   "nullable": "yes",
+   "guard_at": "frontend-nextjs/lib/pilot-focus.ts:113",
+   "if_missing": "the council is found from the LGA name, otherwise the card is not shown"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A Hornsby address in zone R3 opens Planning Controls",
+   "what_happens": "The capacity card is not shown for that address",
+   "mitigated": true,
+   "how": "The guard needs both a pilot council and the pilot zone",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/capacity-card-pilot-only.test.ts"
+  },
+  {
+   "scenario": "The backend renames the capacity section",
+   "what_happens": "The filter stops matching and the card appears in Site Facts again",
+   "mitigated": false,
+   "how": "Known limit: the filter is keyed on the section name; the source-scan test pins the current name only",
+   "repro": "rename the section in services/intelligence_brief.py and open Site Facts"
+  },
+  {
+   "scenario": "A Penrith house address in zone R2 opens Planning Controls",
+   "what_happens": "The capacity card still shows as before",
+   "mitigated": true,
+   "how": "The added guard passes for a pilot council in the pilot zone and changes nothing else",
+   "repro": "open Penrith R2 Planning Controls on the preview"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Open a Penrith R2 address in Council Rules and read the Planning Controls tab: the capacity card shows; open a Kellyville address: it does not; open Site Facts for any address: no Development Capacity section"
+ }
+}

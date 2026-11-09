@@ -2328,7 +2328,7 @@ function formatElapsed(seconds: number): string {
 const EXPECTED_SECTIONS_BASE = [
   'economics', 'strata', 'environmental_constraints', 'planning_controls',
 ];
-const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'constraint_arithmetic', 'neighbourhood', 'market_context'];
+const EXPECTED_SECTIONS_DEV = ['dcp_controls', 'sepp_housing', 'neighbourhood', 'market_context'];
 // Withdrawn until checked (owner decision 2026-10-28; lib/hidden-products.ts).
 // Dropped from every satellite list; the solar card is never mounted, so its fetch never fires.
 const WITHDRAWN_SATELLITE_SECTIONS = new Set(['satellite.flood', 'satellite.bushfire', 'satellite.solar']);
@@ -2682,7 +2682,11 @@ function IntelligenceBriefInner() {
     // until it's decoupled to a worker. Backend code retained — re-enable by removing
     // this filter, restoring the toggle, and re-adding it to EXPECTED_SECTIONS_SAT.
     .filter((p) => p.data.section !== 'satellite.pre_da_history')
-    .filter((p) => !WITHDRAWN_SATELLITE_SECTIONS.has(p.data.section));
+    .filter((p) => !WITHDRAWN_SATELLITE_SECTIONS.has(p.data.section))
+    // Development Capacity withheld for the private pilot (2026-11-09): it combines the LEP limits with DCP setbacks,
+    // so it is a council-rules figure and belongs only where the rules are measured (the address page, pilot councils).
+    // Re-enable by removing this filter and re-adding the section to EXPECTED_SECTIONS_DEV.
+    .filter((p) => p.data.section !== 'constraint_arithmetic');
   const completeEvent = parts.find((p): p is Extract<BriefEvent, { event: 'complete' }> => p.event === 'complete');
   const planningCtx = getPlanningContext(sectionEvents);
 
