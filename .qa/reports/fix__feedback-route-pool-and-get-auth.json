@@ -1,6 +1,6 @@
 {
  "tier": "standard",
- "justification": "Repairs the feedback submit path that returned 500 on production and closes an unauthenticated list of submitter email addresses.",
+ "justification": "Repairs the feedback submit path that returned 500 on production and restricts the list of submitter email addresses to the operator.",
  "commit_hash": "45559b2c",
  "files": [
   "frontend-nextjs/__tests__/api/feedback-route-pool-and-auth.test.ts",
@@ -18,15 +18,15 @@
  },
  "functions": [
   {
-   "name": "requireSignedInUser",
-   "file_line": "frontend-nextjs/app/api/feedback/route.ts:16",
+   "name": "requireFeedbackAdmin",
+   "file_line": "frontend-nextjs/app/api/feedback/route.ts:18",
    "input": "Nothing; it reads the caller's session through the server client.",
-   "output": "Null when a user is signed in, otherwise a 401 response.",
-   "if_none": "No user, no session or a failed check all return 401, never access."
+   "output": "Null for the operator, a 401 with no user, a 403 for any other signed-in user.",
+   "if_none": "No user, no email, no session or a failed check never returns access."
   },
   {
    "name": "GET",
-   "file_line": "frontend-nextjs/app/api/feedback/route.ts:246",
+   "file_line": "frontend-nextjs/app/api/feedback/route.ts:252",
    "input": "A request with optional type, status and limit filters.",
    "output": "Feedback rows for a signed-in user, otherwise a 401 response.",
    "if_none": "A failed query returns a 500 with a generic message, never the error text."
@@ -52,6 +52,13 @@
    "what_happens": "A submission could appear to succeed while nothing is saved.",
    "mitigated": true,
    "how": "the insert is awaited and any failure returns 500 so the form shows an error",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts"
+  },
+  {
+   "scenario": "an ordinary signed-in account requests the feedback list",
+   "what_happens": "It could read every submitter's feedback and email address.",
+   "mitigated": true,
+   "how": "only the operator email or the FEEDBACK_ADMIN_EMAILS list passes, anyone else gets 403 before the query",
    "repro": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts"
   }
  ],

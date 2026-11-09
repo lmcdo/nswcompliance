@@ -10,18 +10,24 @@ export const dynamic = 'force-dynamic';
 // submission returned 500 (measured 2026-11-09: POST /api/feedback -> 500 "Failed to save feedback").
 
 /**
- * The feedback list holds submitters' email addresses, so it is for a signed-in user only. FAIL CLOSED: unlike
- * the /internal helpers this does not let everyone in when auth is switched off, and any error is a refusal.
+ * The feedback list holds submitters' email addresses, so it is for the operator only: a signed-in user whose email is
+ * the operator's (FEEDBACK_ADMIN_EMAILS, comma-separated, else the same address the alert emails go to). FAIL CLOSED:
+ * unlike the /internal helpers this does not let everyone in when auth is switched off, any error is a refusal, and a
+ * signed-in user who is not the operator gets 403, not the list.
  */
-async function requireSignedInUser(): Promise<NextResponse | null> {
+async function requireFeedbackAdmin(): Promise<NextResponse | null> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) return null;
+    if (!user) return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
+    const admins = (process.env.FEEDBACK_ADMIN_EMAILS || NOTIFY_EMAIL)
+      .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (user.email && admins.includes(user.email.toLowerCase())) return null;
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   } catch {
     // no readable session means no access
+    return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
   }
-  return NextResponse.json({ error: 'unauthorised' }, { status: 401 });
 }
 
 // Map our frontend feedback types to database schema
@@ -244,7 +250,7 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to retrieve feedback (for admin dashboard)
 export async function GET(request: NextRequest) {
-  const denied = await requireSignedInUser();
+  const denied = await requireFeedbackAdmin();
   if (denied) return denied;
   try {
     const searchParams = request.nextUrl.searchParams;

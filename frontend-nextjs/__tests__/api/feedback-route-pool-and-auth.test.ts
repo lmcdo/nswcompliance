@@ -33,8 +33,19 @@ describe('GET /api/feedback (the list holds email addresses)', () => {
     expect(res.status).toBe(401);
     expect(mockQuery).not.toHaveBeenCalled();
   });
-  test('a signed-in user gets the rows', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+  test('an ordinary signed-in user is refused: 403, and the database is never read', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u2', email: 'someone.else@example.com' } } });
+    const res = await get();
+    expect(res.status).toBe(403);
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+  test('a signed-in user with no email is refused', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u3' } } });
+    const res = await get();
+    expect(res.status).toBe(403);
+  });
+  test('the operator (the alert address) gets the rows', async () => {
+    mockGetUser.mockResolvedValueOnce({ data: { user: { id: 'u1', email: 'Lawrence.McDonell@gmail.com' } } });
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] });
     const res = await get();
     expect(res.status).toBe(200);
