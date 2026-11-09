@@ -1,5 +1,5 @@
 {
-"read_by": "Script scan of the council's own PDFs, 2026-11-09 (scan_ranks.py). NOT an owner read. Revised 2026-11-09: rows now flagged by the revised scanner and a read against the PDF headings; 3 Blacktown landscaping clauses added.",
+"read_by": "Script scan of the council's own PDFs, 2026-11-09 (scan_ranks.py). NOT an owner read. Revised 2026-11-09: rows now flagged by the revised scanner and a read against the PDF headings; 3 Blacktown landscaping clauses added. 2026-11-10: northern_beaches 192218 (L4255 Residential parking table) re-read: it lists Dwelling house and dual occupancy at 2 spaces per dwelling, so it is a house clause; the earlier flag came from the 'Boarding house' row in the same table.",
 "method": "For every council in project_brief_rows, each of the top-5 clauses for a dwelling house in zone group R2 across the 10 topics the brief serves, for the 10 named councils was located in the council's PDF at its cited page and the section heading path above it was read. flagged = the nearest heading naming a building type is another type, a named place, estate, precinct, campus or neighbourhood, or an ancillary structure (garages are not flagged for car parking). reason says which.",
 "limits": "Keyword based: a wrong-type heading can be missed and a right one flagged. Leichhardt and Ku-ring-gai headings come back as page footers and are weakly classified.",
 "rows": [
@@ -1888,8 +1888,8 @@
 "type": "car_parking",
 "rank": 1,
 "pid": 192218,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "northern_beaches",
