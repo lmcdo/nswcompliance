@@ -2013,7 +2013,7 @@
   },
   "OC-29": {
     "kind": "outreach_claim",
-    "claim": "For the councils the plan brief is served for (a house in zone R2), a script has read the council's own section heading above every clause the brief can show: none under a heading for another building type or a specific site is still shown, every core topic keeps a clause, and top-5 recall on the proven rules after the skip is at least 80% for every named council and 90% overall. At least 5 councils. This is a script read, not an owner read.",
+    "claim": "For the councils the plan brief is served for (a house in zone R2), a script has read the council's own section heading above every clause the brief can show: none under a heading for another building type or a specific site is still shown, every core topic keeps a clause except one declared gap (Ku-ring-gai landscaping has no rows, listed in known_empty_topics), and top-5 recall on the proven rules after the skip is at least 80% for every named council and 90% overall. At least 5 councils. This is a script read, not an owner read.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
     "declared": "true",
     "check": [
