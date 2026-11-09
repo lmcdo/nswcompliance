@@ -1,16 +1,29 @@
 {
- "read_by": "Script (scan of the council's own PDFs), 2026-11-09. NOT an owner read.",
- "method": "For each named council, the rank-1 clause shown for a dwelling house in zone group R2 for 6 topics (front, side, rear setback; car parking; landscaping; private open space; a council with no row for a topic has 5). The script opens the council's own PDF at the cited page and reads the section heading path above the clause (PDF bookmarks where present, otherwise the numbered heading lines). Flag: red = the nearest heading naming a building type is for another type or a specific site (dual occupancy, semi-detached, multi-dwelling, narrow lot, estate, precinct, centre, campus and similar); green = that heading is for houses (single dwellings, dwelling houses, low density); none = a general heading.",
+ "read_by": "Script scan of the council's own PDFs plus the author's reading of the page text above each clause, 2026-11-09. NOT an owner read.",
+ "method": "For each council, the rank-1 clause shown for a dwelling house in zone group R2 for 6 topics (front, side, rear setback; car parking; landscaping; private open space). The council's own PDF is opened at the cited page and the section heading path above the clause is read. red = the clause sits under a heading or page for another building type, a specific neighbourhood or site (dual occupancy, semi-detached, multi-dwelling, narrow lot, estate, precinct, outbuildings, basement, suburb profile); green = under a heading for houses; none = a general heading.",
  "named_councils": [
   "penrith",
   "wollongong",
   "waverley",
-  "leichhardt",
-  "cumberland",
   "ku_ring_gai"
  ],
- "how_named": "A council is named when none of its first rules is flagged red AND its top-5 recall on the proven rules is at least 80% (live rows, scripts/plan_brief_checks.py gold cells). Not named: Georges River, Ashfield, Campbelltown, Blacktown, Parramatta, Northern Beaches, Marrickville and Canterbury-Bankstown each have a first rule under a heading for another building type or a specific site; City of Sydney recall is 60%; Hornsby and Woollahra failed the one cheap fix round on 2026-11-09 (leak removal cut hold-out recall from 94% to 80%).",
- "limits": "A 'none' flag means no heading contradicts the rule, not that it is verified right. Ranks 2 and 3 are not read here. An earlier owner read (cards without headings) marked the Penrith, Wollongong and Waverley first rules right; it is not counted.",
+ "how_named": "A council is named when none of its first rules is under a heading for another building type or a site AND its top-5 recall on the proven rules is at least 80% (live rows).",
+ "not_named": {
+  "georges_river": "2 first rules wrong: 6.1.4 Narrow Lot Housing - Bellevue Estate (rear setback); 6.1.3 Dual Occupancy (private open space)",
+  "ashfield": "1 first rule wrong: Part 4 Residential Multi dwelling housing (rear setback)",
+  "campbelltown": "1 first rule wrong: 3.6.4 Semi-detached Dwellings (landscaping)",
+  "leichhardt": "2 first rules area-specific: C2.2.2.5 neighbourhood setback (front); George & Upward Streets precinct chapter (landscaping)",
+  "cumberland": "2 first rules wrong type: basement wall clause (side setback); 2.20 Outbuildings (rear setback)",
+  "blacktown": "1 first rule under a heading for another building type or site (scan_all)",
+  "parramatta": "1 first rule under such a heading (scan_all)",
+  "northern_beaches": "1 first rule under such a heading (scan_all)",
+  "marrickville": "4 first rules under such headings (scan_all)",
+  "canterbury_bankstown": "all 6 first rules are from site-specific chapters 11.6 Potts Hill and 11.13 Former WSU Campus Milperra",
+  "city_of_sydney": "top-5 recall 60%",
+  "hornsby": "failed the one cheap fix round 2026-11-09 (leak removal cut hold-out recall from 94% to 80%)",
+  "woollahra": "failed the same round"
+ },
+ "limits": "A none flag means no heading contradicts the rule, not that it is verified right. Ranks 2 and 3 are not read here. With 4 clean councils there are 23 rows; the sign-off bar of at least 30 rows across at least 5 councils is NOT met, and has not been weakened.",
  "rows": [
   {
    "n": 1,
@@ -194,163 +207,53 @@
   },
   {
    "n": 19,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "front_setback",
-   "first_provision_id": 154586,
-   "flag": "none",
-   "section": "SECTION 2 – URBAN CHARACTER > C2.1 SUBURB PROFILES"
-  },
-  {
-   "n": 20,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "side_setback",
-   "first_provision_id": 205023,
-   "flag": "none",
-   "section": "PLACE > PART C – 346"
-  },
-  {
-   "n": 21,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "rear_setback",
-   "first_provision_id": 205014,
-   "flag": "none",
-   "section": "PLACE > PART C – 344"
-  },
-  {
-   "n": 22,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "car_parking",
-   "first_provision_id": 186145,
-   "flag": "none",
-   "section": "SECTION 1 – GENERAL PROVISIONS > C1.11 PARKING"
-  },
-  {
-   "n": 23,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "landscaping_min",
-   "first_provision_id": 162442,
-   "flag": "none",
-   "section": "0 Provisions > 4 Open Space and Landscape"
-  },
-  {
-   "n": 24,
-   "council": "leichhardt",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "private_open_space",
-   "first_provision_id": 205140,
-   "flag": "none",
-   "section": "PLACE > PART C – 360"
-  },
-  {
-   "n": 25,
-   "council": "cumberland",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "front_setback",
-   "first_provision_id": 203860,
-   "flag": "none",
-   "section": "Cumberland DCP Part B - Adopted by Council 19.08.20 (effective 2021) > Objectives and Controls > 4 Streetscape"
-  },
-  {
-   "n": 26,
-   "council": "cumberland",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "side_setback",
-   "first_provision_id": 203936,
-   "flag": "none",
-   "section": "Cumberland DCP Part B - Adopted by Council 19.08.20 (effective 2021) > Objectives and Controls > 3 Car parking"
-  },
-  {
-   "n": 27,
-   "council": "cumberland",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "rear_setback",
-   "first_provision_id": 203781,
-   "flag": "none",
-   "section": "Cumberland DCP Part B - Adopted by Council 19.08.20 (effective 2021) > Objectives and Controls > 20 Outbuildings"
-  },
-  {
-   "n": 28,
-   "council": "cumberland",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "landscaping_min",
-   "first_provision_id": 203896,
-   "flag": "none",
-   "section": "Cumberland DCP Part B - Adopted by Council 19.08.20 (effective 2021) > Objectives and Controls > 7 Landscaping"
-  },
-  {
-   "n": 29,
-   "council": "cumberland",
-   "dev_type": "dwelling_house",
-   "zone_group": "R2",
-   "row_type": "private_open_space",
-   "first_provision_id": 203901,
-   "flag": "green",
-   "section": "Cumberland DCP Part B - Adopted by Council 19.08.20 (effective 2021) > Objectives and Controls > 9 Dwelling house mix"
-  },
-  {
-   "n": 30,
    "council": "ku_ring_gai",
    "dev_type": "dwelling_house",
    "zone_group": "R2",
    "row_type": "front_setback",
    "first_provision_id": 171465,
-   "flag": "none",
-   "section": "p 4-6 > Ku-ring-gai Development Control Plan"
+   "flag": "green",
+   "section": "Part 4 DWELLING HOUSES (page header)"
   },
   {
-   "n": 31,
+   "n": 20,
    "council": "ku_ring_gai",
    "dev_type": "dwelling_house",
    "zone_group": "R2",
    "row_type": "side_setback",
    "first_provision_id": 171476,
    "flag": "none",
-   "section": "p 4-8 > Ku-ring-gai Development Control Plan"
+   "section": "4A.2 Building setbacks (Figure 4A.2-2 side setbacks for dwellings)"
   },
   {
-   "n": 32,
+   "n": 21,
    "council": "ku_ring_gai",
    "dev_type": "dwelling_house",
    "zone_group": "R2",
    "row_type": "rear_setback",
    "first_provision_id": 171474,
    "flag": "none",
-   "section": "p 4 -7 > Ku-ring-gai Development Control Plan"
+   "section": "4A SITE DESIGN > 4A.2 Building setbacks (continued)"
   },
   {
-   "n": 33,
+   "n": 22,
    "council": "ku_ring_gai",
    "dev_type": "dwelling_house",
    "zone_group": "R2",
    "row_type": "car_parking",
    "first_provision_id": 171534,
    "flag": "none",
-   "section": "p 4 -17 > Ku-ring-gai Development Control Plan"
+   "section": "4B ACCESS AND PARKING > 4B.2 Car parking provision"
   },
   {
-   "n": 34,
+   "n": 23,
    "council": "ku_ring_gai",
    "dev_type": "dwelling_house",
    "zone_group": "R2",
    "row_type": "private_open_space",
    "first_provision_id": 171604,
-   "flag": "none",
-   "section": "p 4-28 > Ku-ring-gai Development Control Plan"
+   "flag": "green",
+   "section": "DWELLING HOUSES > 4C.4 Private open space"
   }
  ]
 }

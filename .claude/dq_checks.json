@@ -2015,7 +2015,7 @@
     "kind": "outreach_claim",
     "claim": "For the councils named for the first release, a script reads the council's own section heading above each first rule shown for a house (about 6 topics per council, at least 30 rules across at least 5 councils): fewer than 2 sit under a heading for another building type or a specific site. This is a script read of the plan's headings, not an owner read.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
-    "declared": "true",
+    "declared": "false",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -2024,7 +2024,7 @@
     "blocks_outreach": true,
     "passes_when": "exit 0 - data/plan_brief_heading_read_2026-11-09.json has at least 30 distinct rows from at least 5 councils, fewer than 2 flagged red, and every recorded first clause is still the row's first clause now",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "OB-8, replaced 2026-11-09: the owner reads no check pages, and a card without the plan's headings could not be judged by anyone. 34 rows, 6 named councils (Penrith, Wollongong, Waverley, Leichhardt, Cumberland, Ku-ring-gai): 0 flagged red, 6 under a heading for houses, 28 under a general heading. A none flag means no heading contradicts the rule, not that it is proven right. A council is named when no first rule is flagged red and its top-5 recall is at least 80%. Not named: Georges River, Ashfield, Campbelltown, Blacktown, Parramatta, Northern Beaches, Marrickville, Canterbury-Bankstown (a first rule under a heading for another building type or a site), City of Sydney (recall 60%), Hornsby and Woollahra (failed the one cheap fix round). Ranks 2 and 3 are not read here. Goes stale (FAIL) if the brief is rebuilt or reloaded."
+    "note": "OB-8, replaced 2026-11-09 by a script read of the council's own section headings (the owner reads no check pages). RESULT: NOT MET. Only 4 councils have clean first rules (Penrith, Wollongong, Waverley, Ku-ring-gai): 23 rows, 0 under a wrong-type heading. The bar of at least 30 rows across at least 5 councils is not met and has not been weakened. Each other council has at least one first rule under a heading for another building type or a site (list in data/plan_brief_heading_read_2026-11-09.json, not_named). The fastest way to a fifth council is to exclude one clause: Campbelltown's landscaping first rule is from section 3.6.4 Semi-detached Dwellings (the other five are under 3.6.1 Dwelling Houses). Declared false until the bar is met."
   },
   "OC-30": {
     "kind": "outreach_claim",

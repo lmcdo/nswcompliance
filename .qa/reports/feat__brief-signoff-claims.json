@@ -72,17 +72,17 @@
       "repro": "python -m pytest tests/test_dq_check_outreach.py -q"
     },
     {
-      "scenario": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
+      "scenario": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
       "what_happens": "Exit 1 with a FileNotFoundError traceback.",
       "mitigated": true,
-      "how": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
+      "how": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
       "repro": "python scripts/outreach_claim_checks.py OC-29"
     },
     {
       "scenario": "A claim is declared true while its check cannot pass.",
       "what_happens": "CI fails with a contradicted claim.",
       "mitigated": true,
-      "how": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
+      "how": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
       "repro": "python scripts/dq_check.py --outreach"
     },
     {
@@ -104,6 +104,13 @@
       "what_happens": "The read could pass while a named council has a wrong-type first rule.",
       "mitigated": true,
       "how": "The data file records how councils were named (no red first rule and recall of at least 80%) and the check fails on stale rows; the named list is fixed in the file, not chosen by the check.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29"
+    },
+    {
+      "scenario": "The sign-off bar is quietly lowered to fit the evidence.",
+      "what_happens": "A claim would read as met when fewer councils were verified than the owner approved.",
+      "mitigated": true,
+      "how": "heading_read still requires at least 30 rows and at least 5 councils; with 23 rows it prints FAIL and OC-29 is declared false, with the gap and the fastest fix written in the ledger note.",
       "repro": "python scripts/outreach_claim_checks.py OC-29"
     }
   ],
