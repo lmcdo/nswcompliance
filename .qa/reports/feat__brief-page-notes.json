@@ -1,0 +1,100 @@
+{
+ "tier": "standard",
+ "justification": "Changes two things the reader sees under the plan brief: the standing note now says the figures are headline requirements and the wording around them can add tests or exceptions, and a clause that is only the closest the plan has (the council sets the control by map, on merit or in general wording) shows a one-line note above it. Read-only serving code and wording; no stored clause or table is changed. Directionality: more wording for the reader, never a changed figure.",
+ "commit_hash": "e0d61087",
+ "files": [
+  "frontend-nextjs/lib/plan-brief.ts",
+  "frontend-nextjs/app/api/brief/for-property/route.ts",
+  "frontend-nextjs/components/compliance/PlanBrief.tsx",
+  "frontend-nextjs/__tests__/components/plan-brief-closest-clause.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/components/plan-brief-closest-clause.test.tsx",
+  "fails_when": "A reason that starts 'closest clause:' does not become a note, any other reason does, the note is rendered as markup, a normal clause shows a note, or the standing note stops saying the figures are headline requirements with tests or exceptions around them.",
+  "external_authority": "The picks file (data/plan_brief_picks_2026-11-10.jsonl) writes the reason 'closest clause: the council sets this by map, on merit or in general wording, not as a single figure' for four boxes, whose clauses are the council's own words: Northern Beaches 190880 and 190818 (front, 'the minimum indicated on the DCP Map'), 190897 and 190814 (rear, 'determined on a merit basis'), Ashfield DS4.1 and DS4.2 (front, 'consistent with the predominant building line'), Blacktown 202272 (landscaping).",
+  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: 5 failed, 3 passed, 8 total (briefRowNote does not exist and the standing note has no headline wording). With the new source: 8 passed; the lib and components suites together run 83 suites, 1267 tests, all passing."
+ },
+ "pre_impl": {
+  "existing_data": "The page already shows a standing note (BRIEF_NOTE) above the brief and a not-found line for an empty row. Four boxes (Northern Beaches front and rear setback, Ashfield front setback, Blacktown landscaping) are filled by the picks file with the closest clause rather than left to say not found; 49 of 113 strict picks have a test or exception word in their own text or the next three clauses on the page, so a per-row flag would show on about half the rows.",
+  "assumption_mismatch": "A per-row 'exceptions apply' flag was proposed, then measured at 48 percent of picks (54 of 113): too common to mean anything. A fixed line in the existing note, true almost every time, replaces it. The note for a closest clause was first going to live in a config file; carrying it on the row's own reason field keeps it with the data and needs no second list to keep in step.",
+  "new_vs_existing": "No new component or table: the existing note constant gains a sentence, the existing item view gains one conditional line, and the existing reason column (already in project_brief_rows) is passed through the route."
+ },
+ "functions": [
+  {
+   "name": "briefRowNote",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts",
+   "what": "Turns a row's reason into the one-line note shown above a closest clause.",
+   "input": "the reason text stored on one brief row, or nothing",
+   "output": "a sentence starting with a capital, or null",
+   "if_none": "a missing or empty reason gives null and no note is shown",
+   "edge_cases": "only a reason that starts 'closest clause:' counts; the words appearing later in a reason do not; nothing after the colon gives null.",
+   "failure_mode": "A wrong match could show a note on a normal clause; every other reason in the table is tested to give none."
+  },
+  {
+   "name": "BRIEF_NOTE",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts",
+   "what": "The standing note under the brief heading, now saying the figures are headline requirements.",
+   "input": "none, it is a fixed sentence constant",
+   "output": "the wording shown once above every brief",
+   "if_none": "not applicable, it is a constant",
+   "edge_cases": "contains none of the banned claim words (verified, compliant, approved, guarantee, reliable, accurate, ensure) and keeps 'Indicative only'.",
+   "failure_mode": "Wording that overstated would breach the liability rules; the test checks the banned words."
+  },
+  {
+   "name": "ItemView closest-clause line",
+   "file_line": "frontend-nextjs/components/compliance/PlanBrief.tsx",
+   "what": "Shows 'Closest clause in the plan: ...' above a clause whose row carries a note.",
+   "input": "one brief item that may carry a note",
+   "output": "an italic line above the clause, or nothing",
+   "if_none": "no note on the item means no line",
+   "edge_cases": "the note is rendered as text, so markup in it does nothing.",
+   "failure_mode": "A missing note shows nothing extra; the clause and its page link are unchanged."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A normal clause picks up the closest-clause note.",
+   "what_happens": "A real figure would be labelled as only the closest clause.",
+   "mitigated": true,
+   "how": "Only a reason that starts 'closest clause:' gives a note; the strict-pick and old-build reasons are tested to give none.",
+   "repro": "jest: every other reason gives no note"
+  },
+  {
+   "scenario": "The note text contains markup.",
+   "what_happens": "Page markup injected from a stored reason.",
+   "mitigated": true,
+   "how": "React renders it as text; a test puts <b>bold</b> in a note and finds no b element.",
+   "repro": "jest: the note is plain text, not markup"
+  },
+  {
+   "scenario": "The caveat sentence overstates or understates.",
+   "what_happens": "A liability breach or a reader who thinks the figures are the whole rule.",
+   "mitigated": true,
+   "how": "It states what the figures are (headline requirements) and what surrounds them (tests or exceptions) and keeps 'Indicative only'; tested against the banned words list.",
+   "repro": "jest: keeps the indicative wording and uses none of the banned claim words"
+  },
+  {
+   "scenario": "The route's extra column breaks the query for an old row.",
+   "what_happens": "The brief would return an error for every address.",
+   "mitigated": true,
+   "how": "reason is a nullable column that exists on project_brief_rows (read with information_schema); a null reason gives no note.",
+   "repro": "briefRowNote(null) gives null; the route selects b.reason from the same table it already reads"
+  }
+ ],
+ "verified": [
+  "Old source: 5 of 8 new tests fail. New source: 8 pass; lib and components suites 83 suites, 1267 tests, all pass.",
+  "tsc --noEmit prints no errors.",
+  "The four closest-clause boxes' clauses were read in the council's text when chosen."
+ ],
+ "gaps": [
+  "The notes only appear after the picks are loaded into project_brief_rows; until then the reason column holds the old builds' reasons and no note shows.",
+  "Not run against a deployed route: checked by tests and types, then to be checked on a live Northern Beaches address after the swap.",
+  "The caveat is one fixed sentence; it will not tell a reader which clause carries the exception."
+ ],
+ "post_merge": {
+  "db_reset": "No data change. Revert the commit to undo.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After the picks are loaded and Vercel deploys, open a Northern Beaches R2 house and check the front setback row shows 'Closest clause in the plan: ...' and the standing note mentions tests or exceptions."
+ }
+}
