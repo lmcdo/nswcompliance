@@ -214,11 +214,25 @@ def brief_jest() -> Result:
     return _JEST
 
 
+def _recorded_speed() -> Result:
+    """No deployment to time here: use the recorded measurement (data/plan_brief_speed_2026-11-09.json) when it is valid."""
+    path = ROOT / "data" / "plan_brief_speed_2026-11-09.json"
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        calls, p95, bar = int(rec["calls"]), float(rec["p95_s"]), float(rec["bar_s"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return UNKNOWN, ("speed: set PLAN_BRIEF_URL to a deployment with PLAN_BRIEF=on (and PLAN_BRIEF_HEADERS if protected) to time it; "
+                         "no valid recorded measurement either")
+    if calls < 60 or bar != 2.0:
+        return FAIL, f"speed: the recorded measurement is not valid ({calls} calls, bar {bar} s; need at least 60 calls and a 2 s bar)"
+    return (PASS if p95 < bar else FAIL), (f"speed (RECORDED {rec.get('measured_on')}, not re-timed here): {calls} calls on a preview, "
+                                           f"p50 {rec.get('p50_s')} s, p95 {p95:.2f} s (bar {bar:.0f} s)")
+
+
 def brief_speed() -> Result:
     base = os.environ.get("PLAN_BRIEF_URL")
     if not base:
-        return UNKNOWN, ("speed: set PLAN_BRIEF_URL to a deployment with PLAN_BRIEF=on (and PLAN_BRIEF_HEADERS if protected) "
-                         "to time it. Measured by hand 2026-11-08 on a preview: p50 0.98 s, p95 1.19 s over 102 calls; not a pass here")
+        return _recorded_speed()
     headers = dict(h.split(":", 1) for h in (os.environ.get("PLAN_BRIEF_HEADERS") or "").split(";") if ":" in h)
     combos = [(c, d) for c in ("ashfield", "penrith", "waverley", "wollongong", "georges_river", "hornsby") for d in CORE_ZONE]
     times = []

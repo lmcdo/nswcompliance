@@ -29,6 +29,7 @@ def test_wilson_lower_bound_of_all_correct_is_below_one():
 
 def test_speed_check_is_unknown_without_a_deployment_address(monkeypatch):
     monkeypatch.delenv("PLAN_BRIEF_URL", raising=False)
+    monkeypatch.setattr(pbc, "ROOT", Path("no-such-folder"))
     status, why = pbc.brief_speed()
     assert status == pbc.UNKNOWN
     assert "PLAN_BRIEF_URL" in why
@@ -147,3 +148,17 @@ def test_heading_read_fails_on_wrong_types_and_on_councils_outside_the_named_lis
     path.write_text(json.dumps(doc), encoding="utf-8")
     status, why = pbc.heading_read()
     assert status == pbc.FAIL and "named_councils" in why
+
+def test_recorded_speed_passes_fails_and_rejects_a_short_record(monkeypatch, tmp_path):
+    monkeypatch.delenv("PLAN_BRIEF_URL", raising=False)
+    (tmp_path / "data").mkdir()
+    f = tmp_path / "data" / "plan_brief_speed_2026-11-09.json"
+    monkeypatch.setattr(pbc, "ROOT", tmp_path)
+    f.write_text(json.dumps({"calls": 72, "p95_s": 0.41, "bar_s": 2.0, "p50_s": 0.19, "measured_on": "2026-11-09"}), encoding="utf-8")
+    assert pbc.brief_speed()[0] == pbc.PASS
+    f.write_text(json.dumps({"calls": 72, "p95_s": 2.5, "bar_s": 2.0}), encoding="utf-8")
+    assert pbc.brief_speed()[0] == pbc.FAIL
+    f.write_text(json.dumps({"calls": 10, "p95_s": 0.1, "bar_s": 2.0}), encoding="utf-8")
+    assert pbc.brief_speed()[0] == pbc.FAIL
+    f.write_text("{}", encoding="utf-8")
+    assert pbc.brief_speed()[0] == pbc.UNKNOWN

@@ -40,10 +40,17 @@
     },
     {
       "name": "heading_read",
-      "file_line": "scripts/plan_brief_checks.py:265",
+      "file_line": "scripts/plan_brief_checks.py:279",
       "input": "the recorded heading read file and the live brief rows",
       "output": "PASS, FAIL or UNKNOWN with counts of flagged, house and general headings",
       "if_none": "a missing or malformed file reads FAIL with a clear message, never a pass"
+    },
+    {
+      "name": "_recorded_speed",
+      "file_line": "scripts/plan_brief_checks.py:217",
+      "input": "the recorded speed measurement file in the data folder",
+      "output": "PASS, FAIL or UNKNOWN with the recorded calls and p95",
+      "if_none": "a missing or malformed record reads UNKNOWN; a short or failing record reads FAIL"
     }
   ],
   "values": [
@@ -112,6 +119,13 @@
       "mitigated": true,
       "how": "heading_read still requires at least 30 rows and at least 5 councils; with 23 rows it prints FAIL and OC-29 is declared false, with the gap and the fastest fix written in the ledger note.",
       "repro": "python scripts/outreach_claim_checks.py OC-29"
+    },
+    {
+      "scenario": "The recorded speed measurement is stale or invented.",
+      "what_happens": "OC-27 could pass in CI without a live timing.",
+      "mitigated": true,
+      "how": "The result string says RECORDED and not re-timed; the record needs at least 60 calls and the 2 s bar; the note says to re-measure on production once the brief is live.",
+      "repro": "python scripts/outreach_claim_checks.py OC-27"
     }
   ],
   "post_merge": {
