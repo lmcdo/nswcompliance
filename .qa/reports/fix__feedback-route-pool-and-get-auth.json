@@ -1,0 +1,64 @@
+{
+ "tier": "standard",
+ "justification": "Repairs the feedback submit path that returned 500 on production and closes an unauthenticated list of submitter email addresses.",
+ "commit_hash": "063b251d",
+ "files": [
+  "frontend-nextjs/__tests__/api/feedback-route-pool-and-auth.test.ts",
+  "frontend-nextjs/app/api/feedback/route.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts",
+  "fails_when": "the list answers without a signed-in user, or the submit route writes through its own pool",
+  "observed_red": "Against the old route file: Tests: 4 failed, 4 total, including the 401 and shared-pool tests."
+ },
+ "pre_impl": {
+  "existing_data": "user_feedback exists with 16 columns and 9 older rows; no schema change. Production POST returned HTTP 500 on 2026-11-09 before this fix.",
+  "assumption_mismatch": "The earlier read assumed submissions landed in the table. The route read DB_HOST-style variables that production does not define, so it used localhost and failed.",
+  "new_vs_existing": "No new mechanism. The route now uses the shared getPool every other route uses, and the signed-in check follows the existing supabase pattern but fails closed."
+ },
+ "functions": [
+  {
+   "name": "requireSignedInUser",
+   "file_line": "frontend-nextjs/app/api/feedback/route.ts:16",
+   "input": "Nothing; it reads the caller's session through the server client.",
+   "output": "Null when a user is signed in, otherwise a 401 response.",
+   "if_none": "No user, no session or a failed check all return 401, never access."
+  },
+  {
+   "name": "GET",
+   "file_line": "frontend-nextjs/app/api/feedback/route.ts:246",
+   "input": "A request with optional type, status and limit filters.",
+   "output": "Feedback rows for a signed-in user, otherwise a 401 response.",
+   "if_none": "A failed query returns a 500 with a generic message, never the error text."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "authentication is switched off in the environment",
+   "what_happens": "The old helper pattern would let every caller in and expose emails.",
+   "mitigated": true,
+   "how": "this check does not read the auth flag, so no signed-in user means 401 regardless",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts"
+  },
+  {
+   "scenario": "the server client throws while reading the session",
+   "what_happens": "An unhandled error could fall through to the query and return rows.",
+   "mitigated": true,
+   "how": "the check catches any error and returns 401 before any database read",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts"
+  },
+  {
+   "scenario": "the shared pool is unreachable on submit",
+   "what_happens": "A submission could appear to succeed while nothing is saved.",
+   "mitigated": true,
+   "how": "the insert is awaited and any failure returns 500 so the form shows an error",
+   "repro": "cd frontend-nextjs && npx jest __tests__/api/feedback-route-pool-and-auth.test.ts"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy, submit one test feedback on production and confirm it returns 201, lands in user_feedback and the alert email arrives."
+ }
+}
