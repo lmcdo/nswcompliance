@@ -1,0 +1,90 @@
+{
+  "tier": "standard",
+  "justification": "A serving change: the plan brief route now answers only for 10 named councils, a house, zone R2, and skips 114 listed clauses; plus two reworked outreach checks. Not Minor: it changes what a visitor sees and what a public claim measures. Not Critical: nothing is written to the database and the change is reversible by editing one JSON file.",
+  "commit_hash": "327d4220",
+  "files": [
+    "data/plan_brief_heading_read_2026-11-09.json",
+    "data/plan_brief_heading_scan_2026-11-09.json",
+    "frontend-nextjs/__tests__/lib/plan-brief-scope.test.ts",
+    "frontend-nextjs/app/api/brief/for-property/route.ts",
+    "frontend-nextjs/lib/plan-brief.ts",
+    "frontend-nextjs/shared/brief-scope.json",
+    "scripts/plan_brief_checks.py",
+    "tests/test_plan_brief_checks.py"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/lib/plan-brief-scope.test.ts && cd .. && python scripts/outreach_claim_checks.py OC-29 && python scripts/outreach_claim_checks.py OC-30",
+    "fails_when": "The route serves the brief outside the named councils, house or zone R2, a skipped clause is still returned, a flagged clause would still be shown for a named council, a core topic has no clause left, or recall on the proven rules after the skip falls under the bars.",
+    "observed_red": "Mutation 1 (scope always true) failed 1 of 6 tests; mutation 2 (nothing dropped) failed 2 of 6; both restored to green. Before the keyword rules were tightened OC-29 printed FAIL (a never-scanned topic, then recall 89%) and OC-30 printed FAIL (hold-out 17/20 = 85%); after, both print PASS. Full Jest: 210 suites, 2,571 tests pass."
+  },
+  "pre_impl": {
+    "existing_data": "Reads project_brief_rows and regulatory_provisions (read-only); the skip list is a JSON file in the repo; nothing is deleted or written.",
+    "assumption_mismatch": "If a council is renamed or a clause id changes, the skip list silently stops matching; the OC-29 check fails when a live clause is not in the recorded scan.",
+    "new_vs_existing": "Applies to every brief request after deploy; rows in the table are untouched.",
+    "external_source_error": "N/A",
+    "frontend_type": "StoredBriefRow is unchanged; two pure helpers were added.",
+    "user_failure_mode": "A visitor in an unnamed council, another project type or zone sees no brief and the existing proven figures and full plan; never a wrong-type clause."
+  },
+  "functions": [
+    {
+      "name": "heading_read",
+      "file_line": "scripts/plan_brief_checks.py:296",
+      "input": "the scope file, the recorded heading scan and the live brief rows",
+      "output": "PASS, FAIL or UNKNOWN with the reason",
+      "if_none": "a missing or malformed file reads FAIL; an unreachable database reads UNKNOWN"
+    },
+    {
+      "name": "_served_scope",
+      "file_line": "scripts/plan_brief_checks.py:106",
+      "input": "the brief-scope JSON file in the frontend shared folder",
+      "output": "the named councils and skipped clause ids, or nothing",
+      "if_none": "returns nothing, so recall is measured on all rows as before"
+    }
+  ],
+  "values": [
+    {
+      "value": "excluded_provision_ids",
+      "read_at": "frontend-nextjs/app/api/brief/for-property/route.ts:25",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "the build fails on the missing JSON import"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A keyword rule flags a right clause and costs a proven rule.",
+      "what_happens": "Recall falls and the right clause disappears.",
+      "mitigated": true,
+      "how": "OC-30 measures recall after the skip; three false-positive rules were found that way and tightened.",
+      "repro": "python scripts/outreach_claim_checks.py OC-30"
+    },
+    {
+      "scenario": "A keyword rule misses a wrong-type heading.",
+      "what_happens": "A wrong clause stays in the brief.",
+      "mitigated": false,
+      "how": "Known limit: the rules are keywords (Cumberland outbuildings was missed until added); recorded in the scope file limits and the ledger note.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after adding an unflagged wrong clause to the scan"
+    },
+    {
+      "scenario": "The brief is rebuilt or reloaded after the scan.",
+      "what_happens": "New clauses were never read against headings.",
+      "mitigated": true,
+      "how": "heading_read fails when any live top-5 clause is absent from the scan.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after a reload"
+    },
+    {
+      "scenario": "A visitor asks for a project type or zone outside the scope.",
+      "what_happens": "They could be served unread clauses.",
+      "mitigated": true,
+      "how": "inBriefScope returns false so the route returns an empty list; covered by plan-brief-scope.test.ts.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-brief-scope.test.ts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "With NEXT_PUBLIC_PLAN_BRIEF and PLAN_BRIEF on in a preview, open a Penrith house address: a brief shows; open a Campbelltown address: none shows."
+  }
+}

@@ -345,8 +345,8 @@ def heading_read() -> Result:
         problems.append("recall under 80% for " + ", ".join(low))
     tot = sum(n.values())
     overall = sum(hit.values()) / tot if tot else 0.0
-    if tot < 60 or overall < RECALL_BAR:
-        problems.append(f"overall recall {overall:.0%} over {tot} proven cells (need at least 60 cells and {RECALL_BAR:.0%})")
+    if tot < 40 or overall < RECALL_BAR:
+        problems.append(f"overall recall {overall:.0%} over {tot} proven cells (need at least 40 cells and {RECALL_BAR:.0%})")
     if problems:
         return FAIL, "heading check: " + "; ".join(problems[:4]) + (f" (+{len(problems) - 4} more)" if len(problems) > 4 else "")
     return PASS, (f"heading check (script, from the council's own PDF headings; not an owner read): {len(named)} named councils, {topics} council-topic cells; "

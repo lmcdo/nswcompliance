@@ -744,8 +744,8 @@
 "type": "front_setback",
 "rank": 3,
 "pid": 170722,
-"flagged": true,
-"reason": "specific site or area"
+"flagged": false,
+"reason": null
 },
 {
 "council": "georges_river",
@@ -784,8 +784,8 @@
 "type": "side_setback",
 "rank": 3,
 "pid": 170754,
-"flagged": true,
-"reason": "specific site or area"
+"flagged": false,
+"reason": null
 },
 {
 "council": "georges_river",
@@ -1561,7 +1561,7 @@
 "rank": 5,
 "pid": 171547,
 "flagged": false,
-"reason": "ancillary structure"
+"reason": null
 },
 {
 "council": "ku_ring_gai",
@@ -1688,8 +1688,8 @@
 "type": "max_site_coverage",
 "rank": 1,
 "pid": 171382,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "ku_ring_gai",
@@ -1704,16 +1704,16 @@
 "type": "max_site_coverage",
 "rank": 3,
 "pid": 171445,
-"flagged": true,
-"reason": "other building type"
+"flagged": false,
+"reason": null
 },
 {
 "council": "ku_ring_gai",
 "type": "max_site_coverage",
 "rank": 4,
 "pid": 171650,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "ku_ring_gai",
@@ -1752,8 +1752,8 @@
 "type": "max_height",
 "rank": 4,
 "pid": 171650,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "ku_ring_gai",
@@ -1800,8 +1800,8 @@
 "type": "front_setback",
 "rank": 5,
 "pid": 191014,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "northern_beaches",
@@ -1888,7 +1888,7 @@
 "type": "car_parking",
 "rank": 1,
 "pid": 192218,
-"flagged": false,
+"flagged": true,
 "reason": "ancillary structure"
 },
 {
@@ -1912,7 +1912,7 @@
 "type": "car_parking",
 "rank": 4,
 "pid": 192152,
-"flagged": false,
+"flagged": true,
 "reason": "ancillary structure"
 },
 {
@@ -1960,8 +1960,8 @@
 "type": "landscaping_min",
 "rank": 5,
 "pid": 191014,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "northern_beaches",
@@ -2600,16 +2600,16 @@
 "type": "side_setback",
 "rank": 4,
 "pid": 261524,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
 "type": "side_setback",
 "rank": 5,
 "pid": 261678,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
@@ -2681,7 +2681,7 @@
 "rank": 4,
 "pid": 261748,
 "flagged": false,
-"reason": "ancillary structure"
+"reason": null
 },
 {
 "council": "penrith",
@@ -2768,16 +2768,16 @@
 "type": "private_open_space",
 "rank": 5,
 "pid": 261811,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
 "type": "secondary_street_setback",
 "rank": 1,
 "pid": 261264,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
@@ -2792,8 +2792,8 @@
 "type": "secondary_street_setback",
 "rank": 3,
 "pid": 261366,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
@@ -2808,8 +2808,8 @@
 "type": "secondary_street_setback",
 "rank": 5,
 "pid": 261568,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "penrith",
@@ -2864,8 +2864,8 @@
 "type": "max_height",
 "rank": 5,
 "pid": 261732,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "waverley",
@@ -3160,8 +3160,8 @@
 "type": "deep_soil_min",
 "rank": 5,
 "pid": 226604,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "waverley",
@@ -3248,8 +3248,8 @@
 "type": "front_setback",
 "rank": 5,
 "pid": 211002,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
@@ -3272,8 +3272,8 @@
 "type": "side_setback",
 "rank": 3,
 "pid": 211127,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
@@ -3312,8 +3312,8 @@
 "type": "rear_setback",
 "rank": 3,
 "pid": 211127,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
@@ -3440,8 +3440,8 @@
 "type": "secondary_street_setback",
 "rank": 2,
 "pid": 211095,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
@@ -3464,8 +3464,8 @@
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 211118,
-"flagged": true,
-"reason": "ancillary structure"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
@@ -3496,8 +3496,8 @@
 "type": "max_site_coverage",
 "rank": 1,
 "pid": 211135,
-"flagged": true,
-"reason": "other building type"
+"flagged": false,
+"reason": null
 },
 {
 "council": "wollongong",
