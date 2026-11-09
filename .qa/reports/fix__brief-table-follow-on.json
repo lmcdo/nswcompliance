@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes what the plan brief shows under a clause that names a table, for every council. Read-only serving code: no data is written and no stored clause is changed. Directionality: the old behaviour showed no table (or three unrelated clauses) under such a clause; the new behaviour shows the table whose caption matches, or nothing. A wrong table would be a visible mismatch under its own caption, not a changed number.",
- "commit_hash": "54976744",
+ "commit_hash": "ae4498c0",
  "files": [
   "frontend-nextjs/lib/plan-brief.ts",
   "frontend-nextjs/app/api/brief/for-property/route.ts",
