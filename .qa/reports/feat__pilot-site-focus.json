@@ -51,14 +51,14 @@
   },
   {
    "name": "isPilotUnlisted",
-   "file_line": "frontend-nextjs/lib/pilot-focus.ts:90",
+   "file_line": "frontend-nextjs/lib/pilot-focus.ts:91",
    "input": "a path or a full URL string",
    "output": "true when the page is withdrawn from navigation and search for the pilot",
    "if_none": "an unparsable URL returns false"
   },
   {
    "name": "isPilotCouncil",
-   "file_line": "frontend-nextjs/lib/pilot-focus.ts:106",
+   "file_line": "frontend-nextjs/lib/pilot-focus.ts:114",
    "input": "the former-council slug and the LGA name",
    "output": "true only for a council named in the scope file",
    "if_none": "missing or unknown council returns false, so the pilot notice shows"
@@ -69,6 +69,20 @@
    "input": "council, dev_type and an optional zone",
    "output": "grouped controls plus the zone filter that was applied",
    "if_none": "no zone means no filter and zone_filter_applied null"
+  },
+  {
+   "name": "pilotCouncilKey",
+   "file_line": "frontend-nextjs/lib/pilot-focus.ts:109",
+   "input": "the former-council slug and the LGA name of an address",
+   "output": "the first of the two that is a pilot council, or null",
+   "if_none": "a missing or unknown council returns null and the pilot notice shows"
+  },
+  {
+   "name": "isPilotZone",
+   "file_line": "frontend-nextjs/lib/pilot-focus.ts:122",
+   "input": "the zone label the portal gives for the site",
+   "output": "true only when the label reads as the zone the clauses were measured for",
+   "if_none": "a missing or unreadable zone returns false and the notice says the zone could not be read"
   }
  ],
  "values": [
@@ -81,10 +95,17 @@
   },
   {
    "value": "selectedProperty.constraints.lga",
-   "read_at": "frontend-nextjs/app/assessment/page.tsx:175",
+   "read_at": "frontend-nextjs/app/assessment/page.tsx:176",
    "nullable": "yes",
    "guard_at": "frontend-nextjs/lib/pilot-focus.ts:106",
    "if_missing": "the address is treated as outside the pilot and the notice shows"
+  },
+  {
+   "value": "selectedProperty.constraints.zone",
+   "read_at": "frontend-nextjs/app/assessment/page.tsx:177",
+   "nullable": "yes",
+   "guard_at": "frontend-nextjs/lib/pilot-focus.ts:122",
+   "if_missing": "the page shows the notice that the zone could not be read and no rules"
   }
  ],
  "queries": [],
@@ -123,6 +144,20 @@
    "mitigated": false,
    "how": "Not changed here; the yield estimate uses DCP setbacks and needs an owner decision",
    "repro": "compare the DCP setbacks row in Site Facts with the Council Rules table for one address"
+  },
+  {
+   "scenario": "A Hornsby address in zone R3",
+   "what_happens": "The page shows the pilot notice naming the zone and no rules",
+   "mitigated": true,
+   "how": "The gate requires the council and the pilot zone",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/pilot-focus-links.test.ts"
+  },
+  {
+   "scenario": "A Northern Beaches address carries an old former-council name",
+   "what_happens": "It is still found as a pilot council through its current council name",
+   "mitigated": true,
+   "how": "pilotCouncilKey tries both keys and the page sends the pilot key to the data calls",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/pilot-focus-links.test.ts"
   }
  ],
  "post_merge": {

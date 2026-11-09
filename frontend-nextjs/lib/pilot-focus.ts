@@ -16,6 +16,7 @@
  */
 import briefScope from '@/shared/brief-scope.json';
 import { toLgaSlug } from '@/lib/lga-slug';
+import { zoneCode } from '@/lib/zone-code';
 
 /** The councils the pilot is measured on (the brief's scope file, one source). */
 export const PILOT_COUNCILS: readonly string[] = briefScope.councils;
@@ -99,11 +100,25 @@ export function isPilotUnlisted(pathOrUrl: string): boolean {
 }
 
 /**
- * True when the address's council is one of the pilot councils. `formerCouncil` is the portal's
- * former-council slug (Inner West only); otherwise the LGA name is slugged exactly as the brief
- * route does. Unknown or missing council is NOT in the pilot (never defaults to yes).
+ * The pilot council key for an address, or null when it is not in the pilot. Tries the portal's
+ * former-council slug first (it separates Ashfield from the rest of Inner West), then the LGA name
+ * slugged exactly as the brief route does, and returns the first that is a pilot council. Trying both
+ * means an address whose former-council value is an old name (for example an amalgamated area) is
+ * still found by its current council. Unknown or missing council is NOT in the pilot.
  */
+export function pilotCouncilKey(formerCouncil: string | null | undefined, lga: string | null | undefined): string | null {
+  const candidates = [(formerCouncil || '').trim().toLowerCase(), toLgaSlug(lga) || ''];
+  return candidates.find((k) => !!k && PILOT_COUNCILS.includes(k)) ?? null;
+}
+
 export function isPilotCouncil(formerCouncil: string | null | undefined, lga: string | null | undefined): boolean {
-  const key = (formerCouncil || '').trim().toLowerCase() || toLgaSlug(lga);
-  return !!key && PILOT_COUNCILS.includes(key);
+  return pilotCouncilKey(formerCouncil, lga) !== null;
+}
+
+/** The one zone the clause lists were measured for (shared/brief-scope.json zone_group). */
+export const PILOT_ZONE: string = briefScope.zone_group;
+
+/** True only when the zone label reads as the pilot zone. An unreadable or missing zone is NOT in the pilot. */
+export function isPilotZone(zone: string | null | undefined): boolean {
+  return zoneCode(zone) === PILOT_ZONE;
 }

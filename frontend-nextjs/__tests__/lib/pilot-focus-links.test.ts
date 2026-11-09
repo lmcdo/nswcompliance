@@ -11,6 +11,8 @@ import {
   PILOT_COUNCIL_NAMES,
   PILOT_UNLISTED_PREFIXES,
   isPilotCouncil,
+  isPilotZone,
+  pilotCouncilKey,
   isPilotUnlisted,
 } from '@/lib/pilot-focus';
 import sitemap from '@/app/sitemap';
@@ -94,6 +96,40 @@ describe('pilot focus', () => {
     expect(isPilotCouncil(undefined, undefined)).toBe(false);
     expect(isPilotCouncil('', '   ')).toBe(false);
     expect(isPilotCouncil(null, null)).toBe(false);
+  });
+
+  it('pilotCouncilKey finds the pilot council by former council or by current council', () => {
+    expect(pilotCouncilKey('ashfield', 'Inner West')).toBe('ashfield');
+    // An old former-council name must not push a listed council out of the pilot.
+    expect(pilotCouncilKey('warringah', 'Northern Beaches')).toBe('northern_beaches');
+    expect(pilotCouncilKey('hurstville', 'Georges River')).toBe('georges_river');
+    expect(pilotCouncilKey(undefined, 'Hornsby')).toBe('hornsby');
+    expect(pilotCouncilKey('leichhardt', 'Inner West')).toBeNull();
+    expect(pilotCouncilKey('marrickville', 'Inner West')).toBeNull();
+    expect(pilotCouncilKey(null, null)).toBeNull();
+    expect(pilotCouncilKey('', '')).toBeNull();
+  });
+
+  it('every pilot council is found from its own LGA name', () => {
+    const lgaNames: Record<string, string> = {
+      penrith: 'Penrith', wollongong: 'Wollongong', waverley: 'Waverley', ku_ring_gai: 'Ku-ring-gai',
+      blacktown: 'Blacktown', northern_beaches: 'Northern Beaches', georges_river: 'Georges River',
+      parramatta: 'City of Parramatta', hornsby: 'Hornsby',
+    };
+    for (const [key, lga] of Object.entries(lgaNames)) expect(pilotCouncilKey(undefined, lga)).toBe(key);
+  });
+
+  it('isPilotZone accepts R2 labels only; other zones and unreadable zones are out', () => {
+    expect(isPilotZone('R2')).toBe(true);
+    expect(isPilotZone('R2 Low Density Residential')).toBe(true);
+    expect(isPilotZone('R2: Low Density Residential')).toBe(true);
+    expect(isPilotZone('R3')).toBe(false);
+    expect(isPilotZone('R4 High Density Residential')).toBe(false);
+    expect(isPilotZone('B4')).toBe(false);
+    expect(isPilotZone('Low Density Residential')).toBe(false);
+    expect(isPilotZone(undefined)).toBe(false);
+    expect(isPilotZone(null)).toBe(false);
+    expect(isPilotZone('')).toBe(false);
   });
 
   it('the pricing page shows no price and no plan names', () => {

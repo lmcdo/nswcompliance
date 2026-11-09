@@ -23,7 +23,7 @@ import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTo
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
 import { YourProjectSummary } from '@/components/compliance/YourProjectSummary';
-import { isPilotCouncil, PILOT_COUNCILS, PILOT_COUNCIL_NAMES } from '@/lib/pilot-focus';
+import { pilotCouncilKey, isPilotZone, PILOT_COUNCILS, PILOT_COUNCIL_NAMES, PILOT_ZONE } from '@/lib/pilot-focus';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -170,9 +170,14 @@ export default function AssessmentPage() {
     console.log('[Pattern Book Navigation] Switching to DCP tab:', { topic, hcaSlug });
   };
 
-  // Private pilot: the plan rules are read and measured for the pilot councils only (lib/pilot-focus.ts).
-  // An unknown council is NOT in the pilot.
-  const inPilot = isPilotCouncil(selectedProperty?.constraints?.formerCouncil, selectedProperty?.constraints?.lga);
+  // Private pilot: the clauses are read and measured for the pilot councils, in one zone, only (lib/pilot-focus.ts).
+  // An unknown council, or a zone that cannot be read, is NOT in the pilot. The council key used for the data calls
+  // below is the pilot key when there is one, so an old former-council name cannot send an address out of scope.
+  const pilotKey = pilotCouncilKey(selectedProperty?.constraints?.formerCouncil, selectedProperty?.constraints?.lga);
+  const siteZone = selectedProperty?.constraints?.zone as string | undefined;
+  const zoneInPilot = isPilotZone(siteZone);
+  const inPilot = pilotKey !== null && zoneInPilot;
+  const councilKey = pilotKey ?? (selectedProperty?.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty?.constraints?.lga || ''));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -494,7 +499,11 @@ export default function AssessmentPage() {
             {!loading && selectedProperty && !inPilot && (
               <div className="bg-white border rounded-lg p-8 shadow-md" role="status">
                 <h3 className="text-lg font-semibold mb-2 text-slate-800">
-                  Council plan rules are not shown for {selectedProperty.constraints?.lga || 'this address'} yet
+                  {pilotKey === null
+                    ? `Council plan rules are not shown for ${selectedProperty.constraints?.lga || 'this address'} yet`
+                    : siteZone
+                      ? `Council plan rules are shown for a house in zone ${PILOT_ZONE} only; this address is in ${siteZone}`
+                      : 'The zone for this address could not be read, so council plan rules are not shown'}
                 </h3>
                 <p className="text-slate-700 mb-3">
                   Council Rules is in a private pilot. It reads the council&apos;s own planning documents, with the clause and the page, for a house in a residential R2 zone in these councils:
@@ -515,7 +524,7 @@ export default function AssessmentPage() {
                 {/* Your project: key controls passed through from existing sources, above the tabs */}
                 <ErrorBoundary fallbackTitle="Error loading project summary">
                   <YourProjectSummary
-                    formerCouncil={selectedProperty.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty.constraints?.lga || '')}
+                    formerCouncil={councilKey}
                     constraints={selectedProperty.constraints as any}
                     planningLayers={selectedProperty.planningLayers || []}
                   />
@@ -657,7 +666,7 @@ export default function AssessmentPage() {
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
                         lga={selectedProperty.constraints?.lga}
-                        formerCouncil={selectedProperty.constraints?.formerCouncil || normalizeLgaSlug(selectedProperty.constraints?.lga || '')}
+                        formerCouncil={councilKey}
                         zone={selectedProperty.constraints?.zone}
                         heritage={heritageAnswer(selectedProperty.heritage)}
                         hcaName={heritageClass.isConservationArea
