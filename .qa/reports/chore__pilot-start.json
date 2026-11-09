@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "User-facing table and clause-list wording on the address page, no database or API change, but it decides what a reader sees next to every plan figure.",
- "commit_hash": "84ff99a5",
+ "commit_hash": "ad7b32e1",
  "files": [
   "frontend-nextjs/__tests__/components/plan-brief.test.tsx",
   "frontend-nextjs/__tests__/components/your-project-summary.test.tsx",
