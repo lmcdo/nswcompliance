@@ -497,7 +497,7 @@ export default function AssessmentPage() {
 
             {/* Outside the pilot councils: say so plainly instead of showing rules we have not measured. */}
             {!loading && selectedProperty && !inPilot && (
-              <div className="bg-white border rounded-lg p-8 shadow-md" role="status">
+              <div className="bg-white border rounded-lg p-6 shadow-md mb-4" role="status">
                 <h3 className="text-lg font-semibold mb-2 text-slate-800">
                   {pilotKey === null
                     ? `Council plan rules are not shown for ${selectedProperty.constraints?.lga || 'this address'} yet`
@@ -514,21 +514,23 @@ export default function AssessmentPage() {
                   ))}
                 </ul>
                 <p className="text-slate-600 text-sm">
-                  The property facts on the left come from the NSW Planning Portal. Check the council&apos;s own documents for this address.
+                  The SEPP and Planning Controls tabs below, and the property facts on the left, come from the NSW Planning Portal. Check the council&apos;s own documents for this address.
                 </p>
               </div>
             )}
 
-            {!loading && selectedProperty && inPilot && (
+            {!loading && selectedProperty && (
               <>
                 {/* Your project: key controls passed through from existing sources, above the tabs */}
-                <ErrorBoundary fallbackTitle="Error loading project summary">
-                  <YourProjectSummary
-                    formerCouncil={dataCouncil}
-                    constraints={selectedProperty.constraints as any}
-                    planningLayers={selectedProperty.planningLayers || []}
-                  />
-                </ErrorBoundary>
+                {inPilot && (
+                  <ErrorBoundary fallbackTitle="Error loading project summary">
+                    <YourProjectSummary
+                      formerCouncil={dataCouncil}
+                      constraints={selectedProperty.constraints as any}
+                      planningLayers={selectedProperty.planningLayers || []}
+                    />
+                  </ErrorBoundary>
+                )}
                 {/* Regulatory Tabs - SEPP purple, LEP amber, DCP green */}
                 <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">
@@ -582,31 +584,33 @@ export default function AssessmentPage() {
                       </span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-blue-100' : 'text-blue-400'}`}>Zone & Development Standards</span>
                     </button>
-                    <button
-                      role="tab"
-                      id="tab-dcp"
-                      aria-selected={viewMode === 'dcp'}
-                      aria-controls="panel-dcp"
-                      onClick={() => { setDcpEverActivated(true); setViewMode('dcp'); }}
-                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
-                        viewMode === 'dcp'
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
-                      }`}
-                    >
-                      <span className="flex items-center justify-center gap-1 text-base font-bold">
-                        DCP
-                        <Tooltip>
-                          <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <HelpCircle className={`w-3.5 h-3.5 ${viewMode === 'dcp' ? 'text-teal-200' : 'text-teal-500'}`} />
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" sideOffset={8} className="max-w-[260px]">
-                            Development Control Plan — detailed council guidelines for setbacks, parking, landscaping, building design, and precinct-specific rules. Advisory but expected in DA submissions.
-                          </TooltipContent>
-                        </Tooltip>
-                      </span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-teal-600'}`}>Council Controls</span>
-                    </button>
+                    {inPilot && (
+                      <button
+                        role="tab"
+                        id="tab-dcp"
+                        aria-selected={viewMode === 'dcp'}
+                        aria-controls="panel-dcp"
+                        onClick={() => { setDcpEverActivated(true); setViewMode('dcp'); }}
+                        className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
+                          viewMode === 'dcp'
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-1 text-base font-bold">
+                          DCP
+                          <Tooltip>
+                            <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <HelpCircle className={`w-3.5 h-3.5 ${viewMode === 'dcp' ? 'text-teal-200' : 'text-teal-500'}`} />
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" sideOffset={8} className="max-w-[260px]">
+                              Development Control Plan — detailed council guidelines for setbacks, parking, landscaping, building design, and precinct-specific rules. Advisory but expected in DA submissions.
+                            </TooltipContent>
+                          </Tooltip>
+                        </span>
+                        <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-teal-600'}`}>Council Controls</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -617,7 +621,7 @@ export default function AssessmentPage() {
                 />
 
                 {/* SEPP Tab Content */}
-                {viewMode === 'sepp' && (
+                {(viewMode === 'sepp' || (!inPilot && viewMode === 'dcp')) && (
                   <div role="tabpanel" id="panel-sepp" aria-labelledby="tab-sepp">
                     <StateLevelControls
                       propertyData={selectedProperty}
@@ -649,49 +653,51 @@ export default function AssessmentPage() {
                 )}
 
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
-                <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-                  {(selectedProperty as any).strataInfo?.isStrata && (
-                    <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-start gap-2 text-sm">
-                      <svg className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-orange-800">
-                        <span className="font-semibold">Strata unit — </span>
-                        DCP controls below apply to the building and lot as a whole. Setback controls govern new development on the scheme&apos;s parent lot. Works to individual units are governed by the strata by-laws and owners corporation consent, not DCP setbacks directly.
-                      </span>
-                    </div>
-                  )}
-                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil, selectedProperty.constraints?.lga) ? (
-                    <ErrorBoundary fallbackTitle="Error loading DCP provisions">
-                      <ProvisionsByTocStructure
-                        key={`toc-${selectedProperty.address}`}
-                        lga={selectedProperty.constraints?.lga}
-                        formerCouncil={dataCouncil}
-                        zone={selectedProperty.constraints?.zone}
-                        heritage={heritageAnswer(selectedProperty.heritage)}
-                        hcaName={heritageClass.isConservationArea
-                          ? selectedProperty.heritage?.heritageItemName
-                          : undefined}
-                        precinctId={selectedProperty.constraints?.precinctId}
-                        precinctName={selectedProperty.constraints?.precinctName}
+                {inPilot && (
+                  <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
+                    {(selectedProperty as any).strataInfo?.isStrata && (
+                      <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-start gap-2 text-sm">
+                        <svg className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-orange-800">
+                          <span className="font-semibold">Strata unit — </span>
+                          DCP controls below apply to the building and lot as a whole. Setback controls govern new development on the scheme&apos;s parent lot. Works to individual units are governed by the strata by-laws and owners corporation consent, not DCP setbacks directly.
+                        </span>
+                      </div>
+                    )}
+                    {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil, selectedProperty.constraints?.lga) ? (
+                      <ErrorBoundary fallbackTitle="Error loading DCP provisions">
+                        <ProvisionsByTocStructure
+                          key={`toc-${selectedProperty.address}`}
+                          lga={selectedProperty.constraints?.lga}
+                          formerCouncil={dataCouncil}
+                          zone={selectedProperty.constraints?.zone}
+                          heritage={heritageAnswer(selectedProperty.heritage)}
+                          hcaName={heritageClass.isConservationArea
+                            ? selectedProperty.heritage?.heritageItemName
+                            : undefined}
+                          precinctId={selectedProperty.constraints?.precinctId}
+                          precinctName={selectedProperty.constraints?.precinctName}
+                          address={selectedProperty.address}
+                          hcaCode={selectedProperty.heritage?.heritageItemNumber}
+                          heritageItem={heritageClass.isItem}
+                          heritageItemName={selectedProperty.heritage?.heritageItemName}
+                          heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
+                          propertyData={selectedProperty}
+                          lepClauseData={lepClauseData}
+                          isDaMode={isDaMode}
+                          onToggleDaMode={setIsDaMode}
+                        />
+                      </ErrorBoundary>
+                    ) : (
+                      <DCPInterestForm
+                        councilName={selectedProperty.constraints?.lga || 'Your council'}
                         address={selectedProperty.address}
-                        hcaCode={selectedProperty.heritage?.heritageItemNumber}
-                        heritageItem={heritageClass.isItem}
-                        heritageItemName={selectedProperty.heritage?.heritageItemName}
-                        heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
-                        propertyData={selectedProperty}
-                        lepClauseData={lepClauseData}
-                        isDaMode={isDaMode}
-                        onToggleDaMode={setIsDaMode}
                       />
-                    </ErrorBoundary>
-                  ) : (
-                    <DCPInterestForm
-                      councilName={selectedProperty.constraints?.lga || 'Your council'}
-                      address={selectedProperty.address}
-                    />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
