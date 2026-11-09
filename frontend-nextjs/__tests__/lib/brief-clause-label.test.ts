@@ -25,6 +25,11 @@ describe('briefClauseLabel', () => {
     expect(briefClauseLabel('4A.2 1.5m side setback single storey building', 'KDCP__section_a_part_4_dwelling_houses__4A_2 1.5m side setback single storey building')).toBe('4A.2');   // not the whole ref text
     expect(briefClauseLabel('14B.10 Controls Controls', null)).toBe('14B.10');
   });
+  test('descriptive text after the clause identifier is never part of the label', () => {
+    expect(briefClauseLabel('Prescriptive Measures', 'Hornsby_DCP__x__3_1_2 a Minimum side setback is 1.5m')).toBe('3.1.2 a');
+    expect(briefClauseLabel('Prescriptive Measures', 'H__x__4_5 Minimum setback applies to all lots')).toBe('4.5');
+    expect(briefClauseLabel('Prescriptive Measures', 'H__x__3_1_2 (a) Setbacks')).toBe('3.1.2 (a)');
+  });
   test('a duplicate marker on the ref is dropped', () => {
     expect(briefClauseLabel('Prescriptive Measures', 'H__h__3_1_1 d~2')).toBe('3.1.1 d');
   });

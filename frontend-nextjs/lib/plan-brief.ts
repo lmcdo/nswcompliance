@@ -113,8 +113,10 @@ export function briefClauseLabel(sectionHeader: string | null | undefined, refNu
   const dotted = String(sectionHeader ?? '').trim().match(/^([A-Z]{1,2}\d+[A-Z]?(?:\.\d+)+|\d+[A-Z](?:\.\d+)+)(?=\s|$)/);
   if (dotted) return dotted[1];
   const tail = String(refNumber ?? '').split('__').pop()?.trim().replace(/~\d+$/, '') ?? '';
-  if (/^[A-Za-z]{0,2}\d/.test(tail)) return tail.replace(/(?<=[0-9A-Za-z])_(?=[0-9A-Za-z])/g, '.');
-  return null;
+  // Only an anchored clause identifier (and an optional "a" / "(a)" item suffix) is returned, never the text after it.
+  const id = tail.match(/^((?:[A-Za-z]{1,2}\d+[A-Za-z]? )?\d[\dA-Za-z]*(?:_\d[\dA-Za-z]*)*|[A-Za-z]{1,2}\d+[A-Za-z]?(?:_\d+[A-Za-z]?)*)(?: ([a-z]{1,2}|\([a-z0-9]+\)))?(?= |$)/);
+  if (!id) return null;
+  return id[1].replace(/_/g, '.') + (id[2] ? ` ${id[2]}` : '');
 }
 
 export function tidyText(raw: string | null | undefined, limit = BRIEF_TEXT_LIMIT): string {
