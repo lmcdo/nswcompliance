@@ -1,5 +1,5 @@
 {
-"read_by": "Script scan of the council's own PDFs, 2026-11-09 (scan_ranks.py). NOT an owner read.",
+"read_by": "Script scan of the council's own PDFs, 2026-11-09 (scan_ranks.py). NOT an owner read. Revised 2026-11-09: rows now flagged by the revised scanner and a read against the PDF headings; 3 Blacktown landscaping clauses added.",
 "method": "For every council in project_brief_rows, each of the top-5 clauses for a dwelling house in zone group R2 across the 10 topics the brief serves, for the 10 named councils was located in the council's PDF at its cited page and the section heading path above it was read. flagged = the nearest heading naming a building type is another type, a named place, estate, precinct, campus or neighbourhood, or an ancillary structure (garages are not flagged for car parking). reason says which.",
 "limits": "Keyword based: a wrong-type heading can be missed and a right one flagged. Leichhardt and Ku-ring-gai headings come back as page footers and are weakly classified.",
 "rows": [
@@ -552,8 +552,8 @@
 "type": "landscaping_min",
 "rank": 4,
 "pid": 202842,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4 Distance separation requirements for home business (re-read 2026-11-09)"
 },
 {
 "council": "blacktown",
@@ -624,8 +624,8 @@
 "type": "secondary_street_setback",
 "rank": 3,
 "pid": 202802,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3 Child care facilities (re-read 2026-11-09)"
 },
 {
 "council": "blacktown",
@@ -1048,8 +1048,8 @@
 "type": "front_setback",
 "rank": 3,
 "pid": 262416,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.3 Residential Flat Buildings (3 Storeys) (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1104,8 +1104,8 @@
 "type": "side_setback",
 "rank": 5,
 "pid": 262267,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.2 Medium Density Housing (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1136,8 +1136,8 @@
 "type": "rear_setback",
 "rank": 4,
 "pid": 262268,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.2 Medium Density Housing (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1264,8 +1264,8 @@
 "type": "private_open_space",
 "rank": 5,
 "pid": 262641,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.4 Residential Flat Buildings (5 Storeys) (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1288,8 +1288,8 @@
 "type": "secondary_street_setback",
 "rank": 3,
 "pid": 262259,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.2 Medium Density Housing (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1304,8 +1304,8 @@
 "type": "secondary_street_setback",
 "rank": 5,
 "pid": 262576,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.4 Residential Flat Buildings (5 Storeys) (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1320,24 +1320,24 @@
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 262288,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.2 Medium Density Housing (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
 "type": "deep_soil_min",
 "rank": 3,
 "pid": 262447,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.3 Residential Flat Buildings (3 Storeys) (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
 "type": "deep_soil_min",
 "rank": 4,
 "pid": 262290,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "3.2 Medium Density Housing (re-read 2026-11-09)"
 },
 {
 "council": "hornsby",
@@ -1600,8 +1600,8 @@
 "type": "private_open_space",
 "rank": 5,
 "pid": 258482,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
@@ -1616,16 +1616,16 @@
 "type": "secondary_street_setback",
 "rank": 2,
 "pid": 254791,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "secondary_street_setback",
 "rank": 3,
 "pid": 254786,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
@@ -1640,48 +1640,48 @@
 "type": "secondary_street_setback",
 "rank": 5,
 "pid": 254673,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "deep_soil_min",
 "rank": 1,
 "pid": 197071,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "other building type or named place (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 197075,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "other building type or named place (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "deep_soil_min",
 "rank": 3,
 "pid": 160516,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "deep_soil_min",
 "rank": 4,
 "pid": 197074,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "other building type or named place (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
 "type": "deep_soil_min",
 "rank": 5,
 "pid": 197078,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "other building type or named place (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
@@ -1712,8 +1712,8 @@
 "type": "max_site_coverage",
 "rank": 4,
 "pid": 171650,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
@@ -1752,8 +1752,8 @@
 "type": "max_height",
 "rank": 4,
 "pid": 171650,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "ku_ring_gai",
@@ -1824,8 +1824,8 @@
 "type": "side_setback",
 "rank": 3,
 "pid": 192422,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -1872,8 +1872,8 @@
 "type": "rear_setback",
 "rank": 4,
 "pid": 192420,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -1952,8 +1952,8 @@
 "type": "landscaping_min",
 "rank": 4,
 "pid": 191033,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -1976,8 +1976,8 @@
 "type": "private_open_space",
 "rank": 2,
 "pid": 192429,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -2008,8 +2008,8 @@
 "type": "secondary_street_setback",
 "rank": 1,
 "pid": 192418,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -2032,8 +2032,8 @@
 "type": "secondary_street_setback",
 "rank": 4,
 "pid": 192151,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -2056,32 +2056,32 @@
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 191216,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
 "type": "deep_soil_min",
 "rank": 3,
 "pid": 191213,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
 "type": "deep_soil_min",
 "rank": 4,
 "pid": 192163,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "This control applies to Lot 1, DP 706230, 932 Pittwater Road Dee Why. (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
 "type": "deep_soil_min",
 "rank": 5,
 "pid": 191170,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
@@ -2120,16 +2120,16 @@
 "type": "max_height",
 "rank": 4,
 "pid": 190970,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "northern_beaches",
 "type": "max_height",
 "rank": 5,
 "pid": 191764,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "tag (re-read 2026-11-09)"
 },
 {
 "council": "parramatta",
@@ -2480,8 +2480,8 @@
 "type": "max_site_coverage",
 "rank": 4,
 "pid": 219039,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "5 SPECIFIC SITES (re-read 2026-11-09)"
 },
 {
 "council": "parramatta",
@@ -2544,32 +2544,32 @@
 "type": "front_setback",
 "rank": 2,
 "pid": 261666,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "front_setback",
 "rank": 3,
 "pid": 261513,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "front_setback",
 "rank": 4,
 "pid": 261667,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "front_setback",
 "rank": 5,
 "pid": 261815,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "5. Residential flat buildings (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2584,32 +2584,32 @@
 "type": "side_setback",
 "rank": 2,
 "pid": 261523,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "side_setback",
 "rank": 3,
 "pid": 261677,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "side_setback",
 "rank": 4,
 "pid": 261524,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "side_setback",
 "rank": 5,
 "pid": 261678,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2632,24 +2632,24 @@
 "type": "rear_setback",
 "rank": 3,
 "pid": 261813,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "5. Residential flat buildings (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "rear_setback",
 "rank": 4,
 "pid": 261664,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "rear_setback",
 "rank": 5,
 "pid": 261511,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2680,8 +2680,8 @@
 "type": "car_parking",
 "rank": 4,
 "pid": 261748,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "5. Residential flat buildings (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2736,40 +2736,40 @@
 "type": "private_open_space",
 "rank": 1,
 "pid": 261383,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "private_open_space",
 "rank": 2,
 "pid": 261588,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "private_open_space",
 "rank": 3,
 "pid": 261742,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "5. Residential flat buildings (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "private_open_space",
 "rank": 4,
 "pid": 261687,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "private_open_space",
 "rank": 5,
 "pid": 261811,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2784,32 +2784,32 @@
 "type": "secondary_street_setback",
 "rank": 2,
 "pid": 261365,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "secondary_street_setback",
 "rank": 3,
 "pid": 261366,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "secondary_street_setback",
 "rank": 4,
 "pid": 261367,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "secondary_street_setback",
 "rank": 5,
 "pid": 261568,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4. Multi dwelling housing (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2824,8 +2824,8 @@
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 261512,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
@@ -2848,24 +2848,24 @@
 "type": "max_height",
 "rank": 3,
 "pid": 261518,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "max_height",
 "rank": 4,
 "pid": 261519,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2. Dual occupancies (re-read 2026-11-09)"
 },
 {
 "council": "penrith",
 "type": "max_height",
 "rank": 5,
 "pid": 261732,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
@@ -2944,8 +2944,8 @@
 "type": "side_setback",
 "rank": 5,
 "pid": 227405,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "2 Campbell Parade South (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
@@ -2968,8 +2968,8 @@
 "type": "rear_setback",
 "rank": 3,
 "pid": 226963,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "Waverley DCP 2022 Part E - Site Specific Development (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
@@ -3112,8 +3112,8 @@
 "type": "secondary_street_setback",
 "rank": 1,
 "pid": 227283,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "Waverley DCP 2022 Part E - Site Specific Development (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
@@ -3160,16 +3160,16 @@
 "type": "deep_soil_min",
 "rank": 5,
 "pid": 226604,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
 "type": "max_site_coverage",
 "rank": 1,
 "pid": 227850,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "Waverley DCP 2022 Part E - Site Specific Development (re-read 2026-11-09)"
 },
 {
 "council": "waverley",
@@ -3272,8 +3272,8 @@
 "type": "side_setback",
 "rank": 3,
 "pid": 211127,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
@@ -3312,8 +3312,8 @@
 "type": "rear_setback",
 "rank": 3,
 "pid": 211127,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
@@ -3456,16 +3456,16 @@
 "type": "deep_soil_min",
 "rank": 1,
 "pid": 211116,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4.23 Additional Controls for Dual Occupancy’s – Deep Soil Zones (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
 "type": "deep_soil_min",
 "rank": 2,
 "pid": 211118,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "clause text (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
@@ -3480,16 +3480,16 @@
 "type": "deep_soil_min",
 "rank": 4,
 "pid": 211117,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4.23 Additional Controls for Dual Occupancy’s – Deep Soil Zones (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
 "type": "deep_soil_min",
 "rank": 5,
 "pid": 211119,
-"flagged": false,
-"reason": null
+"flagged": true,
+"reason": "4.23 Additional Controls for Dual Occupancy’s – Deep Soil Zones (re-read 2026-11-09)"
 },
 {
 "council": "wollongong",
@@ -3538,6 +3538,30 @@
 "pid": 211471,
 "flagged": true,
 "reason": "ancillary structure"
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 1,
+"pid": 202432,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 2,
+"pid": 202271,
+"flagged": false,
+"reason": null
+},
+{
+"council": "blacktown",
+"type": "landscaping_min",
+"rank": 3,
+"pid": 202272,
+"flagged": false,
+"reason": null
 }
 ]
 }
