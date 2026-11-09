@@ -17,7 +17,10 @@ import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHe
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { withServedCitation } from '@/lib/citation-display';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
-import { BRIEF_ROW_LIMIT, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, type StoredBriefRow } from '@/lib/plan-brief';
+import { BRIEF_ROW_LIMIT, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
+import briefScope from '@/shared/brief-scope.json';
+
+const EXCLUDED = new Set<number>(briefScope.excluded_provision_ids);
 
 export const dynamic = 'force-dynamic';
 
@@ -37,10 +40,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ enabled: true, rows: [], reason: 'council or project type not supported' }, { headers: { 'Cache-Control': 'no-store' } });
   }
   const group = zoneGroup(sp.get('zone'));
+  // Only where the first five clauses per topic have been read against the council's own headings (shared/brief-scope.json).
+  if (!inBriefScope(briefScope, council, devType, group)) {
+    return NextResponse.json({ enabled: true, council, dev_type: devType, zone_group: group, rows: [], reason: 'not yet checked for this council, project type or zone' }, { headers: { 'Cache-Control': 'no-store' } });
+  }
 
   const client = await getPool().connect();
   try {
-    // Exact zone group first; the 'ANY' build is the fallback for zones we did not build for.
+    // The exact zone group only: the 'ANY' build was not read against the council's headings, so it is not a fallback.
     const sql = `
       SELECT b.row_type, b.rank, b.verdict,
              rp.id, rp.ref_number, rp.section_header, rp.source_chapter_key, rp.provision_text, rp.pdf_page, rp.printed_page_label, rp.page_check, rp.source_council,
@@ -51,8 +58,7 @@ export async function GET(request: NextRequest) {
          AND rp.is_current = TRUE AND rp.v2_is_actionable = TRUE
          AND b.rank <= ${BRIEF_ROW_LIMIT}
        ORDER BY b.row_type, b.rank`;
-    let result = await client.query(sql, [council, devType, group]);
-    if (result.rows.length === 0 && group !== 'ANY') result = await client.query(sql, [council, devType, 'ANY']);
+    const result = await client.query(sql, [council, devType, group]);
 
     // The plan's own address per chapter: our R2 copy first (the page anchor is only right against the PDF we paginated), then the council's.
     const chapterKeys = Array.from(new Set(result.rows.map((r: any) => r.source_chapter_key).filter(Boolean)));
@@ -101,7 +107,7 @@ export async function GET(request: NextRequest) {
         },
       };
     });
-    return NextResponse.json({ enabled: true, council, dev_type: devType, zone_group: group, rows }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ enabled: true, council, dev_type: devType, zone_group: group, rows: dropExcluded(rows, EXCLUDED) }, { headers: { 'Cache-Control': 'no-store' } });
   } finally {
     client.release();
   }
