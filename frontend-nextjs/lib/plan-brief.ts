@@ -63,6 +63,16 @@ export interface BriefItem {
   urlPage?: number | null;
   /** For a fragment or an opener ('... that:', 'in accordance with the following table'): the clauses that follow it on the page. */
   continues?: string[];
+  /** Set when the clause is the closest the plan has because the council sets this control by map, on merit or in general wording, not as a figure. */
+  note?: string | null;
+}
+
+/** The note a row carries when its reason starts 'closest clause:' (the picks file writes it); null for every other reason. */
+export function briefRowNote(reason: string | null | undefined): string | null {
+  const m = /^\s*closest clause:\s*(.+)$/i.exec(String(reason ?? ''));
+  if (!m) return null;
+  const t = m[1].trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
 }
 export interface BriefRow { key: string; label: string; items: BriefItem[] }
 
@@ -85,7 +95,7 @@ export function shapeBriefRows(stored: StoredBriefRow[], provenKeys: ReadonlySet
 
 /** Words next to every clause: indicative, never "verified". */
 export const BRIEF_NOTE =
-  "From the plan's own words, picked for your project type. Indicative only: read the clause and check the plan before you rely on it.";
+  "From the plan's own words, picked for your project type. These are the headline requirements: the wording around them can add tests or exceptions, for example matching the neighbours or assessment on merit. Indicative only: read the clause and check the plan page before you rely on it.";
 export const BRIEF_EMPTY_TEXT = 'No matching clause found in this chapter. Open the plan.';
 export const BRIEF_TAG_APPLIES = 'Applies';
 

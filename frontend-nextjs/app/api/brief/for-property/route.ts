@@ -16,7 +16,7 @@ import { toLgaSlug } from '@/lib/lga-slug';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { withServedCitation } from '@/lib/citation-display';
-import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, showsNextClauses, tablePart, tableFor, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
+import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, showsNextClauses, briefRowNote, tablePart, tableFor, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
 import briefScope from '@/shared/brief-scope.json';
 
 const EXCLUDED = new Set<number>(briefScope.excluded_provision_ids);
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   try {
     // The exact zone group only: the 'ANY' build was not read against the council's headings, so it is not a fallback.
     const sql = `
-      SELECT b.row_type, b.rank, b.verdict,
+      SELECT b.row_type, b.rank, b.verdict, b.reason,
              rp.id, rp.ref_number, rp.section_header, rp.source_chapter_key, rp.provision_text, rp.pdf_page, rp.printed_page_label, rp.page_check, rp.source_council,
              ${quoteColumns('rp')}
         FROM project_brief_rows b
@@ -117,6 +117,7 @@ export async function GET(request: NextRequest) {
           url: link?.href ?? null,
           urlPage: link?.page ?? null,
           continues: followOn[Number(r.id)],
+          note: briefRowNote(r.reason),
         },
       };
     });
