@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { getCohort } from '@/lib/cohort';
+import { posthog } from '@/components/providers/PostHogProvider';
 
 interface FeedbackWidgetProps {
   propertyAddress?: string;
@@ -103,6 +104,8 @@ export default function FeedbackWidget({
       });
 
       if (response.ok) {
+        // Only the kind of feedback: never the text, the email or the address (those stay in user_feedback).
+        posthog.capture('feedback_submitted', { feedback_type: feedbackType, user_type: userType, has_email: !!email, page: pathname, cohort });
         setSubmitted(true);
         setTimeout(() => {
           setIsOpen(false);

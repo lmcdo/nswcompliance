@@ -41,7 +41,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Usage data</strong> including page views, tool interactions, and general analytics
-            via PostHog. This data is anonymised and used to improve the product.
+            via PostHog, and recordings of how pages are used (clicks, scrolling and what is shown on
+            screen, which can include an address you search for; text typed into form fields is masked).
+            This data is used to improve the product.
           </li>
         </ul>
 
@@ -63,7 +65,7 @@ export default function PrivacyPage() {
           <li><strong>Stripe</strong> — payment processing</li>
           <li><strong>Resend</strong> — transactional email delivery</li>
           <li><strong>Supabase</strong> — database and storage (hosted in AWS Sydney)</li>
-          <li><strong>PostHog</strong> — anonymous usage analytics</li>
+          <li><strong>PostHog</strong> — usage analytics and session recordings</li>
           <li><strong>Vercel</strong> — website hosting</li>
           <li><strong>Google Maps</strong> — address autocomplete</li>
         </ul>
