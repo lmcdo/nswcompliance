@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
-import { PILOT_COUNCIL_NAMES } from '@/lib/pilot-focus';
+import { PILOT_COUNCIL_LABELS } from '@/lib/pilot-focus';
 
 export const metadata: Metadata = {
   title: 'Free during the pilot — PlotDetect',
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function PricingPage() {
-  const councils = Object.values(PILOT_COUNCIL_NAMES);
+  const councils = PILOT_COUNCIL_LABELS;
   return (
     <main className="min-h-screen bg-white">
       <SiteNav maxWidth="max-w-6xl" />

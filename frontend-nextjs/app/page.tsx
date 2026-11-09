@@ -4,7 +4,7 @@ import { HomeNav } from '@/components/marketing/HomeNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
-import { PILOT_COUNCIL_NAMES } from '@/lib/pilot-focus';
+import { PILOT_COUNCIL_LABELS } from '@/lib/pilot-focus';
 
 const STEPS = [
   { n: '1', title: 'Enter an address', body: 'Any NSW address. No account needed.' },
@@ -22,7 +22,7 @@ const LIMITS = [
 const MAILTO = 'mailto:hello@plotdetect.com.au?subject=Pilot access';
 
 export default function HomePage() {
-  const councils = Object.values(PILOT_COUNCIL_NAMES);
+  const councils = PILOT_COUNCIL_LABELS;
   return (
     <main className="min-h-screen">
       <HomeNav />

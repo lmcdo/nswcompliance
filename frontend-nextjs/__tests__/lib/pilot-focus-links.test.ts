@@ -8,6 +8,7 @@ import path from 'path';
 import {
   PILOT_ALLOWED_LINKS,
   PILOT_COUNCILS,
+  PILOT_COUNCIL_LABELS,
   PILOT_COUNCIL_NAMES,
   PILOT_UNLISTED_PREFIXES,
   isPilotCouncil,
@@ -82,6 +83,8 @@ describe('pilot focus', () => {
   it('pilot councils are exactly those named in brief-scope.json and each has a display name', () => {
     expect(PILOT_COUNCILS.length).toBeGreaterThanOrEqual(5);
     for (const c of PILOT_COUNCILS) expect(PILOT_COUNCIL_NAMES[c]).toBeTruthy();
+    // The label list pages show has exactly one entry per council in the scope file, no more.
+    expect(PILOT_COUNCIL_LABELS).toHaveLength(PILOT_COUNCILS.length);
   });
 
   it('isPilotCouncil: a named council is in, anything unknown or missing is out', () => {

@@ -35,6 +35,10 @@ export const PILOT_COUNCIL_NAMES: Record<string, string> = {
   hornsby: 'Hornsby',
 };
 
+/** Display names of the councils in the scope file, in its order. Pages list these, never the names table, so a
+ * council removed from brief-scope.json disappears from every page at once. A key with no name is a test failure. */
+export const PILOT_COUNCIL_LABELS: readonly string[] = PILOT_COUNCILS.map((k) => PILOT_COUNCIL_NAMES[k]).filter(Boolean);
+
 /** The only internal paths a navigation surface may link to. */
 export const PILOT_ALLOWED_LINKS: readonly string[] = [
   '/',
