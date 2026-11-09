@@ -216,3 +216,12 @@ def test_restore_apply_without_the_confirm_flag_writes_nothing_and_exits(tmp_pat
     r = subprocess.run([sys.executable, str(ROOT / "scripts" / "load_project_brief.py"), "--restore-from", str(f), "--apply"],
                        capture_output=True, text=True, timeout=60)
     assert r.returncode != 0 and "--confirm-production-write" in (r.stdout + r.stderr)
+
+
+def test_restore_cannot_be_combined_with_remove_build_or_replace_cells(tmp_path):
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps(lpb.backup_payload(COLS, [old_row(1, 5)], [KEY])), encoding="utf-8")
+    for other in (["--remove-build", "applies-when-x"], ["--replace-cells"]):
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "load_project_brief.py"), "--restore-from", str(f), *other],
+                           capture_output=True, text=True, timeout=60)
+        assert r.returncode != 0 and "separate operations" in (r.stdout + r.stderr)

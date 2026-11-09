@@ -156,8 +156,8 @@ def main():
     writing = a.apply and a.confirm_production_write
     if a.apply and not a.confirm_production_write:
         sys.exit("--apply also needs --confirm-production-write. Nothing written.")
-    if a.replace_cells and a.remove_build:
-        sys.exit("--replace-cells and --remove-build are separate operations. Nothing written.")
+    if sum(bool(x) for x in (a.replace_cells, a.remove_build, a.restore_from)) > 1:
+        sys.exit("--replace-cells, --remove-build and --restore-from are separate operations: give one. Nothing written.")
     if writing and a.replace_cells and not a.backup_to:
         sys.exit("--replace-cells --apply also needs --backup-to <file>: the rows it deletes are saved there first. Nothing written.")
 

@@ -13,7 +13,7 @@
   "command": "python -m pytest tests/test_load_project_brief.py -q",
   "fails_when": "A replace file with a gap or repeat in a cell's ranks, a cell both picked and named empty, a bad line, or an apply with no --backup-to is accepted; or the committed picks file stops covering 100 cells (10 councils x 10 topics) with ranks running 1..n. Also fails when a rank or provision id is not a whole number, when an empty-cell line carries pick fields, or when any committed pick is on the served skip list.",
   "external_authority": "The live table's own constraints (read with pg_get_constraintdef): UNIQUE (council, zone_group, dev_type, row_type, rank), CHECK rank 1..5, FK provision_id to regulatory_provisions. A dry run against the live table read 442 existing R2 house rows in the 100 cells and 113 rows to insert, with every pick a current, actionable clause of its own council.",
-  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 20 failed, 7 passed. With the new loader: 27 total, 27 passed. The skip-list test failed (192218 was on the list) until the list was corrected."
+  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 20 failed, 7 passed. With the new loader: 27 total, 28 passed. The skip-list test failed (192218 was on the list) until the list was corrected."
  },
  "pre_impl": {
   "existing_data": "project_brief_rows holds 8,976 rows; the replace touches the 442 R2 dwelling_house rows of ten councils (ashfield 45, blacktown 45, georges_river 38, hornsby 47, ku_ring_gai 45, northern_beaches 46, parramatta 50, penrith 42, waverley 43, wollongong 41). The 113 new picks are the clauses two blind Sonnet readers chose as stating a requirement for an ordinary house (28 of 30 cells identical on a second run).",
@@ -118,10 +118,17 @@
    "mitigated": true,
    "how": "Found by cross-review: the backup was a plain list the loader could not read back. It now names its cells, and --restore-from puts back exactly the saved rows transactionally. Same clause at two ranks of one cell is also rejected.",
    "repro": "pytest: test_a_backup_names_its_cells_and_keeps_every_saved_row, test_the_same_clause_picked_at_two_ranks_of_one_cell_is_a_problem"
+  },
+  {
+   "scenario": "--restore-from is combined with --remove-build or --replace-cells.",
+   "what_happens": "One operation would run and the other be ignored without saying so.",
+   "mitigated": true,
+   "how": "Found by cross-review. Giving more than one of the three is refused before any connection.",
+   "repro": "pytest: test_restore_cannot_be_combined_with_remove_build_or_replace_cells"
   }
  ],
  "verified": [
-  "Old loader: 20 of 27 tests fail. New loader: 27 pass.",
+  "Old loader: 20 of 27 tests fail. New loader: 28 pass.",
   "Dry run against the live table: 100 cells, 442 existing rows to delete, 113 to insert, nothing written.",
   "The committed picks file reads clean: 113 picks, 24 empty-cell lines, ranks 1..n in every cell, no pick on the served skip list.",
   "After taking 192218 off the skip list: OC-29 HOLDS and OC-30 HOLDS (45/47 = 96%) against the live table."
@@ -130,7 +137,8 @@
   "The write itself has not been run. The loader's apply path is tested only through its argument checks and the dry run, not against a database that can be rolled back.",
   "The checks OC-29 and OC-30 would not pass on the post-write state as they stand: five invalid answer-sheet cells in the hold-out (the check then has 14 hold-out cells, it needs 15), a per-council 80 percent floor that fails on one to three cells (Ashfield 0 of 1, Waverley 2 of 3), and declared gaps for cells the strict picks leave empty. Those need the owner's decision and are handled outside this change, so main stays green; the draft edits are saved in ~/.claude/plans/ce-session-scripts-2026-11-09/strict-picks-gold-gaps-scan.patch.",
   "A full rebuild of the brief by the builder outside the repo would overwrite the picks; reloading this file restores them.",
-  "Cross-review also said the loader should filter on is_active; regulatory_provisions has no such column, and is_current plus v2_is_actionable is the filter the serving route uses, so that finding was judged wrong."
+  "Cross-review also said the loader should filter on is_active; regulatory_provisions has no such column, and is_current plus v2_is_actionable is the filter the serving route uses, so that finding was judged wrong.",
+  "--restore-from puts back the saved rows without checking that the cells still hold what the replace wrote; if the briefs were rebuilt in between, the restore overwrites that newer state (it is an undo of one swap, run by hand)."
  ],
  "post_merge": {
   "db_reset": "Nothing is written by this change. If a later apply is made, restore from the --backup-to file by loading it back.",
