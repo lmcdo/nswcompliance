@@ -104,8 +104,13 @@ export default function FeedbackWidget({
       });
 
       if (response.ok) {
-        // Only the kind of feedback: never the text, the email or the address (those stay in user_feedback).
-        posthog.capture('feedback_submitted', { feedback_type: feedbackType, user_type: userType, has_email: !!email, page: pathname, cohort });
+        // The event's own fields are the kind of feedback only, never the text, the email or the address (those stay in user_feedback).
+        // PostHog adds the page URL to every event, as it does for page views. A failure here must not turn a saved feedback into "save failed".
+        try {
+          posthog.capture('feedback_submitted', { feedback_type: feedbackType, user_type: userType, has_email: !!email, page: pathname, cohort });
+        } catch {
+          // analytics only
+        }
         setSubmitted(true);
         setTimeout(() => {
           setIsOpen(false);

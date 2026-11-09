@@ -12,7 +12,7 @@
   "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/components/feedback __tests__/app/privacy-session-recording.test.tsx",
   "fails_when": "A saved feedback does not send feedback_submitted, the event carries the text, the email or the address, a failed save or a thrown request still sends it, or the privacy page stops saying that pages are recorded and what is recorded.",
   "external_authority": "components/providers/PostHogProvider.tsx initialises PostHog with session recording on (session_recording set, no disable flag) on real hosts, with person_profiles identified_only; PostHog masks form-field text by default. The privacy page text before the change read 'anonymous usage analytics'.",
-  "observed_red": "Against the old FeedbackWidget.tsx and privacy page (git show origin/main), the new tests fail: 5 failed, 3 passed, 8 total. With the new source: 12 passed across the three feedback and privacy suites."
+  "observed_red": "Against the old FeedbackWidget.tsx and privacy page (git show origin/main), the new tests fail: 5 failed, 3 passed, 8 total. With the new source: 13 passed across the three feedback and privacy suites."
  },
  "pre_impl": {
   "existing_data": "The widget saves to user_feedback and sends no analytics event; PostHog is already used for tool_run and dcp_request_submitted events with the same posthog.capture call. The privacy page said anonymous usage analytics only; production PostHog init records sessions on every real host.",
@@ -46,7 +46,7 @@
    "scenario": "The event carries what the tester wrote.",
    "what_happens": "Free text, an email or an address would reach the analytics provider.",
    "mitigated": true,
-   "how": "Only five fixed keys are sent; the test fails on any other key and searches the payload for the text, email, street and suburb.",
+   "how": "Only five fixed keys are sent by the event itself; the test fails on any other key and searches the payload for the text, email, street and suburb. PostHog adds the page URL to every event, as it does for page views, and some links carry ?address=; the privacy page now says the web address of a page can include a searched address.",
    "repro": "jest: carries only the kind, never the text, the email or the address"
   },
   {
@@ -62,17 +62,25 @@
    "mitigated": true,
    "how": "A test keeps the 'do not sell your personal information' sentence.",
    "repro": "jest: keeps the promise that nothing is sold"
+  },
+  {
+   "scenario": "PostHog throws when the event is sent.",
+   "what_happens": "A saved feedback could show 'save failed' and be sent twice.",
+   "mitigated": true,
+   "how": "Found by cross-review. The capture sits in its own try/catch after the save succeeds; a test makes capture throw and finds the saved state shown and no second save.",
+   "repro": "jest: a PostHog failure does not turn a saved feedback into a failed save"
   }
  ],
  "verified": [
-  "Old source: 5 of 8 new tests fail. New source: 12 pass across the feedback and privacy suites.",
+  "Old source: 5 of 8 new tests fail. New source: 13 pass across the feedback and privacy suites.",
   "tsc --noEmit prints no errors.",
   "The existing widget cohort tests still pass."
  ],
  "gaps": [
   "The privacy wording is a draft for the owner; the terms of use and any solicitor review are parked and are not changed here.",
   "Session recording stays on. Switching it off for the pilot is the alternative if the owner prefers not to disclose it.",
-  "The event is checked by tests and types; whether PostHog records it is to be seen on production after deploy."
+  "The event is checked by tests and types; whether PostHog records it is to be seen on production after deploy.",
+  "Query strings in the page URL that PostHog attaches to every event are not stripped (cross-review HIGH, left): this is existing behaviour for all events, the page views included, and is now disclosed; a PostHog before_send filter is the follow-up if the owner wants it."
  ],
  "post_merge": {
   "db_reset": "No data change. Revert the commit to undo.",

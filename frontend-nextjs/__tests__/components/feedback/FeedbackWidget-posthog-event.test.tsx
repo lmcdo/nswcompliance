@@ -24,7 +24,8 @@ describe('FeedbackWidget analytics event', () => {
     capture.mockClear();
     window.localStorage.clear();
   });
-  afterEach(() => { (global as any).fetch = undefined; });
+  const realFetch = (global as any).fetch;
+  afterEach(() => { (global as any).fetch = realFetch; });
 
   it('sends feedback_submitted once when the save succeeds', async () => {
     (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
@@ -52,6 +53,16 @@ describe('FeedbackWidget analytics event', () => {
     fillAndSubmit('A note', '');
     await waitFor(() => expect(capture).toHaveBeenCalled());
     expect(capture.mock.calls[0][1].has_email).toBe(false);
+  });
+
+  it('a PostHog failure does not turn a saved feedback into a failed save', async () => {
+    (global as any).fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    capture.mockImplementationOnce(() => { throw new Error('posthog down'); });
+    render(<FeedbackWidget />);
+    fillAndSubmit();
+    await waitFor(() => expect(capture).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/thank you/i)).toBeInTheDocument();      // the saved state still shows
+    expect((global as any).fetch).toHaveBeenCalledTimes(1);                  // and the save is not retried
   });
 
   it('sends nothing when the save fails (a 500 is not a submission)', async () => {
