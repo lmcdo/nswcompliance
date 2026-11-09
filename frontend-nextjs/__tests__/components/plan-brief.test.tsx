@@ -64,8 +64,9 @@ describe('PlanBriefView', () => {
     render(<PlanBriefView rows={shapeBriefRows(five)} />);
     const row = screen.getByTestId('brief-row-front');
     expect(within(row).getAllByTestId('brief-item')).toHaveLength(3);
+    expect(within(row).getAllByTestId('brief-tag')).toHaveLength(1);           // only the clause that applies carries a tag
     expect(within(row).getAllByTestId('brief-tag')[0]).toHaveTextContent('Applies');
-    expect(within(row).getAllByTestId('brief-tag')[1]).toHaveTextContent('May apply');
+    expect(within(row).queryByText('May apply')).toBeNull();
     expect(within(row).getAllByTestId('brief-place')[0]).toHaveTextContent('clause 3.1.1, page 11');
     fireEvent.click(within(row).getByTestId('brief-more'));
     expect(within(row).getAllByTestId('brief-item')).toHaveLength(5);

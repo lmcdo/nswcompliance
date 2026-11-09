@@ -4,9 +4,11 @@
 // /api/dcp/structured-controls rows). It holds no planning figure of its own.
 
 import { hazardUnchecked } from './hazard-unchecked';
-import { formatValue, noNumberLabel, shortCitation, type StructuredControl } from '@/components/compliance/DcpStructuredControls';
+import { formatValue, noNumberLabel, type StructuredControl } from '@/components/compliance/DcpStructuredControls';
 
 export const NOT_FOUND_TEXT = 'Not found in our data — check the plan';
+/** Shown in a table row with no figure when the plan's own clauses for that row are listed below the table. */
+export const SEE_CLAUSES_BELOW_TEXT = "See the plan's clauses below";
 export const NO_CONTROLS_FOR_TYPE_TEXT = 'We have no key controls for this project type yet';
 
 export interface SummaryEntry {
@@ -22,7 +24,8 @@ export interface SummaryEntry {
   document: string | null;
   clause: string | null;
   page: number | null;
-  citation: string;
+  /** Link text: the page ("page 41"), or "Open the plan" / "LEP map". The clause is shown beside the document, not in the link. */
+  linkText: string;
   url: string | null;
   words: string | null;
   condition: string | null;
@@ -87,7 +90,8 @@ function dcpEntry(c: StructuredControl, withLabel: boolean): SummaryEntry {
     document: c.dcp_name,
     clause: c.section_ref,
     page: c.pdf_page,
-    citation: shortCitation(c),
+    // "Open the plan" only when there is a link to open; with neither page nor link there is no label.
+    linkText: c.pdf_page ? `page ${c.pdf_page}` : c.pdf_url ? 'Open the plan' : '',
     url: c.pdf_url,
     words: c.source_text,
     condition: c.condition,
@@ -119,7 +123,7 @@ function lepEntry(figure: string, number: number, unit: string, limit: 'maximum'
     document: lep.lepName,
     clause: null,
     page: null,
-    citation: 'LEP map',
+    linkText: 'LEP map',
     url: lep.legislationUrl,
     words: null,
     condition: null,

@@ -86,7 +86,6 @@ export const BRIEF_NOTE =
   "From the plan's own words, picked for your project type. Indicative only: read the clause and check the plan before you rely on it.";
 export const BRIEF_EMPTY_TEXT = 'No matching clause found in this chapter. Open the plan.';
 export const BRIEF_TAG_APPLIES = 'Applies';
-export const BRIEF_TAG_MAY = 'May apply';
 
 
 /** The link to the plan at the page: only a PDF address can take a #page anchor (same rule as DcpNotCoveredNotice). */
