@@ -11,7 +11,7 @@
   "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/lib/brief-table-follow-on.test.ts",
   "fails_when": "Hornsby 3.1.2 a (real stored text) is not asked for a follow-on, or the table slice taken from clause 3.1.2 h is not the verbatim rows and caption (starts at 'Boundary setback | Minimum building setback', ends at the Table 3.1.2-a caption, excludes the dual occupancy paragraph), or a clause that names a table that is not on the page is given some other table.",
   "external_authority": "The council's own text in regulatory_provisions (Hornsby DCP Part 3, ids 262143 and 262150, page 9) and the PDF page (hornsby-dcp-2024-part3-residential.pdf, page 9, Table 3.1.2-a). A replay over every clause in the ten councils that names a table (547 clauses, with the 25 clauses that follow each on its page) found 39 tables (Hornsby 19, Parramatta 12, Ashfield 3, Ku-ring-gai 3, Blacktown 1, Waverley 1); 11 of 11 sampled caption matches name the table they show.",
-  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: Tests: 23 failed, 2 passed, 25 total, including 'Hornsby 3.1.2 a names a table and states no figure of its own' (needsFollowOn returned false) and every tablePart and tableFor test (functions did not exist). With the new source: 4 suites passed, 65 tests passed."
+  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: Tests: 24 failed, 2 passed, 26 total, including 'Hornsby 3.1.2 a names a table and states no figure of its own' (needsFollowOn returned false) and every tablePart and tableFor test (functions did not exist). With the new source: 4 suites passed, 66 tests passed."
  },
  "pre_impl": {
   "existing_data": "547 current clauses in the ten councils name a table. Under the old rule 147 asked for a follow-on; under the new rule 209 do, and 39 of those find a table (Hornsby 19, Parramatta 12, Ashfield 3, Ku-ring-gai 3, Blacktown 1, Waverley 1). Hornsby clause 262143 'comply with Table 3.1.2-a' now resolves to the setback rows (front 6m or 9m, side 0.9m and 1.5m, rear 3m and 8m).",
@@ -102,10 +102,24 @@
    "mitigated": true,
    "how": "Found by cross-review. 'above' is not a pointer: the route supplies only later clauses, so such a clause gets nothing.",
    "repro": "jest: '\"the table above\" is not followed'"
+  },
+  {
+   "scenario": "A matched table is longer than the old 1,500-character display limit.",
+   "what_happens": "The table would be cut mid-row and an exception or larger figure dropped without saying so.",
+   "mitigated": true,
+   "how": "Found by cross-review. A table is shown whole (whitespace tidied, nothing cut) or, above 6000 characters, not shown; no real matched table exceeds 6000.",
+   "repro": "route.ts: TABLE_SHOWN_MAX; replay reports 0 matched tables longer than 6000"
+  },
+  {
+   "scenario": "One clause holds two tables with a paragraph of prose between them.",
+   "what_happens": "tablePart would join the two tables and the prose into one block.",
+   "mitigated": true,
+   "how": "Found by cross-review. A non-row line longer than 80 characters between the first and last row makes tablePart return null.",
+   "repro": "jest: 'two tables with a paragraph of prose between them are not served as one table'"
   }
  ],
  "verified": [
-  "Old source: 23 of 25 new tests fail. New source: 4 suites, 65 tests pass (brief-table-follow-on, brief-clause-label, plan-brief-scope, plan-brief component).",
+  "Old source: 24 of 26 new tests fail. New source: 4 suites, 66 tests pass (brief-table-follow-on, brief-clause-label, plan-brief-scope, plan-brief component).",
   "tsc --noEmit prints no errors.",
   "Replay on the real stored text of the ten councils (547 clauses naming a table): Hornsby 262143 resolves to Table 3.1.2-a with the front, side and rear figures; 39 tables found; 11 of 11 sampled caption matches are the table they name."
  ],
@@ -113,7 +127,8 @@
   "Not run against the deployed route or a live address: the check is a replay of stored text through the same functions, not a browser check.",
   "Tables that are not in the database at all (images, maps) still show no table; Northern Beaches map rules are unchanged.",
   "A table followed by prose and no closing caption is not served as a table (8 of 47 matches lost): a later improvement could read where the table's rows end.",
-  "Only 6 of 10 councils have a table found for any clause today."
+  "Only 6 of 10 councils have a table found for any clause today.",
+  "A clause that cites several tables in the plural ('Tables 3.1 and 3.2') or an unnumbered table is not recognised as naming a table, so it shows nothing new (cross-review MEDIUM, left: the failure is that nothing is added)."
  ],
  "post_merge": {
   "db_reset": "No data is written. Revert the commit to undo.",

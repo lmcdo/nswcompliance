@@ -20,6 +20,7 @@ import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink,
 import briefScope from '@/shared/brief-scope.json';
 
 const EXCLUDED = new Set<number>(briefScope.excluded_provision_ids);
+const TABLE_SHOWN_MAX = 6000;   // a matched table longer than this is not shown (it is never cut)
 
 export const dynamic = 'force-dynamic';
 
@@ -87,8 +88,10 @@ export async function GET(request: NextRequest) {
         : null;
       // No table found: only a clause the old rule already sent on shows the next clauses; one that is new (names a table, states no figure) shows nothing.
       if (!table && !showsNextClauses(String(r.provision_text ?? ''))) return;
+      // A table is shown whole or not at all: a cut that lands mid-row would drop an exception or a larger figure without saying so.
+      if (table && table.length > TABLE_SHOWN_MAX) return;
       const lines = table
-        ? [tidyText(table, 1500)].filter(Boolean)
+        ? [tidyText(table, table.length)].filter(Boolean)
         : nx.rows.slice(0, 3).map((n: any) => tidyText(n.provision_text, 500)).filter(Boolean);
       if (lines.length > 0) followOn[Number(r.id)] = lines;
     }));

@@ -155,6 +155,8 @@ export function tablePart(text: string): string | null {
   let last = first;
   for (let i = first + 1; i < lines.length; i++) if (isRow(lines[i])) last = i;
   if (lines.slice(first, last + 1).filter(isRow).length < 2) return null;
+  // a paragraph of prose between the first and last row means two tables (or a table and a later one) share the clause: not one table
+  if (lines.slice(first, last + 1).some((l) => !isRow(l) && l.trim().length > 80)) return null;
   const from = first > 0 && TABLE_CAPTION.test(lines[first - 1]) ? first - 1 : first;
   // After the last row: continuation lines of that row, then the caption (all kept). Text that follows the rows with no caption closing
   // them cannot be told from a wrapped cell, so the clause is not served as a table (never a row cut short).

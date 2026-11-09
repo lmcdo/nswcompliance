@@ -72,6 +72,10 @@ describe('tablePart', () => {
   test('text after the rows with no caption closing them is NOT served as a table (could be a wrapped cell)', () => {
     expect(tablePart('# 1 x\n\nBoundary | Setback\nFront | 6m\nRear | 3m\nThe rear setback may be reduced where the lot backs onto a reserve.')).toBeNull();
   });
+  test('two tables with a paragraph of prose between them are not served as one table', () => {
+    const t = '# 1 x\n\nBoundary | Setback\nFront | 6m\nRear | 3m\nThe landscaped area on a property should comply with the table below and the front yard must remain open to the street.\nLot | Area\nSmall | 45%\nLarge | 25%\nTable 1.2-a: Landscaped area';
+    expect(tablePart(t)).toBeNull();
+  });
   test('trailing blank lines after the rows are fine', () => {
     expect(tablePart('# 1 x\n\nBoundary | Setback\nFront | 6m\n\n')).toBe('Boundary | Setback\nFront | 6m');
   });
