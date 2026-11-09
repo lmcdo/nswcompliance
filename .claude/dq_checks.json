@@ -1994,7 +1994,7 @@
     "blocks_outreach": true,
     "passes_when": "exit 0 - p95 of 60 brief calls < 2 s against a deployment with PLAN_BRIEF=on (PLAN_BRIEF_URL, optional PLAN_BRIEF_HEADERS)",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "OB-6. NOT VERIFIED here by design: the feature is not live in production, so the check needs a deployment URL. Measured by hand 2026-11-08 on a preview: p50 0.98 s, p95 1.19 s over 102 calls."
+    "note": "OB-6. NOT VERIFIED in CI by design: the feature is not live in production, so the check needs a deployment URL (PLAN_BRIEF_URL). Measured with this check 2026-11-09 against a Vercel preview with the brief on: 72 calls, p50 0.19 s, p95 0.41 s (bar 2 s). Hand measurement 2026-11-08: p50 0.98 s, p95 1.19 s over 102 calls. The preview is a temporary build (Sydney functions, PR 1613); re-measure on production once the brief is live."
   },
   "OC-28": {
     "kind": "outreach_claim",
