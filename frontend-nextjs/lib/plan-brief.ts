@@ -127,8 +127,58 @@ export function tidyText(raw: string | null | undefined, limit = BRIEF_TEXT_LIMI
 const OPENER = /(:\s*$)|following (table|controls|requirements|standards)|as follows|in accordance with (the )?(table|figure)|refer to (table|figure)|shown in (table|figure)/i;
 export function needsFollowOn(text: string): boolean {
   const body = text.replace(/^#.*?\n/, '').replace(/\s+/g, ' ').trim();
+  // The digits in a table or figure NAME ("Table 3.1.2-a") are not a figure: Hornsby 3.1.2 a said "comply with Table 3.1.2-a" and was judged complete.
+  const withoutNames = body.replace(/\b(?:table|figure)\s+[0-9a-z][\w.\-]*/gi, '');
   // a short clause that holds a figure is complete; a clause that names a table but holds no figure points at the table rows that follow
+  return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(withoutNames));
+}
+
+/** The rule before table names were read as names: when no table can be found, only these clauses go on to show the next clauses on
+ *  the page. A clause that is new to needsFollowOn (it names a table and states no figure) shows a table or nothing, never unrelated clauses. */
+export function showsNextClauses(text: string): boolean {
+  const body = text.replace(/^#.*?\n/, '').replace(/\s+/g, ' ').trim();
   return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(body));
+}
+
+// The table a clause points at lies AFTER it (the route supplies only the clauses that follow), so "the table above" is not a pointer we can follow.
+const POINTS_AT_TABLE = /(?:following|next)\s+table|table\s+(?:below|follows)/i;
+// A caption line, with its identifier captured exactly ("3.1.2-a"); the identifier must hold a digit, so "table below" is never read as one.
+const TABLE_CAPTION = /^\s*table\s+((?=[\w.\-]*\d)[0-9a-z](?:[\w.\-]*[0-9a-z])?)\s*[:–—\-]/i;
+
+/** The table inside a clause that also holds prose (Hornsby 3.1.2 h: a paragraph, then "a | b" rows, then the caption): the rows and
+ *  their caption line, copied as printed, or null when the clause holds no table. A verbatim slice of the stored text, never a rewrite. */
+export function tablePart(text: string): string | null {
+  const lines = String(text ?? '').split('\n');
+  const isRow = (l: string) => l.includes(' | ');
+  const first = lines.findIndex(isRow);
+  if (first < 0) return null;
+  let last = first;
+  for (let i = first + 1; i < lines.length; i++) if (isRow(lines[i])) last = i;
+  if (lines.slice(first, last + 1).filter(isRow).length < 2) return null;
+  // a paragraph of prose between the first and last row means two tables (or a table and a later one) share the clause: not one table
+  if (lines.slice(first, last + 1).some((l) => !isRow(l) && l.trim().length > 80)) return null;
+  const from = first > 0 && TABLE_CAPTION.test(lines[first - 1]) ? first - 1 : first;
+  // After the last row: continuation lines of that row, then the caption (all kept). Text that follows the rows with no caption closing
+  // them cannot be told from a wrapped cell, so the clause is not served as a table (never a row cut short).
+  const rest = lines.slice(last + 1);
+  const cap = rest.findIndex((l) => TABLE_CAPTION.test(l));
+  let to = last;
+  if (cap >= 0 && cap <= 4) to = last + 1 + cap;
+  else if (rest.some((l) => l.trim())) return null;
+  return lines.slice(from, to + 1).join('\n').trim();
+}
+
+/** Of the tables that follow a clause on its page, the one the clause names (by caption), else, when it names none ("the following
+ *  table"), the first. A clause that names a table that is not among them gets null, never some other table. */
+export function tableFor(clauseText: string, tables: readonly string[]): string | null {
+  if (tables.length === 0) return null;
+  const named = /\btable\s+((?=[\w.\-]*\d)[0-9a-z](?:[\w.\-]*[0-9a-z])?)/i.exec(clauseText);
+  // no table named: only a clause that points at one ("the following table", "the table below") takes the first that follows
+  if (!named) return POINTS_AT_TABLE.test(clauseText) ? tables[0] : null;
+  // the identifier must EQUAL the caption's ("3.1-a" is not "13.1-a"); a trailing full stop is not part of it
+  const id = named[1].toLowerCase();
+  const captionId = (t: string) => { for (const l of t.split('\n')) { const m = TABLE_CAPTION.exec(l); if (m) return m[1].toLowerCase(); } return ''; };
+  return tables.find((t) => captionId(t) === id) ?? null;
 }
 
 /** Rows of a printed table: two or more lines that each hold two or more ' | ' separated cells. */
