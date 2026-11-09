@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes.",
+  "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes. OC-29 note: retracted 2026-11-09; declared false; the check fails until a new owner read is recorded.",
   "commit_hash": "a34864c4",
   "files": [
     ".claude/dq_checks.json",
@@ -71,17 +71,17 @@
       "repro": "python -m pytest tests/test_dq_check_outreach.py -q"
     },
     {
-      "scenario": "OC-29 (owner read) crashes instead of reporting not done.",
+      "scenario": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
       "what_happens": "Exit 1 with a FileNotFoundError traceback.",
       "mitigated": true,
-      "how": "OC-29 now declared false with the owner-approved wording; its check still fails without a recorded read, which is the truth.",
+      "how": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
       "repro": "python scripts/outreach_claim_checks.py OC-29"
     },
     {
       "scenario": "A claim is declared true while its check cannot pass.",
       "what_happens": "CI fails with a contradicted claim.",
       "mitigated": true,
-      "how": "OC-29 was declared false until the owner's read was recorded; it is now declared true on a recorded read (27 right after viewing, 2 passed on instruction, 0 wrong) and the check reports that split.",
+      "how": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
       "repro": "python scripts/dq_check.py --outreach"
     },
     {
