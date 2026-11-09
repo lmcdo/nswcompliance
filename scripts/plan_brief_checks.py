@@ -50,6 +50,37 @@ WEAK_GOLD = {
     ("cumberland", "dual_occupancy", "side_setback"),                                                              # 2.1: cross-reference to a state guide
     ("city_of_sydney", "dwelling_house", "side_setback"),                                                          # 4.1.2: heritage conservation areas only
 }
+# 2026-11-10: individual "proven" clause ids that are not for an ordinary house, each read in the council's own text. They are removed from whatever
+# cell they sit in (a cell with a correct id left keeps it; a cell left with none is dropped). Narrower than WEAK_GOLD, which drops a whole cell.
+# prior-art-checked: extends this module's own gold handling; no other script scores the brief against proven rules.
+WRONG_GOLD_IDS = {
+    262574: "Hornsby 3.4.5 table: residential flat buildings (front 10 m); the house table is 3.1.2-a (front 6 m / 9 m)",
+    262575: "Hornsby 3.4.5 table: residential flat buildings (front 12 m)",
+    262761: "Hornsby 3.5.5 table: all sites in the Pound Road precinct (front 10 m)",
+    262579: "Hornsby 3.4.5 f: setback encroachment at a laneway, residential flat buildings",
+    262262: "Hornsby 3.2.4 d: medium density housing (units)",
+    262616: "Hornsby 3.4.7 table: residential flat buildings landscaping",
+    262623: "Hornsby 3.4.7 d Table 3.4.7-a: residential flat buildings landscaping (front 8 m)",
+    262441: "Hornsby 3.3.7 c: residential flat buildings landscaping",
+    262291: "Hornsby 3.2.6 table: medium density landscaping",
+    163716: "Ashfield L290 C105 'dwelling must be set back 4 metres': under Site Specific Planning Controls, 140A Hawthorne Parade, Haberfield",
+    211219: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    211309: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    211342: "Wollongong B1 Part 5 or 6 (attached / multi dwelling, residential flat buildings), not Part 4 general residential",
+    210990: "Wollongong B1 4.1.2 1: dwelling houses on battleaxe allotments only, a special lot type",
+}
+# A council's own recall floor (OC-29) is read only where it has this many proven cells: one miss in one to three is chance, not a finding.
+MIN_CELLS_FOR_COUNCIL_FLOOR = 4
+
+
+def _drop_wrong_gold(cells: dict) -> dict:
+    """Remove the ids in WRONG_GOLD_IDS from every proven cell and drop a cell that is left with none."""
+    out = {}
+    for k, ids in cells.items():
+        kept = set(ids) - set(WRONG_GOLD_IDS)
+        if kept:
+            out[k] = kept
+    return out
 
 
 def _conn():
@@ -100,7 +131,7 @@ def _gold_cells(cur, councils: set[str]) -> dict:
         if it["council"] in councils and it["council"] in HOLDOUT:
             devs = [d for d in it["applies_to"] if d in CORE_ZONE] or ["dwelling_house"]
             cells[(it["council"], devs[0], it["rule_type"])].add(it["id"])
-    return {k: v for k, v in cells.items() if k not in WEAK_GOLD}
+    return _drop_wrong_gold({k: v for k, v in cells.items() if k not in WEAK_GOLD})
 
 
 def _served_scope():
@@ -348,7 +379,7 @@ def heading_read() -> Result:
     uncovered = [c for c in named if not n[c]]
     if uncovered:
         problems.append("no proven cases to measure recall for " + ", ".join(uncovered))
-    low = [f"{c} {hit[c]}/{n[c]}" for c in named if n[c] and hit[c] / n[c] < 0.80]
+    low = [f"{c} {hit[c]}/{n[c]}" for c in named if n[c] >= MIN_CELLS_FOR_COUNCIL_FLOOR and hit[c] / n[c] < 0.80]
     if low:
         problems.append("recall under 80% for " + ", ".join(low))
     tot = sum(n.values())
