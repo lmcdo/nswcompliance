@@ -1,0 +1,109 @@
+{
+ "tier": "standard",
+ "justification": "Changes what the plan brief shows under a clause that names a table, for every council. Read-only serving code: no data is written and no stored clause is changed. Directionality: the old behaviour showed no table (or three unrelated clauses) under such a clause; the new behaviour shows the table whose caption matches, or nothing. A wrong table would be a visible mismatch under its own caption, not a changed number.",
+ "commit_hash": "c51f4666",
+ "files": [
+  "frontend-nextjs/lib/plan-brief.ts",
+  "frontend-nextjs/app/api/brief/for-property/route.ts",
+  "frontend-nextjs/__tests__/lib/brief-table-follow-on.test.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/lib/brief-table-follow-on.test.ts",
+  "fails_when": "Hornsby 3.1.2 a (real stored text) is not asked for a follow-on, or the table slice taken from clause 3.1.2 h is not the verbatim rows and caption (starts at 'Boundary setback | Minimum building setback', ends at the Table 3.1.2-a caption, excludes the dual occupancy paragraph), or a clause that names a table that is not on the page is given some other table.",
+  "external_authority": "The council's own text in regulatory_provisions (Hornsby DCP Part 3, ids 262143 and 262150, page 9) and the PDF page (hornsby-dcp-2024-part3-residential.pdf, page 9, Table 3.1.2-a). A replay over every clause in the ten councils that names a table (547 clauses, with the 25 clauses that follow each on its page) found 33 tables matched by caption and 7 by a pointing phrase; 11 of 11 sampled caption matches name the table they show.",
+  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: Tests: 12 failed, 2 passed, 14 total, including 'Hornsby 3.1.2 a names a table and states no figure of its own' (needsFollowOn returned false) and every tablePart and tableFor test (functions did not exist). With the new source: 4 suites passed, 58 tests passed."
+ },
+ "pre_impl": {
+  "existing_data": "547 current clauses in the ten councils name a table. Under the old rule 147 asked for a follow-on; under the new rule 209 do, and 40 of those find a table (Hornsby 21, Parramatta 15, Ashfield 4, Ku-ring-gai 3, Waverley 2, Blacktown 1, Northern Beaches 1 by the first run; fewer by pointing phrase after tightening). Hornsby clause 262143 'comply with Table 3.1.2-a' now resolves to the setback rows (front 6m or 9m, side 0.9m and 1.5m, rear 3m and 8m).",
+  "assumption_mismatch": "The follow-on was assumed to be 'the next three clauses by id'. The table's rows are extracted onto the end of an earlier-numbered neighbour (3.1.2 h, ten clauses on), and the clause that names the table was never asked for a follow-on at all, because 'Table 3.1.2-a' contains digits and the test read them as a figure.",
+  "new_vs_existing": "No new table, column or migration. The existing follow-on in app/api/brief/for-property/route.ts and the existing tableRows renderer are reused; tablePart, tableFor and showsNextClauses are small pure functions in lib/plan-brief.ts. A database split of the glued tables was rejected: the DCP updater plan re-reads changed sections and checks each rule starts and ends at a clause edge, so a split would be overwritten or flagged."
+ },
+ "functions": [
+  {
+   "name": "needsFollowOn",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts",
+   "what": "Decides whether a clause leaves its figure to something that follows it; now ignores digits inside table and figure names.",
+   "input": "the stored text of one clause, with its heading line",
+   "output": "true when the clause names a table and states no figure of its own, or was already an opener or a short fragment",
+   "if_none": "empty or missing text is treated as an empty string and returns false for the table rule",
+   "edge_cases": "'Table 3.1.2-a' is a name, not a figure; a clause that states its own figure and names a table stays complete.",
+   "failure_mode": "Over-asking only adds a follow-on lookup; the route shows nothing unless a table is found or the old rule already applied."
+  },
+  {
+   "name": "tablePart",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts",
+   "what": "Returns the rows and caption of the table inside a clause that also holds prose, as printed.",
+   "input": "the stored text of one clause, which may hold prose and a table",
+   "output": "the verbatim slice, or null when there are fewer than two 'a | b' rows",
+   "if_none": "null, and the clause is read as holding no table",
+   "edge_cases": "caption above or below the rows is kept; a single 'a | b' line is not a table; wrapped cells between rows stay in.",
+   "failure_mode": "A clause whose prose contains ' | ' twice would be read as a table; the slice is still a verbatim part of the stored text."
+  },
+  {
+   "name": "tableFor",
+   "file_line": "frontend-nextjs/lib/plan-brief.ts",
+   "what": "Of the tables that follow a clause on its page, picks the one the clause names by caption, or the first when the clause points at 'the following table'.",
+   "input": "the clause text and the table slices that follow it",
+   "output": "one table slice or null",
+   "if_none": "null, and the route then shows nothing new for that clause",
+   "edge_cases": "a named table with no matching caption returns null, never another table; a clause that mentions 'table' only in passing returns null.",
+   "failure_mode": "A clause that points at 'the table below' takes the first table after it, which could be the wrong one if an unrelated table sits between; seven such matches were read and look right."
+  },
+  {
+   "name": "GET /api/brief/for-property follow-on",
+   "file_line": "frontend-nextjs/app/api/brief/for-property/route.ts",
+   "what": "For a clause that needs a follow-on, shows the matched table; with none found, shows the next three clauses only when the old rule already applied.",
+   "input": "the stored clause and up to 25 following clauses on its page and the next",
+   "output": "the continues list under the clause",
+   "if_none": "no follow-on is shown for that clause and the row renders as before",
+   "edge_cases": "A clause new to needsFollowOn (names a table, no figure) never falls back to unrelated clauses.",
+   "failure_mode": "One more query width (25 rows instead of 3) per follow-on clause, only for the few clauses that need it."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A clause names a table that is not on its page.",
+   "what_happens": "Showing some other table under it would present the wrong figures.",
+   "mitigated": true,
+   "how": "tableFor returns null for a named table with no matching caption, and the route then shows nothing for a clause that is new to the follow-on rule.",
+   "repro": "jest brief-table-follow-on.test.ts: 'a named table with no matching caption is NOT replaced by some other table'"
+  },
+  {
+   "scenario": "The newly flagged clauses (those that only name a table) fell back to the next three clauses.",
+   "what_happens": "Up to 62 more clauses would show unrelated clauses under them.",
+   "mitigated": true,
+   "how": "showsNextClauses keeps the old rule for the fallback; a clause new to needsFollowOn shows a table or nothing. Found by replaying the real data, then fixed.",
+   "repro": "jest: 'a clause new to needsFollowOn (names a table, no figure) does not show unrelated next clauses'"
+  },
+  {
+   "scenario": "A clause that only mentions a table in passing ('Notes: deep soil zones ...') takes the first table that follows.",
+   "what_happens": "A Hornsby deep soil note would show the private open space table.",
+   "mitigated": true,
+   "how": "Without a caption match the clause must point at a table ('the following table', 'the table below'); captionless matches fell from 14 to 7 on the real data, and the 7 were read.",
+   "repro": "jest: 'a clause that mentions table only in passing does not take whatever table follows'"
+  },
+  {
+   "scenario": "The table slice cuts a row short.",
+   "what_happens": "A wrapped last row could lose its continuation lines.",
+   "mitigated": false,
+   "how": "The slice runs from the first to the last 'a | b' line plus an adjacent caption; continuation lines after the last pipe line are not taken. The text shown is always a verbatim part of the stored clause.",
+   "repro": "tablePart on a clause whose last row wraps onto a line with no pipe"
+  }
+ ],
+ "verified": [
+  "Old source: 12 of 14 new tests fail. New source: 4 suites, 58 tests pass (brief-table-follow-on, brief-clause-label, plan-brief-scope, plan-brief component).",
+  "tsc --noEmit prints no errors.",
+  "Replay on the real stored text of the ten councils (547 clauses naming a table): Hornsby 262143 resolves to Table 3.1.2-a with the front, side and rear figures; 11 of 11 sampled caption matches are the table they name."
+ ],
+ "gaps": [
+  "Not run against the deployed route or a live address: the check is a replay of stored text through the same functions, not a browser check.",
+  "Tables that are not in the database at all (images, maps) still show no table; Northern Beaches map rules are unchanged.",
+  "Only 3 of 10 councils have a table found for a house setback clause today (Hornsby, Parramatta, Ashfield); the others have no table-bearing clause on the page."
+ ],
+ "post_merge": {
+  "db_reset": "No data is written. Revert the commit to undo.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "After Vercel deploys, open a Hornsby house address on verify.plotdetect.com.au and check the setback row for clause 3.1.2 a shows the setback table under it."
+ }
+}
