@@ -5,18 +5,26 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 import { TrackedLink } from '@/components/marketing/TrackedLink';
 import { HeroAddressSearch } from '@/components/marketing/HeroAddressSearch';
 import { PILOT_COUNCIL_LABELS } from '@/lib/pilot-focus';
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 
 const STEPS = [
   { n: '1', title: 'Enter an address', body: 'Any NSW address. No account needed.' },
   { n: '2', title: 'Say what you want to build', body: 'For the pilot, a house (dwelling house) in a residential R2 zone.' },
-  { n: '3', title: "Read the council's own rules", body: 'Each rule is quoted in the council\'s words with the clause and the page, or the row says "not found".' },
+  {
+    n: '3',
+    title: "Read the council's own rules",
+    // The clause lists are behind a flag (lib/site-report.ts). Without it only the numeric controls are shown, so say only that.
+    body: PLAN_BRIEF_ON
+      ? "Each rule is quoted in the council's words with the clause and the page, or the row says 'not found'."
+      : "Each control is shown with the clause it comes from and a link to the council's plan.",
+  },
 ];
 
 const LIMITS = [
   'It is a preliminary reading of council documents. It is not planning advice and not legal advice.',
   "Check the council's own document before relying on any rule shown.",
-  'The clauses listed under each topic cover only a house (dwelling house) in a residential R2 zone.',
-  'Outside the pilot councils, the page shows a pilot notice instead of rules.',
+  ...(PLAN_BRIEF_ON ? ['The clauses listed under each topic cover only a house (dwelling house) in a residential R2 zone.'] : []),
+  'Outside the pilot councils, or outside a residential R2 zone, the page shows a pilot notice instead of rules.',
 ];
 
 const MAILTO = 'mailto:hello@plotdetect.com.au?subject=Pilot access';
@@ -40,7 +48,9 @@ export default function HomePage() {
             The council&apos;s own planning rules for your address and project
           </h1>
           <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-            Enter a NSW address and what you want to build. You get the council&apos;s own rules for it, each with the clause and the page, or a plain &quot;not found&quot;.
+            {PLAN_BRIEF_ON
+              ? <>Enter a NSW address and what you want to build. You get the council&apos;s own rules for it, each with the clause and the page, or a plain &quot;not found&quot;.</>
+              : <>Enter a NSW address and what you want to build. You get the council&apos;s own controls for it, each with the clause it comes from and a link to the plan.</>}
           </p>
 
           <HeroAddressSearch />
