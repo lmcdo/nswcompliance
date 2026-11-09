@@ -1,0 +1,137 @@
+{
+  "tier": "standard",
+  "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes.",
+  "commit_hash": "a34864c4",
+  "files": [
+    ".claude/dq_checks.json",
+    "Dockerfile.monitors",
+    "data/plan_brief_heading_read_2026-11-09.json",
+    "railway.alerts.toml",
+    "railway.dcp-commit.toml",
+    "railway.dcp-extract-all.toml",
+    "railway.dcp-extract.toml",
+    "railway.dcp-monitor.toml",
+    "railway.monitors.toml",
+    "scripts/outreach_claim_checks.py",
+    "scripts/plan_brief_checks.py",
+    "tests/test_dq_check_outreach.py",
+    "tests/test_plan_brief_checks.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-30 && python -m pytest tests/test_dq_check_outreach.py -q",
+    "fails_when": "The recall claim stops reading the live brief rows, or the ledger and runner disagree on the claim set OC-1..OC-30.",
+    "observed_red": "Seen red twice: the runner exited with a usage error for OC-23..OC-29 before they were mapped, and test_the_committed_claim_set_matches_the_decision failed with 7 extra claims until the pinned set was updated. Now OC-30 prints 156/166 = 94% and 13 tests pass."
+  },
+  "pre_impl": {
+    "existing_data": "Reads live project_brief_rows (8,976 rows) and regulatory_provisions; reads nothing it does not already read.",
+    "assumption_mismatch": "Main's OC-22 is the housing-reform-area claim, so the plan's recall claim cannot be OC-22; it is OC-30.",
+    "new_vs_existing": "Adds 8 claim rows; existing OC-1..OC-22 untouched.",
+    "external_source_error": "N/A",
+    "frontend_type": "N/A",
+    "user_failure_mode": "N/A (internal ledger)"
+  },
+  "functions": [
+    {
+      "name": "main",
+      "file_line": "scripts/outreach_claim_checks.py:756",
+      "input": "claim id from the command line, looked up in the CHECKS map (OC-23..OC-30 added)",
+      "output": "PASS, FAIL or UNKNOWN lines and an exit code",
+      "if_none": "an unknown claim id exits 2 with a usage message"
+    },
+    {
+      "name": "heading_read",
+      "file_line": "scripts/plan_brief_checks.py:279",
+      "input": "the recorded heading read file and the live brief rows",
+      "output": "PASS, FAIL or UNKNOWN with counts of flagged, house and general headings",
+      "if_none": "a missing or malformed file reads FAIL with a clear message, never a pass"
+    },
+    {
+      "name": "_recorded_speed",
+      "file_line": "scripts/plan_brief_checks.py:217",
+      "input": "the recorded speed measurement file in the data folder",
+      "output": "PASS, FAIL or UNKNOWN with the recorded calls and p95",
+      "if_none": "a missing or malformed record reads UNKNOWN; a short or failing record reads FAIL"
+    }
+  ],
+  "values": [
+    {
+      "value": "brief rows on their cited page",
+      "read_at": "scripts/plan_brief_checks.py:1",
+      "nullable": "no",
+      "guard_at": "N/A",
+      "if_missing": "the check reports UNKNOWN, never a pass"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A claim is declared true but its check cannot run on this machine.",
+      "what_happens": "It must read UNKNOWN, not pass.",
+      "mitigated": true,
+      "how": "OC-24/26/28 printed UNKNOWN (no node_modules) and OC-27 UNKNOWN (no preview URL); none counted as a pass.",
+      "repro": "python scripts/outreach_claim_checks.py OC-28"
+    },
+    {
+      "scenario": "Two sessions reuse the same OC number for different claims.",
+      "what_happens": "A claim silently changes meaning.",
+      "mitigated": true,
+      "how": "OB-1 recall moved to OC-30; the pinned-set test lists every id.",
+      "repro": "python -m pytest tests/test_dq_check_outreach.py -q"
+    },
+    {
+      "scenario": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
+      "what_happens": "Exit 1 with a FileNotFoundError traceback.",
+      "mitigated": true,
+      "how": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29"
+    },
+    {
+      "scenario": "A claim is declared true while its check cannot pass.",
+      "what_happens": "CI fails with a contradicted claim.",
+      "mitigated": true,
+      "how": "OC-29 is declared false: the script read of the council's own section headings found only 4 councils (23 rows) with clean first rules, short of the 30 rows across 5 councils the bar needs. The check fails on a short, stale, malformed or incomplete record, and the claim stays declared false until the bar is met.",
+      "repro": "python scripts/dq_check.py --outreach"
+    },
+    {
+      "scenario": "The brief is rebuilt or reloaded after the owner read.",
+      "what_happens": "The recorded first clauses no longer match the rows.",
+      "mitigated": true,
+      "how": "heading_read compares every recorded first clause to the row's first clause now and returns FAIL when any differs.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after any reload of project_brief_rows"
+    },
+    {
+      "scenario": "A marks file with duplicate rows or invalid marks is recorded.",
+      "what_happens": "A false sign-off could read PASS.",
+      "mitigated": true,
+      "how": "heading_read requires exactly 30 distinct rows numbered 1 to 30, valid marks, at least 5 councils, and 30 distinct council-topic keys.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29 after duplicating a row in the data file"
+    },
+    {
+      "scenario": "A flagged first rule is hidden by listing only clean councils.",
+      "what_happens": "The read could pass while a named council has a wrong-type first rule.",
+      "mitigated": true,
+      "how": "The data file records how councils were named (no red first rule and recall of at least 80%) and the check fails on stale rows; the named list is fixed in the file, not chosen by the check.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29"
+    },
+    {
+      "scenario": "The sign-off bar is quietly lowered to fit the evidence.",
+      "what_happens": "A claim would read as met when fewer councils were verified than the owner approved.",
+      "mitigated": true,
+      "how": "heading_read still requires at least 30 rows and at least 5 councils; with 23 rows it prints FAIL and OC-29 is declared false, with the gap and the fastest fix written in the ledger note.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29"
+    },
+    {
+      "scenario": "The recorded speed measurement is stale or invented.",
+      "what_happens": "OC-27 could pass in CI without a live timing.",
+      "mitigated": true,
+      "how": "The result string says RECORDED and not re-timed; the record needs at least 60 calls and the 2 s bar; the note says to re-measure on production once the brief is live.",
+      "repro": "python scripts/outreach_claim_checks.py OC-27"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Run python scripts/dq_check.py --outreach with a long timeout and read which claims are not READY."
+  }
+}

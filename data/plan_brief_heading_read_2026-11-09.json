@@ -1,0 +1,259 @@
+{
+ "read_by": "Script scan of the council's own PDFs plus the author's reading of the page text above each clause, 2026-11-09. NOT an owner read.",
+ "method": "For each council, the rank-1 clause shown for a dwelling house in zone group R2 for 6 topics (front, side, rear setback; car parking; landscaping; private open space). The council's own PDF is opened at the cited page and the section heading path above the clause is read. red = the clause sits under a heading or page for another building type, a specific neighbourhood or site (dual occupancy, semi-detached, multi-dwelling, narrow lot, estate, precinct, outbuildings, basement, suburb profile); green = under a heading for houses; none = a general heading.",
+ "named_councils": [
+  "penrith",
+  "wollongong",
+  "waverley",
+  "ku_ring_gai"
+ ],
+ "how_named": "A council is named when none of its first rules is under a heading for another building type or a site AND its top-5 recall on the proven rules is at least 80% (live rows).",
+ "not_named": {
+  "georges_river": "2 first rules wrong: 6.1.4 Narrow Lot Housing - Bellevue Estate (rear setback); 6.1.3 Dual Occupancy (private open space)",
+  "ashfield": "1 first rule wrong: Part 4 Residential Multi dwelling housing (rear setback)",
+  "campbelltown": "1 first rule wrong: 3.6.4 Semi-detached Dwellings (landscaping)",
+  "leichhardt": "2 first rules area-specific: C2.2.2.5 neighbourhood setback (front); George & Upward Streets precinct chapter (landscaping)",
+  "cumberland": "2 first rules wrong type: basement wall clause (side setback); 2.20 Outbuildings (rear setback)",
+  "blacktown": "1 first rule under a heading for another building type or site (scan_all)",
+  "parramatta": "1 first rule under such a heading (scan_all)",
+  "northern_beaches": "1 first rule under such a heading (scan_all)",
+  "marrickville": "4 first rules under such headings (scan_all)",
+  "canterbury_bankstown": "all 6 first rules are from site-specific chapters 11.6 Potts Hill and 11.13 Former WSU Campus Milperra",
+  "city_of_sydney": "top-5 recall 60%",
+  "hornsby": "failed the one cheap fix round 2026-11-09 (leak removal cut hold-out recall from 94% to 80%)",
+  "woollahra": "failed the same round"
+ },
+ "limits": "A none flag means no heading contradicts the rule, not that it is verified right. Ranks 2 and 3 are not read here. With 4 clean councils there are 23 rows; the sign-off bar of at least 30 rows across at least 5 councils is NOT met, and has not been weakened.",
+ "rows": [
+  {
+   "n": 1,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 261261,
+   "flag": "none",
+   "section": "1.2 Setbacks and building envelope"
+  },
+  {
+   "n": 2,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 261268,
+   "flag": "none",
+   "section": "1.2 Setbacks and building envelope"
+  },
+  {
+   "n": 3,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 261269,
+   "flag": "none",
+   "section": "1.2 Setbacks and building envelope"
+  },
+  {
+   "n": 4,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 262003,
+   "flag": "none",
+   "section": "6.1 Parking"
+  },
+  {
+   "n": 5,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 261304,
+   "flag": "none",
+   "section": "1.4 Landscaped area"
+  },
+  {
+   "n": 6,
+   "council": "penrith",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 261383,
+   "flag": "none",
+   "section": "2.14 Design of dwellings and private courtyards"
+  },
+  {
+   "n": 7,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 211091,
+   "flag": "none",
+   "section": "4.2 Front Setbacks"
+  },
+  {
+   "n": 8,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 211125,
+   "flag": "none",
+   "section": "4.3 Side and Rear Setbacks"
+  },
+  {
+   "n": 9,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 211125,
+   "flag": "none",
+   "section": "4.3 Side and Rear Setbacks"
+  },
+  {
+   "n": 10,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 210998,
+   "flag": "none",
+   "section": "4.10 Car parking and Access"
+  },
+  {
+   "n": 11,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 211144,
+   "flag": "none",
+   "section": "4.5 Landscaped Area"
+  },
+  {
+   "n": 12,
+   "council": "wollongong",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 211154,
+   "flag": "none",
+   "section": "4.6 Private Open Space"
+  },
+  {
+   "n": 13,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 226415,
+   "flag": "green",
+   "section": "C1 Low Density Residential Development > 2  Setbacks > 2.1 Front and rear building lines"
+  },
+  {
+   "n": 14,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 226420,
+   "flag": "green",
+   "section": "C1 Low Density Residential Development > 2  Setbacks > 2.2 Side Setbacks"
+  },
+  {
+   "n": 15,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 226415,
+   "flag": "green",
+   "section": "C1 Low Density Residential Development > 2  Setbacks > 2.1 Front and rear building lines"
+  },
+  {
+   "n": 16,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 225942,
+   "flag": "none",
+   "section": "B7 Transport > 2 On-Site Parking > 2.2  Car Parking Provision Rates"
+  },
+  {
+   "n": 17,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "landscaping_min",
+   "first_provision_id": 226533,
+   "flag": "green",
+   "section": "Waverley DCP 2022 Part C - Residential Development > C1 Low Density Residential Development > 9 Landscaping and Open Space"
+  },
+  {
+   "n": 18,
+   "council": "waverley",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 226537,
+   "flag": "green",
+   "section": "Waverley DCP 2022 Part C - Residential Development > C1 Low Density Residential Development > 9 Landscaping and Open Space"
+  },
+  {
+   "n": 19,
+   "council": "ku_ring_gai",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "front_setback",
+   "first_provision_id": 171465,
+   "flag": "green",
+   "section": "Part 4 DWELLING HOUSES (page header)"
+  },
+  {
+   "n": 20,
+   "council": "ku_ring_gai",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "side_setback",
+   "first_provision_id": 171476,
+   "flag": "none",
+   "section": "4A.2 Building setbacks (Figure 4A.2-2 side setbacks for dwellings)"
+  },
+  {
+   "n": 21,
+   "council": "ku_ring_gai",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "rear_setback",
+   "first_provision_id": 171474,
+   "flag": "none",
+   "section": "4A SITE DESIGN > 4A.2 Building setbacks (continued)"
+  },
+  {
+   "n": 22,
+   "council": "ku_ring_gai",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "car_parking",
+   "first_provision_id": 171534,
+   "flag": "none",
+   "section": "4B ACCESS AND PARKING > 4B.2 Car parking provision"
+  },
+  {
+   "n": 23,
+   "council": "ku_ring_gai",
+   "dev_type": "dwelling_house",
+   "zone_group": "R2",
+   "row_type": "private_open_space",
+   "first_provision_id": 171604,
+   "flag": "green",
+   "section": "DWELLING HOUSES > 4C.4 Private open space"
+  }
+ ]
+}

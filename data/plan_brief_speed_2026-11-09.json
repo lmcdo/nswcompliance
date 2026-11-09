@@ -1,0 +1,10 @@
+{
+ "measured_on": "2026-11-09",
+ "url": "https://compliance-engine-jdsetp6x9-lawrence-mcdonells-projects.vercel.app (Vercel preview of branch preview/brief-on: brief switched on, functions in Sydney)",
+ "command": "PLAN_BRIEF_URL=<that address> python scripts/outreach_claim_checks.py OC-27",
+ "calls": 72,
+ "p50_s": 0.19,
+ "p95_s": 0.41,
+ "bar_s": 2.0,
+ "note": "Recorded measurement, not re-timed in CI (CI has no deployment with the brief on). Re-measure on production when the brief is live."
+}

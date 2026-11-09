@@ -35,6 +35,7 @@ if str(ROOT / "scripts") not in sys.path:
 
 import outreach_flood_depth_probe as flood_probe  # noqa: E402  (path set above)
 import outreach_scoped_councils as scoped  # noqa: E402  (path set above)
+import plan_brief_checks as brief  # noqa: E402  (OC-23..OC-30, the plan-brief claims)
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 Result = tuple[str, str]
@@ -733,6 +734,17 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         # exactly that set. Every row above still has to pass for the whole fleet.
         scoped.check,
     ],
+    # Plan-brief claims (owner rescope 2026-11-08, ~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md).
+    # Every number is computed from the live tables by scripts/plan_brief_checks.py, never read from a saved result.
+    # OB-1 (recall) is OC-30, not OC-22: OC-22 on main is the housing-reform-area claim.
+    "OC-23": [brief.brief_page_proof],
+    "OC-24": [brief.brief_integrity, brief.brief_jest],
+    "OC-25": [dcp_plans_are_dated, every_served_council_has_a_current_plan_check, brief.brief_rows_from_stale_chapters],
+    "OC-26": [brief.flag_guard_route, brief.flag_guard_ui, brief.brief_jest],
+    "OC-27": [brief.brief_speed],
+    "OC-28": [brief.brief_jest],
+    "OC-29": [brief.heading_read],
+    "OC-30": [brief.brief_recall],
 }
 
 

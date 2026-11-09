@@ -214,11 +214,25 @@ def brief_jest() -> Result:
     return _JEST
 
 
+def _recorded_speed() -> Result:
+    """No deployment to time here: use the recorded measurement (data/plan_brief_speed_2026-11-09.json) when it is valid."""
+    path = ROOT / "data" / "plan_brief_speed_2026-11-09.json"
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        calls, p95, bar = int(rec["calls"]), float(rec["p95_s"]), float(rec["bar_s"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return UNKNOWN, ("speed: set PLAN_BRIEF_URL to a deployment with PLAN_BRIEF=on (and PLAN_BRIEF_HEADERS if protected) to time it; "
+                         "no valid recorded measurement either")
+    if calls < 60 or bar != 2.0:
+        return FAIL, f"speed: the recorded measurement is not valid ({calls} calls, bar {bar} s; need at least 60 calls and a 2 s bar)"
+    return (PASS if p95 < bar else FAIL), (f"speed (RECORDED {rec.get('measured_on')}, not re-timed here): {calls} calls on a preview, "
+                                           f"p50 {rec.get('p50_s')} s, p95 {p95:.2f} s (bar {bar:.0f} s)")
+
+
 def brief_speed() -> Result:
     base = os.environ.get("PLAN_BRIEF_URL")
     if not base:
-        return UNKNOWN, ("speed: set PLAN_BRIEF_URL to a deployment with PLAN_BRIEF=on (and PLAN_BRIEF_HEADERS if protected) "
-                         "to time it. Measured by hand 2026-11-08 on a preview: p50 0.98 s, p95 1.19 s over 102 calls; not a pass here")
+        return _recorded_speed()
     headers = dict(h.split(":", 1) for h in (os.environ.get("PLAN_BRIEF_HEADERS") or "").split(";") if ":" in h)
     combos = [(c, d) for c in ("ashfield", "penrith", "waverley", "wollongong", "georges_river", "hornsby") for d in CORE_ZONE]
     times = []
@@ -260,3 +274,60 @@ def session_read() -> Result:
     return (PASS if len(wrong) < 2 else FAIL), (f"session read (Claude, not independent of the build): {len(rec)} rows across "
                                                 f"{len({r['council'] for r in rec})} councils, {len(wrong)} WRONG (limit: fewer than 2), "
                                                 f"{sum(r['grade'] == 'WEAK' for r in rec)} weak; every recorded first clause is still the row's first clause")
+
+
+def heading_read() -> Result:
+    """OC-29: a script's read of the council's own section headings for at least 30 first rules
+    (data/plan_brief_heading_read_2026-11-09.json). NOT an owner read.
+    Each row is the rank-1 clause shown for a dwelling house in zone group R2; the file records the section heading the council's
+    own PDF prints above that clause and a flag: red = the heading is for another building type or a specific site, green = the
+    heading is for houses, none = a general heading. Passes only when at least 30 distinct rows (n 1 to N) from at least 5 councils are
+    recorded with valid flags, fewer than 2 are red, and every recorded first clause is still the row's first clause now (a rebuilt
+    or reloaded brief makes the read stale)."""
+    path = ROOT / "data" / "plan_brief_heading_read_2026-11-09.json"
+    if not path.exists():
+        return FAIL, "heading read: no recorded read yet (data/plan_brief_heading_read_2026-11-09.json is missing)"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return FAIL, "heading read: the recorded read cannot be parsed"
+    rec = doc.get("rows") if isinstance(doc, dict) else None
+    need = ("n", "council", "dev_type", "zone_group", "row_type", "first_provision_id", "flag")
+    if not isinstance(rec, list) or any(not isinstance(r, dict) or any(k not in r for k in need) for r in rec):
+        return FAIL, "heading read: the recorded read is malformed (rows missing or incomplete)"
+    named = doc.get("named_councils")
+    if not isinstance(named, list) or not named or any(not isinstance(x, str) or not x for x in named):
+        return FAIL, "heading read: the file must list its named_councils"
+    for r in rec:
+        if (isinstance(r["n"], bool) or not isinstance(r["n"], int) or isinstance(r["first_provision_id"], bool)
+                or not isinstance(r["first_provision_id"], int)
+                or any(not isinstance(r[k], str) or not r[k] for k in ("council", "dev_type", "zone_group", "row_type", "flag", "section"))):
+            return FAIL, "heading read: a row has a missing or wrongly typed field (n and first_provision_id are integers; council, dev_type, zone_group, row_type, flag and section are text)"
+    if {r["council"] for r in rec} != set(named):
+        return FAIL, "heading read: the councils in the rows are not exactly the file's named_councils"
+    if len(rec) < 30 or sorted(r["n"] for r in rec) != list(range(1, len(rec) + 1)):
+        return FAIL, f"heading read: need at least 30 rows numbered 1 to N, each once; found {len(rec)}"
+    if any(r["flag"] not in ("green", "none", "red") for r in rec):
+        return FAIL, "heading read: a flag is not one of green, none, red"
+    if len({r["council"] for r in rec}) < 5:
+        return FAIL, "heading read: rows must cover at least 5 councils"
+    if len({(r["council"], r["dev_type"], r["zone_group"], r["row_type"]) for r in rec}) != len(rec):
+        return FAIL, "heading read: the rows are not all distinct council, topic rows"
+    conn = _conn()
+    if conn is None:
+        return UNKNOWN, "heading read: database unreachable"
+    try:
+        with conn.cursor() as cur:
+            top = _brief_top5(cur)
+    finally:
+        conn.close()
+    stale = [(r["council"], r["row_type"]) for r in rec
+             if ((top.get((r["council"], r["dev_type"], r["zone_group"], r["row_type"])) or [None])[0]) != r["first_provision_id"]]
+    if stale:
+        return FAIL, f"heading read is STALE: {len(stale)} of {len(rec)} rows have a different first clause now (e.g. {stale[:3]}). Read the headings again"
+    red = [r for r in rec if r["flag"] == "red"]
+    green = sum(r["flag"] == "green" for r in rec)
+    return (PASS if len(red) < 2 else FAIL), (f"heading read (script, from the council's own PDF headings; not an owner read): {len(rec)} rows across "
+                                              f"{len({r['council'] for r in rec})} councils: {len(red)} under a heading for another building type or a site "
+                                              f"(limit: fewer than 2), {green} under a heading for houses, {len(rec) - len(red) - green} under a general heading; "
+                                              f"every recorded first clause is still the row's first clause")
