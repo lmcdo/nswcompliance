@@ -1,0 +1,29 @@
+{
+  "tier": "minor",
+  "justification": "One setting in frontend-nextjs/vercel.json moves every API function to Sydney, which is where the database is. It is Minor in lines but project-wide in effect, so the measurement below is on one route and the risks are listed.",
+  "commit_hash": "560f49e6",
+  "files": [
+    "frontend-nextjs/vercel.json"
+  ],
+  "pre_impl": {
+    "existing_data": "No regions key was set, so Vercel used its default of US East. The database host is aws-1-ap-southeast-2 and most outside calls go to NSW government services.",
+    "assumption_mismatch": "A function that calls a service hosted in the US would get slower. Of the hosts the API routes call, the large majority are NSW government services and our own domain; the Python backend's region is not measured here.",
+    "new_vs_existing": "Applies to the next deploy of every function. No data is written and no route code changes."
+  },
+  "break_it": [
+    {
+      "scenario": "The Python backend or another service is hosted in the US, so a function now makes a longer hop than before.",
+      "what_happens": "Routes that depend on it get slower, and a route with a long timeout could take longer end to end.",
+      "mitigated": false,
+      "how": "Not mitigated in this change. It is reversible by removing one line, and the routes' maxDuration limits are unchanged.",
+      "repro": "Time a route that calls the Python backend before and after the deploy, for example one that reads PYTHON_API_URL."
+    }
+  ],
+  "residual_risk": "Measured on the brief route only: p95 3.31 s in the default region against 0.24 s in Sydney, 108 calls each, paced under the 30 a minute limit. Other routes are expected to improve for the same reason but were not measured. The Python backend region is unknown. Revert is one line.",
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: time one route that calls the Python backend before and after"
+  }
+}
