@@ -5,13 +5,15 @@
  "files": [
   "scripts/load_project_brief.py",
   "tests/test_load_project_brief.py",
-  "data/plan_brief_picks_2026-11-10.jsonl"
+  "data/plan_brief_picks_2026-11-10.jsonl",
+  "frontend-nextjs/shared/brief-scope.json",
+  "data/plan_brief_heading_scan_2026-11-09.json"
  ],
  "falsifiable_check": {
   "command": "python -m pytest tests/test_load_project_brief.py -q",
-  "fails_when": "A replace file with a gap or repeat in a cell's ranks, a cell both picked and named empty, a bad line, or an apply with no --backup-to is accepted; or the committed picks file stops covering 100 cells (10 councils x 10 topics) with ranks running 1..n.",
+  "fails_when": "A replace file with a gap or repeat in a cell's ranks, a cell both picked and named empty, a bad line, or an apply with no --backup-to is accepted; or the committed picks file stops covering 100 cells (10 councils x 10 topics) with ranks running 1..n. Also fails when a rank or provision id is not a whole number, when an empty-cell line carries pick fields, or when any committed pick is on the served skip list.",
   "external_authority": "The live table's own constraints (read with pg_get_constraintdef): UNIQUE (council, zone_group, dev_type, row_type, rank), CHECK rank 1..5, FK provision_id to regulatory_provisions. A dry run against the live table read 442 existing R2 house rows in the 100 cells and 113 rows to insert, with every pick a current, actionable clause of its own council.",
-  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 12 failed, 7 passed, including every read_cells, replace_problems and --replace-cells argument test and the committed-picks-file test. With the new loader: 19 passed."
+  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 15 failed, 7 passed. With the new loader: 22 passed. The skip-list test failed (192218 was on the list) until the list was corrected."
  },
  "pre_impl": {
   "existing_data": "project_brief_rows holds 8,976 rows; the replace touches the 442 R2 dwelling_house rows of ten councils (ashfield 45, blacktown 45, georges_river 38, hornsby 47, ku_ring_gai 45, northern_beaches 46, parramatta 50, penrith 42, waverley 43, wollongong 41). The 113 new picks are the clauses two blind Sonnet readers chose as stating a requirement for an ordinary house (28 of 30 cells identical on a second run).",
@@ -78,17 +80,40 @@
    "mitigated": true,
    "how": "replace_problems rejects both before the database is opened for writing.",
    "repro": "pytest: test_replace_problems_rejects_a_gap_or_a_repeat_in_the_ranks and ..._both_picked_and_empty"
+  },
+  {
+   "scenario": "A rank of 1.9 or a provision id of 240903.9 is read as 1 and 240903.",
+   "what_happens": "The cell would be replaced with a rank or clause different from the one written.",
+   "mitigated": true,
+   "how": "Found by cross-review. Ranks and provision ids must be whole numbers (a boolean is not one); anything else is a bad line and stops the run.",
+   "repro": "pytest: test_a_rank_or_provision_id_that_is_not_a_whole_number_is_rejected_not_truncated"
+  },
+  {
+   "scenario": "A line says empty true and also carries rank, provision_id, verdict or reason.",
+   "what_happens": "The pick would be dropped and its cell emptied.",
+   "mitigated": true,
+   "how": "Found by cross-review. An empty-cell line may name the cell and nothing else; one with pick fields is a bad line.",
+   "repro": "pytest: test_an_empty_marker_that_also_carries_pick_fields_is_rejected_not_obeyed"
+  },
+  {
+   "scenario": "A pick is also on the served skip list.",
+   "what_happens": "The file says the cell is filled but the page drops the clause and shows not found.",
+   "mitigated": true,
+   "how": "Found by cross-review: Northern Beaches 192218 (the residential parking table with 'Dwelling house and dual occupancy: 2 spaces per dwelling') was skipped because the same table lists a boarding house. It is taken off the list, its scan row is marked read and unflagged, and a test now fails if any pick is on the list.",
+   "repro": "pytest: test_no_committed_pick_is_on_the_served_skip_list"
   }
  ],
  "verified": [
-  "Old loader: 12 of 19 tests fail. New loader: 19 pass.",
+  "Old loader: 15 of 22 tests fail. New loader: 22 pass.",
   "Dry run against the live table: 100 cells, 442 existing rows to delete, 113 to insert, nothing written.",
-  "The committed picks file reads clean: 113 picks, 24 empty-cell lines, ranks 1..n in every cell."
+  "The committed picks file reads clean: 113 picks, 24 empty-cell lines, ranks 1..n in every cell, no pick on the served skip list.",
+  "After taking 192218 off the skip list: OC-29 HOLDS and OC-30 HOLDS (45/47 = 96%) against the live table."
  ],
  "gaps": [
   "The write itself has not been run. The loader's apply path is tested only through its argument checks and the dry run, not against a database that can be rolled back.",
-  "The checks OC-29 and OC-30 would not pass on the post-write state as they stand: five invalid answer-sheet cells in the hold-out, a per-council 80 percent floor that fails on one to three cells, and one picked clause (192218) still on the old global skip list. Those are handled outside this change, so main stays green.",
-  "A full rebuild of the brief by the builder outside the repo would overwrite the picks; reloading this file restores them."
+  "The checks OC-29 and OC-30 would not pass on the post-write state as they stand: five invalid answer-sheet cells in the hold-out (the check then has 14 hold-out cells, it needs 15), a per-council 80 percent floor that fails on one to three cells (Ashfield 0 of 1, Waverley 2 of 3), and declared gaps for cells the strict picks leave empty. Those need the owner's decision and are handled outside this change, so main stays green; the draft edits are saved in ~/.claude/plans/ce-session-scripts-2026-11-09/strict-picks-gold-gaps-scan.patch.",
+  "A full rebuild of the brief by the builder outside the repo would overwrite the picks; reloading this file restores them.",
+  "Cross-review also said the loader should filter on is_active; regulatory_provisions has no such column, and is_current plus v2_is_actionable is the filter the serving route uses, so that finding was judged wrong."
  ],
  "post_merge": {
   "db_reset": "Nothing is written by this change. If a later apply is made, restore from the --backup-to file by loading it back.",

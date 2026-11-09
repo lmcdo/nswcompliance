@@ -156,3 +156,20 @@ def test_the_committed_picks_file_is_valid_and_every_cell_runs_one_to_n():
     assert lpb.replace_problems(picks, empties) == []
     assert {p["zone_group"] for p in picks} == {"R2"} and {p["dev_type"] for p in picks} == {"dwelling_house"}
     assert len({lpb.cell_key(p) for p in picks} | {lpb.cell_key(e) for e in empties}) == 100   # 10 councils x 10 topics
+
+
+def test_a_rank_or_provision_id_that_is_not_a_whole_number_is_rejected_not_truncated(tmp_path):
+    picks, empties, bad = lpb.read_cells(write(tmp_path, [row(rank=1.9), row(provision_id=240903.9), row(rank=True), row(rank="2")]))
+    assert picks == [] and bad == [1, 2, 3, 4]
+
+
+def test_an_empty_marker_that_also_carries_pick_fields_is_rejected_not_obeyed(tmp_path):
+    picks, empties, bad = lpb.read_cells(write(tmp_path, [cell(rank=1, provision_id=262143, verdict="MIGHT"), cell(reason="x")]))
+    assert picks == [] and empties == [] and bad == [1, 2]
+
+
+def test_no_committed_pick_is_on_the_served_skip_list():
+    # a pick the page then drops would leave its cell empty while the file says it is filled
+    skip = set(json.loads((ROOT / "frontend-nextjs" / "shared" / "brief-scope.json").read_text(encoding="utf-8"))["excluded_provision_ids"])
+    picks, _, _ = lpb.read_cells(str(ROOT / "data" / "plan_brief_picks_2026-11-10.jsonl"))
+    assert [p["provision_id"] for p in picks if p["provision_id"] in skip] == []

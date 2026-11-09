@@ -36,13 +36,20 @@ ROW_TYPES = {"front_setback", "side_setback", "rear_setback", "secondary_street_
 BATCH = 500
 
 
+def _is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)    # 1.9 is not rank 1 and True is not rank 1: no silent truncation
+
+
 def _valid_pick(r):
     return bool(r["zone_group"] in ZONES and r["dev_type"] in DEV_TYPES and r["row_type"] in ROW_TYPES
-                and 1 <= int(r["rank"]) <= 5 and r["verdict"] in ("APPLIES", "MIGHT") and int(r["provision_id"]) > 0 and r["council"])
+                and _is_int(r["rank"]) and 1 <= r["rank"] <= 5 and r["verdict"] in ("APPLIES", "MIGHT")
+                and _is_int(r["provision_id"]) and r["provision_id"] > 0 and r["council"])
 
 
 def _valid_cell(r):
-    return bool(r["zone_group"] in ZONES and r["dev_type"] in DEV_TYPES and r["row_type"] in ROW_TYPES and r["council"])
+    # an empty-cell line names a cell and nothing else: one that also carries pick fields would silently drop that pick
+    return bool(r["zone_group"] in ZONES and r["dev_type"] in DEV_TYPES and r["row_type"] in ROW_TYPES and r["council"]
+                and not any(k in r for k in ("rank", "provision_id", "verdict", "reason")))
 
 
 def cell_key(r):
