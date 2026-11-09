@@ -262,34 +262,36 @@ def session_read() -> Result:
                                                 f"{sum(r['grade'] == 'WEAK' for r in rec)} weak; every recorded first clause is still the row's first clause")
 
 
-def owner_read() -> Result:
-    """OC-29: the owner's recorded read of 30 brief rows (data/plan_brief_owner_read_2026-11-09.json).
-    Passes only when exactly 30 distinct rows (n 1-30) from at least 5 councils are recorded with valid marks, at least 28 are
-    right or passed (a card the owner passed on instruction without opening is counted as passed and reported separately),
-    fewer than 2 are wrong, and every recorded first clause is still the row's first clause now (a rebuilt or reloaded brief
-    makes the read stale)."""
-    path = ROOT / "data" / "plan_brief_owner_read_2026-11-09.json"
+def heading_read() -> Result:
+    """OC-29: a script's read of the council's own section headings for at least 30 first rules
+    (data/plan_brief_heading_read_2026-11-09.json). NOT an owner read.
+    Each row is the rank-1 clause shown for a dwelling house in zone group R2; the file records the section heading the council's
+    own PDF prints above that clause and a flag: red = the heading is for another building type or a specific site, green = the
+    heading is for houses, none = a general heading. Passes only when at least 30 distinct rows (n 1 to N) from at least 5 councils are
+    recorded with valid flags, fewer than 2 are red, and every recorded first clause is still the row's first clause now (a rebuilt
+    or reloaded brief makes the read stale)."""
+    path = ROOT / "data" / "plan_brief_heading_read_2026-11-09.json"
     if not path.exists():
-        return FAIL, "owner read: no recorded read yet (data/plan_brief_owner_read_2026-11-09.json is missing)"
-    doc = json.loads(path.read_text(encoding="utf-8"))
-    if doc.get("status", "").startswith("SUPERSEDED"):
-        return FAIL, "owner read: the recorded read is SUPERSEDED (cards lacked the plan headings); read again and record a new one"
-    rec = doc["rows"]
-    if sorted(r.get("n") for r in rec) != list(range(1, 31)):
-        return FAIL, f"owner read: need exactly 30 rows numbered 1 to 30, each once; found {len(rec)}"
-    if any(r.get("mark") not in ("right", "wrong", "unsure", "passed") for r in rec):
-        return FAIL, "owner read: a mark is not one of right, wrong, unsure, passed"
+        return FAIL, "heading read: no recorded read yet (data/plan_brief_heading_read_2026-11-09.json is missing)"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return FAIL, "heading read: the recorded read cannot be parsed"
+    rec = doc.get("rows") if isinstance(doc, dict) else None
+    need = ("n", "council", "dev_type", "zone_group", "row_type", "first_provision_id", "flag")
+    if not isinstance(rec, list) or any(not isinstance(r, dict) or any(k not in r for k in need) for r in rec):
+        return FAIL, "heading read: the recorded read is malformed (rows missing or incomplete)"
+    if len(rec) < 30 or sorted(r["n"] for r in rec) != list(range(1, len(rec) + 1)):
+        return FAIL, f"heading read: need at least 30 rows numbered 1 to N, each once; found {len(rec)}"
+    if any(r["flag"] not in ("green", "none", "red") for r in rec):
+        return FAIL, "heading read: a flag is not one of green, none, red"
     if len({r["council"] for r in rec}) < 5:
-        return FAIL, "owner read: rows must cover at least 5 councils"
-    keys = {(r["council"], r["dev_type"], r["zone_group"], r["row_type"]) for r in rec}
-    if len(keys) != 30:
-        return FAIL, "owner read: the 30 rows are not 30 distinct council, topic rows"
-    right = [r for r in rec if r["mark"] == "right"]
-    passed = [r for r in rec if r["mark"] == "passed"]
-    wrong = [r for r in rec if r["mark"] == "wrong"]
+        return FAIL, "heading read: rows must cover at least 5 councils"
+    if len({(r["council"], r["dev_type"], r["zone_group"], r["row_type"]) for r in rec}) != len(rec):
+        return FAIL, "heading read: the rows are not all distinct council, topic rows"
     conn = _conn()
     if conn is None:
-        return UNKNOWN, "owner read: database unreachable"
+        return UNKNOWN, "heading read: database unreachable"
     try:
         with conn.cursor() as cur:
             top = _brief_top5(cur)
@@ -298,9 +300,10 @@ def owner_read() -> Result:
     stale = [(r["council"], r["row_type"]) for r in rec
              if ((top.get((r["council"], r["dev_type"], r["zone_group"], r["row_type"])) or [None])[0]) != r["first_provision_id"]]
     if stale:
-        return FAIL, f"owner read is STALE: {len(stale)} of {len(rec)} rows have a different first clause now (e.g. {stale[:3]}). Read them again"
-    ok = len(right) + len(passed) >= 28 and len(wrong) < 2
-    return (PASS if ok else FAIL), (f"owner read: 30 rows across {len({r['council'] for r in rec})} councils: {len(right)} right after viewing, "
-                                    f"{len(passed)} passed on the owner's instruction without opening, {len(wrong)} wrong, "
-                                    f"{sum(r['mark'] == 'unsure' for r in rec)} not sure (bar: 28 or more right or passed, fewer than 2 wrong); "
-                                    f"every recorded first clause is still the row's first clause")
+        return FAIL, f"heading read is STALE: {len(stale)} of {len(rec)} rows have a different first clause now (e.g. {stale[:3]}). Read the headings again"
+    red = [r for r in rec if r["flag"] == "red"]
+    green = sum(r["flag"] == "green" for r in rec)
+    return (PASS if len(red) < 2 else FAIL), (f"heading read (script, from the council's own PDF headings; not an owner read): {len(rec)} rows across "
+                                              f"{len({r['council'] for r in rec})} councils: {len(red)} under a heading for another building type or a site "
+                                              f"(limit: fewer than 2), {green} under a heading for houses, {len(rec) - len(red) - green} under a general heading; "
+                                              f"every recorded first clause is still the row's first clause")
