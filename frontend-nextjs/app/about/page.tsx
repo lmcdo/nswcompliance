@@ -6,7 +6,7 @@ import { PILOT_COUNCIL_LABELS } from '@/lib/pilot-focus';
 
 export const metadata: Metadata = {
   title: 'About — PlotDetect',
-  description: "PlotDetect is a small NSW project that reads councils' own planning documents and shows the clause and the page each rule comes from.",
+  description: "PlotDetect is a small NSW project that reads councils' own planning documents and shows the clause each rule comes from, with a link to the plan.",
 };
 
 export default function AboutPage() {
@@ -20,7 +20,7 @@ export default function AboutPage() {
         <div className="prose prose-sm prose-gray max-w-none">
           <p className="text-gray-600 leading-relaxed">
             PlotDetect is a small NSW project. It reads councils&apos; own planning documents and shows the
-            clause and the page each rule comes from.
+            clause each rule comes from, with a link to the plan.
           </p>
 
           <h2 className="text-lg font-semibold text-gray-900 mt-8 mb-3">Private pilot</h2>

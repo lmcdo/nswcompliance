@@ -17,7 +17,7 @@ export default function TermsPage() {
         <h1>Terms of Service</h1>
         <p className="text-gray-500 text-sm">Last updated: April 2026</p>
 
-        <h2>Private pilot</h2>
+        <h2>Private pilot (from 9 November 2026)</h2>
         <p>
           Council Rules and Site Facts are offered free during a private pilot with chosen
           professionals. They are a preliminary reading of public sources and council documents.
