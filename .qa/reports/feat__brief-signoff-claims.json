@@ -5,7 +5,7 @@
   "files": [
     ".claude/dq_checks.json",
     "Dockerfile.monitors",
-    "data/plan_brief_owner_read_2026-11-09.json",
+    "data/plan_brief_heading_read_2026-11-09.json",
     "railway.alerts.toml",
     "railway.dcp-commit.toml",
     "railway.dcp-extract-all.toml",
@@ -14,7 +14,8 @@
     "railway.monitors.toml",
     "scripts/outreach_claim_checks.py",
     "scripts/plan_brief_checks.py",
-    "tests/test_dq_check_outreach.py"
+    "tests/test_dq_check_outreach.py",
+    "tests/test_plan_brief_checks.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/outreach_claim_checks.py OC-30 && python -m pytest tests/test_dq_check_outreach.py -q",
@@ -38,11 +39,11 @@
       "if_none": "an unknown claim id exits 2 with a usage message"
     },
     {
-      "name": "owner_read",
+      "name": "heading_read",
       "file_line": "scripts/plan_brief_checks.py:265",
-      "input": "the owner's recorded marks file and the live brief rows",
-      "output": "PASS, FAIL or UNKNOWN with the counts of right, wrong and not sure",
-      "if_none": "a missing marks file reads FAIL with a clear message, never a pass"
+      "input": "the recorded heading read file and the live brief rows",
+      "output": "PASS, FAIL or UNKNOWN with counts of flagged, house and general headings",
+      "if_none": "a missing or malformed file reads FAIL with a clear message, never a pass"
     }
   ],
   "values": [
@@ -88,15 +89,22 @@
       "scenario": "The brief is rebuilt or reloaded after the owner read.",
       "what_happens": "The recorded first clauses no longer match the rows.",
       "mitigated": true,
-      "how": "owner_read compares every recorded first clause to the row's first clause now and returns FAIL when any differs.",
+      "how": "heading_read compares every recorded first clause to the row's first clause now and returns FAIL when any differs.",
       "repro": "python scripts/outreach_claim_checks.py OC-29 after any reload of project_brief_rows"
     },
     {
       "scenario": "A marks file with duplicate rows or invalid marks is recorded.",
       "what_happens": "A false sign-off could read PASS.",
       "mitigated": true,
-      "how": "owner_read requires exactly 30 distinct rows numbered 1 to 30, valid marks, at least 5 councils, and 30 distinct council-topic keys.",
+      "how": "heading_read requires exactly 30 distinct rows numbered 1 to 30, valid marks, at least 5 councils, and 30 distinct council-topic keys.",
       "repro": "python scripts/outreach_claim_checks.py OC-29 after duplicating a row in the data file"
+    },
+    {
+      "scenario": "A flagged first rule is hidden by listing only clean councils.",
+      "what_happens": "The read could pass while a named council has a wrong-type first rule.",
+      "mitigated": true,
+      "how": "The data file records how councils were named (no red first rule and recall of at least 80%) and the check fails on stale rows; the named list is fixed in the file, not chosen by the check.",
+      "repro": "python scripts/outreach_claim_checks.py OC-29"
     }
   ],
   "post_merge": {
