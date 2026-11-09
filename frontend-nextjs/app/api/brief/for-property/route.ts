@@ -16,7 +16,7 @@ import { toLgaSlug } from '@/lib/lga-slug';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { quoteColumns, withCouncilWords } from '@/lib/council-quote';
 import { withServedCitation } from '@/lib/citation-display';
-import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
+import { BRIEF_ROW_LIMIT, briefClauseLabel, isBriefDevType, zoneGroup, planLink, tidyText, needsFollowOn, showsNextClauses, tablePart, tableFor, inBriefScope, dropExcluded, type StoredBriefRow } from '@/lib/plan-brief';
 import briefScope from '@/shared/brief-scope.json';
 
 const EXCLUDED = new Set<number>(briefScope.excluded_provision_ids);
@@ -78,9 +78,18 @@ export async function GET(request: NextRequest) {
         `SELECT provision_text FROM regulatory_provisions
           WHERE source_council = $1 AND source_chapter_key = $2 AND is_current = TRUE AND v2_is_actionable = TRUE
             AND id > $3 AND pdf_page BETWEEN $4 AND $4 + 1
-          ORDER BY id LIMIT 3`,
+          ORDER BY id LIMIT 25`,
         [r.source_council, r.source_chapter_key, r.id, r.pdf_page]);
-      const lines = nx.rows.map((n: any) => tidyText(n.provision_text, 500)).filter(Boolean);
+      // A clause that names a table shows that table (its rows were extracted onto a nearby clause, e.g. Hornsby 3.1.2 a -> the end of 3.1.2 h);
+      // anything else shows the next three clauses as before.
+      const table = /\btable\b/i.test(String(r.provision_text ?? ''))
+        ? tableFor(String(r.provision_text ?? ''), nx.rows.map((n: any) => tablePart(String(n.provision_text ?? ''))).filter((t: string | null): t is string => !!t))
+        : null;
+      // No table found: only a clause the old rule already sent on shows the next clauses; one that is new (names a table, states no figure) shows nothing.
+      if (!table && !showsNextClauses(String(r.provision_text ?? ''))) return;
+      const lines = table
+        ? [tidyText(table, 1500)].filter(Boolean)
+        : nx.rows.slice(0, 3).map((n: any) => tidyText(n.provision_text, 500)).filter(Boolean);
       if (lines.length > 0) followOn[Number(r.id)] = lines;
     }));
 

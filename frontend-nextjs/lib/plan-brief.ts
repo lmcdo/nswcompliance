@@ -127,8 +127,47 @@ export function tidyText(raw: string | null | undefined, limit = BRIEF_TEXT_LIMI
 const OPENER = /(:\s*$)|following (table|controls|requirements|standards)|as follows|in accordance with (the )?(table|figure)|refer to (table|figure)|shown in (table|figure)/i;
 export function needsFollowOn(text: string): boolean {
   const body = text.replace(/^#.*?\n/, '').replace(/\s+/g, ' ').trim();
+  // The digits in a table or figure NAME ("Table 3.1.2-a") are not a figure: Hornsby 3.1.2 a said "comply with Table 3.1.2-a" and was judged complete.
+  const withoutNames = body.replace(/\b(?:table|figure)\s+[0-9a-z][\w.\-]*/gi, '');
   // a short clause that holds a figure is complete; a clause that names a table but holds no figure points at the table rows that follow
+  return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(withoutNames));
+}
+
+/** The rule before table names were read as names: when no table can be found, only these clauses go on to show the next clauses on
+ *  the page. A clause that is new to needsFollowOn (it names a table and states no figure) shows a table or nothing, never unrelated clauses. */
+export function showsNextClauses(text: string): boolean {
+  const body = text.replace(/^#.*?\n/, '').replace(/\s+/g, ' ').trim();
   return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(body));
+}
+
+const POINTS_AT_TABLE = /(?:following|below|above|next|this)\s+table|table\s+(?:below|follows|above)|in the table|the table\b/i;
+const TABLE_CAPTION =/^\s*table\s+[0-9a-z][\w.\-]*\s*[:–—\-]/i;
+
+/** The table inside a clause that also holds prose (Hornsby 3.1.2 h: a paragraph, then "a | b" rows, then the caption): the rows and
+ *  their caption line, copied as printed, or null when the clause holds no table. A verbatim slice of the stored text, never a rewrite. */
+export function tablePart(text: string): string | null {
+  const lines = String(text ?? '').split('\n');
+  const isRow = (l: string) => l.includes(' | ');
+  const first = lines.findIndex(isRow);
+  if (first < 0) return null;
+  let last = first;
+  for (let i = first + 1; i < lines.length; i++) if (isRow(lines[i])) last = i;
+  if (lines.slice(first, last + 1).filter(isRow).length < 2) return null;
+  const from = first > 0 && TABLE_CAPTION.test(lines[first - 1]) ? first - 1 : first;
+  const to = last + 1 < lines.length && TABLE_CAPTION.test(lines[last + 1]) ? last + 1 : last;
+  return lines.slice(from, to + 1).join('\n').trim();
+}
+
+/** Of the tables that follow a clause on its page, the one the clause names (by caption), else, when it names none ("the following
+ *  table"), the first. A clause that names a table that is not among them gets null, never some other table. */
+export function tableFor(clauseText: string, tables: readonly string[]): string | null {
+  if (tables.length === 0) return null;
+  const named = /\btable\s+([0-9][\w.\-]*)/i.exec(clauseText);
+  // no table named: only a clause that points at one ("the following table", "the table below") takes the first that follows
+  if (!named) return POINTS_AT_TABLE.test(clauseText) ? tables[0] : null;
+  const token = named[1].replace(/[.\-]+$/, '').toLowerCase();
+  const caption = (t: string) => t.split('\n').find((l) => TABLE_CAPTION.test(l)) ?? '';
+  return tables.find((t) => caption(t).toLowerCase().includes(token)) ?? null;
 }
 
 /** Rows of a printed table: two or more lines that each hold two or more ' | ' separated cells. */
