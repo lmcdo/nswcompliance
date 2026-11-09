@@ -140,8 +140,10 @@ export function showsNextClauses(text: string): boolean {
   return (body.length < 90 && !/\d/.test(body)) || OPENER.test(body) || (/\btable\b/i.test(body) && !/\d/.test(body));
 }
 
-const POINTS_AT_TABLE = /(?:following|below|above|next|this)\s+table|table\s+(?:below|follows|above)|in the table|the table\b/i;
-const TABLE_CAPTION =/^\s*table\s+[0-9a-z][\w.\-]*\s*[:–—\-]/i;
+// The table a clause points at lies AFTER it (the route supplies only the clauses that follow), so "the table above" is not a pointer we can follow.
+const POINTS_AT_TABLE = /(?:following|next)\s+table|table\s+(?:below|follows)/i;
+// A caption line, with its identifier captured exactly ("3.1.2-a"); the identifier must hold a digit, so "table below" is never read as one.
+const TABLE_CAPTION = /^\s*table\s+((?=[\w.\-]*\d)[0-9a-z](?:[\w.\-]*[0-9a-z])?)\s*[:–—\-]/i;
 
 /** The table inside a clause that also holds prose (Hornsby 3.1.2 h: a paragraph, then "a | b" rows, then the caption): the rows and
  *  their caption line, copied as printed, or null when the clause holds no table. A verbatim slice of the stored text, never a rewrite. */
@@ -154,7 +156,13 @@ export function tablePart(text: string): string | null {
   for (let i = first + 1; i < lines.length; i++) if (isRow(lines[i])) last = i;
   if (lines.slice(first, last + 1).filter(isRow).length < 2) return null;
   const from = first > 0 && TABLE_CAPTION.test(lines[first - 1]) ? first - 1 : first;
-  const to = last + 1 < lines.length && TABLE_CAPTION.test(lines[last + 1]) ? last + 1 : last;
+  // After the last row: continuation lines of that row, then the caption (all kept). Text that follows the rows with no caption closing
+  // them cannot be told from a wrapped cell, so the clause is not served as a table (never a row cut short).
+  const rest = lines.slice(last + 1);
+  const cap = rest.findIndex((l) => TABLE_CAPTION.test(l));
+  let to = last;
+  if (cap >= 0 && cap <= 4) to = last + 1 + cap;
+  else if (rest.some((l) => l.trim())) return null;
   return lines.slice(from, to + 1).join('\n').trim();
 }
 
@@ -162,12 +170,13 @@ export function tablePart(text: string): string | null {
  *  table"), the first. A clause that names a table that is not among them gets null, never some other table. */
 export function tableFor(clauseText: string, tables: readonly string[]): string | null {
   if (tables.length === 0) return null;
-  const named = /\btable\s+([0-9][\w.\-]*)/i.exec(clauseText);
+  const named = /\btable\s+((?=[\w.\-]*\d)[0-9a-z](?:[\w.\-]*[0-9a-z])?)/i.exec(clauseText);
   // no table named: only a clause that points at one ("the following table", "the table below") takes the first that follows
   if (!named) return POINTS_AT_TABLE.test(clauseText) ? tables[0] : null;
-  const token = named[1].replace(/[.\-]+$/, '').toLowerCase();
-  const caption = (t: string) => t.split('\n').find((l) => TABLE_CAPTION.test(l)) ?? '';
-  return tables.find((t) => caption(t).toLowerCase().includes(token)) ?? null;
+  // the identifier must EQUAL the caption's ("3.1-a" is not "13.1-a"); a trailing full stop is not part of it
+  const id = named[1].toLowerCase();
+  const captionId = (t: string) => { for (const l of t.split('\n')) { const m = TABLE_CAPTION.exec(l); if (m) return m[1].toLowerCase(); } return ''; };
+  return tables.find((t) => captionId(t) === id) ?? null;
 }
 
 /** Rows of a printed table: two or more lines that each hold two or more ' | ' separated cells. */

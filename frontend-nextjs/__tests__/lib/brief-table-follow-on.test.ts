@@ -65,6 +65,16 @@ describe('tablePart', () => {
     const t = 'Intro text that is long enough to be prose.\nTable 6.2.1 – Minimum car parking rates\nUse | Spaces\nDwelling house | 2\nSecondary dwelling | 1';
     expect(tablePart(t)).toBe('Table 6.2.1 – Minimum car parking rates\nUse | Spaces\nDwelling house | 2\nSecondary dwelling | 1');
   });
+  test('a wrapped continuation of the last row is kept, up to the caption', () => {
+    const t = '# 1 x\n\nProse.\nBoundary | Setback\nRear boundary | 3m except:\n8m for two-storey elements\nTable 1.1-a: Rear setbacks';
+    expect(tablePart(t)).toBe('Boundary | Setback\nRear boundary | 3m except:\n8m for two-storey elements\nTable 1.1-a: Rear setbacks');
+  });
+  test('text after the rows with no caption closing them is NOT served as a table (could be a wrapped cell)', () => {
+    expect(tablePart('# 1 x\n\nBoundary | Setback\nFront | 6m\nRear | 3m\nThe rear setback may be reduced where the lot backs onto a reserve.')).toBeNull();
+  });
+  test('trailing blank lines after the rows are fine', () => {
+    expect(tablePart('# 1 x\n\nBoundary | Setback\nFront | 6m\n\n')).toBe('Boundary | Setback\nFront | 6m');
+  });
   test('no table -> null', () => {
     expect(tablePart('# 1 x\n\nPlain prose with no rows at all.')).toBeNull();
   });
@@ -90,6 +100,22 @@ describe('tableFor: pick the table the clause names', () => {
   });
   test('a clause that mentions "table" only in passing does not take whatever table follows', () => {
     expect(tableFor('# x\n\nNotes: deep soil zones are areas of soil. A table is not provided for this item.', [t313a])).toBeNull();
+  });
+  test('"the table above" is not followed: only later tables are on offer, so it gets nothing', () => {
+    expect(tableFor('# x\n\nSetbacks are shown in the table above.', [t313a])).toBeNull();
+  });
+  test('table 3.1-a is not table 13.1-a (exact identifier, not a substring)', () => {
+    const t131 = 'Lot | Area\nA | 1\nTable 13.1-a: Something else';
+    const t31 = 'Lot | Area\nB | 2\nTable 3.1-a: The one named';
+    expect(tableFor('# x\n\nShould comply with Table 3.1-a.', [t131, t31])).toBe(t31);
+    expect(tableFor('# x\n\nShould comply with Table 3.1-a.', [t131])).toBeNull();
+  });
+  test('a letter-led identifier (Table A2.1.1) matches its caption', () => {
+    const a = 'Use | Bin\nHouse | 1\nTable A2.1.1 - Bin storage';
+    expect(tableFor('# x\n\nSee Table A2.1.1.', [t313a, a])).toBe(a);
+  });
+  test('"table below" is a pointer, not an identifier', () => {
+    expect(tableFor('# x\n\nLandscaped area complies with the table below:', [t313a])).toBe(t313a);
   });
   test('no tables -> null', () => {
     expect(tableFor(HORNSBY_3_1_2_A, [])).toBeNull();

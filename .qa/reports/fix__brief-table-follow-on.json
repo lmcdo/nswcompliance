@@ -10,11 +10,11 @@
  "falsifiable_check": {
   "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/lib/brief-table-follow-on.test.ts",
   "fails_when": "Hornsby 3.1.2 a (real stored text) is not asked for a follow-on, or the table slice taken from clause 3.1.2 h is not the verbatim rows and caption (starts at 'Boundary setback | Minimum building setback', ends at the Table 3.1.2-a caption, excludes the dual occupancy paragraph), or a clause that names a table that is not on the page is given some other table.",
-  "external_authority": "The council's own text in regulatory_provisions (Hornsby DCP Part 3, ids 262143 and 262150, page 9) and the PDF page (hornsby-dcp-2024-part3-residential.pdf, page 9, Table 3.1.2-a). A replay over every clause in the ten councils that names a table (547 clauses, with the 25 clauses that follow each on its page) found 33 tables matched by caption and 7 by a pointing phrase; 11 of 11 sampled caption matches name the table they show.",
-  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: Tests: 12 failed, 2 passed, 14 total, including 'Hornsby 3.1.2 a names a table and states no figure of its own' (needsFollowOn returned false) and every tablePart and tableFor test (functions did not exist). With the new source: 4 suites passed, 58 tests passed."
+  "external_authority": "The council's own text in regulatory_provisions (Hornsby DCP Part 3, ids 262143 and 262150, page 9) and the PDF page (hornsby-dcp-2024-part3-residential.pdf, page 9, Table 3.1.2-a). A replay over every clause in the ten councils that names a table (547 clauses, with the 25 clauses that follow each on its page) found 39 tables (Hornsby 19, Parramatta 12, Ashfield 3, Ku-ring-gai 3, Blacktown 1, Waverley 1); 11 of 11 sampled caption matches name the table they show.",
+  "observed_red": "Against the old lib/plan-brief.ts (git show origin/main), the new test file fails: Tests: 23 failed, 2 passed, 25 total, including 'Hornsby 3.1.2 a names a table and states no figure of its own' (needsFollowOn returned false) and every tablePart and tableFor test (functions did not exist). With the new source: 4 suites passed, 65 tests passed."
  },
  "pre_impl": {
-  "existing_data": "547 current clauses in the ten councils name a table. Under the old rule 147 asked for a follow-on; under the new rule 209 do, and 40 of those find a table (Hornsby 21, Parramatta 15, Ashfield 4, Ku-ring-gai 3, Waverley 2, Blacktown 1, Northern Beaches 1 by the first run; fewer by pointing phrase after tightening). Hornsby clause 262143 'comply with Table 3.1.2-a' now resolves to the setback rows (front 6m or 9m, side 0.9m and 1.5m, rear 3m and 8m).",
+  "existing_data": "547 current clauses in the ten councils name a table. Under the old rule 147 asked for a follow-on; under the new rule 209 do, and 39 of those find a table (Hornsby 19, Parramatta 12, Ashfield 3, Ku-ring-gai 3, Blacktown 1, Waverley 1). Hornsby clause 262143 'comply with Table 3.1.2-a' now resolves to the setback rows (front 6m or 9m, side 0.9m and 1.5m, rear 3m and 8m).",
   "assumption_mismatch": "The follow-on was assumed to be 'the next three clauses by id'. The table's rows are extracted onto the end of an earlier-numbered neighbour (3.1.2 h, ten clauses on), and the clause that names the table was never asked for a follow-on at all, because 'Table 3.1.2-a' contains digits and the test read them as a figure.",
   "new_vs_existing": "No new table, column or migration. The existing follow-on in app/api/brief/for-property/route.ts and the existing tableRows renderer are reused; tablePart, tableFor and showsNextClauses are small pure functions in lib/plan-brief.ts. A database split of the glued tables was rejected: the DCP updater plan re-reads changed sections and checks each rule starts and ends at a clause edge, so a split would be overwritten or flagged."
  },
@@ -37,7 +37,7 @@
    "output": "the verbatim slice, or null when there are fewer than two 'a | b' rows",
    "if_none": "null, and the clause is read as holding no table",
    "edge_cases": "caption above or below the rows is kept; a single 'a | b' line is not a table; wrapped cells between rows stay in.",
-   "failure_mode": "A clause whose prose contains ' | ' twice would be read as a table; the slice is still a verbatim part of the stored text."
+   "failure_mode": "A clause whose prose contains ' | ' twice would be read as a table; text after the rows with no caption closing them is not served as a table at all, so a row is never cut short."
   },
   {
    "name": "tableFor",
@@ -47,7 +47,7 @@
    "output": "one table slice or null",
    "if_none": "null, and the route then shows nothing new for that clause",
    "edge_cases": "a named table with no matching caption returns null, never another table; a clause that mentions 'table' only in passing returns null.",
-   "failure_mode": "A clause that points at 'the table below' takes the first table after it, which could be the wrong one if an unrelated table sits between; seven such matches were read and look right."
+   "failure_mode": "A clause that says 'the following table' takes the first table after it, which could be the wrong one if an unrelated table sits between; the captionless matches were read and look right. A named table matches its caption identifier exactly."
   },
   {
    "name": "GET /api/brief/for-property follow-on",
@@ -83,22 +83,37 @@
    "repro": "jest: 'a clause that mentions table only in passing does not take whatever table follows'"
   },
   {
-   "scenario": "The table slice cuts a row short.",
-   "what_happens": "A wrapped last row could lose its continuation lines.",
-   "mitigated": false,
-   "how": "The slice runs from the first to the last 'a | b' line plus an adjacent caption; continuation lines after the last pipe line are not taken. The text shown is always a verbatim part of the stored clause.",
-   "repro": "tablePart on a clause whose last row wraps onto a line with no pipe"
+   "scenario": "The table slice would cut the last row short (a wrapped cell after the final 'a | b' line).",
+   "what_happens": "The served table would omit a qualification such as '8m for two-storey elements'.",
+   "mitigated": true,
+   "how": "Found by cross-review. Continuation lines up to a caption within four lines are kept; text after the rows with no caption closing them returns null, so the clause is not served as a table. Costs 8 of 47 matches on the real data.",
+   "repro": "jest: 'a wrapped continuation of the last row is kept' and 'text after the rows with no caption closing them is NOT served as a table'"
+  },
+  {
+   "scenario": "Table 3.1-a is matched to Table 13.1-a (substring match).",
+   "what_happens": "The wrong regulatory table would be shown under the clause.",
+   "mitigated": true,
+   "how": "Found by cross-review. The caption identifier is captured with an anchored pattern and compared for equality.",
+   "repro": "jest: 'table 3.1-a is not table 13.1-a'"
+  },
+  {
+   "scenario": "A clause says 'the table above' and an unrelated later table is offered.",
+   "what_happens": "An unrelated table would be shown under the setback clause.",
+   "mitigated": true,
+   "how": "Found by cross-review. 'above' is not a pointer: the route supplies only later clauses, so such a clause gets nothing.",
+   "repro": "jest: '\"the table above\" is not followed'"
   }
  ],
  "verified": [
-  "Old source: 12 of 14 new tests fail. New source: 4 suites, 58 tests pass (brief-table-follow-on, brief-clause-label, plan-brief-scope, plan-brief component).",
+  "Old source: 23 of 25 new tests fail. New source: 4 suites, 65 tests pass (brief-table-follow-on, brief-clause-label, plan-brief-scope, plan-brief component).",
   "tsc --noEmit prints no errors.",
-  "Replay on the real stored text of the ten councils (547 clauses naming a table): Hornsby 262143 resolves to Table 3.1.2-a with the front, side and rear figures; 11 of 11 sampled caption matches are the table they name."
+  "Replay on the real stored text of the ten councils (547 clauses naming a table): Hornsby 262143 resolves to Table 3.1.2-a with the front, side and rear figures; 39 tables found; 11 of 11 sampled caption matches are the table they name."
  ],
  "gaps": [
   "Not run against the deployed route or a live address: the check is a replay of stored text through the same functions, not a browser check.",
   "Tables that are not in the database at all (images, maps) still show no table; Northern Beaches map rules are unchanged.",
-  "Only 3 of 10 councils have a table found for a house setback clause today (Hornsby, Parramatta, Ashfield); the others have no table-bearing clause on the page."
+  "A table followed by prose and no closing caption is not served as a table (8 of 47 matches lost): a later improvement could read where the table's rows end.",
+  "Only 6 of 10 councils have a table found for any clause today."
  ],
  "post_merge": {
   "db_reset": "No data is written. Revert the commit to undo.",
