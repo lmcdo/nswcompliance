@@ -15,6 +15,7 @@ import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
+import { pilotCouncilKey, isPilotZone } from '@/lib/pilot-focus';
 
 interface StrataInfo {
   isStrata: boolean;
@@ -212,7 +213,8 @@ export function LepControls({
 
       {/* Constraint Arithmetic — development yield estimate */}
       {/* Not on a strata lot: a whole-lot yield is not something one unit owner can build. */}
-      {lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && strataInfo?.isStrata === false && (
+      {/* It combines the LEP limits with DCP setbacks, so it shows only where council rules are measured: the pilot councils, zone R2. */}
+      {pilotCouncilKey(formerCouncil, constraints?.lga) !== null && isPilotZone(constraints?.zone) && lotArea && lotArea > 0 && (constraints?.maxHeight || constraints?.maxFsr) && strataInfo?.isStrata === false && (
         <ConstraintArithmeticCard
           lotArea={lotArea}
           devType={developmentType || 'dwelling_house'}
