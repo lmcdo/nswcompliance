@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes how the outreach claim checks OC-29 and OC-30 score the plan brief, and the data they read. It does not change what the page serves. Directionality: dropping a proven-rule id that belongs to a flat building or one named site, and exempting a council with under four proven cells from its own 80 percent floor, can make a check pass that would otherwise fail; each dropped id is therefore listed with the council text that shows it is not a house rule, and the overall 90 percent bar is unchanged.",
- "commit_hash": "38a559d2",
+ "commit_hash": "58906d95",
  "files": [
   "scripts/plan_brief_checks.py",
   "tests/test_plan_brief_checks.py",
