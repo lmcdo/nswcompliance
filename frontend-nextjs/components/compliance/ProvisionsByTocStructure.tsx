@@ -1598,6 +1598,7 @@ export function ProvisionsByTocStructure({
         <DcpStructuredControls
           formerCouncil={formerCouncil}
           devType={controlsDevType}
+          zone={zone}
           cornerStatus={cornerStatus(propertyData?.cornerLot)}
           fallback={
             <DCPInterestForm
@@ -2004,7 +2005,7 @@ export function ProvisionsByTocStructure({
       {controlsDevType == null ? (
         <p className="mb-4 text-sm text-gray-700" data-testid="dcp-no-controls-for-type">{NO_CONTROLS_FOR_TYPE_TEXT}</p>
       ) : (
-        <DcpStructuredControls formerCouncil={formerCouncil} devType={controlsDevType} chapterTextLoaded cornerStatus={cornerStatus(propertyData?.cornerLot)} />
+        <DcpStructuredControls formerCouncil={formerCouncil} devType={controlsDevType} zone={zone} chapterTextLoaded cornerStatus={cornerStatus(propertyData?.cornerLot)} />
       )}
 
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}

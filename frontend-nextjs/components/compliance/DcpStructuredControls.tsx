@@ -13,6 +13,7 @@ import { publicCondition } from '@/lib/dcp/public-condition';
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
+import { zoneCode } from '@/lib/zone-code';
 import { ChevronDown, ChevronRight, Ruler, Car, TreePine, Building2, Maximize2, LayoutGrid, FileText, ExternalLink, Sun, Eye, Home, AlertCircle, MinusCircle } from 'lucide-react';
 
 type ControlDataStatus = 'numeric' | 'not_applicable' | 'under_review';
@@ -108,6 +109,8 @@ export function ReviewNotice({ status }: { status: StructuredControlsResponse['r
 interface DcpStructuredControlsProps {
   formerCouncil: string;
   devType?: string;
+  /** The site's zone as the portal labels it; narrows the controls to rows that apply to it. Missing = no filter. */
+  zone?: string | null;
   /** From the road check. 'not_corner' marks corner-only rows as not applying; 'unknown' changes nothing. */
   cornerStatus?: CornerStatus;
   /**
@@ -216,6 +219,7 @@ function formatCitation(control: StructuredControl): string {
 export function DcpStructuredControls({
   formerCouncil,
   devType = 'dwelling_house',
+  zone = null,
   fallback = null,
   chapterTextLoaded = false,
   cornerStatus = 'unknown',
@@ -224,7 +228,7 @@ export function DcpStructuredControls({
   const [expandedSource, setExpandedSource] = useState<string | null>(null);
 
   const apiUrl = formerCouncil
-    ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(devType)}`
+    ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(devType)}${zoneCode(zone) ? `&zone=${encodeURIComponent(zoneCode(zone) as string)}` : ''}`
     : null;
 
   const { data, isLoading } = useSWR<StructuredControlsResponse>(

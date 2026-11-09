@@ -11,6 +11,7 @@ import { COUNCIL_STATS } from '@/lib/lga-data/secondary-dwelling-stats'
 import { ARTICLES } from '@/lib/blog-articles'
 import { DATA_DICTIONARY_FIELDS } from '@/lib/data-dictionary'
 import { isHiddenPath } from '@/lib/hidden-products'
+import { isPilotUnlisted } from '@/lib/pilot-focus'
 
 /**
  * Topic-clustered sitemaps for GEO (Generative Engine Optimization).
@@ -31,8 +32,8 @@ export async function generateSitemaps() {
 }
 
 export default function sitemap({ id }: { id: number }): MetadataRoute.Sitemap {
-  // Withdrawn products never reach a sitemap, whichever chunk lists them.
-  return buildSitemap(id).filter((entry) => !isHiddenPath(entry.url))
+  // Withdrawn products and pilot-unlisted pages never reach a sitemap, whichever chunk lists them.
+  return buildSitemap(id).filter((entry) => !isHiddenPath(entry.url) && !isPilotUnlisted(entry.url))
 }
 
 function buildSitemap(id: number): MetadataRoute.Sitemap {

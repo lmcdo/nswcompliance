@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
+import { zoneCode } from '@/lib/zone-code';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
@@ -240,12 +241,15 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
   const projectType = shared ?? DEFAULT_PROJECT_TYPE;
   const controlsType = resolveControlsDevType(shared);
 
+  const zone = planningLayers?.find((l) => l.layerName === 'Land Zoning Map')?.results?.[0];
+  // The site's zone narrows the controls to the rows that apply to it (an unreadable zone = no filter).
+  // Same source as the page gate and the DCP tab (constraints.zone); the zoning layer is only a fallback.
+  const zoneParam = zoneCode((constraints as { zone?: string } | undefined)?.zone) ?? zoneCode(zone?.['Zone'] as string | undefined);
+
   const url = controlsType && formerCouncil
-    ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(controlsType)}`
+    ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(controlsType)}${zoneParam ? `&zone=${encodeURIComponent(zoneParam)}` : ''}`
     : null;
   const { data, error, isLoading } = useSWR<ControlsPayload>(url, fetcher, { revalidateOnFocus: false });
-
-  const zone = planningLayers?.find((l) => l.layerName === 'Land Zoning Map')?.results?.[0];
   const lep: LepInputs = {
     maxHeight: constraints?.maxHeight,
     maxFsr: constraints?.maxFsr,

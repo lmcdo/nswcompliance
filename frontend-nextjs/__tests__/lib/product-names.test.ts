@@ -37,8 +37,10 @@ describe('product names', () => {
     expect(ALL.filter((f) => f.text.includes('Site Report')).map((f) => f.rel)).toEqual([]);
   });
 
-  it('"Site Facts" is not used on the address page or the marketing shell', () => {
-    const councilRulesSide = /^(app\/assessment\/|app\/page\.tsx$|components\/marketing\/|components\/compliance\/)/;
+  // The nav, footer and homepage may link to Site Facts by name (owner decision 2026-11-09: the site points at the two
+  // products only). The address page and its components may not: that is where the two names collided.
+  it('"Site Facts" is not used on the address page or its components', () => {
+    const councilRulesSide = /^(app\/assessment\/|components\/compliance\/)/;
     const bad = ALL.filter((f) => councilRulesSide.test(f.rel) && f.text.includes('Site Facts')).map((f) => f.rel);
     expect(bad).toEqual([]);
   });

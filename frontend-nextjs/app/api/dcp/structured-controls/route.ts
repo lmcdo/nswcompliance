@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { toLgaSlug } from '@/lib/lga-slug';
+import { zoneCode } from '@/lib/zone-code';
 import {
   fetchDcpControls,
   DcpControlRow,
@@ -186,6 +187,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const council = searchParams.get('council');
   const devType = searchParams.get('dev_type') || 'dwelling_house';
+  // The site's zone (e.g. R2). Without it every zone-specific row is returned; with it the backend
+  // drops rows scoped to other zones. Unreadable or missing = no filter, never a guess.
+  const zone = zoneCode(searchParams.get('zone'));
 
   if (!council) {
     return NextResponse.json({ error: 'council parameter is required' }, { status: 400 });
@@ -208,7 +212,7 @@ export async function GET(request: NextRequest) {
     // `results`, so this is the only way the page can say WHY numbers are missing.
     // null = the check itself failed (the panel says so); never "nothing pending".
     const [results, reviewStatus] = await Promise.all([
-      Promise.all(lgaSlugs.map((slug) => fetchDcpControls(slug))),
+      Promise.all(lgaSlugs.map((slug) => fetchDcpControls(slug, zone))),
       fetchDcpReviewStatus(lgaSlugs),
     ]);
 
@@ -239,6 +243,7 @@ export async function GET(request: NextRequest) {
         council,
         dev_type: devType,
         has_controls: false,
+        zone_filter_applied: zone,
         available_dev_types: availableDevTypes,
         categories: [],
         review_status: reviewStatus,
@@ -332,6 +337,7 @@ export async function GET(request: NextRequest) {
       council,
       dev_type: devType,
       has_controls: true,
+      zone_filter_applied: zone,
       dcp_name: dcpName,
       as_at: asAt?.as_at ?? null,
       as_at_line: asAt?.as_at_line ?? null,
