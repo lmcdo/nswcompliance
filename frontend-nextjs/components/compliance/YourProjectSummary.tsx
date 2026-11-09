@@ -67,8 +67,9 @@ export interface YourProjectSummaryViewProps {
 }
 
 function EntryCells({ entry }: { entry: SummaryEntry }) {
-  // Document and page only: the clause number is not shown because no clause number in this table has been proven.
-  const place = entry.document;
+  // Document and clause as text; the page is the link. Shown whether or not the citation has been proven: which rows are
+  // proven is tracked in the data (dcp_setback_controls.quote_status / citation_status), not marked on the page.
+  const place = [entry.document, entry.clause ? `clause ${entry.clause}` : null].filter(Boolean).join(', ');
   return (
     <>
       <td className="px-2 py-2 align-top font-mono text-sm text-slate-900" data-testid="figure">

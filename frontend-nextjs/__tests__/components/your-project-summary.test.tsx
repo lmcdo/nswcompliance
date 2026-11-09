@@ -65,14 +65,14 @@ describe('pass-through: displayed value, page, words and link equal the source',
     renderView();
     const front = screen.getAllByTestId('row-front')[0];
     expect(within(front).getByTestId('figure').textContent).toContain('≥ 7.25 m');
-    expect(within(front).getByTestId('place').textContent).toBe('Fixture Council DCP 2000');
+    expect(within(front).getByTestId('place').textContent).toBe('Fixture Council DCP 2000, clause 3.1.2');
     expect(within(front).getByTestId('link').textContent).toBe('page 41');
     expect(within(front).getByTestId('words').textContent).toBe('Fixture words about the front boundary.');
     expect(within(front).getByTestId('link').getAttribute('href')).toBe('https://example.test/dcp.pdf#page=41');
 
     const cover = screen.getAllByTestId('row-coverage')[0];
     expect(within(cover).getByTestId('figure').textContent).toContain('≤ 55.5 %');
-    expect(within(cover).getByTestId('place').textContent).toBe('Fixture Council DCP 2000');
+    expect(within(cover).getByTestId('place').textContent).toBe('Fixture Council DCP 2000, clause 4.2');
     expect(within(cover).getByTestId('link').textContent).toBe('page 60');
     expect(within(cover).getByTestId('words').textContent).toBe('Fixture words about coverage.');
     expect(within(cover).getByTestId('link').getAttribute('href')).toBe('https://example.test/dcp.pdf#page=60');
@@ -142,11 +142,11 @@ describe('comparison arithmetic', () => {
 });
 
 describe('no unproven citation, no empty labels (pilot)', () => {
-  it('shows no "Citation not yet checked" mark and no clause number in the table', () => {
+  it('shows no "Citation not yet checked" mark, and shows the clause and page on every figure row', () => {
     renderView();
     expect(screen.queryAllByTestId('citation-unchecked')).toHaveLength(0);
     expect(document.body.textContent).not.toMatch(/Citation not yet checked/);
-    expect(document.body.textContent).not.toMatch(/3\.1\.2|3\.1\.3|4\.2/);   // fixture clause numbers stay out of the table
+    expect(within(screen.getAllByTestId('row-front')[0]).getByTestId('place').textContent).toContain('clause 3.1.2');
   });
   it('a control with neither page nor link gets no link label (never a dead "Open the plan")', () => {
     const rows = buildDcpRows({ has_controls: true, categories: [{ controls: [control({ control_type: 'front_setback', value_min: 6 })] }] });

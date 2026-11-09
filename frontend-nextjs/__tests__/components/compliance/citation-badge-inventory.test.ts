@@ -27,6 +27,10 @@ const USES_BADGE = /<CitationUncheckedBadge\b|<SeppCitationLink\b/;
 /** Files that match a marker but render no citation to the reader, or are not mounted. */
 const EXEMPT: Record<string, string> = {
   'components/compliance/CitationUncheckedBadge.tsx': 'the badge itself',
+  // Owner ruling 2026-11-09 (private pilot): the figures table shows clause and page on every row with no mark; which rows are
+  // proven is tracked in the data (dcp_setback_controls.quote_status / citation_status, DQ-145) and proving them is a separate plan.
+  // Outreach claim OC-20 part (a) therefore does NOT hold for this table until the proving plan has run.
+  'components/compliance/YourProjectSummary.tsx': 'figures table: clause and page shown on every row, proof status tracked in the data (owner ruling 2026-11-09)',
   'components/compliance/SeppCitationLink.tsx': 'renders the badge itself (its callers pass <SeppCitationLink>)',
   'components/compliance/ComplianceDashboard.tsx': 'not mounted (no <ComplianceDashboard> anywhere); see no-fabricated-citations.test.tsx',
   'components/compliance/BASIXProvisions.tsx': 'not mounted anywhere',

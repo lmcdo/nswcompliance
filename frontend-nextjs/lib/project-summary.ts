@@ -24,7 +24,7 @@ export interface SummaryEntry {
   document: string | null;
   clause: string | null;
   page: number | null;
-  /** Link text: the page ("page 41"), or "Open the plan" / "LEP map". Never a clause number: no clause number here has been proven. */
+  /** Link text: the page ("page 41"), or "Open the plan" / "LEP map". The clause is shown beside the document, not in the link. */
   linkText: string;
   url: string | null;
   words: string | null;
