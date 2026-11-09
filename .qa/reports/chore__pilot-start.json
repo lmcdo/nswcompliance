@@ -1,0 +1,75 @@
+{
+ "tier": "standard",
+ "justification": "User-facing table and clause-list wording on the address page, no database or API change, but it decides what a reader sees next to every plan figure.",
+ "commit_hash": "84ff99a5",
+ "files": [
+  "frontend-nextjs/__tests__/components/plan-brief.test.tsx",
+  "frontend-nextjs/__tests__/components/your-project-summary.test.tsx",
+  "frontend-nextjs/components/compliance/PlanBrief.tsx",
+  "frontend-nextjs/components/compliance/YourProjectSummary.tsx",
+  "frontend-nextjs/lib/plan-brief.ts",
+  "frontend-nextjs/lib/project-summary.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/components/your-project-summary.test.tsx __tests__/components/plan-brief.test.tsx",
+  "fails_when": "the table still prints the unchecked badge, a clause number, Not in our data, or a May apply tag",
+  "observed_red": "Run against the old source files: Tests: 6 failed, 44 passed, 50 total, including the new no-unproven-citation and see-clauses-below tests."
+ },
+ "pre_impl": {
+  "existing_data": "No data change. The table reads the same controls from the structured controls route and the same stored brief rows as before; only labels change.",
+  "assumption_mismatch": "The handoff said the table seemed to skip the hide-unproven path. Reading the code showed the badge is hard-coded unchecked on every row, so nothing was being skipped.",
+  "new_vs_existing": "No new component. The brief fetch moved into a hook so the table and the clause lists share one SWR request and the table can know which rows have clauses."
+ },
+ "functions": [
+  {
+   "name": "EntryCells",
+   "file_line": "frontend-nextjs/components/compliance/YourProjectSummary.tsx:69",
+   "input": "One summary entry holding figure, document, page, link and words.",
+   "output": "Table cells with document, page link and optional words, never a clause number.",
+   "if_none": "A missing document or words renders an empty cell, never filler text."
+  },
+  {
+   "name": "RowView",
+   "file_line": "frontend-nextjs/components/compliance/YourProjectSummary.tsx:130",
+   "input": "A summary row and whether its clauses are listed below the table.",
+   "output": "Either the figure rows or one row saying see the clauses below or not found.",
+   "if_none": "No clause flag given means the original not-found text is shown."
+  },
+  {
+   "name": "usePlanBriefRows",
+   "file_line": "frontend-nextjs/components/compliance/PlanBrief.tsx:122",
+   "input": "Council, project type, zone and the set of rows already proven.",
+   "output": "Shaped brief rows, or null when off, loading, failed or nothing built.",
+   "if_none": "Null means the table keeps its not-found text and no clause list shows."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "the brief flag is off or the fetch fails while the table loads",
+   "what_happens": "A row could say see the clauses below when no clauses are shown.",
+   "mitigated": true,
+   "how": "the see-below text needs the hook to return rows with items for that key; null keeps the not-found text",
+   "repro": "cd frontend-nextjs && npx jest __tests__/components/your-project-summary.test.tsx"
+  },
+  {
+   "scenario": "a control has no page number in the stored row",
+   "what_happens": "The link text could show an empty or undefined page label.",
+   "mitigated": true,
+   "how": "without a page the link text falls back to Open the plan",
+   "repro": "cd frontend-nextjs && npx jest __tests__/components/your-project-summary.test.tsx"
+  },
+  {
+   "scenario": "a clause item has verdict APPLIES versus any other value",
+   "what_happens": "The wrong tag could show, or no tag where one is expected.",
+   "mitigated": true,
+   "how": "only APPLIES renders the tag, all other values render none, covered by the brief test",
+   "repro": "cd frontend-nextjs && npx jest __tests__/components/plan-brief.test.tsx"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy open one address and check no unchecked badge, no Not in our data, no May apply."
+ }
+}
