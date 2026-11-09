@@ -1,0 +1,77 @@
+{
+ "tier": "standard",
+ "justification": "Adds ten council clauses to the strict pick file that two independent blind graders marked as good clauses the strict readers had left out. Data only: the file is read by the loader (not run here) and by the claim checks. Directionality: more good clauses in ten boxes; it cannot add a wrong-type clause because each was already on the live brief, was graded good by a grader that did not know where it came from, and was read by me against the council's text; four graded-good clauses were left out for named reasons.",
+ "commit_hash": "68e33c07",
+ "files": [
+  "data/plan_brief_picks_2026-11-10.jsonl"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_load_project_brief.py tests/test_plan_brief_checks.py -q",
+  "fails_when": "The picks file has a rank gap or repeat in any cell, a pick that is on the served skip list, a pick that was never scanned or is flagged in the heading scan, or a cell count other than 100 (10 councils x 10 topics).",
+  "external_authority": "A blind side-by-side test on the production API (2026-11-10): for each of 89 council-topic cells, an independent grader saw the live list and the strict list as anonymous A and B and graded every clause good, partial or wrong for an ordinary house. Result: live 255 clauses, 42 percent good, 47 percent partial, 11 percent wrong (28); strict 120 clauses, 81 percent good, 19 percent partial, 0 wrong; cells with at least one good clause 72 live against 69 strict; preferred the live list in 7 cells, the strict list in 5, the same in 77.",
+  "observed_red": "The existing tests do not fail on a valid addition; they fail on a defect. Observed: the ten additions were first put in without the empty marker for Ku-ring-gai max_height removed; test_read_cells and the 100-cell check reported the cell as both picked and empty until the marker was replaced. With the corrected file: 50 passed across the two test files."
+ },
+ "pre_impl": {
+  "existing_data": "130 picks and 19 empty cells after this change, against 120 and 24 before. A dry run against the live table: 100 cells, 442 existing rows to delete, 130 to insert, nothing written. OC-29 and OC-30 hold on today's table (43 of 43) and with the picks swapped in memory (OC-29 95 percent over 43 cells; OC-30 41 of 43 = 95 percent, hold-out 17 of 17).",
+  "assumption_mismatch": "The strict readers were assumed to have kept every good clause. The blind test found 14 graded-good live clauses missing from the strict set, 10 of which are valid house clauses (for example Ku-ring-gai's 'maximum height of a dwelling is 9.5m', which the readers had dropped, and Penrith's two rules on how landscaped area is counted); the other four are one named-site rule (Ashfield, Haberfield), two Stanhope Gardens estate rules (Blacktown) and one design tip (Blacktown car parking).",
+  "new_vs_existing": "No new script or table: the same picks file the loader reads, with ten rows added after each cell's existing ranks and one empty-cell line replaced by its pick."
+ },
+ "functions": [
+  {
+   "name": "plan_brief_picks_2026-11-10.jsonl additions",
+   "file_line": "data/plan_brief_picks_2026-11-10.jsonl",
+   "what": "Ten clauses appended to nine cells of the strict pick set.",
+   "input": "the graded-good live clauses missing from the strict set, chosen by hand from 14",
+   "output": "a pick file of 130 picks and 19 empty-cell lines",
+   "if_none": "without the additions the nine cells keep their strict picks and Ku-ring-gai max height stays empty",
+   "edge_cases": "ranks run 1 to n in each cell; no cell exceeds five; the Ku-ring-gai max height empty line is replaced by its pick.",
+   "failure_mode": "A wrong addition would show a clause that does not belong; each was read in the council's text and none is on the skip list."
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A graded-good clause is for one named site.",
+   "what_happens": "A rule for Haberfield or a Stanhope Gardens estate would show for every house.",
+   "mitigated": true,
+   "how": "The four site-specific or non-requirement clauses (Ashfield 163716, Blacktown 202411, 202430, 202444) were read and left out; the others were each read against the council's heading and text.",
+   "repro": "compare data/plan_brief_picks_2026-11-10.jsonl with the 14 graded-good clauses listed in the PR"
+  },
+  {
+   "scenario": "An addition is on the served skip list or unscanned.",
+   "what_happens": "The page would drop it, or OC-29 would fail for an unread clause.",
+   "mitigated": true,
+   "how": "Two tests fail on a pick that is on the skip list or is unscanned or flagged in the heading scan.",
+   "repro": "pytest: test_no_committed_pick_is_on_the_served_skip_list and test_every_committed_pick_has_been_scanned_and_none_is_flagged"
+  },
+  {
+   "scenario": "The additions break the claim checks after the swap.",
+   "what_happens": "Main would go red when the table changes, because CI reads the live table.",
+   "mitigated": true,
+   "how": "Both states were run with the real check code: today's table (43 of 43) and with the picks swapped in memory (41 of 43, 95 percent, hold-out 17 of 17).",
+   "repro": "python scripts/outreach_claim_checks.py OC-29 and OC-30, then the same with the picks file substituted for the R2 house cells"
+  },
+  {
+   "scenario": "The blind grader and the strict reader share a blind spot.",
+   "what_happens": "Both are the same model family, so a mistake common to both would pass.",
+   "mitigated": false,
+   "how": "The graders saw anonymous lists without the picker's labels, and I read every addition against the council's text; a human or an independent academic check is still the right test (Thorpe sample).",
+   "repro": "none; disclosed as a limit"
+  }
+ ],
+ "verified": [
+  "Blind live test, 89 cells in 10 councils: strict 81 percent good, 19 percent partial, 0 wrong; live 42, 47 and 11 percent; the 28 wrong live clauses are gone from the strict set.",
+  "OC-29 and OC-30 hold before the swap and after it, in memory. Loader dry run: 100 cells, 442 to delete, 130 to insert, nothing written.",
+  "50 tests pass across the loader and claim-check test files."
+ ],
+ "gaps": [
+  "Cells with at least one good clause: live 72 of 89, strict 69, after these additions about 71. The two that remain are an Ashfield Haberfield-only rule and a Blacktown design tip, which are correctly absent.",
+  "The graders and the readers are the same model family and the test is blind but not independent of it.",
+  "The swap itself has not been run."
+ ],
+ "post_merge": {
+  "db_reset": "No data change from this PR. The swap that follows saves the old rows to a backup file and can be undone with --restore-from.",
+  "secrets": "None.",
+  "other_repo": "None.",
+  "manual_verify": "Run python scripts/load_project_brief.py data/plan_brief_picks_2026-11-10.jsonl --replace-cells and read 130 to insert and Nothing written."
+ }
+}
