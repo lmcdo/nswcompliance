@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Changes which clauses the plan brief shows to a house in ten councils: 69 clauses written for other building types or named sites are added to the skip list and the heading scan is updated to match. Data and config only, no code. Directionality: a wrong skip hides a right clause (shows 'not found' for that topic); a missed skip leaves a wrong-type clause visible. Both are measured by OC-29 and OC-30.",
- "commit_hash": "54d48ff3",
+ "commit_hash": "8958876e",
  "files": [
   "frontend-nextjs/shared/brief-scope.json",
   "data/plan_brief_heading_scan_2026-11-09.json"
