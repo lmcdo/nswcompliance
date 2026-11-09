@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Adds ten council clauses to the strict pick file that two independent blind graders marked as good clauses the strict readers had left out. Data only: the file is read by the loader (not run here) and by the claim checks. Directionality: more good clauses in ten boxes; it cannot add a wrong-type clause because each was already on the live brief, was graded good by a grader that did not know where it came from, and was read by me against the council's text; four graded-good clauses were left out for named reasons.",
- "commit_hash": "00d86246",
+ "commit_hash": "68e33c07",
  "files": [
   "data/plan_brief_picks_2026-11-10.jsonl"
  ],
