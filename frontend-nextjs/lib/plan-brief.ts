@@ -52,6 +52,8 @@ export interface BriefItem {
   clauseLabel: string | null;
   sectionHeader: string | null;
   chapterKey: string | null;
+  /** The plan's own name for the chapter this clause sits in, so the reader can see which part of the plan it comes from. */
+  chapterLabel?: string | null;
   pageProven: boolean;
   /** Link to the council's plan, opened at the page when the address is a PDF; null when we hold no address. */
   url?: string | null;
@@ -135,4 +137,11 @@ export function dropExcluded(stored: StoredBriefRow[], excluded: ReadonlySet<num
     list.sort((a, b) => a.rank - b.rank).forEach((r, i) => out.push({ ...r, rank: i + 1 }));
   });
   return out;
+}
+
+/** Where a clause sits in the plan: the chapter's name, then the section heading when it adds something. */
+export function whereInPlan(item: { chapterLabel?: string | null; sectionHeader?: string | null }): string {
+  const chapter = String(item.chapterLabel ?? '').replace(/\s+/g, ' ').trim();
+  const section = String(item.sectionHeader ?? '').replace(/^#+\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return [chapter, section && section !== chapter ? section : ''].filter(Boolean).join(' \u203a ');
 }

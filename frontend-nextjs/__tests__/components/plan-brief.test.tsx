@@ -10,6 +10,7 @@ import {
   type BriefItem, type StoredBriefRow,
 } from '@/lib/plan-brief';
 import { PlanBriefView } from '@/components/compliance/PlanBrief';
+import { whereInPlan } from '@/lib/plan-brief';
 
 function item(id: number, over: Partial<BriefItem> = {}): BriefItem {
   return { id, verdict: 'MIGHT', text: `Clause ${id} text.`, page: 10 + id, pageLabel: null, clauseLabel: `3.1.${id}`, sectionHeader: null, chapterKey: 'part-3', pageProven: true, ...over };
@@ -87,5 +88,28 @@ describe('PlanBriefView', () => {
   test('renders nothing when there are no rows (flag off or council not built)', () => {
     const { container } = render(<PlanBriefView rows={[]} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+
+describe('where a clause sits in the plan', () => {
+  test('the chapter name comes first, then the section heading', () => {
+    expect(whereInPlan({ chapterLabel: 'Part 6.1 Low density residential', sectionHeader: '# 6.1.3 Front setbacks' }))
+      .toBe('Part 6.1 Low density residential \u203a 6.1.3 Front setbacks');
+  });
+
+  test('a section heading that repeats the chapter name is not shown twice', () => {
+    expect(whereInPlan({ chapterLabel: 'Part 4', sectionHeader: 'Part 4' })).toBe('Part 4');
+  });
+
+  test('nothing is shown when the plan gives neither', () => {
+    expect(whereInPlan({ chapterLabel: null, sectionHeader: null })).toBe('');
+    expect(whereInPlan({})).toBe('');
+  });
+
+  test('the card shows where the clause sits', () => {
+    render(<PlanBriefView rows={shapeBriefRows([stored('front_setback', 1, item(1, { chapterLabel: 'Part 4 Multi dwelling housing', sectionHeader: '4.2 Setbacks' }))])} />);
+    expect(screen.getByTestId('brief-where')).toHaveTextContent('Part 4 Multi dwelling housing');
+    expect(screen.getByTestId('brief-where')).toHaveTextContent('4.2 Setbacks');
   });
 });
