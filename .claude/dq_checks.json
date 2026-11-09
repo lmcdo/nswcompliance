@@ -1923,7 +1923,7 @@
   },
   "OC-23": {
     "kind": "outreach_claim",
-    "claim": "At least 98% of plan-brief rows have page_check = on_page, and a clause label is shown only when its citation is proven.",
+    "claim": "At least 98% of plan-brief rows point to a clause whose stored page check says it is on the cited page (page_check = on_page). Whether a clause label is shown only when its citation is proven is not measured here.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-2",
     "declared": "true",
     "check": [
@@ -1968,7 +1968,7 @@
   },
   "OC-26": {
     "kind": "outreach_claim",
-    "claim": "With the brief flags on, the full plan list shown is byte-identical to flags off; scope-based ranking changes order only and nothing is hidden.",
+    "claim": "The plan brief is added under the Your project table behind two switches that are off by default (the API route and the page each check theirs), and the component tests pass. A byte-for-byte comparison of the full plan list with the switches on and off is not measured here.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-5",
     "declared": "true",
     "check": [
@@ -2028,7 +2028,7 @@
   },
   "OC-30": {
     "kind": "outreach_claim",
-    "claim": "For each rule type, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils (Hornsby, Wollongong, Woollahra), measured on the brief rows as loaded.",
+    "claim": "Across all rule types combined, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils (Hornsby, Wollongong, Woollahra), measured on the brief rows as loaded. Recall is not tested for each rule type separately.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-1",
     "declared": "true",
     "check": [
