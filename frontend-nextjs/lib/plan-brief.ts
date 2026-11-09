@@ -114,3 +114,25 @@ export function tableRows(text: string): string[][] | null {
   const rows = lines.map((l) => l.split('|').map((c) => c.trim())).filter((c) => c.length >= 2 && c.some(Boolean));
   return rows.length >= 2 && rows.length >= lines.length * 0.6 ? rows : null;
 }
+
+
+/** Which councils, project type and zone group the plan brief is served for (shared/brief-scope.json). */
+export type BriefScope = { councils: readonly string[]; dev_type: string; zone_group: string; excluded_provision_ids: readonly number[] };
+
+/** The brief is shown only where its first five clauses per topic have been read against the council's own section headings. */
+export function inBriefScope(scope: BriefScope, council: string, devType: string, group: string): boolean {
+  return scope.councils.includes(council) && devType === scope.dev_type && group === scope.zone_group;
+}
+
+/** Drop clauses the scope file skips (another building type, a named place, an ancillary structure) and renumber the rest 1..n
+ *  per topic, so the next best clause moves up. Nothing is deleted from the table. */
+export function dropExcluded(stored: StoredBriefRow[], excluded: ReadonlySet<number>): StoredBriefRow[] {
+  const kept = stored.filter((r) => !excluded.has(r.item.id));
+  const byTopic = new Map<string, StoredBriefRow[]>();
+  for (const r of kept) byTopic.set(r.row_type, [...(byTopic.get(r.row_type) ?? []), r]);
+  const out: StoredBriefRow[] = [];
+  byTopic.forEach((list) => {
+    list.sort((a, b) => a.rank - b.rank).forEach((r, i) => out.push({ ...r, rank: i + 1 }));
+  });
+  return out;
+}

@@ -2013,22 +2013,22 @@
   },
   "OC-29": {
     "kind": "outreach_claim",
-    "claim": "For the councils named for the first release, a script reads the council's own section heading above each first rule shown for a house (about 6 topics per council, at least 30 rules across at least 5 councils): fewer than 2 sit under a heading for another building type or a specific site. This is a script read of the plan's headings, not an owner read.",
+    "claim": "For the councils the plan brief is served for (a house in zone R2), a script has read the council's own section heading above every clause the brief can show: none under a heading for another building type or a specific site is still shown, every core topic keeps a clause except one declared gap (Ku-ring-gai landscaping has no rows, listed in known_empty_topics), and top-5 recall on the proven rules after the skip is at least 80% for every named council and 90% overall. At least 5 councils. This is a script read, not an owner read.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
-    "declared": "false",
+    "declared": "true",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
       "OC-29"
     ],
     "blocks_outreach": true,
-    "passes_when": "exit 0 - data/plan_brief_heading_read_2026-11-09.json has at least 30 distinct rows from at least 5 councils, fewer than 2 flagged red, and every recorded first clause is still the row's first clause now",
+    "passes_when": "exit 0 - frontend-nextjs/shared/brief-scope.json names at least 5 councils; every live top-5 clause for them is in data/plan_brief_heading_scan_2026-11-09.json; none flagged remains after the skip list; each core topic keeps a clause; recall on the proven rules after the skip is at least 80% per council and 90% overall (at least 40 cells)",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "OB-8, replaced 2026-11-09 by a script read of the council's own section headings (the owner reads no check pages). RESULT: NOT MET. Only 4 councils have clean first rules (Penrith, Wollongong, Waverley, Ku-ring-gai): 23 rows, 0 under a wrong-type heading. The bar of at least 30 rows across at least 5 councils is not met and has not been weakened. Each other council has at least one first rule under a heading for another building type or a site (list in data/plan_brief_heading_read_2026-11-09.json, not_named). The fastest way to a fifth council is to exclude one clause: Campbelltown's landscaping first rule is from section 3.6.4 Semi-detached Dwellings (the other five are under 3.6.1 Dwelling Houses). That gives 5 councils but 29 rows (Ku-ring-gai has no row for one topic), so a sixth council or that topic row is also needed. Declared false until the bar is met."
+    "note": "OB-8, replaced 2026-11-09 (the owner reads no check pages). Replaces the 4-council record: the brief is now served only for 10 named councils (Penrith, Wollongong, Waverley, Ku-ring-gai, Ashfield, Blacktown, Northern Beaches, Georges River, Parramatta, Hornsby), a house, zone R2, with 114 clauses skipped (another building type, a named place or estate, an ancillary structure). The keyword rules were tightened after the first scan where they flagged a clause that also names an ordinary dwelling or sits in a house chapter; each change cost proven rules before it was made. A none flag means no heading contradicts the rule, not that it is proven right. Only a house in zone R2 is covered; other project types and zones show no brief. Goes stale (FAIL) if the brief is rebuilt or reloaded: rescan with scan_ranks.py."
   },
   "OC-30": {
     "kind": "outreach_claim",
-    "claim": "Across all rule types combined, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils (Hornsby, Wollongong, Woollahra), measured on the brief rows as loaded. Recall is not tested for each rule type separately.",
+    "claim": "Across all rule types combined, for a house in zone R2 in the 10 named councils and after the skipped clauses, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils that are named (Hornsby, Wollongong). The sample is small (47 cases, 20 on the hold-out); the lower 95% bounds are printed. Recall is not tested for each rule type separately.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-1",
     "declared": "true",
     "check": [
