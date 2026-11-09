@@ -1,6 +1,6 @@
 {
  "_about": "(.claude/regulatory_figure_ledger.json) names every hit by file + the hit's own text:\n  \"open\"  -- known, still to fix (read it from the database, or delete it and point to the address lookup);\n  \"cited\" -- a verbatim quote that names its instrument AND clause on the same line (the reason says which);\n  \"not_regulatory\" -- not a planning figure (a map bound, an image size, a price); the reason (4+ words) says what.\nCI fails when: a hit is not in the ledger (a new typed figure); a ledger entry is no longer found (fixed -- remove it,\nso the list stays exact); a \"cited\" entry's reason names no instrument + clause; the open count rises; a\n`noqa: regulatory-number` carries no real reason (4+ words after \"--\").",
- "max_open": 122,
+ "max_open": 121,
  "entries": [
   {
    "file": "frontend-nextjs/app/api/canibuildit/lead/route.ts",
@@ -77,12 +77,6 @@
    "text": "'Every DA and CDC within 500m — with weekly email alerts when new applications are lodged. Know before your client\\'",
    "fate": "open",
    "reason": "inventory guessed not_regulatory (unreviewed): product search radius, not a planning control",
-   "count": 1
-  },
-  {
-   "file": "frontend-nextjs/app/how-it-works/page.tsx",
-   "text": "'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.'",
-   "fate": "open",
    "count": 1
   },
   {

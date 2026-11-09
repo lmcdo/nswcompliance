@@ -1,0 +1,82 @@
+{
+ "tier": "standard",
+ "justification": "A public-copy change: how-it-works, about and contact are rewritten for the private pilot, terms gains a pilot notice, and the link test now covers these pages",
+ "commit_hash": "30767bb3",
+ "files": [
+  ".claude/regulatory_figure_ledger.json",
+  ".qa/reports/feat__pilot-company-pages.json",
+  "frontend-nextjs/__tests__/lib/pilot-focus-links.test.ts",
+  "frontend-nextjs/app/about/page.tsx",
+  "frontend-nextjs/app/contact/page.tsx",
+  "frontend-nextjs/app/how-it-works/page.tsx",
+  "frontend-nextjs/app/terms/page.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/pilot-focus-links.test.ts",
+  "fails_when": "how-it-works, about, contact or terms links to any internal page outside the allowed list",
+  "observed_red": "Before the rewrite the extended test listed how-it-works, contact and the blog link as offenders; after it the list is empty"
+ },
+ "pre_impl": {
+  "existing_data": "Reads PILOT_COUNCIL_LABELS from lib/pilot-focus.ts and PLAN_BRIEF_ON from lib/site-report.ts; nothing is written",
+  "assumption_mismatch": "If the clause lists are switched off the how-it-works step 3 wording drops the clause-and-page promise; the flag is read at build time",
+  "new_vs_existing": "Applies to every page view after deploy; no data or routes change",
+  "external_source_error": "N/A",
+  "frontend_type": "No type changes; copy and one test list",
+  "user_failure_mode": "A visitor reading the company pages no longer sees offers or counts for tools that are not part of the pilot"
+ },
+ "functions": [
+  {
+   "name": "HowItWorksPage",
+   "file_line": "frontend-nextjs/app/how-it-works/page.tsx:34",
+   "input": "no inputs, a plain server component",
+   "output": "the short pilot how-it-works page with its limits list",
+   "if_none": "there are no inputs, so nothing can be missing"
+  },
+  {
+   "name": "AboutPage",
+   "file_line": "frontend-nextjs/app/about/page.tsx:12",
+   "input": "no inputs, a plain server component",
+   "output": "the short pilot about page with its data sources",
+   "if_none": "there are no inputs, so nothing can be missing"
+  }
+ ],
+ "values": [
+  {
+   "value": "PLAN_BRIEF_ON",
+   "read_at": "frontend-nextjs/app/how-it-works/page.tsx:6",
+   "nullable": "no",
+   "guard_at": "N/A",
+   "if_missing": "the flag is a build-time boolean that reads false when unset, so the clause-and-page wording is not shown"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A later edit links the contact page to an old tool",
+   "what_happens": "The extended link test fails and CI blocks the change",
+   "mitigated": true,
+   "how": "The four company pages are now in the navigation file list of the pilot link test",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/pilot-focus-links.test.ts"
+  },
+  {
+   "scenario": "The terms page still describes paid reports and other tools below the notice",
+   "what_happens": "A reader sees both the notice and the older product descriptions",
+   "mitigated": false,
+   "how": "Known limit: the legal clauses were not edited; the notice says paid reports and other tools are not offered during the pilot, and a solicitor should review the terms",
+   "repro": "open /terms"
+  },
+  {
+   "scenario": "The clause lists are switched off at build time",
+   "what_happens": "how-it-works step 3 says controls are shown with a clause and a link, not clause lists",
+   "mitigated": true,
+   "how": "The step wording and the homepage subline both read PLAN_BRIEF_ON",
+   "repro": "build with NEXT_PUBLIC_PLAN_BRIEF unset and read /how-it-works"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Open /how-it-works, /about, /contact and /terms on the preview and read each once: no tool offers, counts or prices; terms shows the Private pilot notice above clause 1"
+ }
+}

@@ -1,84 +1,34 @@
-import { PLAN_BRIEF_ON } from '@/lib/site-report';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
-import { HowToJsonLd } from '@/lib/json-ld';
-import { COVERAGE_DISPLAY } from '@/lib/coverage';
+import { PILOT_COUNCIL_LABELS } from '@/lib/pilot-focus';
+import { PLAN_BRIEF_ON } from '@/lib/site-report';
 
 export const metadata: Metadata = {
   title: 'How It Works — PlotDetect',
-  description: 'Where PlotDetect data comes from, how it is processed, and what the results mean.',
+  description: "How the private pilot works: the council's own planning rules for an address and project, and the mapped facts about a property.",
 };
 
-const TOOLS = [
+const STEPS = [
+  { n: '1', title: 'Enter an address', body: 'Any NSW address. No account needed.' },
+  { n: '2', title: 'Say what you want to build', body: 'For the pilot, a house (dwelling house) in a residential R2 zone.' },
   {
-    name: 'Site Facts',
-    href: '/reports/intelligence-brief',
-    sources: [
-      { name: 'NSW Planning Portal (layerintersect + lot APIs)', use: 'Zone, height, FSR, lot size, heritage and environmental overlays, plus the cadastral lot geometry' },
-      { name: 'NSW Valuer General', use: 'Land value with five-year history, comparable valuations and recent sales within 500 m' },
-      { name: 'NSW cadastre (strata/lot)', use: 'Lot type, plan number and strata structure' },
-      { name: 'SEPP (Housing) 2021 standards + live reform mapping', use: 'Per-form eligibility (dual occupancy, terraces, apartments) against the state standards, with the reform-area and TOD catchment checked on live government map layers' },
-      { name: 'Council DCP setback controls', use: 'Setback, landscaping and parking numbers feeding the development capacity estimate' },
-      { name: 'NSW ePlanning Portal (OnlineDA + tracking data)', use: 'Nearby applications, determination outcomes and council-wide refusal rates' },
-      { name: 'Satellite and imagery layers', use: 'Aerial structure detection, solar yield (Google Solar), flood screening (JRC/WOfS/BoM), bushfire status (RFS), terrain (5 m DEM) and NARCliM 2.0 climate projections' },
-    ],
-    cadence: 'Government APIs are queried live when the report runs (typically 1–2 minutes end to end). Satellite layers use each source’s own imagery cadence. DCP controls and land-use tables are updated as councils are onboarded and re-checked by weekly source monitoring.',
-    limitations: 'The development capacity figure is a computed ceiling from mapped controls — not an approval outcome, and merit assessment can produce a different result. Eligibility outcomes are subject to a development application. Layers with no data for a property say so — absence of data is not clearance. Every figure carries its source and as-at date.',
+    n: '3',
+    title: "Read the council's own rules",
+    // The clause lists are behind a flag (lib/site-report.ts). Without it only the numeric controls are shown, so say only that.
+    body: PLAN_BRIEF_ON
+      ? "Each rule is quoted in the council's words with the clause and the page, or the row says 'not found'."
+      : "Each control is shown with the clause it comes from and a link to the council's plan.",
   },
-  {
-    name: 'Granny Flat Eligibility',
-    href: '/granny-flat',
-    sources: [
-      { name: 'NSW Planning Portal (lot API)', use: 'Zone, lot size, strata status, heritage, and LEP controls for the property' },
-      { name: 'SEPP Housing 2021 criteria', use: 'State-wide eligibility rules: minimum lot size, permitted zones, not strata' },
-      { name: 'NSW SIX Maps aerial imagery', use: 'High-resolution aerial tiles of the lot, shown with its boundary so you can see what is already built on it' },
-      { name: 'Council DCP setback controls', use: 'Secondary dwelling setback, landscaping, and parking standards by LGA' },
-    ],
-    cadence: 'Planning Portal data is queried live at time of check. Aerial imagery is updated by NSW Spatial Services (typically annually). DCP controls are updated when new LGAs are onboarded.',
-    // The figure below replaces "~85-90% for standard residential lots", which
-    // was an estimate written from a single test address and was never
-    // measured. It is published here because it was published wrong here.
-    limitations: 'Structures already on the lot are identified by you from the aerial image, not found automatically. An automated scan was measured in August 2026 against human review of 56 lots across four councils: it located 14 of the 38 secondary structures a person could see, and reported a further 15 that were not there. It is not used to decide eligibility. Heritage overlays and strata restrictions may introduce exceptions. DCP setback data is available for councils with structured controls. Always confirm with a certifier before committing.',
-  },
-  {
-    name: 'Pre-DA Site History',
-    href: '/reports/pre-da-history',
-    sources: [
-      { name: 'ESA Sentinel-2 satellite imagery (via Element84)', use: 'Annual satellite composites for year-on-year physical change detection (2017–present)' },
-      { name: 'Vegetation and built-up spectral indices', use: 'NDVI and NDBI indices to distinguish construction activity from natural vegetation changes' },
-      { name: 'NSW ePlanning Portal (OnlineDA + OnlineCDC)', use: 'DA, CDC, construction certificate, and occupation certificate records for the address' },
-      { name: 'NSW Government spatial overlays', use: 'Heritage conservation area boundary check' },
-      { name: 'NSW Planning Portal (geocoder)', use: 'Address resolution to precise lot coordinates' },
-    ],
-    cadence: 'Satellite composites are based on annual dry-season imagery (June–September, lowest cloud cover). DA records are queried live from the ePlanning Portal. Heritage overlays are updated when councils publish new spatial data.',
-    limitations: 'Satellite change detection has ~10 m resolution — small structures (sheds, fences) may not register. DA records depend on councils submitting to the ePlanning Portal. Heritage overlays cover conservation areas only, not all individual heritage items.',
-  },
-  {
-    name: 'Development Monitor',
-    href: '/reports/threat-radar',
-    sources: [
-      { name: 'NSW ePlanning Portal (OnlineDA + OnlineCDC)', use: 'All DA and CDC applications lodged across NSW' },
-      { name: 'Automated daily ingestion', use: `Applications from ${COVERAGE_DISPLAY.totalNswCouncils} NSW councils indexed and geocoded daily` },
-    ],
-    cadence: 'DA data is refreshed daily from the NSW ePlanning Portal. There is typically a 24–48 hour lag from lodgement to appearance in results.',
-    limitations: 'Coverage depends on councils submitting applications to the ePlanning Portal. Some councils may have incomplete records. Search radius is 500 m for the free check; monitoring alerts cover 200 m.',
-  },
-  {
-    name: 'Conveyancing Planning Disclosure',
-    href: '/reports/conveyancing',
-    sources: [
-      { name: 'NSW Planning Portal (layerintersect API)', use: 'Zone, FSR, height, heritage, environmental overlays, LEP provisions' },
-      { name: 'Council DCP provisions', use: PLAN_BRIEF_ON ? "The council's own setback, parking and landscaping rules, quoted with the page. Where none is found the report says so and links to the plan" : "Council plan chapters that apply to the lot, and numeric setback, parking and landscaping controls where they were found, with the clause and page" },
-      { name: 'NSW Rural Fire Service', use: 'Bushfire-prone land status' },
-      { name: 'NSW Government spatial overlays', use: 'Flood control lot status from LEP and council flood studies' },
-    ],
-    cadence: 'Planning Portal data is queried live. Council plan text is read from the published plan and carries the plan date, so it can be older than the current council version.',
-    limitations: PLAN_BRIEF_ON
-      ? 'Council plan rules are shown only where they could be found and matched to the page. Where they could not, the report says so and links to the council. The conveyancing disclosure does not replace a section 10.7 planning certificate.'
-      : 'Numeric council controls are shown only for councils where they were found and matched to the page. Elsewhere the report links to the council plan. The conveyancing disclosure does not replace a section 10.7 planning certificate.',
-  },
+];
+
+const LIMITS = [
+  'This is a private pilot.',
+  `The pilot councils are ${PILOT_COUNCIL_LABELS.join(', ')}.`,
+  'It is a preliminary reading of council documents. It is not planning advice and not legal advice.',
+  "Check the council's own document before relying on any rule shown.",
+  'Outside the pilot councils, or outside a residential R2 zone, the Council Rules page shows a pilot notice and the SEPP and Planning Controls tabs only.',
 ];
 
 export default function HowItWorksPage() {
@@ -86,169 +36,59 @@ export default function HowItWorksPage() {
     <main className="min-h-screen bg-white">
       <SiteNav />
 
-      <HowToJsonLd
-        name="How to check NSW planning controls and property constraints with PlotDetect"
-        description="PlotDetect queries live NSW government data sources and satellite imagery to check zoning, flood risk, bushfire status, heritage overlays, and development controls for any NSW property address."
-        steps={[
-          { name: 'Enter a NSW property address', text: 'Type any NSW address into the search bar. PlotDetect resolves it to precise lot coordinates using the NSW Planning Portal geocoder.' },
-          { name: 'Select a planning check', text: 'Choose from granny flat eligibility, planning controls, or development monitoring.' },
-          { name: 'Review live government data', text: 'Results are queried live from NSW Planning Portal, Rural Fire Service, spatial overlays, and council DCPs. Every data source is cited.' },
-          { name: 'Check spatial overlays', text: 'Heritage items, flood planning areas, bushfire-prone land, biodiversity, acid sulfate soils, and coastal zones are checked against 27 spatial layers.' },
-          { name: 'Read the limitations', text: 'Every result includes data source citations, update cadence, and limitations. Results are indicative — always verify with a qualified professional.' },
-        ]}
-      />
-      <div className="max-w-3xl mx-auto px-6 py-14">
-        <h1 className="text-3xl font-bold text-gray-900 mb-3">How it works</h1>
-        <p className="text-gray-500 text-base mb-12 max-w-xl">
-          Every result on plotdetect.com.au comes from live government data sources and satellite
-          imagery — not static PDFs or manually maintained databases. Here&apos;s exactly where each
-          tool gets its data, how often it updates, and what the limitations are.
+      <article className="max-w-3xl mx-auto px-6 py-16">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">How it works</h1>
+        <p className="text-gray-600 leading-relaxed mb-12">
+          PlotDetect is in a private pilot with two products: Council Rules and Site Facts.
         </p>
 
-        <div className="space-y-14">
-          {TOOLS.map((tool) => (
-            <section key={tool.name}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">{tool.name}</h2>
-                <Link
-                  href={tool.href}
-                  className="text-sm text-teal-600 hover:text-teal-700 transition-colors"
-                >
-                  Try it →
-                </Link>
-              </div>
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Council Rules</h2>
+          <ol className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {STEPS.map(({ n, title, body }) => (
+              <li key={n} className="rounded-2xl border border-gray-200 p-5">
+                <span className="text-sm font-bold text-teal-600">Step {n}</span>
+                <h3 className="font-semibold text-gray-900 mt-1 mb-2">{title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{body}</p>
+              </li>
+            ))}
+          </ol>
+          <Link href="/assessment" className="text-teal-600 hover:text-teal-700 text-sm font-medium transition-colors">
+            Open Council Rules
+          </Link>
+        </section>
 
-              <div className="mb-4">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Data sources</p>
-                <div className="space-y-2">
-                  {tool.sources.map((s) => (
-                    <div key={s.name} className="flex gap-3 text-sm">
-                      <span className="font-medium text-gray-700 shrink-0 w-64">{s.name}</span>
-                      <span className="text-gray-500">{s.use}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Update cadence</p>
-                  <p className="text-sm text-gray-600">{tool.cadence}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Limitations</p>
-                  <p className="text-sm text-gray-600">{tool.limitations}</p>
-                </div>
-              </div>
-            </section>
-          ))}
-        </div>
-
-        {/* --- How we check our work --- */}
-        <div className="mt-16 space-y-10">
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">How we check our work</h2>
-            <p className="text-sm text-gray-600 mb-5">
-              Every data source listed above is monitored by automated checks that run daily.
-              If a government API goes down, returns unexpected data, or stops responding entirely,
-              our monitoring flags it before any report is affected.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">15</p>
-                <p className="text-xs text-gray-500 mt-1">Data sources monitored daily</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">100%</p>
-                <p className="text-xs text-gray-500 mt-1">Reports with full audit trail</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-gray-900">&lt; 2 min</p>
-                <p className="text-xs text-gray-500 mt-1">Alert time on source failure</p>
-              </div>
-            </div>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Every report records the exact API endpoints queried, response timestamps, and data versions used.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Reports with missing audit data or empty outputs are flagged automatically and withheld until resolved.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Source health checks probe each API for expected response structure, not just HTTP 200 status.</li>
-            </ul>
-          </section>
-
-          {/* --- How results are computed --- */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">How results are computed</h2>
-            <p className="text-sm text-gray-600 mb-3">
-              Every tool on this platform uses deterministic processing. Given the same property
-              and the same source data, the result is identical every time. There is no AI
-              interpretation, no language model inference, and no probabilistic scoring in the
-              compliance pipeline.
-            </p>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Planning controls are extracted verbatim from government instruments — never paraphrased or summarised.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Satellite analysis uses published spectral indices with fixed thresholds, not trained classifiers.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Where multiple data sources cover the same property, all are shown independently — we do not blend or average conflicting values.</li>
-            </ul>
-          </section>
-
-          {/* --- Where location-specific rules come from --- */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Where location-specific (precinct) rules come from</h2>
-            <p className="text-sm text-gray-600 mb-3">
-              Some council DCP chapters apply only inside mapped areas — town centres, beachfront
-              character areas, named sites. The boundary of each area is defined by a map figure in
-              the adopted DCP document itself, and that figure is the authority. Council online
-              mapping services publish machine-readable copies of those figures, which councils
-              label as a guide only.
-            </p>
-            <p className="text-sm text-gray-600 mb-3">
-              Before a boundary is used to match addresses, it goes through a fixed set of checks:
-            </p>
-            <ul className="text-sm text-gray-600 space-y-2 mb-3">
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Geometry checks — the polygon must be valid, in the expected coordinate system, with area and location consistent with the adopted figure.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Point checks against the adopted figure — real addresses geocoded through the NSW Planning Portal, chosen from inside and outside the mapped area, must match or not match exactly as the DCP figure shows. Negative tests (addresses that must return no match) are part of the set.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span>Provenance recorded — each stored boundary records the DCP map figure it copies, the geometry source, and the date it was checked.</li>
-            </ul>
-            <p className="text-sm text-gray-600 mb-3">
-              Where an area&apos;s boundary has not passed these checks, its location-specific rules are
-              excluded from results and the report states that site-specific controls may exist for
-              the property — a missing boundary is disclosed, never silently filled in. Where mapped
-              areas overlap, the rules for every applicable area are returned. The per-property
-              legal record of which controls apply remains a Section 10.7 planning certificate
-              issued by the council.
-            </p>
-          </section>
-
-          {/* --- What this is not --- */}
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">What this is not</h2>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not a planning certificate.</strong> These results do not replace a Section 10.7 certificate issued by council.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not legal or financial advice.</strong> We present government data — interpretation requires a qualified professional.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not a substitute for site inspection.</strong> Satellite and spatial data cannot capture every on-ground condition.</li>
-              <li className="flex gap-2"><span className="text-teal-600 shrink-0">-</span><strong>Not exhaustive.</strong> Where data is unavailable for a property, the result states &ldquo;unavailable&rdquo; — absence of data is not clearance.</li>
-            </ul>
-          </section>
-        </div>
-
-        <div className="mt-10 p-6 bg-teal-50 border border-teal-200 rounded-xl">
-          <h3 className="font-semibold text-teal-900 mb-2">A note on accuracy</h3>
-          <p className="text-sm text-teal-800 leading-relaxed">
-            All results on this platform are <strong>indicative</strong> — they are starting points
-            for due diligence, not formal planning determinations. NSW planning controls change
-            frequently, and no automated system can substitute for a qualified town planner or
-            building certifier reviewing your specific situation. We cite every data source so you
-            can verify results directly.
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Site Facts</h2>
+          <p className="text-gray-600 leading-relaxed mb-3">
+            The mapped facts about a NSW property, each shown with its source.
           </p>
-          <p className="text-sm text-teal-800 mt-3">
-            <Link
-              href="/blog/how-we-validate-property-data-nsw"
-              className="font-medium text-teal-700 underline underline-offset-2 hover:text-teal-900 transition-colors"
-            >
-              Read how we validate data before it reaches you →
-            </Link>
-          </p>
-        </div>
-      </div>
+          <Link href="/reports/intelligence-brief" className="text-teal-600 hover:text-teal-700 text-sm font-medium transition-colors">
+            Open Site Facts
+          </Link>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Limits</h2>
+          <ul className="space-y-3">
+            {LIMITS.map((line) => (
+              <li key={line} className="flex gap-3 text-gray-600 text-sm leading-relaxed">
+                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-teal-500 flex-shrink-0" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <p className="text-gray-600 text-sm">
+          <a
+            href="mailto:hello@plotdetect.com.au?subject=Wrong rule"
+            className="text-teal-600 hover:text-teal-700 font-medium transition-colors"
+          >
+            Tell us about a wrong rule
+          </a>
+        </p>
+      </article>
 
       <SiteFooter />
     </main>
