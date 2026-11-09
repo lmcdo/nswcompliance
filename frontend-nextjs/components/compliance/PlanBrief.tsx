@@ -12,7 +12,7 @@
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import {
-  BRIEF_EMPTY_TEXT, BRIEF_FIRST_SHOWN, BRIEF_NOTE, BRIEF_TAG_APPLIES, BRIEF_TAG_MAY,
+  BRIEF_EMPTY_TEXT, BRIEF_FIRST_SHOWN, BRIEF_NOTE, BRIEF_TAG_APPLIES,
   shapeBriefRows, tableRows, whereInPlan, BRIEF_TEXT_LIMIT, type BriefItem, type BriefRow, type StoredBriefRow,
 } from '@/lib/plan-brief';
 
@@ -48,9 +48,9 @@ function ItemView({ item }: { item: BriefItem }) {
         </div>
       )}
       <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <span className={`rounded px-1.5 py-0.5 font-medium ${item.verdict === 'APPLIES' ? 'bg-teal-50 text-teal-800' : 'bg-amber-50 text-amber-800'}`} data-testid="brief-tag">
-          {item.verdict === 'APPLIES' ? BRIEF_TAG_APPLIES : BRIEF_TAG_MAY}
-        </span>
+        {item.verdict === 'APPLIES' && (
+          <span className="rounded px-1.5 py-0.5 font-medium bg-teal-50 text-teal-800" data-testid="brief-tag">{BRIEF_TAG_APPLIES}</span>
+        )}
         {place && (item.url && item.pageProven
           ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline" data-testid="brief-place">{place}{item.urlPage ? ' · open the plan at this page' : ' · open the plan'}</a>
           : <span data-testid="brief-place">{place}{item.page && !item.pageProven ? ' (page not yet checked)' : ''}{item.url && !item.pageProven ? <>{' · '}<a href={item.url.split('#')[0]} target="_blank" rel="noopener noreferrer" className="text-teal-700 hover:underline">open the plan</a></> : null}</span>)}
@@ -118,11 +118,17 @@ export interface PlanBriefProps {
   planUrl?: string | null;
 }
 
-export function PlanBrief({ council, devType, zone, provenKeys, planUrl }: PlanBriefProps) {
+/** The shaped rows for this council and project type; null while loading, when the flag is off, or when nothing is built. Same fetch key everywhere, so SWR shares one request. */
+export function usePlanBriefRows(council: string, devType: string | null, zone: string | null | undefined, provenKeys: ReadonlySet<string>): BriefRow[] | null {
   const url = council && devType
     ? `/api/brief/for-property?council=${encodeURIComponent(council)}&dev_type=${encodeURIComponent(devType)}${zone ? `&zone=${encodeURIComponent(zone)}` : ''}`
     : null;
   const { data } = useSWR<BriefPayload>(url, fetcher, { revalidateOnFocus: false });
   if (!data?.enabled || !data.rows.length) return null;          // off, failed, or nothing built for this council: show nothing
-  return <PlanBriefView rows={shapeBriefRows(data.rows, provenKeys)} planUrl={planUrl} />;
+  return shapeBriefRows(data.rows, provenKeys);
+}
+
+export function PlanBrief({ council, devType, zone, provenKeys, planUrl }: PlanBriefProps) {
+  const rows = usePlanBriefRows(council, devType, zone, provenKeys);
+  return rows ? <PlanBriefView rows={rows} planUrl={planUrl} /> : null;
 }

@@ -18,8 +18,7 @@ import useSWR from 'swr';
 import { zoneCode } from '@/lib/zone-code';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
-import { CitationUncheckedBadge } from '@/components/compliance/CitationUncheckedBadge';
-import { PlanBrief } from '@/components/compliance/PlanBrief';
+import { PlanBriefView, usePlanBriefRows } from '@/components/compliance/PlanBrief';
 import {
   DEFAULT_PROJECT_TYPE,
   resolveControlsDevType,
@@ -28,6 +27,7 @@ import {
 } from '@/lib/project-type';
 import {
   NOT_FOUND_TEXT,
+  SEE_CLAUSES_BELOW_TEXT,
   NO_CONTROLS_FOR_TYPE_TEXT,
   buildDcpRows,
   buildLepRows,
@@ -62,10 +62,13 @@ export interface YourProjectSummaryViewProps {
   defaultOpen?: boolean;
   /** Optional block under the table: the plan's own best clauses for rows with no proven figure (PlanBrief). */
   planBrief?: React.ReactNode;
+  /** Row keys whose clauses are listed in planBrief: their empty table rows say so instead of "not found". */
+  briefKeys?: ReadonlySet<string> | null;
 }
 
 function EntryCells({ entry }: { entry: SummaryEntry }) {
-  const place = [entry.document, entry.clause, entry.page ? `p. ${entry.page}` : null].filter(Boolean).join(', ');
+  // Document and page only: the clause number is not shown because no clause number in this table has been proven.
+  const place = entry.document;
   return (
     <>
       <td className="px-2 py-2 align-top font-mono text-sm text-slate-900" data-testid="figure">
@@ -78,13 +81,11 @@ function EntryCells({ entry }: { entry: SummaryEntry }) {
         {place && <span data-testid="place">{place}</span>}{' '}
         {entry.url ? (
           <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-teal-700 hover:underline" data-testid="link">
-            {entry.citation}<ExternalLink className="w-2.5 h-2.5" aria-hidden />
+            {entry.linkText}<ExternalLink className="w-2.5 h-2.5" aria-hidden />
           </a>
         ) : (
-          <span className="text-slate-500" data-testid="no-link">{entry.citation}</span>
+          <span className="text-slate-500" data-testid="no-link">{entry.linkText}</span>
         )}
-        {/* Same mark as DcpStructuredControls: these control rows are never citation-checked. */}
-        {' '}<CitationUncheckedBadge checked={false} />
       </td>
       <td className="px-2 py-2 align-top text-xs text-slate-600">
         {entry.words ? (
@@ -92,9 +93,7 @@ function EntryCells({ entry }: { entry: SummaryEntry }) {
             <summary className="cursor-pointer text-slate-500">The plan&apos;s words</summary>
             <p className="mt-1 italic" data-testid="words">{entry.words}</p>
           </details>
-        ) : (
-          <span className="text-slate-400">Not in our data</span>
-        )}
+        ) : null}
       </td>
     </>
   );
@@ -128,14 +127,14 @@ function YourProposal({ row }: { row: SummaryRow }) {
   );
 }
 
-function RowView({ row }: { row: SummaryRow }) {
+function RowView({ row, clausesBelow }: { row: SummaryRow; clausesBelow: boolean }) {
   if (row.entries.length === 0) {
     return (
       <tr className="border-t border-slate-100" data-testid={`row-${row.key}`}>
         <th scope="row" className="px-2 py-2 align-top text-left text-sm font-medium text-slate-800">{row.label}</th>
         <td colSpan={4} className="px-2 py-2 text-xs text-slate-600" data-testid="not-found">
-          {NOT_FOUND_TEXT}
-          {row.planUrl && (
+          {clausesBelow ? SEE_CLAUSES_BELOW_TEXT : NOT_FOUND_TEXT}
+          {row.planUrl && !clausesBelow && (
             <>{' '}<a href={row.planUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-teal-700 hover:underline" data-testid="plan-link">
               Open the plan<ExternalLink className="w-2.5 h-2.5" aria-hidden />
             </a></>
@@ -188,13 +187,13 @@ export function YourProjectSummaryView(p: YourProjectSummaryViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {p.lepRows.map((r) => <RowView key={r.key} row={r} />)}
+                {p.lepRows.map((r) => <RowView key={r.key} row={r} clausesBelow={!!p.briefKeys?.has(r.key)} />)}
                 {p.unmapped ? (
                   <tr className="border-t border-slate-100"><td colSpan={5} className="px-2 py-2 text-xs text-slate-600" data-testid="unmapped">{NO_CONTROLS_FOR_TYPE_TEXT}</td></tr>
                 ) : p.dcpRows == null ? (
                   <tr className="border-t border-slate-100"><td colSpan={5} className="px-2 py-2 text-xs text-slate-500">Loading council plan controls…</td></tr>
                 ) : (
-                  p.dcpRows.map((r) => <RowView key={r.key} row={r} />)
+                  p.dcpRows.map((r) => <RowView key={r.key} row={r} clausesBelow={!!p.briefKeys?.has(r.key)} />)
                 )}
               </tbody>
             </table>
@@ -261,10 +260,10 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
   const dcpRows = url && isLoading ? null : buildDcpRows(data);
   // Plan brief: OFF unless NEXT_PUBLIC_PLAN_BRIEF=on (and the API's PLAN_BRIEF=on). Rows with a proven figure are left to the table.
   const provenKeys = new Set((dcpRows ?? []).filter((r) => r.entries.length > 0).map((r) => r.key));
-  const planBrief = process.env.NEXT_PUBLIC_PLAN_BRIEF === 'on' && controlsType && dcpRows
-    ? <PlanBrief council={formerCouncil} devType={controlsType} zone={(zone?.['Zone'] as string | undefined) ?? null}
-        provenKeys={provenKeys} planUrl={dcpRows.find((r) => r.planUrl)?.planUrl ?? null} />
-    : null;
+  const briefOn = process.env.NEXT_PUBLIC_PLAN_BRIEF === 'on' && !!controlsType && !!dcpRows;
+  const briefRows = usePlanBriefRows(briefOn ? formerCouncil : '', controlsType, (zone?.['Zone'] as string | undefined) ?? null, provenKeys);
+  const planBrief = briefRows ? <PlanBriefView rows={briefRows} planUrl={dcpRows?.find((r) => r.planUrl)?.planUrl ?? null} /> : null;
+  const briefKeys = briefRows ? new Set(briefRows.filter((r) => r.items.length > 0).map((r) => r.key)) : null;
 
   return (
     <YourProjectSummaryView
@@ -276,6 +275,7 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
       unmapped={controlsType === null}
       flags={buildSiteFlags(constraints)}
       planBrief={planBrief}
+      briefKeys={briefKeys}
     />
   );
 }

@@ -8,6 +8,7 @@ import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { PROJECT_TYPE_TO_CONTROLS_DEV_TYPE, projectTypeToControlsDevType, resolveControlsDevType } from '@/lib/project-type';
 import {
   NOT_FOUND_TEXT,
+  SEE_CLAUSES_BELOW_TEXT,
   NO_CONTROLS_FOR_TYPE_TEXT,
   buildDcpRows,
   buildLepRows,
@@ -64,13 +65,15 @@ describe('pass-through: displayed value, page, words and link equal the source',
     renderView();
     const front = screen.getAllByTestId('row-front')[0];
     expect(within(front).getByTestId('figure').textContent).toContain('≥ 7.25 m');
-    expect(within(front).getByTestId('place').textContent).toBe('Fixture Council DCP 2000, 3.1.2, p. 41');
+    expect(within(front).getByTestId('place').textContent).toBe('Fixture Council DCP 2000');
+    expect(within(front).getByTestId('link').textContent).toBe('page 41');
     expect(within(front).getByTestId('words').textContent).toBe('Fixture words about the front boundary.');
     expect(within(front).getByTestId('link').getAttribute('href')).toBe('https://example.test/dcp.pdf#page=41');
 
     const cover = screen.getAllByTestId('row-coverage')[0];
     expect(within(cover).getByTestId('figure').textContent).toContain('≤ 55.5 %');
-    expect(within(cover).getByTestId('place').textContent).toBe('Fixture Council DCP 2000, 4.2, p. 60');
+    expect(within(cover).getByTestId('place').textContent).toBe('Fixture Council DCP 2000');
+    expect(within(cover).getByTestId('link').textContent).toBe('page 60');
     expect(within(cover).getByTestId('words').textContent).toBe('Fixture words about coverage.');
     expect(within(cover).getByTestId('link').getAttribute('href')).toBe('https://example.test/dcp.pdf#page=60');
   });
@@ -135,6 +138,27 @@ describe('comparison arithmetic', () => {
     expect(screen.getByTestId('result-front').textContent).toBe("Your figure is above the plan's figure.");
     fireEvent.change(screen.getByTestId('proposal-height'), { target: { value: '9.5' } });
     expect(screen.getByTestId('result-height').textContent).toBe("Your figure is equal to the plan's figure.");
+  });
+});
+
+describe('no unproven citation, no empty labels (pilot)', () => {
+  it('shows no "Citation not yet checked" mark and no clause number in the table', () => {
+    renderView();
+    expect(screen.queryAllByTestId('citation-unchecked')).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/Citation not yet checked/);
+    expect(document.body.textContent).not.toMatch(/3\.1\.2|3\.1\.3|4\.2/);   // fixture clause numbers stay out of the table
+  });
+  it('never prints "Not in our data" for a row that has no words', () => {
+    renderView();
+    expect(document.body.textContent).not.toMatch(/Not in our data/);
+  });
+  it('an empty row whose clauses are listed below says so; other empty rows keep the not-found text', () => {
+    renderView({ briefKeys: new Set(['solar']) });
+    const solar = screen.getAllByTestId('row-solar')[0];
+    expect(within(solar).getByTestId('not-found').textContent).toContain(SEE_CLAUSES_BELOW_TEXT);
+    expect(within(solar).getByTestId('not-found').textContent).not.toContain(NOT_FOUND_TEXT);
+    const pos = screen.getAllByTestId('row-pos')[0];
+    expect(within(pos).getByTestId('not-found').textContent).toContain(NOT_FOUND_TEXT);
   });
 });
 
@@ -282,14 +306,14 @@ describe('pass-through, every row: each row shows exactly its own source control
       const others = all.filter((c) => !spec.types.includes(c.type));
       for (const c of mine) {
         expect([spec.key, c.type, text.includes(String(c.value))]).toEqual([spec.key, c.type, true]);
-        expect([spec.key, c.type, text.includes(`p. ${c.page}`)]).toEqual([spec.key, c.type, true]);
+        expect([spec.key, c.type, text.includes(`page ${c.page}`)]).toEqual([spec.key, c.type, true]);
         const hrefs = rows.flatMap((r) => within(r).queryAllByTestId('link').map((a) => a.getAttribute('href')));
         expect([spec.key, c.type, hrefs.includes(`https://example.test/dcp.pdf#page=${c.page}`)]).toEqual([spec.key, c.type, true]);
         const words = rows.flatMap((r) => within(r).queryAllByTestId('words').map((w) => w.textContent));
         expect([spec.key, c.type, words.includes(c.words)]).toEqual([spec.key, c.type, true]);
       }
       for (const o of others) {
-        expect([spec.key, o.type, text.includes(String(o.value)) || text.includes(`p. ${o.page}`)]).toEqual([spec.key, o.type, false]);
+        expect([spec.key, o.type, text.includes(String(o.value)) || text.includes(`page ${o.page}`)]).toEqual([spec.key, o.type, false]);
       }
     }
   });
