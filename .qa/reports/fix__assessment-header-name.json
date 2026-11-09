@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "A public-label change: the address page header and tagline now say Council Rules and drop an overclaim, with a test that the old name is not used on that page",
- "commit_hash": "ea8f0b6c",
+ "commit_hash": "46ccd5ed",
  "files": [
   ".qa/reports/fix__assessment-header-name.json",
   "frontend-nextjs/__tests__/lib/product-names.test.ts",
