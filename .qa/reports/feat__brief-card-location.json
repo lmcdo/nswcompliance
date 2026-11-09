@@ -1,7 +1,7 @@
 {
-  "tier": "minor",
-  "justification": "The brief is behind two switches that are off, so this changes nothing live. The change adds a line above each clause saying which chapter and section of the plan it comes from, read from dcp_chapter_registry.chapter_label and the clause's own section heading. It adds no new query: the registry query already runs and one column is added to it.",
-  "commit_hash": "e4fa9cfb",
+  "tier": "standard",
+  "justification": "The brief is behind two switches that are off, so this changes nothing live. It is Standard because four files change and the line it adds is shown to users as fact about where a council rule sits in the plan, so a wrong chapter name would mislead. It adds no new query: the registry query that already runs gains one column.",
+  "commit_hash": "409da801",
   "files": [
     "frontend-nextjs/app/api/brief/for-property/route.ts",
     "frontend-nextjs/lib/plan-brief.ts",
@@ -18,8 +18,22 @@
       "scenario": "The chapter label is missing in the registry for a chapter key.",
       "what_happens": "The card shows only the section heading, or no where-line if that is empty too; nothing breaks.",
       "mitigated": true,
-      "how": "frontend-nextjs/lib/plan-brief.ts whereInPlan handles null and empty values, and the test 'nothing is shown when the plan gives neither' covers it.",
+      "how": "frontend-nextjs/lib/plan-brief.ts:121 handles null and empty values, and the test 'nothing is shown when the plan gives neither' covers it.",
       "repro": "npx jest __tests__/components/plan-brief.test.tsx -t 'nothing is shown'"
+    },
+    {
+      "scenario": "The section heading repeats the chapter name, for example both read 'Part 4'.",
+      "what_happens": "The same words would appear twice on one line and look like a rendering fault.",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/plan-brief.ts:121 drops the section when it equals the chapter, and the test 'is not shown twice' covers it.",
+      "repro": "npx jest __tests__/components/plan-brief.test.tsx -t 'not shown twice'"
+    },
+    {
+      "scenario": "A very long section heading from a badly parsed clause fills the card.",
+      "what_happens": "The where-line would push the council's words down the screen.",
+      "mitigated": true,
+      "how": "frontend-nextjs/lib/plan-brief.ts:121 cuts the section heading to 80 characters before it is shown.",
+      "repro": "Call whereInPlan with a 300 character sectionHeader and check the result is under 200 characters"
     }
   ],
   "residual_risk": "This shows where a clause sits but does not stop a clause for another building type reaching a house's first three. That is a separate fix, and the other session found it for Georges River 6.1.3 and the Canterbury-Bankstown site chapters. jest could not run locally; CI runs it.",
@@ -28,5 +42,39 @@
     "secrets": "No",
     "other_repo": "No",
     "manual_verify": "No"
-  }
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/plan-brief.test.tsx --ci",
+    "fails_when": "The chapter name or section heading is dropped, shown twice, or an empty line is drawn when the plan gives neither. The four new tests cover the order, the repeat, the empty case and the card.",
+    "observed_red": "Not observed with Jest, which cannot run in this checkout because jest's core package is missing from node_modules. The CI Jest job runs the file on the pull request. The helper was checked by reading: with both inputs empty it returns an empty string, so the card draws no line.",
+    "external_authority": "The council's plan: the chapter name and section heading shown must match the plan's own contents page."
+  },
+  "functions": [
+    {
+      "name": "whereInPlan",
+      "file_line": "frontend-nextjs/lib/plan-brief.ts:121",
+      "input": "an item with an optional chapter label and an optional section heading, either may be null",
+      "output": "one string, the chapter name then an arrow then the section heading, or an empty string",
+      "if_none": "returns an empty string when both are missing, and the card then draws no line"
+    }
+  ],
+  "values": [
+    {
+      "value": "x.chapter_label",
+      "read_at": "frontend-nextjs/app/api/brief/for-property/route.ts:66",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/api/brief/for-property/route.ts:66",
+      "if_missing": "the card shows only the section heading, or nothing if that is missing too"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "the plan's address and label for each chapter in the result",
+      "file_line": "frontend-nextjs/app/api/brief/for-property/route.ts:62",
+      "where_clause": "council, is_active and chapter_key in the result's chapter keys",
+      "if_zero": "no links and no chapter names; the clauses still show with their page",
+      "if_wrong": "a chapter name from another council would show; the query filters on the same council as the brief row"
+    }
+  ],
+  "mutation_analysis": "No mutation could be run locally because Jest cannot run here. By reading: removing the check that drops a repeated heading would show the chapter name twice, and the 'repeats the chapter name' test would fail; returning the chapter without the section would fail the order test."
 }
