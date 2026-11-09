@@ -14,6 +14,7 @@ Usage
   python scripts/load_project_brief.py briefs.jsonl --apply --confirm-production-write
   python scripts/load_project_brief.py --remove-build <build_id> --apply --confirm-production-write
   python scripts/load_project_brief.py picks.jsonl --replace-cells --apply --confirm-production-write --backup-to backup.json
+  python scripts/load_project_brief.py --restore-from backup.json --apply --confirm-production-write      # undo a replace
 
 --replace-cells: the file is the WHOLE answer for every (council, zone_group, dev_type, row_type) cell it names. Each such cell's
 existing rows are deleted and the file's rows inserted, in one transaction, after the old rows are saved to --backup-to (required to
@@ -92,7 +93,37 @@ def replace_problems(picks, empties):
         if k in seen:
             problems.append("%s is named empty twice" % "/".join(k))
         seen.add(k)
+    clauses = collections.defaultdict(list)
+    for r in picks:
+        clauses[cell_key(r)].append(int(r["provision_id"]))
+    for k, ids in clauses.items():
+        if len(set(ids)) != len(ids):
+            problems.append("%s picks the same clause at more than one rank" % "/".join(k))
     return problems
+
+
+def backup_payload(cols, old, keys):
+    """What --replace-cells saves before it deletes: the cells it names (so a cell that was empty is restored empty) and every old row."""
+    return {"about": "project_brief_rows backup taken by load_project_brief.py --replace-cells; restore with --restore-from",
+            "cells": [list(k) for k in keys],
+            "rows": [dict(zip(cols, [str(v) if hasattr(v, "isoformat") else v for v in row])) for row in old]}
+
+
+def read_backup(path):
+    """(cells, rows, problems) from a --replace-cells backup; problems list anything that would make a restore unsafe."""
+    with open(path, encoding="utf-8") as fh:
+        b = json.load(fh)
+    cells = [tuple(c) for c in b.get("cells", [])]
+    rows = list(b.get("rows", []))
+    problems = []
+    if not cells:
+        problems.append("the backup names no cells")
+    named = set(cells)
+    for r in rows:
+        if (r.get("council"), r.get("zone_group"), r.get("dev_type"), r.get("row_type")) not in named:
+            problems.append("a saved row is outside the cells the backup names: %s" % r)
+            break
+    return cells, rows, problems
 
 
 def read_rows(path):
@@ -120,6 +151,7 @@ def main():
     ap.add_argument("--remove-build")
     ap.add_argument("--replace-cells", action="store_true", help="the file is the whole answer for every cell it names (see the module doc)")
     ap.add_argument("--backup-to", help="where --replace-cells saves the rows it is about to delete (required to apply)")
+    ap.add_argument("--restore-from", help="undo a --replace-cells: put back exactly the rows its backup file saved")
     a = ap.parse_args()
     writing = a.apply and a.confirm_production_write
     if a.apply and not a.confirm_production_write:
@@ -157,6 +189,8 @@ def _run(conn, a, writing):
             conn.commit(); print("removed", n)
         return
 
+    if a.restore_from:
+        return _restore(conn, cur, a, writing)
     if not a.file:
         sys.exit("give the JSONL file")
     if a.replace_cells:
@@ -243,13 +277,12 @@ def _replace_cells(conn, cur, a, writing):
         print("DRY RUN: would replace %d cells as build %s. Nothing written." % (len(keys), build_id))
         return
     # the old rows are saved before anything is deleted; a short file stops the run
-    saved = [dict(zip(cols, [str(v) if hasattr(v, "isoformat") else v for v in row])) for row in old]
     with open(a.backup_to, "w", encoding="utf-8") as fh:
-        json.dump(saved, fh, ensure_ascii=False, indent=1)
-    with open(a.backup_to, encoding="utf-8") as fh:
-        if len(json.load(fh)) != len(old):
-            sys.exit("the backup did not save every row. Nothing deleted.")
-    print("backup saved:", a.backup_to, "(%d rows)" % len(old))
+        json.dump(backup_payload(cols, old, keys), fh, ensure_ascii=False, indent=1)
+    b_cells, b_rows, b_problems = read_backup(a.backup_to)
+    if len(b_rows) != len(old) or len(b_cells) != len(keys) or b_problems:
+        sys.exit("the backup did not save every row. Nothing deleted.")
+    print("backup saved:", a.backup_to, "(%d rows in %d cells); undo with --restore-from" % (len(old), len(keys)))
     try:
         cur.execute("SET LOCAL statement_timeout = '60000'")
         cur.execute("DELETE FROM project_brief_rows WHERE (council, zone_group, dev_type, row_type) IN %s", (tuple(keys),))
@@ -266,6 +299,40 @@ def _replace_cells(conn, cur, a, writing):
             raise RuntimeError("after the swap the cells hold %d rows, expected %d" % (n, len(picks)))
         conn.commit()
         print("committed build %s: deleted %d, inserted %d" % (build_id, len(old), len(picks)))
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _restore(conn, cur, a, writing):
+    """--restore-from: put back exactly what a --replace-cells backup saved: delete those cells, reinsert the saved rows, one transaction.
+
+    prior-art-checked: the undo for this loader's own --replace-cells backup (its cells and rows), so it must live beside it;
+    scripts/archive/restore_from_backup.py and restore_tables_from_mineru_json.py restore other tables from other backup formats.
+    """
+    cells, rows, problems = read_backup(a.restore_from)
+    if problems:
+        sys.exit("cannot restore from this backup:\n  " + "\n  ".join(problems) + "\nNothing written.")
+    cur.execute("SELECT count(*) FROM project_brief_rows WHERE (council, zone_group, dev_type, row_type) IN %s", (tuple(cells),))
+    now = cur.fetchone()[0]
+    print("backup: %d cells, %d saved rows | rows in those cells now: %d" % (len(cells), len(rows), now))
+    if not writing:
+        print("DRY RUN: would delete %d rows and put back %d. Nothing written." % (now, len(rows)))
+        return
+    try:
+        cur.execute("SET LOCAL statement_timeout = '60000'")
+        cur.execute("DELETE FROM project_brief_rows WHERE (council, zone_group, dev_type, row_type) IN %s", (tuple(cells),))
+        for i in range(0, len(rows), BATCH):
+            args = b",".join(cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", (
+                r["council"], r["zone_group"], r["dev_type"], r["row_type"], int(r["rank"]), int(r["provision_id"]), r["verdict"], r.get("reason"), r["build_id"], r["built_at"]))
+                for r in rows[i:i + BATCH])
+            cur.execute(b"INSERT INTO project_brief_rows (council,zone_group,dev_type,row_type,rank,provision_id,verdict,reason,build_id,built_at) VALUES " + args)
+        cur.execute("SELECT count(*) FROM project_brief_rows WHERE (council, zone_group, dev_type, row_type) IN %s", (tuple(cells),))
+        n = cur.fetchone()[0]
+        if n != len(rows):
+            raise RuntimeError("after the restore the cells hold %d rows, the backup saved %d" % (n, len(rows)))
+        conn.commit()
+        print("restored: deleted %d, put back %d" % (now, len(rows)))
     except Exception:
         conn.rollback()
         raise

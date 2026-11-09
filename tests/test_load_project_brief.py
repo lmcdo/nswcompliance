@@ -111,7 +111,7 @@ def test_a_flag_that_is_not_true_is_not_an_empty_marker(tmp_path):
 
 
 def test_replace_problems_accepts_ranks_one_to_n_and_a_separate_empty_cell():
-    assert lpb.replace_problems([row(rank=1), row(rank=2)], [cell(row_type="deep_soil_min")]) == []
+    assert lpb.replace_problems([row(rank=1), row(rank=2, provision_id=253258)], [cell(row_type="deep_soil_min")]) == []
 
 
 def test_replace_problems_rejects_a_gap_or_a_repeat_in_the_ranks():
@@ -173,3 +173,46 @@ def test_no_committed_pick_is_on_the_served_skip_list():
     skip = set(json.loads((ROOT / "frontend-nextjs" / "shared" / "brief-scope.json").read_text(encoding="utf-8"))["excluded_provision_ids"])
     picks, _, _ = lpb.read_cells(str(ROOT / "data" / "plan_brief_picks_2026-11-10.jsonl"))
     assert [p["provision_id"] for p in picks if p["provision_id"] in skip] == []
+
+
+def test_the_same_clause_picked_at_two_ranks_of_one_cell_is_a_problem():
+    assert lpb.replace_problems([row(rank=1, provision_id=5), row(rank=2, provision_id=5)], [])
+    assert lpb.replace_problems([row(rank=1, provision_id=5), row(rank=1, row_type="side_setback", provision_id=5)], []) == []   # different cells may share a clause
+
+
+COLS = ["id", "council", "zone_group", "dev_type", "row_type", "rank", "provision_id", "verdict", "reason", "build_id", "built_at"]
+KEY = ("hornsby", "R2", "dwelling_house", "front_setback")
+
+
+def old_row(rank, pid):
+    return (1000 + rank, "hornsby", "R2", "dwelling_house", "front_setback", rank, pid, "MIGHT", "why", "applies-when-x", "2026-11-08 07:11:29+00:00")
+
+
+def test_a_backup_names_its_cells_and_keeps_every_saved_row(tmp_path):
+    payload = lpb.backup_payload(COLS, [old_row(1, 5), old_row(2, 6)], [KEY, ("hornsby", "R2", "dwelling_house", "deep_soil_min")])
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps(payload), encoding="utf-8")
+    cells, rows, problems = lpb.read_backup(str(f))
+    assert problems == [] and len(rows) == 2
+    assert KEY in cells and ("hornsby", "R2", "dwelling_house", "deep_soil_min") in cells    # a cell that had no rows is restored empty
+
+
+def test_a_backup_with_a_row_outside_its_named_cells_is_refused(tmp_path):
+    payload = lpb.backup_payload(COLS, [old_row(1, 5)], [("hornsby", "R2", "dwelling_house", "side_setback")])
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps(payload), encoding="utf-8")
+    assert lpb.read_backup(str(f))[2]
+
+
+def test_a_backup_that_names_no_cells_is_refused(tmp_path):
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps({"cells": [], "rows": []}), encoding="utf-8")
+    assert lpb.read_backup(str(f))[2]
+
+
+def test_restore_apply_without_the_confirm_flag_writes_nothing_and_exits(tmp_path):
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps(lpb.backup_payload(COLS, [old_row(1, 5)], [KEY])), encoding="utf-8")
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "load_project_brief.py"), "--restore-from", str(f), "--apply"],
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode != 0 and "--confirm-production-write" in (r.stdout + r.stderr)

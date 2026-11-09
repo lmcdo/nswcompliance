@@ -13,7 +13,7 @@
   "command": "python -m pytest tests/test_load_project_brief.py -q",
   "fails_when": "A replace file with a gap or repeat in a cell's ranks, a cell both picked and named empty, a bad line, or an apply with no --backup-to is accepted; or the committed picks file stops covering 100 cells (10 councils x 10 topics) with ranks running 1..n. Also fails when a rank or provision id is not a whole number, when an empty-cell line carries pick fields, or when any committed pick is on the served skip list.",
   "external_authority": "The live table's own constraints (read with pg_get_constraintdef): UNIQUE (council, zone_group, dev_type, row_type, rank), CHECK rank 1..5, FK provision_id to regulatory_provisions. A dry run against the live table read 442 existing R2 house rows in the 100 cells and 113 rows to insert, with every pick a current, actionable clause of its own council.",
-  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 15 failed, 7 passed. With the new loader: 22 passed. The skip-list test failed (192218 was on the list) until the list was corrected."
+  "observed_red": "Against the old scripts/load_project_brief.py (git show origin/main), the new tests fail: 20 failed, 7 passed. With the new loader: 27 total, 27 passed. The skip-list test failed (192218 was on the list) until the list was corrected."
  },
  "pre_impl": {
   "existing_data": "project_brief_rows holds 8,976 rows; the replace touches the 442 R2 dwelling_house rows of ten councils (ashfield 45, blacktown 45, georges_river 38, hornsby 47, ku_ring_gai 45, northern_beaches 46, parramatta 50, penrith 42, waverley 43, wollongong 41). The 113 new picks are the clauses two blind Sonnet readers chose as stating a requirement for an ordinary house (28 of 30 cells identical on a second run).",
@@ -50,6 +50,16 @@
    "if_none": "a file with no picks and no empty cells stops the run",
    "edge_cases": "a pick that is missing, not current, or from another council stops the run before any delete; the delete count must equal the backup; the row count after must equal the picks.",
    "failure_mode": "Any error rolls the transaction back, leaving the old rows in place; the backup file stays on disk."
+  },
+  {
+   "name": "_restore",
+   "file_line": "scripts/load_project_brief.py",
+   "what": "Undoes a --replace-cells: deletes the backup's cells and puts back exactly the rows it saved, in one transaction.",
+   "input": "the backup file written by --replace-cells and the writing flag",
+   "output": "a dry-run report, or a committed restore with its counts",
+   "if_none": "a backup that names no cells is refused before anything is written",
+   "edge_cases": "a cell that had no rows is restored empty because the backup names its cells; original build id and built_at are put back.",
+   "failure_mode": "Any error, or a row count that differs from the backup, rolls the restore back."
   }
  ],
  "break_it": [
@@ -101,10 +111,17 @@
    "mitigated": true,
    "how": "Found by cross-review: Northern Beaches 192218 (the residential parking table with 'Dwelling house and dual occupancy: 2 spaces per dwelling') was skipped because the same table lists a boarding house. It is taken off the list, its scan row is marked read and unflagged, and a test now fails if any pick is on the list.",
    "repro": "pytest: test_no_committed_pick_is_on_the_served_skip_list"
+  },
+  {
+   "scenario": "The write goes wrong and the old rows are needed.",
+   "what_happens": "Without an undo, the old briefs for 100 cells would be lost.",
+   "mitigated": true,
+   "how": "Found by cross-review: the backup was a plain list the loader could not read back. It now names its cells, and --restore-from puts back exactly the saved rows transactionally. Same clause at two ranks of one cell is also rejected.",
+   "repro": "pytest: test_a_backup_names_its_cells_and_keeps_every_saved_row, test_the_same_clause_picked_at_two_ranks_of_one_cell_is_a_problem"
   }
  ],
  "verified": [
-  "Old loader: 15 of 22 tests fail. New loader: 22 pass.",
+  "Old loader: 20 of 27 tests fail. New loader: 27 pass.",
   "Dry run against the live table: 100 cells, 442 existing rows to delete, 113 to insert, nothing written.",
   "The committed picks file reads clean: 113 picks, 24 empty-cell lines, ranks 1..n in every cell, no pick on the served skip list.",
   "After taking 192218 off the skip list: OC-29 HOLDS and OC-30 HOLDS (45/47 = 96%) against the live table."
