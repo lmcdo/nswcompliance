@@ -281,6 +281,16 @@ def heading_read() -> Result:
     need = ("n", "council", "dev_type", "zone_group", "row_type", "first_provision_id", "flag")
     if not isinstance(rec, list) or any(not isinstance(r, dict) or any(k not in r for k in need) for r in rec):
         return FAIL, "heading read: the recorded read is malformed (rows missing or incomplete)"
+    named = doc.get("named_councils")
+    if not isinstance(named, list) or not named or any(not isinstance(x, str) or not x for x in named):
+        return FAIL, "heading read: the file must list its named_councils"
+    for r in rec:
+        if (isinstance(r["n"], bool) or not isinstance(r["n"], int) or isinstance(r["first_provision_id"], bool)
+                or not isinstance(r["first_provision_id"], int)
+                or any(not isinstance(r[k], str) or not r[k] for k in ("council", "dev_type", "zone_group", "row_type", "flag", "section"))):
+            return FAIL, "heading read: a row has a missing or wrongly typed field (n and first_provision_id are integers; council, dev_type, zone_group, row_type, flag and section are text)"
+    if {r["council"] for r in rec} != set(named):
+        return FAIL, "heading read: the councils in the rows are not exactly the file's named_councils"
     if len(rec) < 30 or sorted(r["n"] for r in rec) != list(range(1, len(rec) + 1)):
         return FAIL, f"heading read: need at least 30 rows numbered 1 to N, each once; found {len(rec)}"
     if any(r["flag"] not in ("green", "none", "red") for r in rec):

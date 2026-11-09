@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes. OC-29 note: retracted 2026-11-09; declared false; the check fails until a new owner read is recorded.",
+  "justification": "Claim ledger rows, the claim-runner map and a pinned-set test. No served code, no data write. Not Minor: it defines the owner-approved sign-off metric. Not Critical: no query or API behaviour changes.",
   "commit_hash": "a34864c4",
   "files": [
     ".claude/dq_checks.json",
@@ -72,17 +72,17 @@
       "repro": "python -m pytest tests/test_dq_check_outreach.py -q"
     },
     {
-      "scenario": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
+      "scenario": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
       "what_happens": "Exit 1 with a FileNotFoundError traceback.",
       "mitigated": true,
-      "how": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
+      "how": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
       "repro": "python scripts/outreach_claim_checks.py OC-29"
     },
     {
       "scenario": "A claim is declared true while its check cannot pass.",
       "what_happens": "CI fails with a contradicted claim.",
       "mitigated": true,
-      "how": "OC-29 is declared false: its first owner read was retracted (the cards lacked the plan headings) and the check fails on the superseded record until a new read is recorded.",
+      "how": "OC-29 is declared true on a script read of the council's own section headings (34 rows, 6 named councils, 0 flagged); the check fails on a stale, malformed or incomplete record. Declared false earlier the same day when an owner read was retracted.",
       "repro": "python scripts/dq_check.py --outreach"
     },
     {

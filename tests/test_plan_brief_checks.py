@@ -73,7 +73,7 @@ def _read_rows(red_at=()):
 
 def _setup(monkeypatch, tmp_path, rows, live=None):
     (tmp_path / "data").mkdir()
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"rows": rows}), encoding="utf-8")
+    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"named_councils": sorted({r["council"] for r in rows}), "rows": rows}), encoding="utf-8")
     monkeypatch.setattr(pbc, "ROOT", tmp_path)
 
     class _Cur:
@@ -120,7 +120,7 @@ def test_heading_read_fails_on_duplicate_rows_bad_flags_and_missing_file(monkeyp
     assert pbc.heading_read()[0] == pbc.FAIL
     bad = _read_rows()
     bad[0]["flag"] = "maybe"
-    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"rows": bad}), encoding="utf-8")
+    (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text(json.dumps({"named_councils": _COUNCILS, "rows": bad}), encoding="utf-8")
     assert pbc.heading_read()[0] == pbc.FAIL
     (tmp_path / "data" / "plan_brief_heading_read_2026-11-09.json").write_text("{}", encoding="utf-8")
     assert pbc.heading_read()[0] == pbc.FAIL
@@ -131,3 +131,19 @@ def test_heading_read_needs_at_least_thirty_rows(monkeypatch, tmp_path):
     _setup(monkeypatch, tmp_path, _read_rows()[:29])
     status, why = pbc.heading_read()
     assert status == pbc.FAIL and "at least 30" in why
+
+def test_heading_read_fails_on_wrong_types_and_on_councils_outside_the_named_list(monkeypatch, tmp_path):
+    rows = _read_rows()
+    rows[2]["n"] = None
+    _setup(monkeypatch, tmp_path, rows)
+    status, why = pbc.heading_read()
+    assert status == pbc.FAIL and "wrongly typed" in why
+    other = tmp_path / "other"
+    other.mkdir()
+    _setup(monkeypatch, other, _read_rows())
+    path = other / "data" / "plan_brief_heading_read_2026-11-09.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["named_councils"] = _COUNCILS[:-1]          # a council in the rows is not in the named list
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    status, why = pbc.heading_read()
+    assert status == pbc.FAIL and "named_councils" in why
