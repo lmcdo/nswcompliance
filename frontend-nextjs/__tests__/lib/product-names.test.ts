@@ -39,6 +39,12 @@ describe('product names', () => {
 
   // The nav, footer and homepage may link to Site Facts by name (owner decision 2026-11-09: the site points at the two
   // products only). The address page and its components may not: that is where the two names collided.
+  it('the retired name "Site Controls" is not used on the address page', () => {
+    const page = ALL.find((f) => f.rel === 'app/assessment/page.tsx');
+    expect(page).toBeDefined();
+    expect(page?.text.includes('Site Controls')).toBe(false);
+  });
+
   it('"Site Facts" is not used on the address page or its components', () => {
     const councilRulesSide = /^(app\/assessment\/|components\/compliance\/)/;
     const bad = ALL.filter((f) => councilRulesSide.test(f.rel) && f.text.includes('Site Facts')).map((f) => f.rel);

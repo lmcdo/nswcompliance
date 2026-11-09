@@ -1,0 +1,71 @@
+{
+ "tier": "standard",
+ "justification": "A public-label change: the address page header and tagline now say Council Rules and drop an overclaim, with a test that the old name is not used on that page",
+ "commit_hash": "46ccd5ed",
+ "files": [
+  ".qa/reports/fix__assessment-header-name.json",
+  "frontend-nextjs/__tests__/lib/product-names.test.ts",
+  "frontend-nextjs/app/assessment/page.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts",
+  "fails_when": "The address page source contains the retired name Site Controls",
+  "observed_red": "Before the rename the new test failed on the address page; after it the test passes"
+ },
+ "pre_impl": {
+  "existing_data": "No data is read or written; this is a label and tagline in one page component",
+  "assumption_mismatch": "If the page file moves the test cannot find it and fails loudly rather than passing",
+  "new_vs_existing": "Applies to every address page view after deploy",
+  "external_source_error": "N/A",
+  "frontend_type": "No type changes; two text strings",
+  "user_failure_mode": "A visitor now sees Council Rules as the page name, matching the homepage and the menu"
+ },
+ "functions": [
+  {
+   "name": "AssessmentPage",
+   "file_line": "frontend-nextjs/app/assessment/page.tsx:79",
+   "input": "no props, a client page component",
+   "output": "the address page with the Council Rules header",
+   "if_none": "there are no inputs, so nothing can be missing"
+  }
+ ],
+ "values": [
+  {
+   "value": "selectedProperty",
+   "read_at": "frontend-nextjs/app/assessment/page.tsx:176",
+   "nullable": "yes",
+   "guard_at": "frontend-nextjs/app/assessment/page.tsx:179",
+   "if_missing": "the header still renders and the body shows the empty state"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A later edit restores the old header text",
+   "what_happens": "The product names test fails and CI blocks the change",
+   "mitigated": true,
+   "how": "The test reads the page source for the retired name",
+   "repro": "cd frontend-nextjs && npx jest __tests__/lib/product-names.test.ts"
+  },
+  {
+   "scenario": "The old name remains on unlisted for pages",
+   "what_happens": "Those unlinked pages still say Site Controls",
+   "mitigated": false,
+   "how": "Known limit: the for pages are unlisted and noindex and were not edited",
+   "repro": "open /for/councils"
+  },
+  {
+   "scenario": "The tagline claims too much for a table with unchecked citations",
+   "what_happens": "The new tagline makes no claim about every control being cited",
+   "mitigated": true,
+   "how": "The tagline now only says what the page is",
+   "repro": "open /assessment on the preview"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Open /assessment and read the header: it says Council Rules and the new tagline"
+ }
+}

@@ -198,10 +198,10 @@ export default function AssessmentPage() {
         {/* Page title */}
         <div className="flex-1">
           <h1 className="text-lg md:text-xl font-semibold tracking-tight text-white">
-            Site Controls
+            Council Rules
           </h1>
           <p className="text-slate-400 text-xs hidden sm:block">
-            Every control cited to its clause — zoning live from the NSW Planning Portal
+            The council&apos;s own planning rules for an address and project — zoning live from the NSW Planning Portal
           </p>
         </div>
         <div className="hidden sm:flex items-center">
