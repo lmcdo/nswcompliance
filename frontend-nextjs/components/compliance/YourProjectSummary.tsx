@@ -243,7 +243,8 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
 
   const zone = planningLayers?.find((l) => l.layerName === 'Land Zoning Map')?.results?.[0];
   // The site's zone narrows the controls to the rows that apply to it (an unreadable zone = no filter).
-  const zoneParam = zoneCode(zone?.['Zone'] as string | undefined);
+  // Same source as the page gate and the DCP tab (constraints.zone); the zoning layer is only a fallback.
+  const zoneParam = zoneCode((constraints as { zone?: string } | undefined)?.zone) ?? zoneCode(zone?.['Zone'] as string | undefined);
 
   const url = controlsType && formerCouncil
     ? `/api/dcp/structured-controls?council=${encodeURIComponent(formerCouncil)}&dev_type=${encodeURIComponent(controlsType)}${zoneParam ? `&zone=${encodeURIComponent(zoneParam)}` : ''}`
