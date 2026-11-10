@@ -1,0 +1,79 @@
+{
+  "tier": "standard",
+  "commit_hash": "956a136d",
+  "justification": "House page and paid report showed our internal row-type tags (NO FIGURE:, FSR-CONTROLLED: ...) and a bare 'No set number' on 40 served rows across the 10 pilot councils. Standard: display text only, three render sites and one report line, no query change.",
+  "files": [
+    "frontend-nextjs/lib/dcp/public-condition.ts",
+    "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "frontend-nextjs/lib/project-summary.ts",
+    "frontend-nextjs/components/tools/DcpSnapshotCard.tsx",
+    "services/brief_templates.py",
+    "frontend-nextjs/__tests__/lib/dcp/public-condition.test.ts",
+    "frontend-nextjs/__tests__/components/dcp-structured-controls.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_setback_controls served rows: 67 with no number (nofig_db.json), condition prefixes measured: NO FIGURE 27, FSR-CONTROLLED 9, DEFERS-TO-ADG 6, CHARACTER-BASED 2, ALTERNATIVE-METRIC 1, QUALITATIVE 1",
+    "assumption_mismatch": "publicCondition stripped only 'NOT yet stored' notes; the Your project table and DcpSnapshotCard printed condition raw; the paid report appended it raw",
+    "new_vs_existing": "Render time only, every page view and every paid report from deploy"
+  },
+  "functions": [
+    {
+      "name": "publicCondition",
+      "file_line": "frontend-nextjs/lib/dcp/public-condition.ts:publicCondition",
+      "input": "the stored condition text of one DCP control row",
+      "output": "the condition without our internal tags or notes, or null when nothing is left",
+      "if_none": "returns null so no condition line is shown"
+    },
+    {
+      "name": "noNumberLabel",
+      "file_line": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx:noNumberLabel",
+      "input": "a control row's plain_summary field from the structured-controls API",
+      "output": "the plain summary, or a pointer to the plan's quoted words",
+      "if_none": "returns the text pointing the reader at the quote"
+    }
+  ],
+  "values": [
+    {
+      "value": "condition",
+      "read_at": "DcpStructuredControls condition column, project-summary dcpEntry, DcpSnapshotCard, brief_templates control sentence",
+      "nullable": "yes",
+      "guard_at": "publicCondition / _INTERNAL_PREFIX_RE, both return empty when only a tag",
+      "if_missing": "no condition line"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A council's own capitalised heading such as 'NOTE:' starts the condition",
+      "what_happens": "Kept: the six tags are listed exactly, not pattern-matched",
+      "mitigated": true,
+      "how": "explicit tag list",
+      "repro": "npx jest __tests__/lib/dcp/public-condition.test.ts -t heading"
+    },
+    {
+      "scenario": "A condition that is only a tag ('NO FIGURE:')",
+      "what_happens": "Nothing shown instead of an empty bracket or a bare tag",
+      "mitigated": true,
+      "how": "trim then null / empty check",
+      "repro": "npx jest __tests__/lib/dcp/public-condition.test.ts -t nothing"
+    },
+    {
+      "scenario": "Row whose words hold figures (Ku-ring-gai 9 m / 12 m) but no stored number",
+      "what_happens": "Before: 'No set number' contradicted the words. Now: points at the plan's words, and the condition shows the figures",
+      "mitigated": true,
+      "how": "noNumberLabel fallback text",
+      "repro": "npx jest __tests__/components/dcp-structured-controls.test.tsx"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/lib/dcp/public-condition.test.ts __tests__/components/dcp-structured-controls.test.tsx",
+    "fails_when": "INTERNAL_PREFIX removed: the 6 tag cases fail; old fallback restored: 3 noNumberLabel assertions fail",
+    "observed_red": "Tag tests written against the unchanged publicCondition would return the raw tag; asserted values differ"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - load the 10 pilot houses (audit address files in the plans folder) and confirm 0 internal tags and 0 bare No set number shown"
+  }
+}

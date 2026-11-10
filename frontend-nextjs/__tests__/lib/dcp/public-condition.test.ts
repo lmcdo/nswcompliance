@@ -21,3 +21,24 @@ describe('publicCondition', () => {
     expect(publicCondition(null)).toBeNull();
   });
 });
+
+describe('our own row-type tags are cut (pilot audit 2026-11-10: 18 served rows showed them)', () => {
+  it.each([
+    ['NO FIGURE: 9 m low side / 12 m high side', '9 m low side / 12 m high side'],
+    ['FSR-CONTROLLED: site coverage governed by Floor Space Ratio in the LEP', 'site coverage governed by Floor Space Ratio in the LEP'],
+    ['DEFERS-TO-ADG: no council-specific deep soil minimum', 'no council-specific deep soil minimum'],
+    ['CHARACTER-BASED: consistent with the streetscape', 'consistent with the streetscape'],
+    ['ALTERNATIVE-METRIC: measured as a building envelope', 'measured as a building envelope'],
+    ['QUALITATIVE: adequate landscaping', 'adequate landscaping'],
+  ])('%s', (raw, shown) => {
+    expect(publicCondition(raw)).toBe(shown);
+  });
+
+  it("keeps a council's own capitalised heading", () => {
+    expect(publicCondition('NOTE: measured from the boundary')).toBe('NOTE: measured from the boundary');
+  });
+
+  it('a tag with nothing after it shows nothing', () => {
+    expect(publicCondition('NO FIGURE:')).toBeNull();
+  });
+});

@@ -415,6 +415,23 @@ MACHINE_VALUE_LABELS: dict[str, str] = {
 }
 
 _SNAKE_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+# Our own row-type tags at the start of a stored condition (never a council's words); the same
+# six as frontend-nextjs/lib/dcp/public-condition.ts INTERNAL_PREFIX. Measured 2026-11-10.
+_INTERNAL_PREFIX_RE = re.compile(
+    r"^\s*(?:NO FIGURE|FSR-CONTROLLED|DEFERS-TO-ADG|CHARACTER-BASED|ALTERNATIVE-METRIC|QUALITATIVE)\s*:\s*")
+# Same as public-condition.ts: our "NOT yet stored" extraction notes, as a tail or a sentence.
+_INTERNAL_TAIL_RE = re.compile(r"\s*NOT yet stored:[\s\S]*$", re.IGNORECASE)
+_SENTENCE_BREAK_RE = re.compile(r"(?<=\.)\s+(?=[A-Z])")
+_INTERNAL_MARKER_RE = re.compile(r"\bNOT yet stored\b")
+
+
+def public_condition(condition: Optional[str]) -> str:
+    """A stored condition as the reader should see it -- the Python twin of
+    frontend-nextjs/lib/dcp/public-condition.ts, so the paid report and the page agree."""
+    text = _INTERNAL_PREFIX_RE.sub("", condition or "")
+    text = _INTERNAL_TAIL_RE.sub("", text)
+    kept = [s for s in _SENTENCE_BREAK_RE.split(text) if not _INTERNAL_MARKER_RE.search(s)]
+    return " ".join(kept).strip()
 
 
 def humanise_value(text: str) -> str:
@@ -499,8 +516,9 @@ def _dcp_control_sentence(e: ManifestEntry) -> Optional[str]:
             parts += f" at {value}"
     if rec.get("dev_type"):
         parts += f" for a {rec['dev_type'].replace('_', ' ')}"
-    if rec.get("condition"):
-        parts += f" ({rec['condition']})"
+    condition = public_condition(rec.get("condition"))
+    if condition:
+        parts += f" ({condition})"
     if rec.get("source_ref"):
         ref = rec["source_ref"]
         # "clause 4.1.2" reads right; "clause Table 1" does not.
