@@ -36,6 +36,7 @@ watchPatterns = [
     "scripts/probe_blocked_councils.py",
     "scripts/dcp_extract_changed.py",
     "scripts/dcp_commit_approved.py",
+    "scripts/dcp_staged.py",
     "scripts/pipeline_run.py",
     "scripts/council_quote.py",
     "scripts/council_quote_db.py",

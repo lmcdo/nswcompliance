@@ -1895,7 +1895,7 @@ class DCPExtractor:
                   f"rule lines in no rule {rep['uncovered']}", flush=True)
             for _i, page, text in out["uncovered"][:10]:
                 print(f"      not in any rule: p{page} {text[:100]}")
-            return sr.to_sections(out["rules"])
+            return self._stamp_parts(sr.to_sections(out["rules"]))
         if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter, configured_model
             # An explicit AI_MODEL wins inside ai_extract_chapter, so asking
@@ -1910,7 +1910,8 @@ class DCPExtractor:
                 self.reader_used = f"llm:{_model}"
                 # The range a shared PDF assigns this chapter: without it the reader read the
                 # whole file and credited other chapters' rules to this one (2026-10-25).
-                return ai_extract_chapter(self.pdf_path, self.council, page_range=self.page_range)
+                return self._stamp_parts(
+                    ai_extract_chapter(self.pdf_path, self.council, page_range=self.page_range))
             # Enabled, but this deployment has no provider key. Fall back rather than
             # fail: making the LLM the default (2026-09-21) must not break a nightly
             # job that has always run the reader below. Measured the same day, the
@@ -1945,6 +1946,28 @@ class DCPExtractor:
             override = self._maybe_toc_override(sections)
             if override is not None:
                 return override
+        return sections
+
+    def _stamp_parts(self, sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """stamp_part_codes for a chapter read by an AI/section reader. Fails open: a page map that cannot be
+        built leaves the headings as read, and says so (the area-link guard then judges the result)."""
+        try:
+            from enrichment.config import COUNCIL_CONFIGS
+            parts_config = (COUNCIL_CONFIGS.get(self.council) or {}).get("parts") or {}
+            if not parts_config:
+                return sections
+            with pdfplumber.open(self.pdf_path) as pdf:
+                total = len(pdf.pages)
+                texts = [""] * total
+                for i, p in self._owned_pages(pdf):
+                    texts[i - 1] = self._page_text(p, i)
+                    _release_page(p)
+            ranges = derive_ranges_from_headers(texts)
+            n = stamp_part_codes(sections, ranges, parts_config)
+            print(f"    [part-codes] {n} of {len(sections)} headings stamped from the page map "
+                  f"({len(ranges)} parts found)")
+        except Exception as exc:  # noqa: BLE001 -- never lose a read over a stamp
+            print(f"    [part-codes] NOT stamped ({type(exc).__name__}: {exc}); headings left as read")
         return sections
 
     def _maybe_toc_override(
@@ -2436,6 +2459,36 @@ def _clean_toc_title(title: str) -> str:
     the provision text is clean (e.g. "Urban Design").
     """
     return _TOC_TITLE_CLEANUP_RE.sub('', title).strip()
+
+
+def stamp_part_codes(sections: list[dict[str, Any]], ranges, parts_config: dict | None) -> int:
+    """Put the Part code in front of each numeric-only section heading, from the page map. Returns rows stamped.
+
+    The AI and section readers give a rule the heading it prints ("1.2 (e) URBAN FORM CONTROLS" on a Bondi
+    Junction page). Area links read the Part from the heading's first token (LayerTopicTagger._extract_section_code
+    -> v2_dcp_part; Waverley's precinct rule copies it when it is exactly E1..E7). The old reader headed these
+    rows "E1 ...", so a re-read with an AI reader lost them: Waverley Amdt 6 queue, 1,309 rows on Part E pages,
+    20 headed with a Part (2026-11-11). Page -> Part comes from the pages' own running headers
+    (dcp_page_map_gate.derive_ranges_from_headers), never from the rule's text.
+
+    Stamped only when the council's tagger config can resolve that Part (exact or by letter) and the heading's
+    first token is a bare number: a heading that already starts with a letter code is left as read. ref_number
+    is built from section_number and does not change. Pure."""
+    parts_config = parts_config or {}
+    stamped = 0
+    for sec in sections:
+        number = str(sec.get("section_number") or "").strip()
+        if not number or number == "preamble" or not number[0].isdigit() or sec.get("text_heading"):
+            continue
+        page = sec.get("page_start")
+        if not isinstance(page, int):
+            continue
+        part = next((code for code, _title, lo, hi in ranges if lo <= page <= hi), None)
+        if not part or not (part in parts_config or part[0] in parts_config):
+            continue
+        sec["text_heading"] = f"{part} {number} {sec.get('section_title') or ''}".strip()
+        stamped += 1
+    return stamped
 
 
 def build_provision_text(section: dict[str, Any]) -> str:

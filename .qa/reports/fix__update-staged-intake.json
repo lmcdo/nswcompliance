@@ -1,7 +1,7 @@
 {
   "tier": "critical",
-  "justification": "Changes where intake writes in dcp_chapter_registry and which file/hash the extractor, approver, watchdog and commit worker read; a wrong read serves rules judged against the wrong file. Not above: no served rule text is changed by this PR.",
-  "commit_hash": "72798bbe",
+  "justification": "Changes where intake writes in dcp_chapter_registry and which file/hash the extractor, approver, watchdog and commit worker read; a wrong read serves rules judged against the wrong file. Not above: no served rule text is changed by this PR. Also adds stamp_part_codes (page-map Part on AI-read headings); measured on the Waverley Amdt 6 queue: rows tagged Part E1-E7 58 -> 1,347.",
+  "commit_hash": "40e684a8",
   "files": [
     "migrations/125_dcp_chapter_staged_file.sql",
     "scripts/dcp_approve_proven.py",
@@ -18,7 +18,8 @@
     "tests/test_dcp_extraction_fidelity.py",
     "tests/test_dcp_staged_real_db.py",
     "tests/test_extract_parallel_and_hold.py",
-    "tests/test_staged_intake.py"
+    "tests/test_staged_intake.py",
+    "tests/test_stamp_part_codes.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_chapter_registry (571 active rows): six new nullable staged_* columns; all NULL until an amendment is received, so every existing row reads exactly as before via COALESCE.",
@@ -97,6 +98,13 @@
       "mitigated": true,
       "how": "scripts/r2_monitor.py compares new_hash with staged_content_hash before the stored-hash check and records only the headers",
       "repro": "pytest tests/test_staged_intake.py::test_the_same_new_file_again_is_not_a_second_change"
+    },
+    {
+      "scenario": "Part stamp applied to a council whose headings already carry letter codes or whose page map is wrong",
+      "what_happens": "a heading would gain a wrong Part and change its area link",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py stamp_part_codes: only numeric-first headings, only councils whose tagger config can resolve the Part, Part read from the pages' running headers; any failure leaves headings as read and prints it",
+      "repro": "pytest tests/test_stamp_part_codes.py (mutation: removing the numeric-first guard fails the letter-code test)"
     }
   ],
   "falsifiable_check": {
