@@ -25,6 +25,10 @@ def cur():
               "is_active boolean DEFAULT true, needs_extraction boolean DEFAULT true)")
     c.execute("CREATE TABLE dcp_review_queue (council text, chapter_key text, status text, source_content_hash text)")
     c.execute((ROOT / "migrations" / "122_chapter_extract_refusals.sql").read_text(encoding="utf-8"))
+    # The selection reads the effective hash COALESCE(staged_content_hash, content_hash) (migration 125).
+    # Its own BEGIN/COMMIT lines are dropped so the fixture's transaction still rolls everything back.
+    m125 = (ROOT / "migrations" / "125_dcp_chapter_staged_file.sql").read_text(encoding="utf-8")
+    c.execute("\n".join(l for l in m125.splitlines() if l.strip() not in ("BEGIN;", "COMMIT;")))
     c.execute("INSERT INTO dcp_chapter_registry (council, chapter_key, content_hash) VALUES "
               "('cb', 'ch7-6', 'h1'), ('su', 'ch2', 'h9'), ('nn', 'nohash', NULL)")
     yield c
