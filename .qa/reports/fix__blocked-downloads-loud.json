@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "A blocked council website (HTTP 403) was invisible: Waverley blocked since 2026-06-29 and Wollongong since 2026-09-24 kept serving old rules. This adds one read-only DQ probe (DQ-153), a hand-intake wrapper that calls the existing r2_monitor.py --from-file, and a one-line date notice on the house page fed by a new meta.plan_confirmed field. No write to the database; r2_monitor.py is not changed.",
-  "commit_hash": "f3f8bb18",
+  "justification": "A blocked council website (HTTP 403) was invisible: Waverley blocked since 2026-06-29 and Wollongong since 2026-09-24 kept serving old rules. This adds one read-only DQ probe (DQ-153), a hand-intake wrapper that calls the existing r2_monitor.py --from-file, and a one-line notice on the house page fed by a new meta.plan_check field ({checked_on, never_checked, blocked}) that applies the same rule as the red number. No write to the database; r2_monitor.py is not changed.",
+  "commit_hash": "22d22e78",
   "files": [
     "scripts/dq_probe_live.py",
     "scripts/manual_intake.py",
@@ -15,7 +15,8 @@
     "frontend-nextjs/__tests__/lib/plan-confirmed.test.ts",
     "frontend-nextjs/__tests__/components/dcp-plan-check-notice.test.tsx",
     "scripts/add_new_chapter.py",
-    "tests/test_add_new_chapter_from_file.py"
+    "tests/test_add_new_chapter_from_file.py",
+    "tests/test_plan_check_agrees.py"
   ],
   "falsifiable_check": {
     "command": "python scripts/dq_check.py --id DQ-153",
@@ -37,11 +38,11 @@
       "if_none": "count(*) never returns NULL; no database means exit 2 (unknown), not clean"
     },
     {
-      "name": "loadPlanConfirmed",
+      "name": "loadPlanCheck / planNotice",
       "file_line": "frontend-nextjs/lib/plan-confirmed.ts",
-      "input": "query callback and council key",
-      "output": "ISO date of the oldest check or null",
-      "if_none": "no council, no chapters or a never-checked chapter gives null, and the page shows nothing (no date, no claim)"
+      "input": "a query callback and the council key; then the result and the current time",
+      "output": "the oldest check date with never_checked and blocked flags, then which notice to show",
+      "if_none": "no council or no serving chapter gives null and the page shows nothing; a never-checked or blocked chapter is shown, not dropped"
     }
   ],
   "values": [
@@ -75,12 +76,11 @@
       "scenario": "A chapter that serves rules is blocked on the HEAD request (403) so url_last_checked is never updated"
     },
     {
-      "result": "The waf_blocked signal still counts it. The house-page notice uses the date only, so in that case the page would show nothing; this is the known gap.",
-      "repro": "python scripts/dq_probe_live.py --id DQ-153 after a blocked download that sets url_last_checked: the waf_blocked branch of the OR still counts the council",
-      "what_happens": "The download sets a fresh check date, so the date signal is silent and the house-page notice stays silent; the waf_blocked signal still makes DQ-153 count the council.",
-      "mitigated": false,
-      "how": "Known gap, recorded in residual_risk (2). Fixing it means changing r2_monitor.py, which needs the pipeline plan line and is out of scope.",
-      "scenario": "A blocked download sets url_last_checked, so the date looks fresh"
+      "scenario": "A blocked download sets url_last_checked, so the date looks fresh",
+      "what_happens": "The page query also reads each chapter's latest monitor result, so a chapter whose latest result is waf_blocked shows the notice even though its date is fresh, the same as the red number.",
+      "mitigated": true,
+      "how": "PLAN_CONFIRMED_SQL blocked signal; jest 'a blocked chapter is shown even though its date looks fresh'",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-confirmed.test.ts"
     },
     {
       "scenario": "A folder holds a PDF whose name matches a council that is not blocked, or a misspelt file name",
@@ -88,10 +88,17 @@
       "mitigated": true,
       "how": "test_folder_matching_loads_only_blocked_chapters",
       "repro": "python -m pytest tests/test_manual_intake.py::test_folder_matching_loads_only_blocked_chapters -o addopts="
+    },
+    {
+      "scenario": "A serving chapter has never been checked (url_last_checked NULL)",
+      "what_happens": "DQ-153 counts it and the page shows 'We have not yet checked this council's plan'.",
+      "mitigated": true,
+      "how": "never_checked flag; jest 'a chapter never checked is shown, even when the others are fresh'",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-confirmed.test.ts -t never"
     }
   ],
-  "mutation_analysis": "Four mutations run, not described: probe window 14 to 140 days (test_probe_counts_both_signals_and_only_serving_chapters red); manual_intake dry-run default inverted (test_dry_run_is_the_default_and_apply_removes_it red); planCheckIsOld comparison flipped (5 jest failures); all restored and green. Jest: 55 passed in the seven suites that touch the changed route and notice. tsc has 0 errors. Python: tests/test_manual_intake.py and tests/test_dq_check.py 38 passed. After the gate asked for it: a real-database test (PYTEST_REAL_DB=1 pytest -m database tests/test_manual_intake.py) passes on the live database and checks that the councils manual_intake lists equal the DQ-153 count. add_new_chapter --from-file: removing the %PDF header check turns test_refuses_a_file_that_is_not_a_pdf red; restored: 4 passed. The write path itself (R2 upload + registry INSERT) is unchanged and was not run.",
-  "residual_risk": "(1) r2_monitor.py is NOT changed: a HEAD 403 still does not update the check date and the Telegram digest still depends on two variables nobody has verified on Railway; DQ-153 now makes that visible instead. (2) The house-page notice reads the oldest check date only; if a block happens during a download the date looks fresh and the notice stays silent, while DQ-153 still counts it. (3) scripts/manual_intake.py --apply was not run against live data (dry-run listing only). (4) The AustLII Playwright fallback (legislation_monitor.py:441-527, explicit --source austlii only) is still in use and was not extended; r2_monitor.py has no Playwright. (5) add_new_chapter.py --from-file was added from the prompt's 'Added 2026-11-10' note; it was not run against R2 or the live registry, and it does not add the West Dapto boundary D16 needs before it can serve.",
+  "mutation_analysis": "Four mutations run, not described: probe window 14 to 140 days (test_probe_counts_both_signals_and_only_serving_chapters red); manual_intake dry-run default inverted (test_dry_run_is_the_default_and_apply_removes_it red); planCheckIsOld comparison flipped (5 jest failures); all restored and green. Jest: 55 passed in the seven suites that touch the changed route and notice. tsc has 0 errors. Python: tests/test_manual_intake.py and tests/test_dq_check.py 38 passed. After the gate asked for it: a real-database test (PYTEST_REAL_DB=1 pytest -m database tests/test_manual_intake.py) passes on the live database and checks that the councils manual_intake lists equal the DQ-153 count. add_new_chapter --from-file: removing the %PDF header check turns test_refuses_a_file_that_is_not_a_pdf red; restored: 4 passed. The write path itself (R2 upload + registry INSERT) is unchanged and was not run. Round 2 after the Sol review: page days changed 14 to 30 turns test_page_and_red_number_use_the_same_number_of_days red; the never-checked branch disabled turns 1 jest test red; both restored and green. PYTEST_REAL_DB=1 pytest -m database tests/test_plan_check_agrees.py passes: on the live database the councils that would show a notice equal the councils manual_intake lists.",
+  "residual_risk": "(1) r2_monitor.py is NOT changed: a HEAD 403 still does not update the check date and the Telegram digest still depends on two variables nobody has verified on Railway; DQ-153 now makes that visible instead. (2) The page notice and DQ-153 now use one rule (14 days, never checked, blocked), kept in step by tests/test_plan_check_agrees.py; the page's SQL is a second copy of the probe's, not shared code. (3) scripts/manual_intake.py --apply was not run against live data (dry-run listing only). (4) The AustLII Playwright fallback (legislation_monitor.py:441-527, explicit --source austlii only) is still in use and was not extended; r2_monitor.py has no Playwright. (5) add_new_chapter.py --from-file was added from the prompt's 'Added 2026-11-10' note; it was not run against R2 or the live registry, and it does not add the West Dapto boundary D16 needs before it can serve.",
   "post_merge": {
     "db_reset": "No. Read-only probe and a read-only query in the route.",
     "secrets": "No new secrets. Owner action: confirm TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set on the Railway dcp-monitor service, and email the Waverley and Wollongong web teams to allow our monitor.",
