@@ -1482,7 +1482,10 @@ def run_monitor(
                     # dcp_commit_approved.py publishes the staged file with the reviewed rules.
                     # Spatial/inert chapters are never extracted, so they have nothing to hold.
                     if r2_path and stored_hash and not is_spatial and not is_inert:
-                        from scripts.dcp_staged import stage_file
+                        try:  # run as `python scripts/x.py` locally, the repo root is not on sys.path
+                            from scripts.dcp_staged import stage_file
+                        except ImportError:
+                            from dcp_staged import stage_file
                         stage_file(cur, chapter_id, r2_path=new_r2_path, version=new_version,
                                    public_url=new_public_url, content_hash=new_hash,
                                    content_length=new_len)

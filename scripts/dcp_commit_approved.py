@@ -617,7 +617,10 @@ def main() -> int:
             # The reviewed rules and the file they were read from go live in ONE transaction. Until
             # here the live page links and proofs still pointed at the previous file (migration 125).
             # The proof scripts below re-judge the chapter, as the path change cleared its proofs.
-            from scripts.dcp_staged import publish_staged
+            try:  # run as `python scripts/x.py` locally, the repo root is not on sys.path
+                from scripts.dcp_staged import publish_staged
+            except ImportError:
+                from dcp_staged import publish_staged
             if publish_staged(cur, council, chapter_key, expected_hash=approved_hash):
                 print(f"  [staged file published] {council}/{chapter_key} -- live file switched with the rules")
             cur.execute(

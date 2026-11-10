@@ -5458,7 +5458,10 @@ def extract_chapter(
                     _insert_provision_changes(cur, diff, council, chapter_key, version, now)
 
                 # The rules above are live, so a file held aside for them goes live with them.
-                from scripts.dcp_staged import publish_staged
+                try:  # run as `python scripts/x.py` locally, the repo root is not on sys.path
+                    from scripts.dcp_staged import publish_staged
+                except ImportError:
+                    from dcp_staged import publish_staged
                 publish_staged(cur, council, chapter_key)
 
                 # Mark chapter extracted in registry
