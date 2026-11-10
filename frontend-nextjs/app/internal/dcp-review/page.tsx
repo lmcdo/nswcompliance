@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function DcpReviewPage() {
   // Allowlisted reviewers only (lib/internal-reviewer.ts); the API routes check again.
   if (!(await currentReviewer())) {
-    redirect('/login');
+    redirect('/login?next=/internal/dcp-review');
   }
   return <DcpReviewQueue />;
 }

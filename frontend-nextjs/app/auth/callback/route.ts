@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { safeNext } from '@/lib/auth/safe-next';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/reports';
+  const next = safeNext(searchParams.get('next'));
 
   if (code) {
     const cookieStore = await cookies();
