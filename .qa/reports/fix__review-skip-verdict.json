@@ -1,0 +1,85 @@
+{
+  "tier": "standard",
+  "commit_hash": "9a8f36b4",
+  "justification": "Adds a non-blocking 'skip' verdict to the DCP review queue. Standard: one additive migration, one API route, no change to what the commit publishes.",
+  "files": [
+    "migrations/124_dcp_review_queue_skipped_status.sql",
+    "frontend-nextjs/app/api/dcp-review/_status.ts",
+    "frontend-nextjs/app/api/dcp-review/chapter/route.ts",
+    "frontend-nextjs/__tests__/api/dcp-review-chapter.test.ts",
+    "tests/test_dcp_commit_approved_records_hash.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Live constraint allowed pending,in_progress,approved,rejected,needs_info,superseded; Waverley queue 7,062 approved and 256 rejected non-rule rows",
+    "assumption_mismatch": "rejected blocks the commit by design, so non-rule text could not be left out without blocking the chapter",
+    "new_vs_existing": "Only rows a reviewer marks skip, from deploy"
+  },
+  "functions": [
+    {
+      "name": "POST /api/dcp-review/chapter",
+      "file_line": "frontend-nextjs/app/api/dcp-review/chapter/route.ts:POST",
+      "input": "a reviewer action, council and chapter key from the review page",
+      "output": "the count of queue rows given that verdict",
+      "if_none": "404 when no row of that chapter is in an updatable status"
+    }
+  ],
+  "values": [
+    {
+      "value": "status skipped",
+      "read_at": "dcp_commit_approved.find_committable_chapters",
+      "nullable": "no",
+      "guard_at": "blocking list names pending, in_progress, needs_info and current rejected only",
+      "if_missing": "row stays in its old status"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "record one reviewer verdict for every open row of one chapter",
+      "file_line": "frontend-nextjs/app/api/dcp-review/chapter/route.ts:POST",
+      "sql": "UPDATE dcp_review_queue SET status = $1, reviewed_by = $2 ... WHERE council = $4 AND chapter_key = $5 AND status = ANY($6::text[])",
+      "where_clause": "council = $4 AND chapter_key = $5 AND status = ANY($6) - one chapter, only statuses the action may change",
+      "if_empty": "404 no pending rows for that chapter"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Approve sent on a chapter that already has rejected rows",
+      "what_happens": "Rejected rows stay rejected; only skip may re-label them",
+      "mitigated": true,
+      "how": "fromStatuses per action",
+      "repro": "npx jest __tests__/api/dcp-review-chapter.test.ts"
+    },
+    {
+      "scenario": "Skip is used before migration 124 is applied",
+      "what_happens": "The update fails the CHECK and the route returns 500; no row changes",
+      "mitigated": true,
+      "how": "database CHECK constraint",
+      "repro": "apply_migration_dry_run.py rolled back shows the old constraint"
+    },
+    {
+      "scenario": "A skipped row could be published by the commit",
+      "what_happens": "Not published: the commit reads status approved only",
+      "mitigated": true,
+      "how": "commit query",
+      "repro": "python -m pytest tests/test_dcp_commit_approved_records_hash.py"
+    },
+    {
+      "scenario": "Record one reviewer verdict for every open row of one chapter but the chapter has none open",
+      "what_happens": "The update touches 0 rows and the route answers 404 instead of a silent success",
+      "mitigated": true,
+      "how": "rowCount check in the route",
+      "repro": "npx jest __tests__/api/dcp-review-chapter.test.ts"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/api/dcp-review-chapter.test.ts",
+    "fails_when": "skip mapping removed: the skip test fails with 400",
+    "observed_red": "Before this change 'skip' returned 400 invalid action"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - apply migration 124 before using skip: python scripts/apply_migration_dry_run.py migrations/124_dcp_review_queue_skipped_status.sql --apply"
+  }
+}

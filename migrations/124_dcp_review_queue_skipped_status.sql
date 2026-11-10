@@ -9,6 +9,8 @@
 -- 'skipped' does not block: the commit applies approved rows only (status = 'approved' everywhere it reads
 -- the queue), so a skipped row is simply not published. Widening a CHECK is additive: no existing row changes.
 
+BEGIN;
+
 ALTER TABLE dcp_review_queue
   DROP CONSTRAINT dcp_review_queue_status_chk;
 
@@ -19,3 +21,5 @@ ALTER TABLE dcp_review_queue
       'rejected'::text, 'needs_info'::text, 'superseded'::text, 'skipped'::text
     ])
   );
+
+COMMIT;
