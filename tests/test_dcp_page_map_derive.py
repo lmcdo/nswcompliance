@@ -121,3 +121,34 @@ def test_a_positive_and_a_refusal_together():
     good = derive_ranges_from_headers(document())
     bad = derive_ranges_from_headers(["no header"] * 10)
     assert good and bad == []
+
+
+# ── Amendment 6 layout: "Title CODE" on the page's first line (measured 2026-11-10) ──
+def titled_page(code, title, body="(h) Parking areas must not be located within the front setback."):
+    return f"{title} {code}\n{body}\nWAVERLEY DEVELOPMENT CONTROL PLAN 2022\n12"
+
+
+def test_titled_first_line_header_is_read_with_its_title():
+    pages = [titled_page(WASTE, "Waste")] * 3 + [titled_page(LOW_DENSITY, "Low Density Residential")] * 3
+    assert derive_ranges_from_headers(pages) == [
+        (WASTE, "Waste", 1, 3), (LOW_DENSITY, "Low Density Residential", 4, 6)]
+    assert page_part_codes(pages) == {p: WASTE for p in (1, 2, 3)} | {p: LOW_DENSITY for p in (4, 5, 6)}
+
+
+def test_titled_header_with_digits_in_title():
+    pages = [titled_page("E5", "113 Macpherson Street, Bronte")] * 2
+    assert derive_ranges_from_headers(pages) == [("E5", "113 Macpherson Street, Bronte", 1, 2)]
+
+
+def test_titled_form_off_the_first_line_is_not_a_header():
+    # The previous Waverley file's colour table: "Olive Mist green G54" on line 2 of p160
+    # became a fake part when this form was allowed on any of the first 3 lines.
+    pages = [part_page("B8", "Heritage")] * 4 + ["Colour schedule\nOlive Mist green G54\nRed oxide"]
+    assert [r[0] for r in derive_ranges_from_headers(pages)] == ["B8"]
+    assert 5 not in page_part_codes(pages)
+
+
+def test_sentence_ending_in_a_code_is_not_a_header():
+    # More than 10 words before the code = a sentence, not a running title.
+    line = "Refer to the controls for development in the Bondi Junction centre at Part E1"
+    assert page_part_codes([line + "\nbody"]) == {}

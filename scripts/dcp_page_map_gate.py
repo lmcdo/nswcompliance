@@ -113,6 +113,14 @@ BASELINE_PATH = os.path.join(_ROOT, ".claude", "dcp_page_map_baseline.json")
 
 # A running header that is a bare part code on its own line: B15, C2, 14A, 9c.
 PART_HEADER = re.compile(r"^([A-Z]{1,2}\d{1,2}[A-Za-z]?|\d{1,2}[A-Za-z])$")
+# Or, on a page's FIRST line only, the part title followed by the code: "Transport B7",
+# "113 Macpherson Street, Bronte E5". Waverley DCP 2022 Amendment 6 (measured 2026-11-10)
+# prints its running header this way on all but the E6/E7 pages, so the bare-code reading
+# found 28 of 493 pages and refused the chapter. The first-line limit is measured too: on
+# the council's previous file, allowing this form on any of the first 3 lines read a colour
+# table ("Olive Mist green G54", p160) as a part.
+TITLED_PART_HEADER = re.compile(
+    r"^((?:[A-Za-z0-9&',./()\-]+ ){1,10})([A-Z]{1,2}\d{1,2}[A-Za-z]?)$")
 HEADER_SCAN_LINES = 3
 # Below this share of pages carrying a code there is no truth to compare against.
 HEADER_MIN_PAGE_COVERAGE = 0.50
@@ -120,6 +128,23 @@ HEADER_MIN_PAGE_COVERAGE = 0.50
 RANGE_MIN_PAGES_FOR_VOTE = 1
 
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
+
+
+def header_code(line: str, is_first_line: bool) -> tuple[str, str | None] | None:
+    """(code, title printed on the same line or None) if the line is a running header.
+
+    The single reading of "what is a header": page_part_codes and
+    derive_ranges_from_headers both call it, so the gate and the ranges agree.
+    """
+    line = line.strip()
+    m = PART_HEADER.match(line)
+    if m:
+        return m.group(1), None
+    if is_first_line:
+        m = TITLED_PART_HEADER.match(line)
+        if m:
+            return m.group(2), m.group(1).strip()
+    return None
 
 
 # ── check 1: no range may point past the end of the PDF ──────────────────────
@@ -143,10 +168,10 @@ def page_part_codes(page_texts: list[str]) -> dict[int, str]:
     """{1-indexed page -> part code from its running header}, where one exists."""
     out: dict[int, str] = {}
     for i, txt in enumerate(page_texts):
-        for line in (txt or "").split("\n")[:HEADER_SCAN_LINES]:
-            m = PART_HEADER.match(line.strip())
-            if m:
-                out[i + 1] = m.group(1)
+        for j, line in enumerate((txt or "").split("\n")[:HEADER_SCAN_LINES]):
+            h = header_code(line, j == 0)
+            if h:
+                out[i + 1] = h[0]
                 break
     return out
 
@@ -189,10 +214,12 @@ def derive_ranges_from_headers(page_texts: list[str]) -> list[tuple[str, str, in
     for i, txt in enumerate(page_texts, start=1):
         raw = (txt or "").split("\n")
         for j, line in enumerate(raw[:HEADER_SCAN_LINES]):
-            m = PART_HEADER.match(line.strip())
-            if m:
-                title = next((l.strip() for l in raw[j + 1:j + 3] if l.strip()), "")
-                heads[i] = (m.group(1), title)
+            h = header_code(line, j == 0)
+            if h:
+                code, title = h
+                if title is None:
+                    title = next((l.strip() for l in raw[j + 1:j + 3] if l.strip()), "")
+                heads[i] = (code, title)
                 break
     if not page_texts or len(heads) / len(page_texts) < HEADER_MIN_PAGE_COVERAGE:
         return []
