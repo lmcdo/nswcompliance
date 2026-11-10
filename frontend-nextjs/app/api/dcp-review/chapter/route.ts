@@ -25,14 +25,17 @@ export async function POST(req: Request) {
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;
+  // Open rows only, for every action. Re-labelling a REJECTED row as skipped clears a commit blocker,
+  // so it is done one named row at a time on the per-id route, never chapter-wide (cross-review).
+  const fromStatuses = ['pending', 'in_progress'];
   const pool = getPool();
   try {
     const { rowCount } = await pool.query(
       `UPDATE dcp_review_queue
           SET status = $1, reviewed_by = $2, reviewed_at = NOW(), review_reason = $3
         WHERE council = $4 AND chapter_key = $5
-          AND status IN ('pending', 'in_progress')`,
-      [status, reviewer, reason, council, chapterKey],
+          AND status = ANY($6::text[])`,
+      [status, reviewer, reason, council, chapterKey, fromStatuses],
     );
     if (!rowCount) {
       return NextResponse.json(

@@ -41,10 +41,19 @@ describe('POST /api/dcp-review/chapter', () => {
     // must be scoped to the one chapter AND only touch un-resolved rows
     expect(sql).toMatch(/council = \$4/);
     expect(sql).toMatch(/chapter_key = \$5/);
-    expect(sql).toMatch(/status IN \('pending', 'in_progress'\)/);
+    expect(sql).toMatch(/status = ANY\(\$6::text\[\]\)/);
     expect(params).toEqual([
-      'approved', 'rev@example.com', null, 'leichhardt', 'part-c-s1-general',
+      'approved', 'rev@example.com', null, 'leichhardt', 'part-c-s1-general', ['pending', 'in_progress'],
     ]);
+  });
+
+  test('chapter-wide skip marks open rows skipped and never touches a rejected row', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 12 });
+    const res = await POST(req({ action: 'skip', council: 'waverley', chapter_key: 'waverley-dcp-2022' }));
+    expect((await res.json()).status).toBe('skipped');
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[0]).toBe('skipped');
+    expect(params[5]).toEqual(['pending', 'in_progress']);
   });
 
   test('rejects map to the rejected status', async () => {

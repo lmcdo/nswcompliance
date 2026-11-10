@@ -8,4 +8,7 @@ export const ACTION_TO_STATUS: Record<string, string> = {
   approve: 'approved',
   reject: 'rejected',
   'needs-info': 'needs_info',
+  // A correct reading that is not a rule (history, colour table, contents line): left out of the
+  // publish without blocking it. 'reject' still means "this reading is wrong" and blocks the chapter.
+  skip: 'skipped',
 };
