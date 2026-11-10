@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "commit_hash": "cb22e3f5",
+  "justification": "Changes how the page-map gate reads a running header, which decides whether a whole DCP chapter can be extracted. Standard: one function family, text parsing only, no DB access; every extracted rule still goes to the review queue.",
+  "files": [
+    "scripts/dcp_page_map_gate.py",
+    "tests/test_dcp_page_map_derive.py"
+  ],
+  "pre_impl": {
+    "existing_data": "pdfplumber page text of the Waverley DCP 2022 file we serve (R2 v1.1-2026-03-16, 448 pages) and the council's Amendment 6 (493 pages, downloaded by hand 2026-11-10)",
+    "assumption_mismatch": "Amendment 6 prints 'Transport B7' on one line; the gate expected 'B7' alone, matched 28 of 493 pages and refused the chapter",
+    "new_vs_existing": "Runs at extraction time only, for councils in HEADER_DERIVED_COUNCILS"
+  },
+  "functions": [
+    {
+      "name": "page_headers",
+      "file_line": "scripts/dcp_page_map_gate.py:page_headers",
+      "input": "the pdfplumber text of every page in the chapter PDF",
+      "output": "{page: (code, title)} for pages with a running header",
+      "if_none": "page absent from the dict; under 50% coverage derive_ranges_from_headers returns [] and the chapter is refused"
+    }
+  ],
+  "values": [
+    {
+      "value": "titled header (code, title)",
+      "read_at": "page_headers",
+      "nullable": "yes",
+      "guard_at": "counted only if repeated on 3 pages or listed with the same first title word in the document's contents",
+      "if_missing": "page has no header; ranges skip it"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A one-off first line 'Refer to the controls in Part E1'",
+      "what_happens": "Not repeated and not in the contents under that title: ignored",
+      "mitigated": true,
+      "how": "repeat-or-contents rule",
+      "repro": "python -m pytest tests/test_dcp_page_map_derive.py -k cross_reference"
+    },
+    {
+      "scenario": "Colour table line 'Olive Mist green G54' on line 2 of a page (real, previous Waverley file p160)",
+      "what_happens": "Titled form allowed on the first line only: ignored",
+      "mitigated": true,
+      "how": "first-line limit",
+      "repro": "python -m pytest tests/test_dcp_page_map_derive.py -k off_the_first_line"
+    },
+    {
+      "scenario": "A wrong titled header slips through anyway",
+      "what_happens": "Its code either resumes after another part or leaves a numbering gap, both of which refuse the chapter; otherwise the rules go to dcp_review_queue for a person",
+      "mitigated": true,
+      "how": "existing resume and gap refusals; review mode",
+      "repro": "python -m pytest tests/test_dcp_page_map_derive.py"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_dcp_page_map_derive.py",
+    "fails_when": "Old gate code restored: 2 failed; first-line limit removed: 1 failed",
+    "observed_red": "Ran the new tests against HEAD~ gate and a loosened gate: 2 and 1 failures respectively"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - re-run Waverley Amendment 6 intake and dcp_extract_changed.py --review; expect 32 parts derived"
+  }
+}
