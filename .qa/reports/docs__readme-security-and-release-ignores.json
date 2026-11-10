@@ -1,0 +1,52 @@
+{
+  "tier": "minor",
+  "justification": "Documentation and ignore rules only. Two markdown files and .gitignore; no code path, no query, no schema, no served data, no API surface. It changes what a reader is told the repository is, and which local artefacts git reports as untracked. Nothing a machine does changes.",
+  "commit_hash": "7e7c063e",
+  "files": [
+    "README.md",
+    "SECURITY.md",
+    ".gitignore"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/liability_language_check.py && git status --porcelain | grep -E '^\\?\\? (\\.public-release/|\\.audit-preservation-)' ; git ls-files --error-unmatch SECURITY.md",
+    "external_authority": "The repository's own liability-language gate, which encodes the wording rules from docs/qa/language-audit-2026-05-18.md, plus git's own index as the authority on whether SECURITY.md is tracked.",
+    "fails_when": "The liability check exits non-zero on the new README wording, or the public-release export and preservation bundle still appear as untracked in git status, or SECURITY.md is not in the index because the un-ignore line did not take effect.",
+    "observed_red": "Before the .gitignore change, git status listed the untracked .public-release/ tree and .audit-preservation-2026-09-23.bundle, and SECURITY.md could not be added because the broad root-markdown ignore rule covered it. That is the red state this change clears.",
+    "measured": "After the change: liability_language_check.py exits 0, git status no longer lists .public-release/ or the bundle, and git ls-files resolves SECURITY.md. The retired claims were also grepped for repo-wide -- '93%' and 'legal defensib' appear in no user-facing surface, so the README was the only place they were said."
+  },
+  "functions": "N/A - no functions added or changed.",
+  "values": "N/A - no values read from a database or API.",
+  "queries": "N/A - no database queries added or changed.",
+  "break_it": [
+    {
+      "scenario": "The '!SECURITY.md' un-ignore line is placed inside a block of markdown exceptions. If a future edit moves the broad root-level markdown ignore rule BELOW that exception, the last matching rule wins and SECURITY.md stops being matched by the exception.",
+      "what_happens": "Nothing visible, and nothing is lost: SECURITY.md is already committed, and git ignore rules apply only to untracked files. A tracked file keeps being tracked regardless of later ignore rules. The risk would only return if the file were ever deleted and re-added.",
+      "mitigated": true,
+      "how": "The file is committed in this change, which takes it out of the scope of ignore rules entirely. Verified with git ls-files --error-unmatch SECURITY.md."
+    },
+    {
+      "scenario": "Ignoring /.public-release/ hides a directory that contains its own git repository with a remote pointing at a PUBLIC GitHub repo. A later session running git status in the private repo gets no hint that a publishable export exists on disk, and could edit it believing the change is covered by the private repo's gates.",
+      "what_happens": "An edit inside .public-release/ is invisible to this repository's hooks, QA gates and CI, because those run against the private repo's index. It would only be caught by the export's own git, which has no hooks installed.",
+      "mitigated": true,
+      "how": "Not mitigated by the ignore rule itself -- mitigated by SECURITY.md, which is added in this same change and records that the export exists, what it may carry, and that it is reviewed separately before publication. The hazard is documented rather than hidden. Flagged to the user in the session report as the item needing a decision."
+    },
+    {
+      "scenario": "The README's retired accuracy figure ('93% confidence for complex conditional rules') is removed here, but the same claim could still be published on a marketing page or in a blog post, so removing it from one file would give a false sense that the claim is gone.",
+      "what_happens": "The claim would keep being made to users from a surface nobody checked, which is the exact failure mode the outreach claim inventory exists to prevent.",
+      "mitigated": true,
+      "how": "Grepped the repository for '93%' and 'legal defensib' outside node_modules and the export. The only remaining hits are a per-council coverage table in the DQ tracker, a cited external precedent in the pipeline architecture doc, an old migration comment and backup CSVs. No user-facing surface repeats either claim."
+    },
+    {
+      "scenario": "The new README says the software 'does not replace advice from a qualified planning, legal, building, surveying, or other relevant professional'. If that wording itself trips the repository's liability-language gate, the commit would be blocked or, worse, the gate's allowlist would be widened to let it through.",
+      "what_happens": "A widened allowlist would stop the gate catching the wording it exists to catch, turning a real control into decoration.",
+      "mitigated": true,
+      "how": "scripts/liability_language_check.py was run against the staged diff by the pre-commit hook and passed without any allowlist change. The disclaimer survives because it states a limitation rather than making a compliance claim."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No migration, no data write, no schema change.",
+    "secrets": "None added. SECURITY.md names the CATEGORIES of material that must stay private (env files, keys, database dumps, personal data) and contains no credential, host, key or token itself.",
+    "other_repo": "Yes -- relevant to the public export at .public-release/, whose remote is a public GitHub repository. That export already carries its own README.md and SECURITY.md from an earlier commit. This change does NOT push to it or alter it; whether the two should be reconciled is left to the user, and is reported separately.",
+    "manual_verify": "Read the rendered README on the PR to confirm the Limitations section replaces the old Performance section, and confirm git status in a fresh clone shows no untracked .public-release/ or preservation bundle."
+  }
+}
