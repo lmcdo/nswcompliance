@@ -415,6 +415,10 @@ MACHINE_VALUE_LABELS: dict[str, str] = {
 }
 
 _SNAKE_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+# Our own row-type tags at the start of a stored condition (never a council's words); the same
+# six as frontend-nextjs/lib/dcp/public-condition.ts INTERNAL_PREFIX. Measured 2026-11-10.
+_INTERNAL_PREFIX_RE = re.compile(
+    r"^\s*(?:NO FIGURE|FSR-CONTROLLED|DEFERS-TO-ADG|CHARACTER-BASED|ALTERNATIVE-METRIC|QUALITATIVE)\s*:\s*")
 
 
 def humanise_value(text: str) -> str:
@@ -499,8 +503,9 @@ def _dcp_control_sentence(e: ManifestEntry) -> Optional[str]:
             parts += f" at {value}"
     if rec.get("dev_type"):
         parts += f" for a {rec['dev_type'].replace('_', ' ')}"
-    if rec.get("condition"):
-        parts += f" ({rec['condition']})"
+    condition = _INTERNAL_PREFIX_RE.sub("", rec.get("condition") or "").strip()
+    if condition:
+        parts += f" ({condition})"
     if rec.get("source_ref"):
         ref = rec["source_ref"]
         # "clause 4.1.2" reads right; "clause Table 1" does not.

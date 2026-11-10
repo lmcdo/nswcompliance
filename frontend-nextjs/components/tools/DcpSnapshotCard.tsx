@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import posthog from 'posthog-js';
+import { publicCondition } from '@/lib/dcp/public-condition';
 
 interface Control {
   control_type: string;
@@ -224,8 +225,8 @@ export function DcpSnapshotCard({
                 {c.control_label}
                 {/* The condition is what makes several values for one control
                     readable instead of contradictory. */}
-                {c.condition ? (
-                  <span className="block text-xs text-gray-500">{c.condition}</span>
+                {publicCondition(c.condition) ? (
+                  <span className="block text-xs text-gray-500">{publicCondition(c.condition)}</span>
                 ) : null}
               </span>
               <span className="text-gray-900 font-medium tabular-nums whitespace-nowrap">

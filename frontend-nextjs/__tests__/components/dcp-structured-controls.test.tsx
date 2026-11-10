@@ -70,14 +70,14 @@ describe('noNumberLabel — a rule with no number is described, not called a mer
       .toBe("Worked out from neighbours' setbacks");
   });
 
-  it('falls back to a neutral "No set number" when none is stored, blank, or the field is absent', () => {
-    expect(noNumberLabel({ plain_summary: null })).toBe('No set number');
-    expect(noNumberLabel({ plain_summary: '   ' })).toBe('No set number');
-    expect(noNumberLabel({})).toBe('No set number');
+  it("falls back to pointing at the plan's words when none is stored, blank, or the field is absent", () => {
+    expect(noNumberLabel({ plain_summary: null })).toBe("See the plan's words");
+    expect(noNumberLabel({ plain_summary: '   ' })).toBe("See the plan's words");
+    expect(noNumberLabel({})).toBe("See the plan's words");
   });
 
   it('a non-string value from a malformed response falls back instead of throwing', () => {
-    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe('No set number');
+    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe("See the plan's words");
   });
 
   it('the component no longer prints "assessed on merit"', () => {

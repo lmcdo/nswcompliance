@@ -14,9 +14,16 @@ const INTERNAL_TAIL = /\s*NOT yet stored:[\s\S]*$/i;
 // Sentences end at ". " before a capital, so "6.5m" or "p.11" is never split.
 const SENTENCE_BREAK = /(?<=\.)\s+(?=[A-Z])/;
 const INTERNAL_MARKER = /\bNOT yet stored\b/;
+// Our own row-type tags at the start of a condition, written by our scripts
+// (scripts/archive/tmp_insert_explanation_rows.py, dq142_build_controls_migration.py), never by a
+// council. The six measured on served rows 2026-11-10 (nofig_db.json); listed, not pattern-matched,
+// so a council's own capitalised heading ("NOTE:") is never cut.
+const INTERNAL_PREFIX =
+  /^\s*(?:NO FIGURE|FSR-CONTROLLED|DEFERS-TO-ADG|CHARACTER-BASED|ALTERNATIVE-METRIC|QUALITATIVE)\s*:\s*/;
 
 export function publicCondition(condition: string | null | undefined): string | null {
   const shown = (condition ?? '')
+    .replace(INTERNAL_PREFIX, '')
     .replace(INTERNAL_TAIL, '')
     .split(SENTENCE_BREAK)
     .filter((s) => !INTERNAL_MARKER.test(s))

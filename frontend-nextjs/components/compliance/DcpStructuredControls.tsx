@@ -186,13 +186,14 @@ export function formatValue(control: StructuredControl): string {
 /**
  * What to show in the value column when a control sets no fixed number.
  * The plan's own rule, in plain English, when one is stored (e.g. "Worked out from neighbours'
- * setbacks"); otherwise a neutral "No set number". It used to label every such row a merit
- * assessment, which misdescribes a rule that is calculated from the neighbouring buildings.
+ * setbacks"); otherwise "See the plan's words", pointing at the quote shown with the row. It used
+ * to say "No set number", which was wrong for rows whose rule holds figures in its words
+ * (e.g. Ku-ring-gai "9 m low side / 12 m high side"; pilot audit 2026-11-10).
  */
 export function noNumberLabel(control: Pick<StructuredControl, 'plain_summary'>): string {
   const raw: unknown = control.plain_summary;
   const summary = typeof raw === 'string' ? raw.trim() : '';
-  return summary ? summary : 'No set number';
+  return summary ? summary : "See the plan's words";
 }
 
 function hasNumericValue(control: StructuredControl): boolean {

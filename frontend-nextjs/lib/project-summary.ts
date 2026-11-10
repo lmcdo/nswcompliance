@@ -4,6 +4,7 @@
 // /api/dcp/structured-controls rows). It holds no planning figure of its own.
 
 import { hazardUnchecked } from './hazard-unchecked';
+import { publicCondition } from './dcp/public-condition';
 import { formatValue, noNumberLabel, type StructuredControl } from '@/components/compliance/DcpStructuredControls';
 
 export const NOT_FOUND_TEXT = 'Not found in our data — check the plan';
@@ -94,7 +95,7 @@ function dcpEntry(c: StructuredControl, withLabel: boolean): SummaryEntry {
     linkText: c.pdf_page ? `page ${c.pdf_page}` : c.pdf_url ? 'Open the plan' : '',
     url: c.pdf_url,
     words: c.source_text,
-    condition: c.condition,
+    condition: publicCondition(c.condition),
   };
 }
 
