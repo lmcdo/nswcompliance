@@ -47,20 +47,13 @@ describe('POST /api/dcp-review/chapter', () => {
     ]);
   });
 
-  test('skip leaves non-rule rows out without blocking, and may re-label rows already rejected', async () => {
-    mockQuery.mockResolvedValueOnce({ rowCount: 256 });
+  test('chapter-wide skip marks open rows skipped and never touches a rejected row', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 12 });
     const res = await POST(req({ action: 'skip', council: 'waverley', chapter_key: 'waverley-dcp-2022' }));
-    const data = await res.json();
-    expect(data.status).toBe('skipped');
+    expect((await res.json()).status).toBe('skipped');
     const [, params] = mockQuery.mock.calls[0];
     expect(params[0]).toBe('skipped');
-    expect(params[5]).toEqual(['pending', 'in_progress', 'rejected']);
-  });
-
-  test('approve never re-labels a rejected row', async () => {
-    mockQuery.mockResolvedValueOnce({ rowCount: 1 });
-    await POST(req({ action: 'approve', council: 'c', chapter_key: 'k' }));
-    expect(mockQuery.mock.calls[0][1][5]).not.toContain('rejected');
+    expect(params[5]).toEqual(['pending', 'in_progress']);
   });
 
   test('rejects map to the rejected status', async () => {

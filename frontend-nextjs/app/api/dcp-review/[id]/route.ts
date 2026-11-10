@@ -39,8 +39,11 @@ export async function POST(
               new_text = COALESCE($5, new_text),
               fidelity_status = CASE WHEN $5 IS NOT NULL THEN 'grounded' ELSE fidelity_status END,
               fidelity_detail = CASE WHEN $5 IS NOT NULL THEN 'human-corrected in review' ELSE fidelity_detail END
-        WHERE id = $4 AND status IN ('pending', 'in_progress')`,
-      [status, reviewer, reason, id, editedText],
+        WHERE id = $4 AND status = ANY($6::text[])`,
+      // 'skip' may re-label ONE named rejected row (a reviewer who rejected non-rule text before
+      // 'skipped' existed). Never chapter-wide: that would also clear genuine rejections.
+      [status, reviewer, reason, id, editedText,
+        action === 'skip' ? ['pending', 'in_progress', 'rejected'] : ['pending', 'in_progress']],
     );
     if (!rowCount) {
       return NextResponse.json(

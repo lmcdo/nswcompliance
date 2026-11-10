@@ -25,9 +25,9 @@ export async function POST(req: Request) {
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;
-  // 'skip' may also re-label rows a reviewer already rejected: before 'skipped' existed, rejecting was
-  // the only way to leave non-rule text out, and a rejection blocks the chapter's commit.
-  const fromStatuses = action === 'skip' ? ['pending', 'in_progress', 'rejected'] : ['pending', 'in_progress'];
+  // Open rows only, for every action. Re-labelling a REJECTED row as skipped clears a commit blocker,
+  // so it is done one named row at a time on the per-id route, never chapter-wide (cross-review).
+  const fromStatuses = ['pending', 'in_progress'];
   const pool = getPool();
   try {
     const { rowCount } = await pool.query(
