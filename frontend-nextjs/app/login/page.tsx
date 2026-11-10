@@ -27,34 +27,44 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath())}`,
-      },
-    });
-    if (error) setError(error.message);
-    else setSent(true);
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath())}`,
+        },
+      });
+      if (error) setError(error.message);
+      else setSent(true);
+    } catch {
+      setError('Could not reach the sign-in service. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function verifyCode(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' });
-    if (error) {
-      setError(
-        error.message.toLowerCase().includes('expired')
-          ? 'That code has expired or was already used. Send a new one.'
-          : error.message,
-      );
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' });
+      if (error) {
+        setError(
+          error.message.toLowerCase().includes('expired')
+            ? 'That code has expired or was already used. Send a new one.'
+            : error.message,
+        );
+        setLoading(false);
+        return;
+      }
+      window.location.assign(nextPath());
+    } catch {
+      setError('Could not reach the sign-in service. Check your connection and try again.');
       setLoading(false);
-      return;
     }
-    window.location.assign(nextPath());
   }
 
   const input =
