@@ -112,15 +112,27 @@ if _ROOT not in sys.path:
 BASELINE_PATH = os.path.join(_ROOT, ".claude", "dcp_page_map_baseline.json")
 
 # A running header that is a bare part code on its own line: B15, C2, 14A, 9c.
-PART_HEADER = re.compile(r"^([A-Z]{1,2}\d{1,2}[A-Za-z]?|\d{1,2}[A-Za-z])$")
+_PART_CODE = r"[A-Z]{1,2}\d{1,2}[A-Za-z]?|\d{1,2}[A-Za-z]"
+PART_HEADER = re.compile(rf"^({_PART_CODE})$")
 # Or, on a page's FIRST line only, the part title followed by the code: "Transport B7",
 # "113 Macpherson Street, Bronte E5". Waverley DCP 2022 Amendment 6 (measured 2026-11-10)
 # prints its running header this way on all but the E6/E7 pages, so the bare-code reading
-# found 28 of 493 pages and refused the chapter. The first-line limit is measured too: on
-# the council's previous file, allowing this form on any of the first 3 lines read a colour
-# table ("Olive Mist green G54", p160) as a part.
-TITLED_PART_HEADER = re.compile(
-    r"^((?:[A-Za-z0-9&',./()\-]+ ){1,10})([A-Z]{1,2}\d{1,2}[A-Za-z]?)$")
+# found 28 of 493 pages and refused the chapter. Two limits, both measured or reviewed:
+#   * first line only -- on the council's previous file, allowing it on any of the first 3
+#     lines read a colour table ("Olive Mist green G54", p160) as a part;
+#   * the same (title, code) must recur on TITLED_MIN_REPEAT pages, OR the document's own
+#     contents must list that code with the same first title word ("B4 Coastal Risk
+#     Management 41"). A one-off first line such as "Refer to the controls in Part E1"
+#     passes neither (Sol cross-review, 2026-11-10). Repeats alone were measured too
+#     strict: one-page parts (B4, B10, B17, F3) print their header once.
+TITLED_PART_HEADER = re.compile(rf"^((?:[A-Za-z0-9&',./()\-]+ ){{1,10}})({_PART_CODE})$")
+TITLED_MIN_REPEAT = 3
+CONTENTS_LINE = re.compile(rf"^({_PART_CODE})\s+([A-Za-z0-9][^.]*?)[\s.]*\d+$")
+
+
+def _first_word(text: str) -> str:
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return words[0] if words else ""
 HEADER_SCAN_LINES = 3
 # Below this share of pages carrying a code there is no truth to compare against.
 HEADER_MIN_PAGE_COVERAGE = 0.50
@@ -130,21 +142,42 @@ RANGE_MIN_PAGES_FOR_VOTE = 1
 PASS, FAIL, UNKNOWN = "PASS", "FAIL", "UNKNOWN"
 
 
-def header_code(line: str, is_first_line: bool) -> tuple[str, str | None] | None:
-    """(code, title printed on the same line or None) if the line is a running header.
+def page_headers(page_texts: list[str]) -> dict[int, tuple[str, str]]:
+    """{1-indexed page -> (code, title)} for every page carrying a running header.
 
     The single reading of "what is a header": page_part_codes and
     derive_ranges_from_headers both call it, so the gate and the ranges agree.
+    A bare code on its own line within the first HEADER_SCAN_LINES lines takes its
+    title from the next non-blank line. A "Title CODE" first line counts only when
+    the same pair is printed on at least TITLED_MIN_REPEAT pages.
     """
-    line = line.strip()
-    m = PART_HEADER.match(line)
-    if m:
-        return m.group(1), None
-    if is_first_line:
-        m = TITLED_PART_HEADER.match(line)
-        if m:
-            return m.group(2), m.group(1).strip()
-    return None
+    bare: dict[int, tuple[str, str]] = {}
+    titled: dict[int, tuple[str, str]] = {}
+    for i, txt in enumerate(page_texts, start=1):
+        raw = (txt or "").split("\n")
+        for j, line in enumerate(raw[:HEADER_SCAN_LINES]):
+            m = PART_HEADER.match(line.strip())
+            if m:
+                title = next((l.strip() for l in raw[j + 1:j + 3] if l.strip()), "")
+                bare[i] = (m.group(1), title)
+                break
+            if j == 0:
+                t = TITLED_PART_HEADER.match(line.strip())
+                if t:  # keep scanning: a bare code below it still wins
+                    titled[i] = (t.group(2), t.group(1).strip())
+    repeats = Counter(titled.values())
+    listed: set[tuple[str, str]] = set()
+    if titled:
+        for txt in page_texts:
+            for line in (txt or "").split("\n"):
+                c = CONTENTS_LINE.match(line.strip())
+                if c:
+                    listed.add((c.group(1), _first_word(c.group(2))))
+    out = {p: (code, title) for p, (code, title) in titled.items()
+           if repeats[(code, title)] >= TITLED_MIN_REPEAT
+           or (code, _first_word(title)) in listed}
+    out.update(bare)
+    return out
 
 
 # ── check 1: no range may point past the end of the PDF ──────────────────────
@@ -166,14 +199,7 @@ def check_ranges_within_pdf(ranges, pdf_pages: int | None) -> dict:
 # ── check 2: a range's pages must carry that part's running header ───────────
 def page_part_codes(page_texts: list[str]) -> dict[int, str]:
     """{1-indexed page -> part code from its running header}, where one exists."""
-    out: dict[int, str] = {}
-    for i, txt in enumerate(page_texts):
-        for j, line in enumerate((txt or "").split("\n")[:HEADER_SCAN_LINES]):
-            h = header_code(line, j == 0)
-            if h:
-                out[i + 1] = h[0]
-                break
-    return out
+    return {p: code for p, (code, _title) in page_headers(page_texts).items()}
 
 
 # ── derivation: part boundaries from the pages themselves ────────────────────
@@ -186,9 +212,9 @@ def derive_ranges_from_headers(page_texts: list[str]) -> list[tuple[str, str, in
     typed in once cannot notice the document changing. The page header can.
 
     RULES, each measured on the waverley PDF on 2026-09-13 before it was written:
-      * A header is PART_HEADER on its own line within the first HEADER_SCAN_LINES
-        lines -- the SAME reading page_part_codes does, so the gate and the ranges
-        cannot disagree about what a header is. A contents line such as
+      * A header is what page_headers() reads -- the SAME reading page_part_codes
+        uses, so the gate and the ranges cannot disagree about what a header is
+        (a bare code, or a repeated "Title CODE" first line). A contents line such as
         "B1 Waste 4" is not a header, which is what keeps contents pages out.
       * A run is the pages from a code's first header to its last. A page with no
         header BETWEEN two pages of the same code belongs to that part (a
@@ -210,17 +236,7 @@ def derive_ranges_from_headers(page_texts: list[str]) -> list[tuple[str, str, in
     (waverley F5 Horticulture, inside page 431 under F4) is not separated from it.
     Page ranges cannot split a page; that text is extracted under the earlier part.
     """
-    heads: dict[int, tuple[str, str]] = {}
-    for i, txt in enumerate(page_texts, start=1):
-        raw = (txt or "").split("\n")
-        for j, line in enumerate(raw[:HEADER_SCAN_LINES]):
-            h = header_code(line, j == 0)
-            if h:
-                code, title = h
-                if title is None:
-                    title = next((l.strip() for l in raw[j + 1:j + 3] if l.strip()), "")
-                heads[i] = (code, title)
-                break
+    heads = page_headers(page_texts)
     if not page_texts or len(heads) / len(page_texts) < HEADER_MIN_PAGE_COVERAGE:
         return []
 

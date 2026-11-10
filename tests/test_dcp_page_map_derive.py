@@ -136,8 +136,20 @@ def test_titled_first_line_header_is_read_with_its_title():
 
 
 def test_titled_header_with_digits_in_title():
-    pages = [titled_page("E5", "113 Macpherson Street, Bronte")] * 2
-    assert derive_ranges_from_headers(pages) == [("E5", "113 Macpherson Street, Bronte", 1, 2)]
+    pages = [titled_page("E5", "113 Macpherson Street, Bronte")] * 3
+    assert derive_ranges_from_headers(pages) == [("E5", "113 Macpherson Street, Bronte", 1, 3)]
+
+
+def test_titled_header_with_number_first_code():
+    pages = [titled_page("14A", "Foreshore Controls")] * 3
+    assert page_part_codes(pages) == {1: "14A", 2: "14A", 3: "14A"}
+
+
+def test_one_off_cross_reference_on_a_first_line_is_not_a_header():
+    # A running header repeats; a single first line naming a part does not (Sol review).
+    pages = [titled_page(WASTE, "Waste")] * 4 + ["Refer to the controls in Part E1\n(a) body"]
+    assert page_part_codes(pages) == {p: WASTE for p in (1, 2, 3, 4)}
+    assert [r[0] for r in derive_ranges_from_headers(pages)] == [WASTE]
 
 
 def test_titled_form_off_the_first_line_is_not_a_header():
@@ -152,3 +164,12 @@ def test_sentence_ending_in_a_code_is_not_a_header():
     # More than 10 words before the code = a sentence, not a running title.
     line = "Refer to the controls for development in the Bondi Junction centre at Part E1"
     assert page_part_codes([line + "\nbody"]) == {}
+
+
+def test_one_page_part_counts_when_the_contents_list_it():
+    # B4 Coastal Risk Management is one page in Amendment 6: its header prints once.
+    contents = "TABLE OF CONTENTS\nB4 Coastal Risk Management 41\nB5 Water Management 42"
+    pages = ([contents] + [titled_page("B3", "Landscaping")] * 3
+             + [titled_page("B4", "Coastal Risk Management")]
+             + [titled_page("B5", "Water Management")] * 3)
+    assert [r[0] for r in derive_ranges_from_headers(pages)] == ["B3", "B4", "B5"]  # noqa: zone-codes
