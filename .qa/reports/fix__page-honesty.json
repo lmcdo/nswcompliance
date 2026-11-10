@@ -1,6 +1,6 @@
 {
   "tier": "standard",
-  "commit_hash": "7ab78788",
+  "commit_hash": "956a136d",
   "justification": "House page and paid report showed our internal row-type tags (NO FIGURE:, FSR-CONTROLLED: ...) and a bare 'No set number' on 40 served rows across the 10 pilot councils. Standard: display text only, three render sites and one report line, no query change.",
   "files": [
     "frontend-nextjs/lib/dcp/public-condition.ts",
@@ -74,6 +74,6 @@
     "db_reset": "No",
     "secrets": "No",
     "other_repo": "No",
-    "manual_verify": "Yes - nofig_live.py on the 10 pilot houses: 0 internal tags and 0 'No set number' shown"
+    "manual_verify": "Yes - load the 10 pilot houses (audit address files in the plans folder) and confirm 0 internal tags and 0 bare No set number shown"
   }
 }
