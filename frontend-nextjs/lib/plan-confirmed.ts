@@ -27,7 +27,8 @@ export const PLAN_CONFIRMED_SQL = `
 export async function loadPlanConfirmed(query: Query, council: string | null): Promise<string | null> {
   if (!council) return null;
   const res = await query(PLAN_CONFIRMED_SQL, [council]);
-  const row = res.rows[0] as { oldest?: Date | string | null; never?: boolean | null } | undefined;
+  const first = res.rows.length > 0 ? res.rows[0] : undefined;
+  const row = first as { oldest?: Date | string | null; never?: boolean | null } | undefined;
   if (!row || row.never || !row.oldest) return null;
   const d = row.oldest instanceof Date ? row.oldest : new Date(row.oldest);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();

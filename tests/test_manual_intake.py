@@ -96,3 +96,29 @@ def test_list_sql_and_probe_use_the_same_test():
 def test_print_list_says_nothing_to_do_when_clear(capsys):
     manual_intake.print_list([])
     assert "Nothing to take in" in capsys.readouterr().out
+
+
+# ---- the real database (opt-in: PYTEST_REAL_DB=1 DATABASE_URL=... pytest -m database) ----
+import os  # noqa: E402
+
+_real_db = pytest.mark.skipif(os.getenv("PYTEST_REAL_DB") != "1", reason="set PYTEST_REAL_DB=1 to run against the real database")
+
+
+@pytest.mark.database
+@_real_db
+def test_the_list_a_person_works_from_is_the_set_dq153_counts():
+    """The councils manual_intake lists are exactly the number DQ-153 counts, read from the live database."""
+    import dq_db
+    import dq_probe_live
+
+    rows = manual_intake.blocked_chapters()
+    conn = dq_db.connect()
+    try:
+        cur = conn.cursor()
+        _headline, sql, params, _means = dq_probe_live.PROBES["DQ-153"]
+        cur.execute(sql, params)
+        counted = cur.fetchone()[0]
+    finally:
+        conn.close()
+    assert len({r["council"] for r in rows}) == counted
+    assert all(r["council_url"] for r in rows), "every listed chapter must carry the council's own link"
