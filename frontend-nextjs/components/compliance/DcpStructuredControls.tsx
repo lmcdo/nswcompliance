@@ -190,10 +190,15 @@ export function formatValue(control: StructuredControl): string {
  * to say "No set number", which was wrong for rows whose rule holds figures in its words
  * (e.g. Ku-ring-gai "9 m low side / 12 m high side"; pilot audit 2026-11-10).
  */
-export function noNumberLabel(control: Pick<StructuredControl, 'plain_summary'>): string {
+export function noNumberLabel(
+  control: Pick<StructuredControl, 'plain_summary'> & { source_text?: string | null },
+): string {
   const raw: unknown = control.plain_summary;
   const summary = typeof raw === 'string' ? raw.trim() : '';
-  return summary ? summary : "See the plan's words";
+  if (summary) return summary;
+  // Point at the plan's words only when they are stored and shown with the row.
+  const words: unknown = control.source_text;
+  return typeof words === 'string' && words.trim() ? "See the plan's words" : 'Open the plan for this rule';
 }
 
 function hasNumericValue(control: StructuredControl): boolean {

@@ -70,14 +70,20 @@ describe('noNumberLabel — a rule with no number is described, not called a mer
       .toBe("Worked out from neighbours' setbacks");
   });
 
-  it("falls back to pointing at the plan's words when none is stored, blank, or the field is absent", () => {
-    expect(noNumberLabel({ plain_summary: null })).toBe("See the plan's words");
-    expect(noNumberLabel({ plain_summary: '   ' })).toBe("See the plan's words");
-    expect(noNumberLabel({})).toBe("See the plan's words");
+  it("points at the plan's words when no summary is stored but the words are", () => {
+    const words = 'The front setback is the average of the two neighbours.';
+    expect(noNumberLabel({ plain_summary: null, source_text: words })).toBe("See the plan's words");
+    expect(noNumberLabel({ plain_summary: '   ', source_text: words })).toBe("See the plan's words");
+  });
+
+  it('says to open the plan when neither a summary nor the words are stored', () => {
+    expect(noNumberLabel({ plain_summary: null, source_text: null })).toBe('Open the plan for this rule');
+    expect(noNumberLabel({ plain_summary: null, source_text: '  ' })).toBe('Open the plan for this rule');
+    expect(noNumberLabel({})).toBe('Open the plan for this rule');
   });
 
   it('a non-string value from a malformed response falls back instead of throwing', () => {
-    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe("See the plan's words");
+    expect(noNumberLabel({ plain_summary: 42 as unknown as string })).toBe('Open the plan for this rule');
   });
 
   it('the component no longer prints "assessed on merit"', () => {

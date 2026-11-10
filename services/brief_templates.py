@@ -419,6 +419,19 @@ _SNAKE_TOKEN_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
 # six as frontend-nextjs/lib/dcp/public-condition.ts INTERNAL_PREFIX. Measured 2026-11-10.
 _INTERNAL_PREFIX_RE = re.compile(
     r"^\s*(?:NO FIGURE|FSR-CONTROLLED|DEFERS-TO-ADG|CHARACTER-BASED|ALTERNATIVE-METRIC|QUALITATIVE)\s*:\s*")
+# Same as public-condition.ts: our "NOT yet stored" extraction notes, as a tail or a sentence.
+_INTERNAL_TAIL_RE = re.compile(r"\s*NOT yet stored:[\s\S]*$", re.IGNORECASE)
+_SENTENCE_BREAK_RE = re.compile(r"(?<=\.)\s+(?=[A-Z])")
+_INTERNAL_MARKER_RE = re.compile(r"\bNOT yet stored\b")
+
+
+def public_condition(condition: Optional[str]) -> str:
+    """A stored condition as the reader should see it -- the Python twin of
+    frontend-nextjs/lib/dcp/public-condition.ts, so the paid report and the page agree."""
+    text = _INTERNAL_PREFIX_RE.sub("", condition or "")
+    text = _INTERNAL_TAIL_RE.sub("", text)
+    kept = [s for s in _SENTENCE_BREAK_RE.split(text) if not _INTERNAL_MARKER_RE.search(s)]
+    return " ".join(kept).strip()
 
 
 def humanise_value(text: str) -> str:
@@ -503,7 +516,7 @@ def _dcp_control_sentence(e: ManifestEntry) -> Optional[str]:
             parts += f" at {value}"
     if rec.get("dev_type"):
         parts += f" for a {rec['dev_type'].replace('_', ' ')}"
-    condition = _INTERNAL_PREFIX_RE.sub("", rec.get("condition") or "").strip()
+    condition = public_condition(rec.get("condition"))
     if condition:
         parts += f" ({condition})"
     if rec.get("source_ref"):
