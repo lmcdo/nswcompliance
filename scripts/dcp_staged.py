@@ -38,10 +38,28 @@ def stage_file(cur, chapter_id: int, *, r2_path: str, version: str, public_url: 
         (r2_path, version, public_url, content_hash, content_length, chapter_id))
 
 
-def publish_staged(cur, council: str, chapter_key: str) -> bool:
+def publish_staged(cur, council: str, chapter_key: str, expected_hash: str | None = None) -> bool:
     """Make the staged file live and clear the staging. Call inside the transaction that publishes the
     reviewed rules. Returns False when nothing was staged. The live-path change fires the proof-clearing
-    triggers by design: the proofs were judged on the old file."""
+    triggers by design: the proofs were judged on the old file.
+
+    expected_hash = the source_content_hash the approved rules were read from. When given, only THAT staged
+    file is published: a newer file staged after the review stays staged (cross-review 2026-11-11), and the
+    caller's currency guard has already refused a mismatch, so this only closes the race between them."""
+    if expected_hash is not None:
+        cur.execute(
+            """UPDATE dcp_chapter_registry
+                  SET r2_current_path = staged_r2_path,
+                      r2_version_label = staged_version_label,
+                      r2_public_pdf_url = staged_public_pdf_url,
+                      content_hash = staged_content_hash,
+                      url_content_length = COALESCE(staged_url_content_length, url_content_length),
+                      staged_r2_path = NULL, staged_version_label = NULL, staged_public_pdf_url = NULL,
+                      staged_content_hash = NULL, staged_url_content_length = NULL, staged_at = NULL
+                WHERE staged_content_hash = %s AND staged_r2_path IS NOT NULL AND is_active
+                  AND council = %s AND chapter_key = %s""",
+            (expected_hash, council, chapter_key))
+        return cur.rowcount > 0
     cur.execute(
         """UPDATE dcp_chapter_registry
               SET r2_current_path = staged_r2_path,

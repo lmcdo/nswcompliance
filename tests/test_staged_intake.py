@@ -140,7 +140,7 @@ def test_publish_staged_with_nothing_staged_reports_false():
 def test_the_commit_worker_publishes_the_file_in_the_same_transaction_as_the_rules():
     src = open(os.path.join(os.path.dirname(__file__), "..", "scripts", "dcp_commit_approved.py"),
                encoding="utf-8").read()
-    i_pub = src.index("publish_staged(cur, council, chapter_key)")
+    i_pub = src.index("publish_staged(cur, council, chapter_key, expected_hash=approved_hash)")
     i_flag = src.index('"UPDATE dcp_chapter_registry SET needs_extraction=FALSE')
     i_commit = src.index("conn.commit()", i_flag)
     assert i_pub < i_flag < i_commit
@@ -152,3 +152,17 @@ def test_every_reader_of_the_update_chain_reads_the_effective_hash(script):
     src = open(os.path.join(os.path.dirname(__file__), "..", "scripts", script), encoding="utf-8").read()
     assert "staged_content_hash" in src
     assert not re.search(r"source_content_hash = (reg|r|dcp_chapter_registry)\.content_hash", src)
+
+
+def test_publish_only_moves_the_staged_file_the_rules_were_reviewed_against():
+    """A newer file staged after the review must stay staged (cross-review 2026-11-11)."""
+    from scripts.dcp_staged import publish_staged
+
+    class Cur:
+        rowcount = 0
+        def execute(self, sql, params=None):
+            self.sql, self.params = sql, params
+    cur = Cur()
+    publish_staged(cur, "waverley", "waverley-dcp-2022", expected_hash="adb51b82")
+    assert "staged_content_hash = %s" in cur.sql and "is_active" in cur.sql
+    assert cur.params == ("adb51b82", "waverley", "waverley-dcp-2022")

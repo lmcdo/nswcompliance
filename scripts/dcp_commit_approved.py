@@ -618,7 +618,7 @@ def main() -> int:
             # here the live page links and proofs still pointed at the previous file (migration 125).
             # The proof scripts below re-judge the chapter, as the path change cleared its proofs.
             from scripts.dcp_staged import publish_staged
-            if publish_staged(cur, council, chapter_key):
+            if publish_staged(cur, council, chapter_key, expected_hash=approved_hash):
                 print(f"  [staged file published] {council}/{chapter_key} -- live file switched with the rules")
             cur.execute(
                 "UPDATE dcp_chapter_registry SET needs_extraction=FALSE, "
