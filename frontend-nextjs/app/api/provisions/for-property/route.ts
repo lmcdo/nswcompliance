@@ -32,6 +32,7 @@ import frontageData from '@/data/frontage-setback-figures.json';
 import { loadFrontageSetbackFigures, type FrontageFigureData } from '@/lib/frontage-setback-figures';
 import { NOT_HERITAGE_SQL, ZONE_APPLIES_SQL, hcaTagSql } from '@/lib/provision-sql-filters';
 import { councilKey } from '@/lib/council-key';
+import { loadPlanConfirmed } from '@/lib/plan-confirmed';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 import { parseRefNumber } from '@/lib/see/refNumber';
@@ -693,6 +694,9 @@ export async function GET(request: NextRequest) {
           })
         : [];
 
+      // DQ-153: the oldest date we looked at this council's plan; the page says so when it is over 30 days old.
+      const planConfirmed = await loadPlanConfirmed((sql, params) => client.query(sql, params), councilSlugForMayApply);
+
       const response = NextResponse.json({
         success: true,
         data: {
@@ -724,6 +728,7 @@ export async function GET(request: NextRequest) {
           chapter_pdf_urls: chapterPdfUrls,
           precinct_warning: precinctWarning,
           dcp_currency: dcpCurrency,
+          plan_confirmed: planConfirmed,
           land_application: landApplication,
           land_conditions: landGate,
           not_covered: withoutShownAreas(getNotCovered(filters.former_council), mayApply, (k) => areasInChapter(councilSlugForMayApply, k)),

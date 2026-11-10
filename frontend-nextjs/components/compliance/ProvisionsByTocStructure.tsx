@@ -40,6 +40,7 @@ import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from 
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpStructuredControls } from './DcpStructuredControls';
 import { DcpLandApplicationNotice } from './DcpLandApplicationNotice';
+import { DcpPlanCheckNotice } from '@/components/compliance/DcpPlanCheckNotice';
 import { DcpNotCoveredNotice } from './DcpNotCoveredNotice';
 import { DcpMayApplyBlock, type MayApplyArea } from './DcpMayApplyBlock';
 import { suburbFromAddress } from '@/lib/may-apply-reasons';
@@ -432,6 +433,7 @@ export function ProvisionsByTocStructure({
       may_apply?: MayApplyArea[] | null;
       frontage_setback_figures?: FrontageFigureItem[];
       frontage_setback_figures_failed?: boolean;
+      plan_confirmed?: string | null;
       dcp_currency?: {
         verified_at: string | null;
         amendment_pending: boolean;
@@ -2236,6 +2238,7 @@ export function ProvisionsByTocStructure({
       {landApplication?.status === 'partial' && (
         <DcpLandApplicationNotice decision={landApplication} />
       )}
+      <DcpPlanCheckNotice checkedOn={data?.meta?.plan_confirmed} />
 
       {/* Main two-panel layout */}
       <div className="flex border rounded-lg bg-white">
