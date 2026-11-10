@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "commit_hash": "163527c9",
+  "justification": "Sign-in failed for the owner twice: one-time email links were used by an email link scanner before the click. Standard: login page, auth callback, one redirect; no DB query.",
+  "files": [
+    "frontend-nextjs/app/login/page.tsx",
+    "frontend-nextjs/lib/auth/safe-next.ts",
+    "frontend-nextjs/app/auth/callback/route.ts",
+    "frontend-nextjs/app/internal/dcp-review/page.tsx",
+    "frontend-nextjs/__tests__/lib/auth/safe-next.test.ts"
+  ],
+  "pre_impl": {
+    "existing_data": "auth.flow_state: links sent 10:13:17 and 10:14:39 were used at 10:13:32 and 10:15:05; auth.users last_sign_in_at empty",
+    "assumption_mismatch": "A single-use link assumes the person is the first to open it; a mail scanner opens it first",
+    "new_vs_existing": "Every sign-in from deploy; the emailed link still works as before"
+  },
+  "functions": [
+    {
+      "name": "safeNext",
+      "file_line": "frontend-nextjs/lib/auth/safe-next.ts:safeNext",
+      "input": "the next value from the sign-in page address bar",
+      "output": "a path on this site to return to after sign-in",
+      "if_none": "returns /reports when next is missing or leaves the site"
+    },
+    {
+      "name": "verifyCode",
+      "file_line": "frontend-nextjs/app/login/page.tsx:verifyCode",
+      "input": "the email address and the six digit code the person typed",
+      "output": "a signed-in session, then a move to the safe next path",
+      "if_none": "shows the Supabase error, or a send-a-new-code message when expired"
+    }
+  ],
+  "values": [
+    {
+      "value": "next",
+      "read_at": "login page nextPath and auth callback",
+      "nullable": "yes",
+      "guard_at": "safeNext",
+      "if_missing": "/reports"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "An attacker sends a sign-in link with next=//evil.example",
+      "what_happens": "Refused, falls back to /reports",
+      "mitigated": true,
+      "how": "safeNext",
+      "repro": "npx jest __tests__/lib/auth/safe-next.test.ts"
+    },
+    {
+      "scenario": "A mail scanner opens the emailed link first",
+      "what_happens": "The link is used up but the typed code still signs the person in",
+      "mitigated": true,
+      "how": "verifyOtp with the code",
+      "repro": "Send a code, let the email be scanned, type the code"
+    },
+    {
+      "scenario": "The code is mistyped or expired",
+      "what_happens": "Red message, Send a new code button",
+      "mitigated": true,
+      "how": "error branch in verifyCode",
+      "repro": "Type 000000"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "npx jest __tests__/lib/auth/safe-next.test.ts",
+    "fails_when": "safeNext returns next unchanged: the 4 off-site cases fail",
+    "observed_red": "The callback used next unchecked before; the off-site cases would pass through"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - add the {{ .Token }} code to the Supabase Magic Link email template, then sign in with the code"
+  }
+}
