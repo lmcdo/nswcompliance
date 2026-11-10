@@ -41,10 +41,26 @@ describe('POST /api/dcp-review/chapter', () => {
     // must be scoped to the one chapter AND only touch un-resolved rows
     expect(sql).toMatch(/council = \$4/);
     expect(sql).toMatch(/chapter_key = \$5/);
-    expect(sql).toMatch(/status IN \('pending', 'in_progress'\)/);
+    expect(sql).toMatch(/status = ANY\(\$6::text\[\]\)/);
     expect(params).toEqual([
-      'approved', 'rev@example.com', null, 'leichhardt', 'part-c-s1-general',
+      'approved', 'rev@example.com', null, 'leichhardt', 'part-c-s1-general', ['pending', 'in_progress'],
     ]);
+  });
+
+  test('skip leaves non-rule rows out without blocking, and may re-label rows already rejected', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 256 });
+    const res = await POST(req({ action: 'skip', council: 'waverley', chapter_key: 'waverley-dcp-2022' }));
+    const data = await res.json();
+    expect(data.status).toBe('skipped');
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[0]).toBe('skipped');
+    expect(params[5]).toEqual(['pending', 'in_progress', 'rejected']);
+  });
+
+  test('approve never re-labels a rejected row', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 1 });
+    await POST(req({ action: 'approve', council: 'c', chapter_key: 'k' }));
+    expect(mockQuery.mock.calls[0][1][5]).not.toContain('rejected');
   });
 
   test('rejects map to the rejected status', async () => {

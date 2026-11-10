@@ -25,14 +25,17 @@ export async function POST(req: Request) {
   }
 
   const reason = typeof body?.reason === 'string' ? body.reason : null;
+  // 'skip' may also re-label rows a reviewer already rejected: before 'skipped' existed, rejecting was
+  // the only way to leave non-rule text out, and a rejection blocks the chapter's commit.
+  const fromStatuses = action === 'skip' ? ['pending', 'in_progress', 'rejected'] : ['pending', 'in_progress'];
   const pool = getPool();
   try {
     const { rowCount } = await pool.query(
       `UPDATE dcp_review_queue
           SET status = $1, reviewed_by = $2, reviewed_at = NOW(), review_reason = $3
         WHERE council = $4 AND chapter_key = $5
-          AND status IN ('pending', 'in_progress')`,
-      [status, reviewer, reason, council, chapterKey],
+          AND status = ANY($6::text[])`,
+      [status, reviewer, reason, council, chapterKey, fromStatuses],
     );
     if (!rowCount) {
       return NextResponse.json(

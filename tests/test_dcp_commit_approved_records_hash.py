@@ -177,3 +177,14 @@ def test_a_dry_run_records_nothing(monkeypatch):
     dca.main()
 
     assert conn.commits == 0 and reg["updates"] == 0
+
+
+def test_a_skipped_row_neither_publishes_nor_blocks():
+    """'skipped' (migration 124) = a correct reading that is not a rule. The commit must not count it as
+    blocking (only pending/in_progress/needs_info and current-hash rejected block) and reads approved rows only."""
+    import inspect
+    import scripts.dcp_commit_approved as m
+    sql = inspect.getsource(m.find_committable_chapters)
+    blocking = sql.split("AS blocking")[0]
+    assert "'skipped'" not in blocking
+    assert "status IN ('pending', 'in_progress', 'needs_info')" in blocking
