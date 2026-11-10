@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A blocked council website (HTTP 403) was invisible: Waverley blocked since 2026-06-29 and Wollongong since 2026-09-24 kept serving old rules. This adds one read-only DQ probe (DQ-153), a hand-intake wrapper that calls the existing r2_monitor.py --from-file, and a one-line notice on the house page fed by a new meta.plan_check field ({checked_on, never_checked, blocked}) that applies the same rule as the red number. No write to the database; r2_monitor.py is not changed.",
-  "commit_hash": "de30d238",
+  "commit_hash": "16a91da6",
   "files": [
     "scripts/dq_probe_live.py",
     "scripts/manual_intake.py",

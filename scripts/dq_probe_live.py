@@ -3035,7 +3035,7 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         (),
         "Each count is a council whose website has stopped answering our monitor, so the rules we serve may be "
         "out of date. Take the council's PDFs in by hand: python scripts/manual_intake.py (lists the exact "
-        "links, then loads the downloaded files). The house page shows the date we last confirmed the plan.",
+        "links, then loads the downloaded files). The house page shows the date the monitor last checked the plan.",
     ),
 }
 
