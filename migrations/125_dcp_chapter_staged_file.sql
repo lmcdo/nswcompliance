@@ -15,6 +15,8 @@
 --
 -- Additive: nullable columns, no row changes, no trigger changes. NULL staged_r2_path = nothing staged.
 
+BEGIN;
+
 ALTER TABLE dcp_chapter_registry
     ADD COLUMN IF NOT EXISTS staged_r2_path            text,
     ADD COLUMN IF NOT EXISTS staged_version_label      text,
@@ -25,3 +27,5 @@ ALTER TABLE dcp_chapter_registry
 
 COMMENT ON COLUMN dcp_chapter_registry.staged_r2_path IS
   'New council file received but not yet published. Live page links and proofs still use r2_current_path. Switched by dcp_commit_approved.py (scripts/dcp_staged.py).';
+
+COMMIT;
