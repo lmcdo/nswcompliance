@@ -34,7 +34,7 @@ def test_a_temporary_failure_never_counts_toward_a_hold(err):
 def test_the_daily_run_holds_a_chapter_refused_twice_on_its_current_pdf():
     q, _ = dx._pending_chapters_sql(None, all_chapters=False)
     assert "NOT " + dx.HELD_FOR_REFUSALS in q
-    assert "extract_refused_hash = dcp_chapter_registry.content_hash" in dx.HELD_FOR_REFUSALS
+    assert "extract_refused_hash = COALESCE(dcp_chapter_registry.staged_content_hash, dcp_chapter_registry.content_hash)" in dx.HELD_FOR_REFUSALS
     assert f">= {dx.HOLD_AFTER_REFUSALS}" in dx.HELD_FOR_REFUSALS and dx.HOLD_AFTER_REFUSALS == 2
 
 
@@ -51,8 +51,8 @@ def test_a_named_chapter_and_the_audit_run_ignore_the_hold():
 
 def test_the_refusal_counter_restarts_on_a_new_pdf():
     sql = dx._record_refusal_sql()
-    assert "WHEN extract_refused_hash IS NOT DISTINCT FROM content_hash THEN extract_refusals + 1 ELSE 1" in sql
-    assert "extract_refused_hash = content_hash" in sql
+    assert "WHEN extract_refused_hash IS NOT DISTINCT FROM COALESCE(staged_content_hash, content_hash) THEN extract_refusals + 1 ELSE 1" in sql
+    assert "extract_refused_hash = COALESCE(staged_content_hash, content_hash)" in sql
 
 
 # ── run_chapters ────────────────────────────────────────────────────────────

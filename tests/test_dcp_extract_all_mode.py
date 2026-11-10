@@ -87,7 +87,7 @@ def test_daily_run_skips_a_chapter_already_queued_from_its_current_pdf():
     from dcp_extract_changed import ALREADY_QUEUED
     q, _ = _pending_chapters_sql(None, all_chapters=False)
     assert "NOT " + ALREADY_QUEUED in q
-    assert "q.source_content_hash = dcp_chapter_registry.content_hash" in ALREADY_QUEUED
+    assert "q.source_content_hash = COALESCE(dcp_chapter_registry.staged_content_hash, dcp_chapter_registry.content_hash)" in ALREADY_QUEUED
     assert "q.status = 'pending'" in ALREADY_QUEUED
 
 

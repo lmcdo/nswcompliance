@@ -890,6 +890,7 @@ def run_monitor(
                council_page_url, hub_expected_count, hub_last_pdf_count,
                r2_current_path, r2_version_label, url_last_downloaded,
                content_hash, url_content_length, url_etag, check_failures,
+               staged_content_hash, staged_version_label,
                COALESCE(is_spatial, FALSE) AS is_spatial,
                COALESCE(is_inert, FALSE) AS is_inert
         FROM dcp_chapter_registry
@@ -1205,6 +1206,7 @@ def run_monitor(
             r2_path     = chapter["r2_current_path"]
             version     = chapter["r2_version_label"]
             stored_hash = chapter["content_hash"]
+            staged_hash = chapter.get("staged_content_hash")  # new file held aside (migration 125)
             if manual_key and key != manual_key:
                 continue  # manual intake touches its one chapter only
             stored_len  = chapter["url_content_length"]
@@ -1333,7 +1335,7 @@ def run_monitor(
                 # (a genuine amendment downloaded by hand). Otherwise Chapter 4 fed under the
                 # Chapter 2 key would be stored as Chapter 2's source (Sol review, PR #1580).
                 # A chapter with no recorded hash accepts nothing unnamed either (Sol, 2nd pass).
-                if manual_file and new_hash not in {stored_hash, (manual_expect_sha256 or "").lower()} - {None, ""}:
+                if manual_file and new_hash not in {stored_hash, staged_hash, (manual_expect_sha256 or "").lower()} - {None, ""}:
                     raise RuntimeError(
                         f"manual intake refused: {manual_file} has sha256 {new_hash[:16]}, the registry "
                         f"holds {(stored_hash or 'no hash')[:16]} for {key}. Wrong file, or an amendment: re-run with "
@@ -1344,6 +1346,25 @@ def run_monitor(
                 new_len = remote_len if remote_len else len(content)
                 new_etag = resp_headers.get("ETag")
                 new_lm = resp_headers.get("Last-Modified")
+
+                if staged_hash and new_hash == staged_hash:
+                    # Already received and held aside: not a second change. Record the council's
+                    # latest headers so the HEAD fast path stops asking for the file.
+                    print(f"    [staged] Hash matches the staged file ({new_hash[:16]}...) -- already held for review")
+                    rec.chapter(chapter_id, ch_council, key, "unchanged_hash", fetch_reason)
+                    cur.execute(
+                        """UPDATE dcp_chapter_registry
+                           SET url_last_checked=%s, url_content_length=%s, url_etag=%s,
+                               url_last_modified=%s, check_failures=0, url_last_downloaded=%s
+                         WHERE id=%s""",
+                        (now, new_len, new_etag, new_lm, now, chapter_id),
+                    )
+                    if not dry_run:
+                        conn.commit()
+                    results["unchanged"] += 1
+                    results["checked"] += 1
+                    council_checked += 1
+                    continue
 
                 if new_hash == stored_hash and r2_path:
                     print(f"    [unchanged] Hash matches stored ({new_hash[:16]}...)")
@@ -1440,7 +1461,7 @@ def run_monitor(
                 old_size = f"{stored_len:,}" if stored_len else "?"
                 print(f"    Old size: {old_size}  New size: {new_len:,}")
 
-                new_version = next_version_label(version or "v1.0-baseline")
+                new_version = next_version_label(chapter.get("staged_version_label") or version or "v1.0-baseline")
                 new_r2_path = r2_path_for_version(
                     r2_path or f"source-pdfs/dcps/{ch_council}/v1.0-baseline/{key}.pdf",
                     new_version,
@@ -1455,8 +1476,27 @@ def run_monitor(
                     )
                     print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
                     new_public_url = R2_PUBLIC_BASE + new_r2_path
-                    # Spatial/inert chapters: hash-tracked but never trigger extraction
-                    cur.execute(
+                    # A chapter that already serves a file is STAGED, not re-pointed: moving
+                    # r2_current_path would send live page links to the new file at the old page
+                    # numbers and fire the proof-clearing triggers (migrations 078/079/111/112).
+                    # dcp_commit_approved.py publishes the staged file with the reviewed rules.
+                    # Spatial/inert chapters are never extracted, so they have nothing to hold.
+                    if r2_path and stored_hash and not is_spatial and not is_inert:
+                        from scripts.dcp_staged import stage_file
+                        stage_file(cur, chapter_id, r2_path=new_r2_path, version=new_version,
+                                   public_url=new_public_url, content_hash=new_hash,
+                                   content_length=new_len)
+                        cur.execute(
+                            """UPDATE dcp_chapter_registry
+                               SET url_etag=%s, url_last_modified=%s, url_last_checked=%s,
+                                   url_last_changed=%s, url_last_downloaded=%s,
+                                   needs_extraction=TRUE, check_failures=0
+                             WHERE id=%s""",
+                            (new_etag, new_lm, now, now, now, chapter_id),
+                        )
+                        print(f"    [STAGED] new file held aside; live page and proofs unchanged")
+                    else:
+                        cur.execute(
                         """
                         UPDATE dcp_chapter_registry
                         SET r2_current_path=%s, r2_version_label=%s,

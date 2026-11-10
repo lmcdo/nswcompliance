@@ -52,7 +52,7 @@ def test_non_removal_untouched_by_removal_rule():
 def test_rows_only_from_active_pdf():
     sql = " ".join(ap.CHAPTER_ROWS_SQL.split())
     assert "reg.is_active" in sql
-    assert "q.source_content_hash = reg.content_hash" in sql
+    assert "q.source_content_hash = COALESCE(reg.staged_content_hash, reg.content_hash)" in sql
     assert "q.status = 'pending'" in sql
 
 

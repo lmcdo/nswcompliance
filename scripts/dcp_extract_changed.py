@@ -2607,7 +2607,9 @@ ALREADY_QUEUED = (
     "WHERE q.council = dcp_chapter_registry.council "
     "AND q.chapter_key = dcp_chapter_registry.chapter_key "
     "AND q.status = 'pending' "
-    "AND q.source_content_hash = dcp_chapter_registry.content_hash)"
+    # The hash being read is the STAGED file's when one is held aside (migration 125).
+    "AND q.source_content_hash = COALESCE(dcp_chapter_registry.staged_content_hash, "
+    "dcp_chapter_registry.content_hash))"
 )
 
 
@@ -2621,7 +2623,8 @@ HELD_FOR_REFUSALS = (
     # The WHOLE test is wrapped in coalesce(..., false): any NULL (hash, time) must read as
     # "not held", or NOT(NULL) drops the chapter from both the read list and the held list.
     "coalesce(("
-    "dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash "
+    "dcp_chapter_registry.extract_refused_hash = COALESCE(dcp_chapter_registry.staged_content_hash, "
+    "dcp_chapter_registry.content_hash) "
     f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS} "
     # Bounded: a hold lasts HOLD_DAYS from the last refusal, then the chapter is tried once
     # more. Not forever -- a held chapter keeps serving the previous PDF's rules (Sol review).
@@ -2641,9 +2644,9 @@ def is_content_refusal(err) -> bool:
 def _record_refusal_sql() -> str:
     """Count a refusal of this chapter's current PDF; a new hash starts the count again."""
     return ("UPDATE dcp_chapter_registry SET "
-            "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM content_hash "
-            "THEN extract_refusals + 1 ELSE 1 END, "
-            "extract_refused_hash = content_hash, extract_refused_reason = %s, "
+            "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM "
+            "COALESCE(staged_content_hash, content_hash) THEN extract_refusals + 1 ELSE 1 END, "
+            "extract_refused_hash = COALESCE(staged_content_hash, content_hash), extract_refused_reason = %s, "
             "extract_refused_at = now() "
             "WHERE id = %s")
 
@@ -2697,7 +2700,10 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
         conds.append("NOT " + HELD_FOR_REFUSALS)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
-        "r2_current_path, r2_version_label, dcp_name, content_hash, "
+        # Effective values (migration 125): the staged file when one is held aside, else the live one.
+        "COALESCE(staged_r2_path, r2_current_path) AS r2_current_path, "
+        "COALESCE(staged_version_label, r2_version_label) AS r2_version_label, dcp_name, "
+        "COALESCE(staged_content_hash, content_hash) AS content_hash, "
         # council_url carries the only evidence of a repealed source: the
         # mirrored R2 key is a tidy path with no marker in it.
         "council_url "
@@ -4706,7 +4712,7 @@ def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str 
     cur.execute(
         """SELECT chapter_key, page_start, page_end
              FROM dcp_chapter_registry
-            WHERE is_active AND r2_current_path = %s""",
+            WHERE is_active AND COALESCE(staged_r2_path, r2_current_path) = %s""",
         (r2_path,),
     )
     rows = cur.fetchall()
@@ -5389,6 +5395,10 @@ def extract_chapter(
                 if not first_extraction:
                     _insert_provision_changes(cur, diff, council, chapter_key, version, now)
 
+                # The rules above are live, so a file held aside for them goes live with them.
+                from scripts.dcp_staged import publish_staged
+                publish_staged(cur, council, chapter_key)
+
                 # Mark chapter extracted in registry
                 cur.execute(
                     """
@@ -5937,7 +5947,7 @@ def run_fidelity_gate(
     try:
         for g_council, g_chapter in sorted(pairs):
             gcur.execute(
-                "SELECT r2_current_path FROM dcp_chapter_registry "
+                "SELECT COALESCE(staged_r2_path, r2_current_path) FROM dcp_chapter_registry "
                 "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL "
                 "AND is_active = TRUE",
                 (g_council, g_chapter),

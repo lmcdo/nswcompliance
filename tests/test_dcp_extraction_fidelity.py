@@ -455,12 +455,12 @@ class TestCommitBlockingScope:
         hash scoping one rejection would block every future commit."""
         src = open(os.path.join(os.path.dirname(__file__), "..", "scripts",
                                 "dcp_commit_approved.py"), encoding="utf-8").read()
-        assert "q.source_content_hash = r.content_hash" in src
+        assert "q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash)" in src
         assert "'rejected'" not in src.split("q.status IN ('pending', 'in_progress', 'needs_info')")[1].split("blocking")[0] or True
         # the blocking filter must pair 'rejected' with the hash condition
         blocking = src[src.index("find_committable_chapters"):src.index("ORDER BY q.council")]
         assert blocking.count("q.status = 'rejected'") == 2
-        assert blocking.count("q.source_content_hash = r.content_hash") == 2
+        assert blocking.count("q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash)") == 2
 
 
 class TestRejectedSupersededOnReextraction:
@@ -502,7 +502,7 @@ class TestWatchdogRunbook:
                                 "dcp_watchdog.py"), encoding="utf-8").read()
         block = src[src.index("Check 6"):src.index("pending_by_chapter = ")]
         assert "'pending', 'in_progress', 'needs_info'" in block
-        assert "q.source_content_hash = r.content_hash" in block
+        assert "q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash)" in block
 
 
 def test_a_numbered_table_is_not_a_junk_ref_but_a_bare_table_still_is():
