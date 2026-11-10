@@ -212,7 +212,7 @@ cur.execute("""
     JOIN dcp_chapter_registry r
       ON r.council = q.council AND r.chapter_key = q.chapter_key
     WHERE q.status IN ('pending', 'in_progress', 'needs_info')
-       OR (q.status = 'rejected' AND q.source_content_hash = r.content_hash)
+       OR (q.status = 'rejected' AND q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash))
     GROUP BY q.council, q.chapter_key
 """)
 pending_by_chapter = {(c, k): (n, oldest) for c, k, n, oldest in cur.fetchall()}

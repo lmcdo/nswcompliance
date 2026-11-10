@@ -84,7 +84,7 @@ def find_committable_chapters(cur) -> list[dict]:
                COUNT(*) FILTER (
                    WHERE q.status IN ('pending', 'in_progress', 'needs_info')
                       OR (q.status = 'rejected'
-                          AND q.source_content_hash = r.content_hash)
+                          AND q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash))
                ) AS blocking,
                MAX(q.source_content_hash) FILTER (WHERE q.status = 'approved') AS approved_hash,
                COUNT(DISTINCT q.source_content_hash) FILTER (WHERE q.status = 'approved') AS hash_variants
@@ -97,7 +97,7 @@ def find_committable_chapters(cur) -> list[dict]:
            AND COUNT(*) FILTER (
                    WHERE q.status IN ('pending', 'in_progress', 'needs_info')
                       OR (q.status = 'rejected'
-                          AND q.source_content_hash = r.content_hash)
+                          AND q.source_content_hash = COALESCE(r.staged_content_hash, r.content_hash))
                ) = 0
         ORDER BY q.council, q.chapter_key
         """
@@ -116,7 +116,10 @@ def fetch_registry_chapter(cur, council: str, chapter_key: str) -> dict | None:
     cur.execute(
         """
         SELECT id, council, chapter_key, chapter_label,
-               r2_current_path, r2_version_label, dcp_name, content_hash
+               COALESCE(staged_r2_path, r2_current_path) AS r2_current_path,
+               COALESCE(staged_version_label, r2_version_label) AS r2_version_label,
+               dcp_name, COALESCE(staged_content_hash, content_hash) AS content_hash,
+               (staged_r2_path IS NOT NULL) AS has_staged_file
         FROM dcp_chapter_registry
         WHERE council = %s AND chapter_key = %s
           AND is_active = TRUE
@@ -611,6 +614,15 @@ def main() -> int:
             # untouched are the ones whose text matched the new PDF. A legacy approval with no
             # recorded hash cannot say which version it reflects, so it clears the flag and
             # leaves the recorded fingerprint as it was.
+            # The reviewed rules and the file they were read from go live in ONE transaction. Until
+            # here the live page links and proofs still pointed at the previous file (migration 125).
+            # The proof scripts below re-judge the chapter, as the path change cleared its proofs.
+            try:  # run as `python scripts/x.py` locally, the repo root is not on sys.path
+                from scripts.dcp_staged import publish_staged
+            except ImportError:
+                from dcp_staged import publish_staged
+            if publish_staged(cur, council, chapter_key, expected_hash=approved_hash):
+                print(f"  [staged file published] {council}/{chapter_key} -- live file switched with the rules")
             cur.execute(
                 "UPDATE dcp_chapter_registry SET needs_extraction=FALSE, "
                 "provisions_extracted_from_hash = COALESCE(%s, provisions_extracted_from_hash) "

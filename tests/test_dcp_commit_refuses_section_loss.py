@@ -35,6 +35,7 @@ class _Cur:
     def __init__(self, db):
         self.db = db
         self.sql = ""
+        self.rowcount = 0   # publish_staged reads it; nothing is staged in this suite
 
     def execute(self, sql, params=None):
         self.sql = sql

@@ -447,7 +447,8 @@ def test_the_download_date_is_saved_only_with_a_good_outcome():
     src = (ROOT / "scripts" / "r2_monitor.py").read_text(encoding="utf-8")
     between = src[src.index("content, resp_headers = download_pdf(url)"):src.index("if new_hash == stored_hash:")]
     assert "url_last_downloaded" not in between
-    assert src.count("url_last_downloaded=%s") == 3            # unchanged-hash, re-export, changed
+    # unchanged-hash, re-export, already-staged, changed-and-held-aside, changed-first-load (#1637 staging)
+    assert src.count("url_last_downloaded=%s") == 5
     tail = src[src.index("except WAFBlockError as exc:"):src.index("adaptive_delay(url)  # per-domain")]
     assert "url_last_downloaded" not in tail
 

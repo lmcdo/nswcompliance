@@ -52,6 +52,8 @@ import dcp_commit_approved as dca  # noqa: E402
 class _Cur:
     """Enough cursor for main(): the dry-run count query and the two cleanup writes."""
 
+    rowcount = 0   # publish_staged reads it; nothing is staged here
+
     def __init__(self):
         self.calls = []
 

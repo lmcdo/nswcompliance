@@ -233,3 +233,24 @@ class TestAPageCountIsNotASlice:
         rng, refusal = self._call(
             [("mine", 8, 25), ("other", 31, 35)], seen=(None, None))
         assert rng == (8, 25) and refusal is None
+
+
+def test_a_staged_chapter_still_finds_a_sibling_on_the_shared_live_file():
+    """Only one of two chapters sharing old.pdf has new.pdf staged: the sibling still points at old.pdf.
+    The lookup must match the staged chapter's LIVE path too, or it reads the whole file (cross-review 2026-11-11)."""
+    import scripts.dcp_extract_changed as dec
+
+    class Cur:
+        def __init__(self):
+            self.calls = []
+        def execute(self, sql, params=None):
+            self.calls.append((sql, params))
+        def fetchall(self):
+            return [("a", None, None)]
+
+    cur = Cur()
+    dec.chapter_page_slice(cur, {"council": "c", "chapter_key": "a", "r2_current_path": "new.pdf"})
+    sql, params = cur.calls[0]
+    assert "OR COALESCE(staged_r2_path, r2_current_path) =" in sql
+    assert "SELECT r2_current_path FROM dcp_chapter_registry" in sql
+    assert params == ("new.pdf", "c", "a")

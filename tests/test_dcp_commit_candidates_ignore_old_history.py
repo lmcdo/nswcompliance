@@ -29,9 +29,9 @@ CURRENT, OLDER = "h2-current", "h9-older"  # the older hash sorts LAST, so an un
 
 def _cursor(queue, registry_hash=CURRENT):
     con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE dcp_chapter_registry (council TEXT, chapter_key TEXT, content_hash TEXT, is_active BOOLEAN)")
+    con.execute("CREATE TABLE dcp_chapter_registry (council TEXT, chapter_key TEXT, content_hash TEXT, staged_content_hash TEXT, is_active BOOLEAN)")
     con.execute("CREATE TABLE dcp_review_queue (council TEXT, chapter_key TEXT, status TEXT, source_content_hash TEXT)")
-    con.execute("INSERT INTO dcp_chapter_registry VALUES ('woollahra', 'chapter-e3', ?, 1)", (registry_hash,))
+    con.execute("INSERT INTO dcp_chapter_registry (council, chapter_key, content_hash, is_active) VALUES ('woollahra', 'chapter-e3', ?, 1)", (registry_hash,))
     con.executemany("INSERT INTO dcp_review_queue VALUES ('woollahra', 'chapter-e3', ?, ?)", queue)
     return con.cursor()
 

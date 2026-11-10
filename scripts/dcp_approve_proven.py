@@ -82,12 +82,12 @@ def plain_approvable(status: str, body: str) -> bool:
 
 
 #: pending rows are read only from the chapter's ACTIVE PDF: active registry entry + matching content hash
-CHAPTER_ROWS_SQL = """SELECT q.id, q.change_type, q.ref_number, q.new_text, q.new_page, reg.r2_current_path,
+CHAPTER_ROWS_SQL = """SELECT q.id, q.change_type, q.ref_number, q.new_text, q.new_page, COALESCE(reg.staged_r2_path, reg.r2_current_path) AS r2_current_path,
                           q.created_at, q.source_content_hash, q.document_id, q.is_full_replace
                      FROM dcp_review_queue q JOIN dcp_chapter_registry reg
                        ON reg.council = q.council AND reg.chapter_key = q.chapter_key AND reg.is_active
                     WHERE q.status = 'pending' AND q.council = %s AND q.chapter_key = %s
-                      AND q.source_content_hash = reg.content_hash ORDER BY q.id"""
+                      AND q.source_content_hash = COALESCE(reg.staged_content_hash, reg.content_hash) ORDER BY q.id"""
 
 
 def main() -> None:
@@ -130,7 +130,7 @@ def main() -> None:
         cur.execute("""SELECT q.ref_number, q.new_text FROM dcp_review_queue q JOIN dcp_chapter_registry reg
                          ON reg.council = q.council AND reg.chapter_key = q.chapter_key AND reg.is_active
                       WHERE q.council = %s AND q.chapter_key = %s AND q.status IN ('pending', 'approved')
-                        AND q.change_type <> 'removed' AND q.source_content_hash = reg.content_hash""", (council, key))
+                        AND q.change_type <> 'removed' AND q.source_content_hash = COALESCE(reg.staged_content_hash, reg.content_hash)""", (council, key))
         batch_rows = cur.fetchall()
         lead_ins = {head(t) for _ref, t in batch_rows if rpl.rule_body(t or "").strip().endswith(":")}
         item_parents = {m.group(1) + " " + m.group(2) for _ref, t in batch_rows if (m := ITEM.match(head(t)))}

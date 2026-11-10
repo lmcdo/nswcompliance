@@ -1895,7 +1895,7 @@ class DCPExtractor:
                   f"rule lines in no rule {rep['uncovered']}", flush=True)
             for _i, page, text in out["uncovered"][:10]:
                 print(f"      not in any rule: p{page} {text[:100]}")
-            return sr.to_sections(out["rules"])
+            return self._stamp_parts(sr.to_sections(out["rules"]))
         if ai_extraction_enabled():
             from scripts.ai_extractor import ai_extract_chapter, configured_model
             # An explicit AI_MODEL wins inside ai_extract_chapter, so asking
@@ -1910,7 +1910,8 @@ class DCPExtractor:
                 self.reader_used = f"llm:{_model}"
                 # The range a shared PDF assigns this chapter: without it the reader read the
                 # whole file and credited other chapters' rules to this one (2026-10-25).
-                return ai_extract_chapter(self.pdf_path, self.council, page_range=self.page_range)
+                return self._stamp_parts(
+                    ai_extract_chapter(self.pdf_path, self.council, page_range=self.page_range))
             # Enabled, but this deployment has no provider key. Fall back rather than
             # fail: making the LLM the default (2026-09-21) must not break a nightly
             # job that has always run the reader below. Measured the same day, the
@@ -1945,6 +1946,28 @@ class DCPExtractor:
             override = self._maybe_toc_override(sections)
             if override is not None:
                 return override
+        return sections
+
+    def _stamp_parts(self, sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """stamp_part_codes for a chapter read by an AI/section reader. Fails open: a page map that cannot be
+        built leaves the headings as read, and says so (the area-link guard then judges the result)."""
+        try:
+            from enrichment.config import COUNCIL_CONFIGS
+            parts_config = (COUNCIL_CONFIGS.get(self.council) or {}).get("parts") or {}
+            if not parts_config:
+                return sections
+            with pdfplumber.open(self.pdf_path) as pdf:
+                total = len(pdf.pages)
+                texts = [""] * total
+                for i, p in self._owned_pages(pdf):
+                    texts[i - 1] = self._page_text(p, i)
+                    _release_page(p)
+            ranges = derive_ranges_from_headers(texts)
+            n = stamp_part_codes(sections, ranges, parts_config)
+            print(f"    [part-codes] {n} of {len(sections)} headings stamped from the page map "
+                  f"({len(ranges)} parts found)")
+        except Exception as exc:  # noqa: BLE001 -- never lose a read over a stamp
+            print(f"    [part-codes] NOT stamped ({type(exc).__name__}: {exc}); headings left as read")
         return sections
 
     def _maybe_toc_override(
@@ -2438,6 +2461,36 @@ def _clean_toc_title(title: str) -> str:
     return _TOC_TITLE_CLEANUP_RE.sub('', title).strip()
 
 
+def stamp_part_codes(sections: list[dict[str, Any]], ranges, parts_config: dict | None) -> int:
+    """Put the Part code in front of each numeric-only section heading, from the page map. Returns rows stamped.
+
+    The AI and section readers give a rule the heading it prints ("1.2 (e) URBAN FORM CONTROLS" on a Bondi
+    Junction page). Area links read the Part from the heading's first token (LayerTopicTagger._extract_section_code
+    -> v2_dcp_part; Waverley's precinct rule copies it when it is exactly E1..E7). The old reader headed these
+    rows "E1 ...", so a re-read with an AI reader lost them: Waverley Amdt 6 queue, 1,309 rows on Part E pages,
+    20 headed with a Part (2026-11-11). Page -> Part comes from the pages' own running headers
+    (dcp_page_map_gate.derive_ranges_from_headers), never from the rule's text.
+
+    Stamped only when the council's tagger config can resolve that Part (exact or by letter) and the heading's
+    first token is a bare number: a heading that already starts with a letter code is left as read. ref_number
+    is built from section_number and does not change. Pure."""
+    parts_config = parts_config or {}
+    stamped = 0
+    for sec in sections:
+        number = str(sec.get("section_number") or "").strip()
+        if not number or number == "preamble" or not number[0].isdigit() or sec.get("text_heading"):
+            continue
+        page = sec.get("page_start")
+        if not isinstance(page, int):
+            continue
+        part = next((code for code, _title, lo, hi in ranges if lo <= page <= hi), None)
+        if not part or not (part in parts_config or part[0] in parts_config):
+            continue
+        sec["text_heading"] = f"{part} {number} {sec.get('section_title') or ''}".strip()
+        stamped += 1
+    return stamped
+
+
 def build_provision_text(section: dict[str, Any]) -> str:
     content = DCPExtractor.clean_content(section["content"])
     content = _strip_toc_lines(content)
@@ -2607,7 +2660,9 @@ ALREADY_QUEUED = (
     "WHERE q.council = dcp_chapter_registry.council "
     "AND q.chapter_key = dcp_chapter_registry.chapter_key "
     "AND q.status = 'pending' "
-    "AND q.source_content_hash = dcp_chapter_registry.content_hash)"
+    # The hash being read is the STAGED file's when one is held aside (migration 125).
+    "AND q.source_content_hash = COALESCE(dcp_chapter_registry.staged_content_hash, "
+    "dcp_chapter_registry.content_hash))"
 )
 
 
@@ -2621,7 +2676,8 @@ HELD_FOR_REFUSALS = (
     # The WHOLE test is wrapped in coalesce(..., false): any NULL (hash, time) must read as
     # "not held", or NOT(NULL) drops the chapter from both the read list and the held list.
     "coalesce(("
-    "dcp_chapter_registry.extract_refused_hash = dcp_chapter_registry.content_hash "
+    "dcp_chapter_registry.extract_refused_hash = COALESCE(dcp_chapter_registry.staged_content_hash, "
+    "dcp_chapter_registry.content_hash) "
     f"AND dcp_chapter_registry.extract_refusals >= {HOLD_AFTER_REFUSALS} "
     # Bounded: a hold lasts HOLD_DAYS from the last refusal, then the chapter is tried once
     # more. Not forever -- a held chapter keeps serving the previous PDF's rules (Sol review).
@@ -2641,9 +2697,9 @@ def is_content_refusal(err) -> bool:
 def _record_refusal_sql() -> str:
     """Count a refusal of this chapter's current PDF; a new hash starts the count again."""
     return ("UPDATE dcp_chapter_registry SET "
-            "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM content_hash "
-            "THEN extract_refusals + 1 ELSE 1 END, "
-            "extract_refused_hash = content_hash, extract_refused_reason = %s, "
+            "extract_refusals = CASE WHEN extract_refused_hash IS NOT DISTINCT FROM "
+            "COALESCE(staged_content_hash, content_hash) THEN extract_refusals + 1 ELSE 1 END, "
+            "extract_refused_hash = COALESCE(staged_content_hash, content_hash), extract_refused_reason = %s, "
             "extract_refused_at = now() "
             "WHERE id = %s")
 
@@ -2697,7 +2753,10 @@ def _pending_chapters_sql(council_filter: str | None, all_chapters: bool = False
         conds.append("NOT " + HELD_FOR_REFUSALS)
     query = (
         "SELECT id, council, chapter_key, chapter_label, "
-        "r2_current_path, r2_version_label, dcp_name, content_hash, "
+        # Effective values (migration 125): the staged file when one is held aside, else the live one.
+        "COALESCE(staged_r2_path, r2_current_path) AS r2_current_path, "
+        "COALESCE(staged_version_label, r2_version_label) AS r2_version_label, dcp_name, "
+        "COALESCE(staged_content_hash, content_hash) AS content_hash, "
         # council_url carries the only evidence of a repealed source: the
         # mirrored R2 key is a tidy path with no marker in it.
         "council_url "
@@ -4703,11 +4762,20 @@ def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str 
     r2_path = chapter.get("r2_current_path")
     if not r2_path:
         return None, None
+    # Siblings are found by THIS chapter's held-aside file OR its live file: when only one
+    # of two chapters sharing old.pdf has new.pdf staged, its sibling still points at
+    # old.pdf and must still count, or the staged chapter reads the whole file and takes
+    # the sibling's rules (cross-review 2026-11-11; 11 active chapters share 4 PDFs).
     cur.execute(
         """SELECT chapter_key, page_start, page_end
              FROM dcp_chapter_registry
-            WHERE is_active AND r2_current_path = %s""",
-        (r2_path,),
+            WHERE is_active
+              AND (COALESCE(staged_r2_path, r2_current_path) = %s
+                   OR COALESCE(staged_r2_path, r2_current_path) =
+                      (SELECT r2_current_path FROM dcp_chapter_registry
+                        WHERE council = %s AND chapter_key = %s AND is_active
+                        LIMIT 1))""",
+        (r2_path, chapter.get("council"), chapter.get("chapter_key")),
     )
     rows = cur.fetchall()
     if len(rows) < 2:
@@ -5389,6 +5457,13 @@ def extract_chapter(
                 if not first_extraction:
                     _insert_provision_changes(cur, diff, council, chapter_key, version, now)
 
+                # The rules above are live, so a file held aside for them goes live with them.
+                try:  # run as `python scripts/x.py` locally, the repo root is not on sys.path
+                    from scripts.dcp_staged import publish_staged
+                except ImportError:
+                    from dcp_staged import publish_staged
+                publish_staged(cur, council, chapter_key)
+
                 # Mark chapter extracted in registry
                 cur.execute(
                     """
@@ -5937,7 +6012,7 @@ def run_fidelity_gate(
     try:
         for g_council, g_chapter in sorted(pairs):
             gcur.execute(
-                "SELECT r2_current_path FROM dcp_chapter_registry "
+                "SELECT COALESCE(staged_r2_path, r2_current_path) FROM dcp_chapter_registry "
                 "WHERE council=%s AND chapter_key=%s AND r2_current_path IS NOT NULL "
                 "AND is_active = TRUE",
                 (g_council, g_chapter),
