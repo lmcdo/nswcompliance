@@ -1,7 +1,7 @@
 {
   "tier": "critical",
   "justification": "Changes where intake writes in dcp_chapter_registry and which file/hash the extractor, approver, watchdog and commit worker read; a wrong read serves rules judged against the wrong file. Not above: no served rule text is changed by this PR.",
-  "commit_hash": "ad26c876",
+  "commit_hash": "72798bbe",
   "files": [
     "migrations/125_dcp_chapter_staged_file.sql",
     "scripts/dcp_approve_proven.py",
