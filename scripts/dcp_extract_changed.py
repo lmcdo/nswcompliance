@@ -4762,11 +4762,20 @@ def chapter_page_slice(cur, chapter: dict) -> tuple[tuple[int, int] | None, str 
     r2_path = chapter.get("r2_current_path")
     if not r2_path:
         return None, None
+    # Siblings are found by THIS chapter's held-aside file OR its live file: when only one
+    # of two chapters sharing old.pdf has new.pdf staged, its sibling still points at
+    # old.pdf and must still count, or the staged chapter reads the whole file and takes
+    # the sibling's rules (cross-review 2026-11-11; 11 active chapters share 4 PDFs).
     cur.execute(
         """SELECT chapter_key, page_start, page_end
              FROM dcp_chapter_registry
-            WHERE is_active AND COALESCE(staged_r2_path, r2_current_path) = %s""",
-        (r2_path,),
+            WHERE is_active
+              AND (COALESCE(staged_r2_path, r2_current_path) = %s
+                   OR COALESCE(staged_r2_path, r2_current_path) =
+                      (SELECT r2_current_path FROM dcp_chapter_registry
+                        WHERE council = %s AND chapter_key = %s AND is_active
+                        LIMIT 1))""",
+        (r2_path, chapter.get("council"), chapter.get("chapter_key")),
     )
     rows = cur.fetchall()
     if len(rows) < 2:
