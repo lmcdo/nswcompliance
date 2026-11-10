@@ -1,15 +1,23 @@
 {
   "tier": "critical",
   "justification": "Changes where intake writes in dcp_chapter_registry and which file/hash the extractor, approver, watchdog and commit worker read; a wrong read serves rules judged against the wrong file. Not above: no served rule text is changed by this PR.",
-  "commit_hash": "34ea4350",
+  "commit_hash": "fa34c567",
   "files": [
     "migrations/125_dcp_chapter_staged_file.sql",
-    "scripts/dcp_staged.py",
-    "scripts/r2_monitor.py",
-    "scripts/dcp_extract_changed.py",
     "scripts/dcp_approve_proven.py",
     "scripts/dcp_commit_approved.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_staged.py",
     "scripts/dcp_watchdog.py",
+    "scripts/r2_monitor.py",
+    "tests/test_dcp_approve_proven.py",
+    "tests/test_dcp_commit_candidates_ignore_old_history.py",
+    "tests/test_dcp_commit_rederives_precinct_keys.py",
+    "tests/test_dcp_commit_refuses_section_loss.py",
+    "tests/test_dcp_extract_all_mode.py",
+    "tests/test_dcp_extraction_fidelity.py",
+    "tests/test_dcp_staged_real_db.py",
+    "tests/test_extract_parallel_and_hold.py",
     "tests/test_staged_intake.py"
   ],
   "pre_impl": {
