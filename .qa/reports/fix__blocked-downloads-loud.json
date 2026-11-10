@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "A blocked council website (HTTP 403) was invisible: Waverley blocked since 2026-06-29 and Wollongong since 2026-09-24 kept serving old rules. This adds one read-only DQ probe (DQ-153), a hand-intake wrapper that calls the existing r2_monitor.py --from-file, and a one-line date notice on the house page fed by a new meta.plan_confirmed field. No write to the database; r2_monitor.py is not changed.",
-  "commit_hash": "efb3e87d",
+  "commit_hash": "6ca7ed75",
   "files": [
     "scripts/dq_probe_live.py",
     "scripts/manual_intake.py",
@@ -88,7 +88,7 @@
       "repro": "python -m pytest tests/test_manual_intake.py::test_folder_matching_loads_only_blocked_chapters -o addopts="
     }
   ],
-  "mutation_analysis": "Four mutations run, not described: probe window 14 to 140 days (test_probe_counts_both_signals_and_only_serving_chapters red); manual_intake dry-run default inverted (test_dry_run_is_the_default_and_apply_removes_it red); planCheckIsOld comparison flipped (5 jest failures); all restored and green. Jest: 55 passed in the seven suites that touch the changed route and notice. tsc has 0 errors. Python: tests/test_manual_intake.py and tests/test_dq_check.py 38 passed.",
+  "mutation_analysis": "Four mutations run, not described: probe window 14 to 140 days (test_probe_counts_both_signals_and_only_serving_chapters red); manual_intake dry-run default inverted (test_dry_run_is_the_default_and_apply_removes_it red); planCheckIsOld comparison flipped (5 jest failures); all restored and green. Jest: 55 passed in the seven suites that touch the changed route and notice. tsc has 0 errors. Python: tests/test_manual_intake.py and tests/test_dq_check.py 38 passed. After the gate asked for it: a real-database test (PYTEST_REAL_DB=1 pytest -m database tests/test_manual_intake.py) passes on the live database and checks that the councils manual_intake lists equal the DQ-153 count.",
   "residual_risk": "(1) r2_monitor.py is NOT changed: a HEAD 403 still does not update the check date and the Telegram digest still depends on two variables nobody has verified on Railway; DQ-153 now makes that visible instead. (2) The house-page notice reads the oldest check date only; if a block happens during a download the date looks fresh and the notice stays silent, while DQ-153 still counts it. (3) scripts/manual_intake.py --apply was not run against live data (dry-run listing only). (4) The AustLII Playwright fallback (legislation_monitor.py:441-527, explicit --source austlii only) is still in use and was not extended; r2_monitor.py has no Playwright.",
   "post_merge": {
     "db_reset": "No. Read-only probe and a read-only query in the route.",
