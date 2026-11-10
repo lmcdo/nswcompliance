@@ -1,0 +1,105 @@
+{
+  "tier": "critical",
+  "justification": "Changes where intake writes in dcp_chapter_registry and which file/hash the extractor, approver, watchdog and commit worker read; a wrong read serves rules judged against the wrong file. Not above: no served rule text is changed by this PR.",
+  "commit_hash": "302d8c04",
+  "files": [
+    "migrations/125_dcp_chapter_staged_file.sql",
+    "scripts/dcp_staged.py",
+    "scripts/r2_monitor.py",
+    "scripts/dcp_extract_changed.py",
+    "scripts/dcp_approve_proven.py",
+    "scripts/dcp_commit_approved.py",
+    "scripts/dcp_watchdog.py",
+    "tests/test_staged_intake.py"
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_chapter_registry (571 active rows): six new nullable staged_* columns; all NULL until an amendment is received, so every existing row reads exactly as before via COALESCE.",
+    "assumption_mismatch": "If migration 125 is not applied, the new SELECTs fail loudly (undefined column) rather than read a wrong file. It must be applied before merge.",
+    "new_vs_existing": "Only chapters that already serve a file (r2_current_path and content_hash set, not spatial/inert) are staged. First loads still go live directly.",
+    "external_source_error": "Council 403/429/5xx paths are unchanged; staging happens after a successful download and R2 upload only.",
+    "frontend_type": "No. /internal/dcp-review reads q.source_content_hash from the queue, which now carries the staged hash; shape unchanged.",
+    "user_failure_mode": "A chapter whose commit does not run keeps serving the previous file and rules (live page unchanged) instead of a mismatched pair."
+  },
+  "functions": [
+    {
+      "name": "stage_file",
+      "file_line": "scripts/dcp_staged.py:34",
+      "input": "registry row id plus the new file's R2 path, version label, public URL, hash and length",
+      "output": "six staged_* columns on the dcp_chapter_registry row; the live columns are not written at all",
+      "if_none": "content_length may be None and is stored as NULL; publish later keeps the live length through COALESCE"
+    },
+    {
+      "name": "publish_staged",
+      "file_line": "scripts/dcp_staged.py:46",
+      "input": "council slug and chapter_key naming one registry row, called inside the commit transaction",
+      "output": "True when the live columns were set from the staged ones and staging cleared, else False",
+      "if_none": "nothing staged means the UPDATE matches zero rows and it returns False with no change made"
+    }
+  ],
+  "values": [
+    {
+      "value": "staged_hash",
+      "read_at": "scripts/r2_monitor.py (chapter loop)",
+      "nullable": "yes",
+      "guard_at": "if staged_hash and new_hash == staged_hash",
+      "if_missing": "treated as nothing staged"
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "effective hash/path/version for extractor, approver, commit, watchdog",
+      "file_line": "scripts/dcp_extract_changed.py:_pending_chapters_sql",
+      "where_clause": "unchanged; SELECT list uses COALESCE(staged_*, live)",
+      "if_zero": "same as before",
+      "if_wrong": "covered by tests/test_staged_intake.py source pins"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "Amendment staged, then the council file changes again before commit",
+      "what_happens": "old staged review rows no longer match the effective hash",
+      "mitigated": true,
+      "how": "r2_monitor replaces the staged file; commit currency guard refuses approved rows whose source hash differs",
+      "repro": "pytest tests/test_staged_intake.py::test_a_newer_file_replaces_the_staged_one_with_a_later_version_label"
+    },
+    {
+      "scenario": "Live proofs are cleared at commit (path change fires 078/079/111/112) and a proof script fails",
+      "what_happens": "rules of that chapter are hidden until the proof scripts are re-run, not served wrong",
+      "mitigated": false,
+      "how": "commit worker already runs citation, page and council_quote scripts straight after; a gap of minutes remains and is NOT closed by this PR",
+      "repro": "commit a staged chapter and read dq_probe_live --id DQ-145 before the proof scripts finish"
+    },
+    {
+      "scenario": "Direct-to-live extraction (not review) commits rules while a file is staged",
+      "what_happens": "rules and file would disagree if the file were not published with them",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py calls publish_staged in the same transaction as the rule writes, before marking the chapter extracted",
+      "repro": "pytest tests/test_dcp_extract_changed.py"
+    },
+    {
+      "scenario": "Chapter is shared by two registry rows pointing at one PDF while one is staged",
+      "what_happens": "shared-PDF range check would find no sibling and treat the chapter as owning its file",
+      "mitigated": true,
+      "how": "scripts/dcp_extract_changed.py shared-PDF query matches COALESCE(staged_r2_path, r2_current_path)",
+      "repro": "grep COALESCE(staged_r2_path in dcp_extract_changed.py near the shared-PDF lookup"
+    },
+    {
+      "scenario": "Monitor sees the same staged file every run",
+      "what_happens": "it would upload a new version and re-flag the chapter each day",
+      "mitigated": true,
+      "how": "scripts/r2_monitor.py compares new_hash with staged_content_hash before the stored-hash check and records only the headers",
+      "repro": "pytest tests/test_staged_intake.py::test_the_same_new_file_again_is_not_a_second_change"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_staged_intake.py -q",
+    "fails_when": "MUTATION measured on this branch: replacing the staging condition in r2_monitor with `if False:` (re-pointing live again) makes 2 of 10 tests fail (amendment staged / newer file replaces staged); restored: 10 passed.",
+    "observed_red": "Measured on this branch: with the staging condition in r2_monitor.py replaced by `if False:`, 2 of 10 tests in tests/test_staged_intake.py failed (test_an_amendment_is_staged_and_the_live_row_does_not_move and test_a_newer_file_replaces_the_staged_one_with_a_later_version_label); restored, 10 passed."
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Apply migrations/125 to Supabase BEFORE merge (additive); then stage one real amendment and confirm live link and DQ-145 unchanged"
+  }
+}
