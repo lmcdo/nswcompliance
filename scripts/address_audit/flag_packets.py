@@ -119,6 +119,13 @@ def main() -> int:
         for p in picked:
             fh.write(json.dumps(p, ensure_ascii=False, default=str) + "\n")
     n_flag = sum(1 for p in picked if p["flags"] != ["random 10% sample"])
+    import subprocess  # record which code chose the rules a person reads
+    try:
+        code_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=Path(__file__).parent).strip()
+    except Exception:  # noqa: BLE001
+        code_hash = None
+    (run / "flag_meta.json").write_text(json.dumps({"code_hash": code_hash, "random_seed": 7, "packets": len(packets),
+                                                    "flagged": n_flag, "random_sample": len(picked) - n_flag}), encoding="utf-8")
     print(f"packets {len(packets)} | flagged {n_flag} | random sample {len(picked) - n_flag} | to read {len(picked)}")
     return 0
 
