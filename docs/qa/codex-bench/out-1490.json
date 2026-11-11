@@ -1,0 +1,42 @@
+[
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/dcp/structured-controls/route.ts",
+    "line": 211,
+    "what": "The active numeric DCP-controls endpoint calls fetchDcpControls(slug) without the property's zone, despite the client and Python guard supporting zone filtering.",
+    "why": "ProvisionsByTocStructure mounts these numeric controls on the active assessment DCP tab. Zone-specific rows therefore survive and can show a property a numeric control for another zone. The backend explicitly treats zone filtering as part of its guard stack.",
+    "fix": "Accept an optional zone query parameter, pass it to fetchDcpControls(slug, zone), and pass the already-known zone from both DcpStructuredControls call sites. Add an endpoint/component test proving a zone-specific row is absent for a different zone.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/property/route.ts",
+    "line": 82,
+    "what": "DCP flood and riparian condition facts are determined with ST_Contains against the valuation/address point rather than the lot polygon.",
+    "why": "Those facts control whether condition-layer rules are sent to the active DCP view. A lot that overlaps a mapped flood or riparian area while its valuation point falls outside will be treated as unaffected and its applicable rules omitted. The nearby Greenweb implementation explicitly recognises that partial lot overlap must be tested by lot.",
+    "fix": "For rule-driving flood and riparian overlays, query the available lot geometry with ST_Intersects after transforming it to the overlay CRS; retain the point check only as a clearly unknown fallback when no lot polygon is available. Add a fixture for a lot straddling an overlay with its point outside.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/components/compliance/DcpStructuredControls.tsx",
+    "line": 367,
+    "what": "Corner-only numeric controls remain displayed with their value after the lot has been confirmed not to be a corner; the UI only adds a contradictory explanatory note.",
+    "why": "The component contract says not_corner marks corner-only rows as not applying, but a non-corner property still receives an authoritative-looking numeric setback or secondary-street value. This conflicts directly with the property-specific rule surface.",
+    "fix": "Before rendering each category, omit isCornerOnlyRow controls when cornerStatus is not_corner; keep them when status is corner or unknown. Add a render test asserting a secondary_street_setback is absent for not_corner and retained for unknown.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "security",
+    "file": "frontend-nextjs/middleware.ts",
+    "line": 234,
+    "what": "The public-route prefix exempts every /api/property path from both middleware authentication and global rate limiting, while /api/property itself has no route-level limiter.",
+    "why": "Each lookup fans out to the Planning Portal, several map services, and Supabase. A scraper can repeatedly invoke the most expensive address lookup without the 20/min protection used by /api/property/profile, reducing availability for ordinary assessment users.",
+    "fix": "Keep the endpoint public, but add a route-level searchRateLimiter check to /api/property after validation, matching the property-profile limit and returning standard 429 headers. Add a route test for the over-limit response.",
+    "intentional": "accidental"
+  }
+]

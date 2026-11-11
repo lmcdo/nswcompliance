@@ -1,0 +1,1 @@
+AREA: DCP monitor. It checks each council's published DCP chapter links and files for changes and records what it checked. Entry points: scripts/r2_monitor.py and scripts/hub_scrapers/. Review this area for defects.

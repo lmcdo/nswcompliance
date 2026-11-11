@@ -1,0 +1,72 @@
+[
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "line": 864,
+    "what": "The heritage-specific query bypasses the zone-applicability predicate that the normal four-layer query applies.",
+    "why": "A heritage property can receive heritage controls whose stored applicability restricts them to another zone, violating the core promise to show only rules applying to that property.",
+    "fix": "Apply ZONE_APPLIES_SQL in queryHeritageByHca when filters.zone is present; add a route-level test proving a heritage row limited to E4 is excluded for an R2 property.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "line": 866,
+    "what": "Heritage retrieval requires v2_marker = 'heritage', although the rest of the route recognises heritage rows tagged through either v2_marker or v2_topic.",
+    "why": "Heritage rows tagged only through v2_topic are excluded from generic layers and then never recovered by this query. The repository's DQ probe documents this as live missing output, including an HCA address receiving only 1 of 64 applicable Woollahra rules.",
+    "fix": "Change the heritage predicate to accept either case-normalized v2_marker or v2_topic equal to heritage, and add a test for a current actionable topic-only heritage row.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "error handling",
+    "file": "frontend-nextjs/lib/nsw-planning-portal.ts",
+    "line": 1038,
+    "what": "landFacts is built from all returned layers, including successful unrelated TOD layers, even when the Planning Portal's main layerintersect request failed.",
+    "why": "A non-null partial LandFacts payload makes verified Key Sites/APU/Heritage conditions read as no_match when their layer is simply absent. applyLandConditions then withholds site-specific LEP rules instead of marking them unconfirmed, despite the code's stated fail-visible policy.",
+    "fix": "When layersAnswer is undefined, set constraints.landFacts to null after constraint extraction; add a test with failed planning layers plus a successful TOD layer and assert land-limited rules remain visible as unconfirmed.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/property/[address]/route.ts",
+    "line": 64,
+    "what": "This active property endpoint asks the Planning Portal for one fuzzy address result and accepts propertyData[0] without the strict street-number, street and locality check used by the primary property route.",
+    "why": "Several satellite/report endpoints call this route. A nonexistent or ambiguous address can therefore produce another property's lot geometry and planning controls, contaminating property-specific results.",
+    "fix": "Request multiple candidates and reuse filterToAskedProperty before selecting a result; return a not-found response when none exactly identifies the requested property. Cover the known 700 New South Head Road-style fuzzy response.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/lib/property-data.ts",
+    "line": 348,
+    "what": "Site-specific Part 6 matching is called with only the address even though the matcher is explicitly designed to use the more reliable Lot/DP value and the lookup already has lotGeometry.",
+    "why": "Rules whose authoritative scope is expressed only as Lot/DP, including entries without street-address matching, are silently omitted from the active property's LEP controls.",
+    "fix": "Pass lotGeometry?.lotDescription to getSiteSpecificClauses and add a test where a Lot/DP-only entry is returned for the matching property.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "frontend-nextjs/app/api/property/route.ts",
+    "line": 82,
+    "what": "Most spatial-overlay facts are decided by ST_Contains on the valuation address point rather than by whether the cadastral lot intersects the overlay.",
+    "why": "The resulting flood, riparian and related condition flags drive which DCP condition rules are fetched. A lot partly inside an overlay while its address point is outside can therefore lose applicable rules. The dedicated Greenweb and flood implementations already document and address this same lot-versus-point issue.",
+    "fix": "Use the cadastral-lot intersection pattern for condition-driving overlays; if the lot cannot be resolved, preserve an explicit unchecked state rather than treating the point result as a whole-lot negative. Add a partial-overlap test.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "dead code",
+    "file": "frontend-nextjs/app/api/dcp/provisions/route.ts",
+    "line": 255,
+    "what": "The dormant DCP browser query reads regulatory_provisions without is_current or v2_is_actionable filters.",
+    "why": "The assessment README identifies its parent UI as unmounted today, limiting current impact. If this retained endpoint is remounted or consumed directly, it can show superseded and non-actionable controls, unlike the primary for-property route.",
+    "fix": "Add is_current = TRUE and v2_is_actionable = true to document_filtered, with a query test containing one retired and one non-actionable row.",
+    "intentional": "accidental"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "scripts/r2_monitor.py",
+    "line": 521,
+    "what": "diff_urls silently retains the last discovered URL for a duplicated chapter_key.",
+    "why": "A hub page containing both current and archived/repealed links can repoint a registry chapter to the wrong PDF. This monitor then uploads and tracks that source as the chapter’s current version. Woollahra’s scraper documents this exact failure mode, but the central diff still permits it for every other scraper.",
+    "fix": "Before building discovered_by_key, detect a chapter_key mapped to multiple distinct URLs; do not migrate that key, record a hub anomaly, and continue checking its existing URL. Add a regression test with current and archived URLs for one key.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "scripts/hub_scrapers/inner_west.py",
+    "line": 194,
+    "what": "_match_by_filename iterates an unordered set and returns the first equal-score fuzzy candidate, rather than treating the match as ambiguous.",
+    "why": "A shortened or generic filename can nondeterministically map to one of several chapter keys. That mapping flows into URL migration in r2_monitor, so the wrong planning chapter can be downloaded and later treated as the source for that chapter. Canterbury-Bankstown already deliberately avoids fuzzy matching where chapter numbers could be confused, showing this risk is material here.",
+    "fix": "Track all best-scoring candidates and return None unless there is exactly one; add a test with two equally matching keys and assert no key is assigned.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P1",
+    "category": "correctness bug",
+    "file": "scripts/r2_monitor.py",
+    "line": 314,
+    "what": "The GET-range fallback validates the returned body only after a HEAD 404, not after a HEAD 405.",
+    "why": "405 is explicitly a normal path for council document hosts. If its range GET returns an HTML/error body with matching metadata, the monitor can take the ETag fast path, stamp the chapter checked, and continue serving stale controls instead of detecting that the source is unavailable.",
+    "fix": "Read and validate the first bytes for every successful range fallback, and treat a non-PDF response as unavailable. Add a HEAD-405/GET-200-HTML regression test.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "error handling",
+    "file": "scripts/r2_monitor.py",
+    "line": 1162,
+    "what": "A HEAD 403 is recorded as a real failure even though the branch says it is a WAF/access-denial skip.",
+    "why": "This violates the monitor’s explicit alerting contract: direct chapter WAF blocks trigger exit 1 and a data-error page, rather than appearing in the WAF digest and retrying next run. It creates recurring false alarms for the single-IP Railway deployment.",
+    "fix": "Keep council_failed so verified_at is withheld, but append the chapter to results['waf_blocked'] and do not increment results['failed']. Add a run-monitor test proving HEAD 403 produces no real-failure exit.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P2",
+    "category": "error handling",
+    "file": "scripts/r2_monitor.py",
+    "line": 1073,
+    "what": "The hub-scrape fall-through catches HubScrapeError only; a requests timeout or connection error from any scraper escapes and terminates the whole monitor.",
+    "why": "Council sites are the unreliable boundary this monitor is designed to tolerate. One transient hub network failure prevents later councils from being checked and leaves the run unfinished, undermining the recorded-checks and freshness signals.",
+    "fix": "Catch requests.RequestException alongside hub scrape failures, record it as a transient hub outcome, and fall through to per-chapter checks. Add a test where the scraper raises requests.Timeout and a later council is still processed.",
+    "intentional": "accidental"
+  },
+  {
+    "severity": "P3",
+    "category": "consistency",
+    "file": "scripts/r2_monitor.py",
+    "line": 947,
+    "what": "previous_count is read from council_chapters[0] even though the selected hub row is used for the other hub fields.",
+    "why": "For councils whose hub metadata sits on a sibling row, discovery Telegram deltas can be wrong. The nearby comment explicitly requires all hub values to come from the same row, and hub_last_count is already read but unused.",
+    "fix": "Use hub_last_count for previous_count and add a two-row test proving the digest uses the selected hub row’s count.",
+    "intentional": "accidental"
+  }
+]

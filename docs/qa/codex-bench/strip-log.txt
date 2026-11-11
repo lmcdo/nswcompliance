@@ -1,0 +1,2 @@
+Stripped from every export: .git (none in archive), .qa/, docs/, plans/, memory/, .github/, .claude/* except .claude/rules/,
+every *.md except CLAUDE.md and README.md, and every test file the fix PR touched (new or modified).
