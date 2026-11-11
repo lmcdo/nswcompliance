@@ -348,11 +348,8 @@ def test_one_shared_phrase_does_not_decide_where_a_rule_sits():
     assert prove("7_1 C1", ch, text=rule)["status"] == "proven"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "KNOWN LIMITATION, 2026-09-24: when the stored text only half matches the "
-    "page, two places tie on coverage and proof under EITHER is accepted. Needs "
-    "a choose-the-best-anchor rule, not any-anchor. Kept as a failing test so it "
-    "cannot be forgotten; strict, so fixing it turns this red until unmarked."))
+# Was a strict xfail (2026-09-24 known limitation); fixed 2026-10-30 by the rule that a
+# heading inside the rule's own span heads it only if the rule opened under its parent.
 def test_closing_words_repeated_after_the_next_heading_do_not_move_the_rule():
     # The stored rule ends differently from the page, and its closing words
     # appear only further on, under the NEXT heading. Searched loosely, the end
@@ -452,3 +449,129 @@ def test_the_marker_strip_is_anchored_and_repeatable():
     # trailing words between the clause number and the marker are real refs: 3_16_9 Note:
     assert [C.render(g) for g in C.split_ref("Doc__chap__3_16_9 Note:~2")[0]] == \
            [C.render(g) for g in C.split_ref("Doc__chap__3_16_9 Note:")[0]]
+
+
+# -- 2026-10-30: leaks found by re-judging 368 numbers corrected on the live PDFs ---
+
+def test_running_header_over_other_pages_does_not_vouch_for_this_page():
+    # Woollahra C1: "c1.3 building types" heads pages 3-5 only; the rule is on
+    # page 1, inside C1.2.3. The header elsewhere must not make C1.3 "imprecise".
+    raw = [C.Line(1, 100.0, 70.0, "c1.2.3 character elements"), C.Line(1, 120.0, 70.0, BODY),
+           C.Line(1, 775.0, 70.0, "paddington")]
+    for p in (3, 4, 5):
+        raw += [C.Line(p, 35.0, 70.0, "c1.3 building types"), C.Line(p, 100.0, 70.0, f"other words {p}"),
+                C.Line(p, 775.0, 70.0, "paddington")]
+    ch = C.ChapterLines.build(raw, page_width=595.0)
+    assert prove("C1_3", ch)["status"] == "not_proven"
+    assert prove("C1_2_3", ch)["status"] == "proven"
+
+
+def test_outline_restores_a_heading_number_printed_as_a_picture():
+    # Parramatta p259: "5.4.4" is a coloured box; only its title is text.
+    lines = [C.Line(1, 100.0, 70.0, "5.4.3.5 green roofs or walls"), C.Line(1, 120.0, 70.0, "some words"),
+             C.Line(2, 64.0, 113.0, "solar light reflectivity (glare)"), C.Line(2, 120.0, 70.0, BODY)]
+    fixed = C.restore_outline_numbers(lines, [[3, "5.4.3.5 GREEN ROOFS OR WALLS", 1],
+                                              [3, "5.4.4 SOLAR LIGHT REFLECTIVITY (GLARE)", 2]])
+    assert fixed[2].text == "5.4.4 solar light reflectivity (glare)"
+    ch = C.ChapterLines.build(fixed, page_width=595.0)
+    assert prove("5_4_3_5", ch)["status"] == "not_proven"
+    assert prove("5_4_4", ch)["status"] == "proven"
+
+
+def test_outline_is_ignored_when_every_entry_points_to_one_page():
+    # City of Sydney: every bookmark opens page 1.
+    lines = [C.Line(1, 100.0, 70.0, "intro"), C.Line(5, 100.0, 70.0, "design excellence")]
+    toc = [[2, f"5.{i} heading {i}", 1] for i in range(5)] + [[2, "5.9 design excellence", 1]]
+    assert C.restore_outline_numbers(lines, toc) == lines
+
+
+def test_outline_needs_its_title_printed_alone_on_that_page():
+    lines = [C.Line(2, 100.0, 70.0, "see solar light reflectivity (glare) in 5.4.4 for more")]
+    assert C.restore_outline_numbers(lines, [[3, "5.4.4 Solar light reflectivity (glare)", 2]]) == lines
+
+
+def test_chapter_in_header_plus_unchecked_item_is_not_imprecise():
+    # Woollahra: header "c1 | paddington" on every page; "C1.3" must not pass as
+    # chapter c1 + item 3 for a rule printed under C1.2.3.
+    raw = []
+    for p in (1, 2, 3):
+        raw += [C.Line(p, 35.0, 70.0, "c1 | paddington heritage conservation area"),
+                C.Line(p, 100.0, 70.0, f"c1.2.{p} topic heading"),
+                C.Line(p, 120.0, 70.0, ["alpha", "bravo", "charlie"][p - 1] + " terraces keep their original slate roofs and iron lace verandahs intact"),
+                C.Line(p, 775.0, 70.0, "2 december 2024")]
+    ch = C.ChapterLines.build(raw, page_width=595.0)
+    text = "charlie terraces keep their original slate roofs and iron lace verandahs intact"
+    assert prove("C1_3", ch, text=text)["status"] == "not_proven"
+    assert prove("C1_2_3", ch, text=text)["status"] == "proven"
+
+
+def test_repeated_wording_is_judged_on_its_proven_page():
+    # Parramatta repeats "Provisions" per heritage area; the rule's page is proven.
+    ch = doc(["7.10.3.4 provisions", BODY], ["7.10.4.4 provisions", BODY])
+    assert prove("7_10_3_4", ch, hint=2)["status"] == "proven"   # unproven page: any copy
+    r = C.prove_citation("Doc__chap__7_10_3_4", f"# t\n\n{BODY}", ch, 2, page_proven=True)
+    assert r["status"] == "not_proven"
+    r = C.prove_citation("Doc__chap__7_10_4_4", f"# t\n\n{BODY}", ch, 2, page_proven=True)
+    assert r["status"] == "proven"
+
+
+def test_section_plus_item_reading_must_match_the_printed_subsection():
+    # Blacktown: "4.3.3" read as 4.3 + item 3, but 4.3.2 is printed above the rule.
+    ch = doc(["4.3 heritage", "4.3.1 specified heritage items", "words",
+              "4.3.2 development in the vicinity of a heritage item", "3. setting", BODY])
+    assert prove("4_3_3", ch)["status"] == "not_proven"
+    assert prove("4_3_2", ch)["status"] == "proven"
+
+
+def test_bookmarks_overrule_a_summary_line_that_looks_like_a_heading():
+    # Woollahra D5.1.5 "how to use this chapter" lists "D5.6 development controls".
+    raw = [C.Line(1, 100.0, 70.0, "d5.1.5 how to use this chapter"), C.Line(1, 120.0, 70.0, "d5.6 development controls"),
+           C.Line(1, 140.0, 70.0, BODY), C.Line(3, 100.0, 70.0, "d5.6 development controls"), C.Line(3, 120.0, 70.0, "other")]
+    toc = [[3, "D5.1.5 How to use this chapter", 1], [2, "D5.2 Context", 2], [2, "D5.6 Development controls", 3]]
+    ch = C.ChapterLines.build(raw, page_width=595.0, outline=toc)
+    assert prove("D5_6", ch)["status"] == "not_proven"
+    assert prove("D5_1_5", ch)["status"] in ("proven", "imprecise")
+
+
+def test_wording_that_runs_into_the_next_section_is_not_proved_by_its_heading():
+    # Blacktown: the stored rule opens under 4.3.2 and runs past the 4.3.3 heading.
+    first = "new buildings near a heritage item must respect its setting scale and form"
+    spill = "alterations to the item itself need"
+    ch = doc(["4.3.2 development in the vicinity of a heritage item", first,
+              "4.3.3 alterations to heritage items", spill + " a heritage impact statement"])
+    stored = first + " " + spill
+    assert prove("4_3_3", ch, text=stored)["status"] == "not_proven"
+    assert prove("4_3_2", ch, text=stored)["status"] == "proven"
+
+
+def test_a_stale_bookmark_cannot_hide_a_proven_number():
+    # The bookmark says 4.3.3 starts on page 2; the page it points to does not print it.
+    ch = doc(["4.3.3 alterations to heritage items", BODY], ["unrelated words here"])
+    stale = C.ChapterLines.build(ch.lines, page_width=595.0,
+                                 outline=[[3, "4.3.3 Alterations to heritage items", 2], [3, "4.3.4 Other", 2]])
+    assert prove("4_3_3", stale)["status"] == "proven"
+
+
+def test_no_number_is_restored_onto_a_chapter_guide_page():
+    # A guide page lists sections that start later; a stale bookmark points at it.
+    lines = [C.Line(1, 100.0, 70.0, "alterations to heritage items"),
+             C.Line(1, 120.0, 70.0, "demolition of heritage items"),
+             C.Line(1, 140.0, 70.0, "development in the vicinity of a heritage item"),
+             C.Line(1, 160.0, 70.0, "signage on heritage items")]
+    toc = [[3, "4.3.1 Introduction", 1], [3, "4.3.3 Alterations to heritage items", 1],
+           [3, "4.3.4 Demolition of heritage items", 8], [3, "4.3.5 Development in the vicinity of a heritage item", 9],
+           [3, "4.3.6 Signage on heritage items", 10]]
+    assert C.restore_outline_numbers(lines, toc) == lines
+
+
+def test_out_of_order_bookmark_is_not_used_to_restore():
+    lines = [C.Line(5, 100.0, 70.0, "alterations to heritage items")]
+    toc = [[3, "4.3.2 Vicinity", 6], [3, "4.3.3 Alterations to heritage items", 5], [3, "4.3.4 Demolition", 7]]
+    assert C.restore_outline_numbers(lines, toc) == lines
+
+
+def test_a_contents_line_does_not_block_restoring_a_picture_heading():
+    lines = [C.Line(1, 100.0, 70.0, "5.4.4 solar light reflectivity (glare) .......... 259"),
+             C.Line(3, 64.0, 113.0, "solar light reflectivity (glare)")]
+    toc = [[3, "5.4.3.5 Green roofs", 2], [3, "5.4.4 Solar light reflectivity (glare)", 3], [3, "5.4.5 Wind", 4]]
+    assert C.restore_outline_numbers(lines, toc)[1].text.startswith("5.4.4 ")

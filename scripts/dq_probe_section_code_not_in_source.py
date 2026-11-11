@@ -58,7 +58,7 @@ SERVED_COUNT_SQL = ("SELECT count(*) FROM regulatory_provisions WHERE is_current
 
 
 def _cache_file(cache_dir: Path, r2_path: str) -> Path:
-    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v3.json"   # v3: + OCR-read label pictures
+    return cache_dir / f"{hashlib.sha1(r2_path.encode()).hexdigest()[:16]}.lines-v9.json"   # v9: restore only from in-order bookmarks, never onto guide pages
 
 
 def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):
@@ -71,9 +71,10 @@ def chapter_lines(s3, bucket, r2_path: str, cache_dir: Path):
             s3.download_file(bucket, r2_path, str(local))
             lines, width = cp.read_raw_lines(str(local))
             raw = [[ln.page, ln.y, ln.x, ln.text] for ln in lines]
-        cf.write_text(json.dumps({"width": width, "lines": raw}), encoding="utf-8")
+            outline = cp.read_outline(str(local))
+        cf.write_text(json.dumps({"width": width, "lines": raw, "outline": outline}), encoding="utf-8")
     data = json.loads(cf.read_text(encoding="utf-8"))
-    return cp.both_orders([cp.Line(*x) for x in data["lines"]], data["width"])
+    return cp.both_orders([cp.Line(*x) for x in data["lines"]], data["width"], data.get("outline"))
 
 
 def kind_of(verdict: dict) -> str:
