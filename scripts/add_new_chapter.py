@@ -182,6 +182,16 @@ def download_pdf(url: str, retries: int = 3) -> tuple[bytes, dict]:
     raise RuntimeError(f"Failed to download after {retries} attempts: {url}")
 
 
+def read_local_pdf(path: Path) -> tuple[bytes, dict]:
+    """A PDF saved by hand (DQ-153). Same return shape as download_pdf; no ETag or Last-Modified."""
+    if not path.is_file():
+        raise RuntimeError(f"File not found: {path}")
+    data = path.read_bytes()
+    if not data.startswith(b"%PDF"):
+        raise RuntimeError(f"Not a PDF (does not start with %PDF): {path}")
+    return data, {}
+
+
 def verify_r2_upload(s3, bucket: str, key: str, expected_hash: str) -> None:
     """
     Re-fetch the uploaded object from R2 and verify its hash matches.
@@ -292,6 +302,9 @@ def main() -> int:
                         help="Map or spatial document — track for changes but never extract provisions")
     parser.add_argument("--inert", action="store_true",
                         help="Cover page, ToC, or other non-provision PDF — track hash silently, no extraction, no alert")
+    parser.add_argument("--from-file", type=Path, default=None,
+                        help="A PDF you downloaded by hand (for a council that blocks our monitor, DQ-153). "
+                             "Skips the council download and the HEAD check; --url is still stored as the chapter's link.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would happen without writing anything")
     args = parser.parse_args()
@@ -336,15 +349,18 @@ def main() -> int:
     print(f"  Spatial   : {args.spatial}")
 
     # ── URL validation ────────────────────────────────────────────────────────
-    print("\n[2/7] Validating URL (HEAD request)...")
-    try:
-        head_info = validate_url_is_pdf(args.url)
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}")
-        return 1
-    print(f"  HTTP {head_info['status']} OK")
-    if head_info["content_length"]:
-        print(f"  Content-Length: {head_info['content_length']:,} bytes")
+    if args.from_file:
+        print(f"\n[2/7] Skipping URL check: using the file you downloaded ({args.from_file})")
+    else:
+        print("\n[2/7] Validating URL (HEAD request)...")
+        try:
+            head_info = validate_url_is_pdf(args.url)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}")
+            return 1
+        print(f"  HTTP {head_info['status']} OK")
+        if head_info["content_length"]:
+            print(f"  Content-Length: {head_info['content_length']:,} bytes")
 
     # ── Connect + pre-flight schema check ─────────────────────────────────────
     print("\n[3/7] Checking registry for existing entry...")
@@ -372,13 +388,22 @@ def main() -> int:
     print("  No existing entry — safe to add.")
 
     # ── Download PDF ──────────────────────────────────────────────────────────
-    print("\n[4/7] Downloading PDF...")
-    try:
-        content, resp_headers = download_pdf(args.url)
-    except RuntimeError as exc:
-        print(f"ERROR: {exc}")
-        conn.close()
-        return 1
+    if args.from_file:
+        print("\n[4/7] Reading the PDF you downloaded...")
+        try:
+            content, resp_headers = read_local_pdf(args.from_file)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}")
+            conn.close()
+            return 1
+    else:
+        print("\n[4/7] Downloading PDF...")
+        try:
+            content, resp_headers = download_pdf(args.url)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}")
+            conn.close()
+            return 1
 
     content_hash = sha256_bytes(content)
     content_len  = len(content)

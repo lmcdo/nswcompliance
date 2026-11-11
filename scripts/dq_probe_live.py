@@ -3018,6 +3018,25 @@ PROBES: dict[str, tuple[str, str, tuple, str]] = {
         "the site shows has been proven by a script against the source document. Cleared "
         "by proving the clause or the page, or by not serving the rule.",
     ),
+    "DQ-153": (
+        "Councils whose served plan we have not been able to check for 14 days (their website blocks our monitor)",
+        # Found 2026-11-10: Waverley blocked since 2026-06-29, Wollongong since 2026-09-24. A HEAD 403 in
+        # r2_monitor.py records the run result but never touches url_last_checked, and the Telegram alert is
+        # optional, so nothing went red. Two signals, either one counts: the chapter's check date is older than
+        # 14 days (or never set), or its latest monitor result is 'waf_blocked'. Only chapters that serve rules.
+        "SELECT count(DISTINCT r.council) FROM dcp_chapter_registry r"
+        " WHERE r.is_active AND r.doc_type = 'dcp'"
+        "   AND EXISTS (SELECT 1 FROM regulatory_provisions p"
+        "               WHERE p.source_council = r.council AND p.source_chapter_key = r.chapter_key"
+        "                 AND p.is_current AND p.v2_is_actionable)"
+        "   AND (r.url_last_checked IS NULL OR r.url_last_checked < now() - interval '14 days'"
+        "        OR (SELECT x.outcome FROM dcp_monitor_chapter_results x WHERE x.chapter_id = r.id"
+        "            ORDER BY x.checked_at DESC, x.id DESC LIMIT 1) = 'waf_blocked')",
+        (),
+        "Each count is a council whose website has stopped answering our monitor, so the rules we serve may be "
+        "out of date. Take the council's PDFs in by hand: python scripts/manual_intake.py (lists the exact "
+        "links, then loads the downloaded files). The house page shows the date the monitor last checked the plan.",
+    ),
 }
 
 

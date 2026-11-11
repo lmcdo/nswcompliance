@@ -78,7 +78,11 @@ def _norm(sql: str) -> str:
 # A LIMIT is legitimate inside a correlated EXISTS or a scalar subquery that
 # picks one row to compare against; it is never legitimate on the population
 # being counted. Keyed by DQ id with the reason the LIMIT is sound.
-LIMIT_ACCEPTED: dict[str, str] = {}
+LIMIT_ACCEPTED: dict[str, str] = {
+    "DQ-153": "The only LIMIT is `LIMIT 1` inside a correlated subquery that picks each chapter's LATEST "
+              "monitor result (ORDER BY checked_at DESC, id DESC). It selects one row per chapter, not a "
+              "cut of the population being counted, so the council count cannot be understated by it.",
+}
 
 
 class TestNoTruncatedCount:

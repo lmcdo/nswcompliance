@@ -1,0 +1,109 @@
+{
+  "tier": "standard",
+  "justification": "A blocked council website (HTTP 403) was invisible: Waverley blocked since 2026-06-29 and Wollongong since 2026-09-24 kept serving old rules. This adds one read-only DQ probe (DQ-153), a hand-intake wrapper that calls the existing r2_monitor.py --from-file, and a one-line notice on the house page fed by a new meta.plan_check field ({checked_on, never_checked, blocked}) that applies the same rule as the red number. No write to the database; r2_monitor.py is not changed.",
+  "commit_hash": "7da5269e",
+  "files": [
+    "scripts/dq_probe_live.py",
+    "scripts/manual_intake.py",
+    "tests/test_manual_intake.py",
+    ".claude/dq_checks.json",
+    ".claude/DATA_QUALITY_TRACKER.md",
+    "frontend-nextjs/lib/plan-confirmed.ts",
+    "frontend-nextjs/components/compliance/DcpPlanCheckNotice.tsx",
+    "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/lib/plan-confirmed.test.ts",
+    "frontend-nextjs/__tests__/components/dcp-plan-check-notice.test.tsx",
+    "scripts/add_new_chapter.py",
+    "tests/test_add_new_chapter_from_file.py",
+    "tests/test_plan_check_agrees.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/dq_check.py --id DQ-153",
+    "fails_when": "Red (count 2) while waverley and wollongong are blocked: measured 2026-11-10, 2 councils. It goes to 0 once their PDFs are taken in by hand with scripts/manual_intake.py. Known-right measured the same day: the other 16 serving councils (incl. blacktown) were all checked 2026-11-10 02:00 and are not counted.",
+    "external_authority": "The live database: dcp_chapter_registry.url_last_checked written by the monitor, and the monitor's own dcp_monitor_chapter_results.outcome. Both signals were run separately against the live DB and agree (waverley 1 chapter, wollongong 6).",
+    "observed_red": "python scripts/dq_check.py --id DQ-153 printed count 2 (waverley, wollongong) and the probe exits 1 on 2026-11-10, before any council file is taken in."
+  },
+  "pre_impl": {
+    "existing_data": "Plan ce-NEXT-PROMPT-2026-11-10-blocked-downloads and the pilot integrity audit Stage 1b D and E. r2_monitor.py was read: a HEAD 403 appends to waf_blocked and records the run result but never updates url_last_checked (r2_monitor.py:1239-1252); the only alert is an optional Telegram digest (r2_monitor.py:252-274, 1845-1863) that skips silently when TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing; and waf blocks never cause exit 1.",
+    "assumption_mismatch": "The plan assumed the WAF digest should have reached someone. It is sent to Telegram only, and whether the Railway service has the two variables set was NOT verified (dashboard not read). The digest text also points at scripts/manual_verify.py, not the --from-file intake.",
+    "new_vs_existing": "Reused: dq_probe_live PROBES, dq_db read-only connection, r2_monitor.py --from-file intake. New: one probe, one thin wrapper, one lib helper and notice. No fifth tracker."
+  },
+  "functions": [
+    {
+      "name": "PROBES['DQ-153']",
+      "file_line": "scripts/dq_probe_live.py (end of PROBES)",
+      "input": "no parameters: the SQL reads dcp_chapter_registry, regulatory_provisions and dcp_monitor_chapter_results",
+      "output": "a single count of distinct councils with a blocked or stale served chapter",
+      "if_none": "count(*) never returns NULL; no database means exit 2 (unknown), not clean"
+    },
+    {
+      "name": "loadPlanCheck / planNotice",
+      "file_line": "frontend-nextjs/lib/plan-confirmed.ts",
+      "input": "a query callback and the council key; then the result and the current time",
+      "output": "the oldest check date with never_checked and blocked flags, then which notice to show",
+      "if_none": "no council or no serving chapter gives null and the page shows nothing; a never-checked or blocked chapter is shown, not dropped"
+    }
+  ],
+  "values": [
+    {
+      "value": "waverley last checked 2026-06-29, wollongong 2026-09-24, all other 16 serving councils 2026-11-10",
+      "read_at": "live database, read-only, 2026-11-10",
+      "if_missing": "the probe would have no known-wrong case to be tested on"
+    },
+    {
+      "value": "mutation: 14 days changed to 140 days in the probe: 1 test red; dry-run flag inverted in manual_intake: 1 test red; jest '>' flipped to '<' in planCheckIsOld: 5 failed / 5 passed; all restored: green",
+      "read_at": "run in this branch 2026-11-10",
+      "if_missing": "no evidence the tests catch a wrong threshold or a wrong default"
+    }
+  ],
+  "queries": [
+    {
+      "query": "DQ-153 probe SQL (count of councils)",
+      "purpose": "count councils whose served plan chapters were not checked for 14 days or whose latest monitor result is waf_blocked",
+      "file_line": "scripts/dq_probe_live.py (PROBES['DQ-153'])",
+      "where_clause": "r.is_active AND r.doc_type = 'dcp' AND a current actionable provision exists for the chapter AND (url_last_checked IS NULL OR older than 14 days OR latest outcome = 'waf_blocked')",
+      "tested_on": "live database, read-only, 2026-11-10: returned 2"
+    }
+  ],
+  "break_it": [
+    {
+      "result": "The date goes stale and the latest outcome is waf_blocked: both signals fire; verified on waverley and wollongong.",
+      "repro": "python scripts/dq_check.py --id DQ-153 (expect count 2 until the two councils' PDFs are taken in)",
+      "what_happens": "Both signals fire for that council: the date goes stale and the latest outcome is waf_blocked. Verified on waverley and wollongong.",
+      "mitigated": true,
+      "how": "The probe ORs the two signals; each was run separately on the live database and agrees.",
+      "scenario": "A chapter that serves rules is blocked on the HEAD request (403) so url_last_checked is never updated"
+    },
+    {
+      "scenario": "A blocked download sets url_last_checked, so the date looks fresh",
+      "what_happens": "The page query also reads each chapter's latest monitor result, so a chapter whose latest result is waf_blocked shows the notice even though its date is fresh, the same as the red number.",
+      "mitigated": true,
+      "how": "PLAN_CONFIRMED_SQL blocked signal; jest 'a blocked chapter is shown even though its date looks fresh'",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-confirmed.test.ts"
+    },
+    {
+      "scenario": "A folder holds a PDF whose name matches a council that is not blocked, or a misspelt file name",
+      "what_happens": "manual_intake skips it and prints it as 'skipped (no blocked chapter by this name)'; nothing is loaded",
+      "mitigated": true,
+      "how": "test_folder_matching_loads_only_blocked_chapters",
+      "repro": "python -m pytest tests/test_manual_intake.py::test_folder_matching_loads_only_blocked_chapters -o addopts="
+    },
+    {
+      "scenario": "A serving chapter has never been checked (url_last_checked NULL)",
+      "what_happens": "DQ-153 counts it and the page shows 'We have not yet checked this council's plan'.",
+      "mitigated": true,
+      "how": "never_checked flag; jest 'a chapter never checked is shown, even when the others are fresh'",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/plan-confirmed.test.ts -t never"
+    }
+  ],
+  "mutation_analysis": "Four mutations run, not described: probe window 14 to 140 days (test_probe_counts_both_signals_and_only_serving_chapters red); manual_intake dry-run default inverted (test_dry_run_is_the_default_and_apply_removes_it red); planCheckIsOld comparison flipped (5 jest failures); all restored and green. Jest: 55 passed in the seven suites that touch the changed route and notice. tsc has 0 errors. Python: tests/test_manual_intake.py and tests/test_dq_check.py 38 passed. After the gate asked for it: a real-database test (PYTEST_REAL_DB=1 pytest -m database tests/test_manual_intake.py) passes on the live database and checks that the councils manual_intake lists equal the DQ-153 count. add_new_chapter --from-file: removing the %PDF header check turns test_refuses_a_file_that_is_not_a_pdf red; restored: 4 passed. The write path itself (R2 upload + registry INSERT) is unchanged and was not run. Round 2 after the Sol review: page days changed 14 to 30 turns test_page_and_red_number_use_the_same_number_of_days red; the never-checked branch disabled turns 1 jest test red; both restored and green. PYTEST_REAL_DB=1 pytest -m database tests/test_plan_check_agrees.py passes: on the live database the councils that would show a notice equal the councils manual_intake lists. add_new_chapter --from-file: a real-database test (PYTEST_REAL_DB=1 pytest -m database tests/test_add_new_chapter_from_file.py) runs the real script as a dry run against the live registry with a hand-made PDF: exit 0, no HTTP step, prints the INSERT it would do, and the registry row count for the test key stays 0.",
+  "residual_risk": "(1) r2_monitor.py is NOT changed: a HEAD 403 still does not update the check date and the Telegram digest still depends on two variables nobody has verified on Railway; DQ-153 now makes that visible instead. (2) The page notice and DQ-153 now use one rule (14 days, never checked, blocked), kept in step by tests/test_plan_check_agrees.py; the page's SQL is a second copy of the probe's, not shared code. (3) scripts/manual_intake.py --apply was not run against live data (dry-run listing only). (4) The AustLII Playwright fallback (legislation_monitor.py:441-527, explicit --source austlii only) is still in use and was not extended; r2_monitor.py has no Playwright. (5) add_new_chapter.py --from-file was added from the prompt's 'Added 2026-11-10' note; it was not run against R2 or the live registry, and it does not add the West Dapto boundary D16 needs before it can serve. (6) scripts/add_new_chapter.py KNOWN_COUNCILS has no wollongong entry (it lists marrickville, leichhardt, ashfield, woollahra, waverley, ku_ring_gai, city_of_sydney), so Wollongong D16 cannot be registered even with --from-file; adding that entry needs the owner's dcp_name and hub_url and belongs with the D16 session.",
+  "post_merge": {
+    "db_reset": "No. Read-only probe and a read-only query in the route.",
+    "secrets": "No new secrets. Owner action: confirm TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set on the Railway dcp-monitor service, and email the Waverley and Wollongong web teams to allow our monitor.",
+    "deploy": "Vercel (frontend) on merge.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "After merge run python scripts/dq_check.py --id DQ-153 (expect 2 until the owner takes in the Waverley and Wollongong PDFs), then python scripts/manual_intake.py to see the 7 links."
+  }
+}
