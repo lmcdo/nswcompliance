@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Markdown handoff documents only (a research report, its notes and a context file) under a new handoff/ folder. No code, no data, nothing imported or served.",
-  "commit_hash": "53186a5",
+  "commit_hash": "15da64d",
   "files": [
     "handoff/2026-11-14-intent-research/AI buyer intent discovery 2026.md",
     "handoff/2026-11-14-intent-research/CONTEXT.md",
