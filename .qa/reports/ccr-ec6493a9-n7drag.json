@@ -1,0 +1,28 @@
+{
+  "tier": "minor",
+  "justification": "Markdown handoff documents only (a research report, its notes and a context file) under a new handoff/ folder. No code, no data, nothing imported or served.",
+  "commit_hash": "53186a5",
+  "files": [
+    "handoff/2026-11-14-intent-research/AI buyer intent discovery 2026.md",
+    "handoff/2026-11-14-intent-research/CONTEXT.md",
+    "handoff/2026-11-14-intent-research/research_notes/data_access.md",
+    "handoff/2026-11-14-intent-research/research_notes/market_and_build.md",
+    "handoff/2026-11-14-intent-research/research_notes/techniques.md",
+    "handoff/2026-11-14-intent-research/research_notes/tools_landscape.md"
+  ],
+  "break_it": [
+    {
+      "scenario": "A reader treats a figure in the research notes as verified fact.",
+      "what_happens": "A business decision rests on a vendor claim or a search-snippet number that the notes could not confirm.",
+      "mitigated": true,
+      "how": "The report marks evidence level per claim (vendor, snippet-level, single source) and CONTEXT.md lists what to verify before relying on it.",
+      "repro": "grep -c 'snippet-level' handoff/2026-11-14-intent-research/research_notes/*.md"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
