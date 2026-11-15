@@ -21,6 +21,8 @@ import Link from 'next/link';
 import posthog from 'posthog-js';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { BuilderReferralCard } from '@/components/tools/BuilderReferralCard';
+import FeedbackPrompt from '@/components/feedback/FeedbackPrompt';
+import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { TrendingUp, ArrowRight, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react';
 import { SiteNav } from '@/components/marketing/SiteNav';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
@@ -426,6 +428,10 @@ export default function UpzoningCheckPage() {
             </>
           )}
 
+          {/* A visible way to say what this page did not answer, for every result state including an outage.
+              Opens the feedback form mounted at the foot of this page. */}
+          <FeedbackPrompt tab="upzoning" />
+
           {/* Disclaimer */}
           <p className="text-[11px] text-gray-400 leading-relaxed">
             This tool reports mapped planning data and extracted Housing SEPP standards with
@@ -488,6 +494,9 @@ export default function UpzoningCheckPage() {
           </div>
         </section>
       )}
+
+      {/* The form the prompt above opens. No floating button on this public page: the prompt is the only way in. */}
+      <FeedbackWidget propertyAddress={result?.address} launcher={false} />
 
       <SiteFooter />
     </main>

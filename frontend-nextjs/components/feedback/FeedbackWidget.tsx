@@ -15,6 +15,11 @@ import {
 } from '@/lib/feedback-prompt';
 
 interface FeedbackWidgetProps {
+  /**
+   * Show the small floating Feedback button while the form is closed. True everywhere it already appears. A page that
+   * has its own visible prompt (FeedbackPrompt) can pass false, so the form opens only from that prompt.
+   */
+  launcher?: boolean;
   propertyAddress?: string;
   provisionContext?: {
     id: number;
@@ -36,6 +41,7 @@ type UserType =
   | 'student' | 'academic' | 'other';
 
 export default function FeedbackWidget({
+  launcher = true,
   propertyAddress,
   provisionContext
 }: FeedbackWidgetProps) {
@@ -162,6 +168,7 @@ export default function FeedbackWidget({
   };
 
   if (!isOpen) {
+    if (!launcher) return null;
     return (
       <button
         onClick={() => {

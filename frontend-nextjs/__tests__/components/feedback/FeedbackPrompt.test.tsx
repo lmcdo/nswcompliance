@@ -158,6 +158,20 @@ describe('FeedbackPrompt', () => {
     expect(screen.getByRole('radio', { name: /bug report/i })).toBeChecked();
   });
 
+  it('shows no floating button when the launcher is turned off, and still opens from the prompt', () => {
+    render(
+      <>
+        <FeedbackPrompt tab="upzoning" />
+        <FeedbackWidget launcher={false} />
+      </>,
+    );
+    expect(screen.queryByRole('button', { name: /open feedback panel/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /tell us what you were looking for/i }));
+    expect(screen.getByPlaceholderText(/describe your feedback/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /close feedback panel/i }));
+    expect(screen.queryByRole('button', { name: /open feedback panel/i })).not.toBeInTheDocument();
+  });
+
   it('uses no liability wording in its own copy (pre-pr-review check 5)', () => {
     mount();
     const copy = screen.getByTestId('feedback-prompt').textContent ?? '';

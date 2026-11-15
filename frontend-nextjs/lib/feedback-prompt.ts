@@ -18,6 +18,7 @@ export const TAB_LABEL: Record<string, string> = {
   sepp: 'SEPP tab',
   lep: 'Planning Controls (LEP) tab',
   dcp: 'DCP Provisions tab',
+  upzoning: 'Upzoning Check (LMR and TOD) page',
 };
 
 /**

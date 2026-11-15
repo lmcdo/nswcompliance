@@ -50,6 +50,7 @@ describe('composeFeedbackText', () => {
     expect(composeFeedbackText('Hello', { tab: 'sepp' })).toBe('[From: SEPP tab]\nHello');
     expect(composeFeedbackText('Hello', { tab: 'lep' })).toBe('[From: Planning Controls (LEP) tab]\nHello');
     expect(composeFeedbackText('Hello', { tab: 'dcp' })).toBe('[From: DCP Provisions tab]\nHello');
+    expect(composeFeedbackText('Hello', { tab: 'upzoning' })).toBe('[From: Upzoning Check (LMR and TOD) page]\nHello');
   });
 
   it('keeps an unrecognised tab id readable instead of dropping it', () => {

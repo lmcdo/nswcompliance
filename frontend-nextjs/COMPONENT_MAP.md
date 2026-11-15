@@ -253,6 +253,7 @@ grep -r "from.*HeritageProvisions" app/ components/
 | May-apply areas (suburb-matched withheld rules, amber collapsed block after the not-covered notice) | `/assessment` DCP tab | DcpMayApplyBlock.tsx (rows from `meta.may_apply`, lib/may-apply-query.ts) | ~2150 |
 | "<DCP> controls are not shown for this property" card / straddle warning (DQ-120 land gate, decided by `lib/dcp-land-application.ts`) | `/assessment` DCP tab | DcpLandApplicationNotice.tsx (rendered by ProvisionsByTocStructure.tsx) | — |
 | "Is there something you wanted to find out about this property that this page does not tell you?" + "Tell us what you were looking for" (blue strip above the SEPP / LEP / DCP tab bar) | `/assessment` (once a property is loaded) | FeedbackPrompt.tsx. It opens the floating FeedbackWidget.tsx through the `plotdetect:open-feedback` event (`lib/feedback-prompt.ts`); it stores nothing itself. The message is saved by `POST /api/feedback` with a `[From: … tab]` line and, for the roles conveyancer / buyer's agent / builder / property owner, a `[Role: …]` line (sent to the API as `other`). | — |
+| The same blue strip, at the end of every result state (including a data outage), above the disclaimer | `/tools/upzoning-check` (the LMR and TOD tool), once a result is loaded | FeedbackPrompt.tsx with tab `upzoning`, opening a FeedbackWidget.tsx mounted at the foot of the page with `launcher={false}` (no floating button on this public page). Not on `/duplex-check`, the ads landing page, which keeps its single-purpose layout. | — |
 
 ---
 
