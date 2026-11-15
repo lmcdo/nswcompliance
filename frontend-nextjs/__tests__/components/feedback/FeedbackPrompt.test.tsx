@@ -133,6 +133,31 @@ describe('FeedbackPrompt', () => {
     }
   });
 
+  it('does not carry the tab or the feature-request type when the form is closed unsent and reopened from the floating button', async () => {
+    // Found by the pre-push cross-review: only a successful save cleared them, so closing with the X left both behind.
+    mount('lep');
+    fireEvent.click(screen.getByRole('button', { name: /tell us what you were looking for/i }));
+    expect(screen.getByRole('radio', { name: /feature request/i })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: /close feedback panel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open feedback panel/i }));
+    expect(screen.getByRole('radio', { name: /general comment/i })).toBeChecked();
+    fireEvent.change(screen.getByPlaceholderText(/describe your feedback/i), { target: { value: 'A general message' } });
+    fireEvent.submit(screen.getByPlaceholderText(/describe your feedback/i).closest('form')!);
+    await waitFor(() => expect((global as any).fetch).toHaveBeenCalledTimes(1));
+    const body = postedBody();
+    expect(body.feedbackText).toBe('A general message');
+    expect(body.feedbackType).toBe('general');
+  });
+
+  it('keeps what the user chose when they close and reopen a form that did not come from the prompt', () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /open feedback panel/i }));
+    fireEvent.click(screen.getByRole('radio', { name: /bug report/i }));
+    fireEvent.click(screen.getByRole('button', { name: /close feedback panel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open feedback panel/i }));
+    expect(screen.getByRole('radio', { name: /bug report/i })).toBeChecked();
+  });
+
   it('uses no liability wording in its own copy (pre-pr-review check 5)', () => {
     mount();
     const copy = screen.getByTestId('feedback-prompt').textContent ?? '';

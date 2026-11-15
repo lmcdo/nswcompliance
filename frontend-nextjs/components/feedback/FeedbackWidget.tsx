@@ -164,7 +164,16 @@ export default function FeedbackWidget({
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          // If the form was last opened from the inline prompt and then closed unsent, drop what the prompt set, so this
+          // message is not attributed to a tab it did not come from or filed as a feature request (found by cross-review).
+          // A form that never came from the prompt keeps whatever the visitor had chosen.
+          if (entryTab !== null) {
+            setEntryTab(null);
+            setFeedbackType('general');
+          }
+          setIsOpen(true);
+        }}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         aria-label="Open feedback panel"
       >
