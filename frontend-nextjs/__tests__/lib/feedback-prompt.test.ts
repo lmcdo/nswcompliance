@@ -25,8 +25,11 @@ describe('apiUserType', () => {
     },
   );
 
-  it('does not invent a mapping for an unknown value', () => {
-    expect(apiUserType('something_else')).toBe('something_else');
+  it('sends any value the column is not known to hold as "other", so a typo in an option can never reach it', () => {
+    // Found by the pre-push cross-review: the first version passed unknown strings through unchanged.
+    expect(apiUserType('something_else')).toBe('other');
+    expect(apiUserType('townplanner')).toBe('other');
+    expect(apiUserType('')).toBe('other');
   });
 });
 

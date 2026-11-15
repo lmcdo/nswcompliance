@@ -39,9 +39,23 @@ export function isExtraRole(value: string): value is ExtraRole {
   return EXTRA_ROLES.some((r) => r.value === value);
 }
 
-/** What goes in the user_type field: a value the column already holds, never a new one. */
+/** The values the widget has always sent as user_type, so the column is known to hold them. */
+const EXISTING_USER_TYPES: readonly string[] = [
+  'certifier',
+  'town_planner',
+  'architect',
+  'developer',
+  'student',
+  'academic',
+  'other',
+];
+
+/**
+ * What goes in the user_type field: a value the column already holds, never a new one. A new role, a typo in an option
+ * and an empty value all go as 'other', which the route also uses as its own fallback.
+ */
 export function apiUserType(role: string): string {
-  return isExtraRole(role) ? 'other' : role;
+  return EXISTING_USER_TYPES.includes(role) ? role : 'other';
 }
 
 /**
