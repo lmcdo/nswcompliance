@@ -5,6 +5,14 @@ import { MessageCircle, X, Send } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { getCohort } from '@/lib/cohort';
 import { posthog } from '@/components/providers/PostHogProvider';
+import {
+  EXTRA_ROLES,
+  OPEN_FEEDBACK_EVENT,
+  apiUserType,
+  composeFeedbackText,
+  type ExtraRole,
+  type OpenFeedbackDetail,
+} from '@/lib/feedback-prompt';
 
 interface FeedbackWidgetProps {
   propertyAddress?: string;
@@ -40,7 +48,22 @@ export default function FeedbackWidget({
   // makes the server emit "Feedback" and the client emit the class code, which
   // is a hydration mismatch React resolves by discarding the client markup.
   const [cohort, setCohort] = useState<string | null>(null);
-  const [userType, setUserType] = useState<UserType>('certifier');
+  const [userType, setUserType] = useState<UserType | ExtraRole>('certifier');
+  // The tab the form was opened from, set only when an inline prompt opens it. Null for the floating button.
+  const [entryTab, setEntryTab] = useState<string | null>(null);
+
+  // An inline prompt asks this widget to open (see components/feedback/FeedbackPrompt.tsx). Opening here keeps one
+  // form, one endpoint and one place feedback lands.
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = ((event as CustomEvent<OpenFeedbackDetail>).detail ?? {}) as OpenFeedbackDetail;
+      setFeedbackType(detail.feedbackType ?? 'feature_request');
+      setEntryTab(detail.tab ?? null);
+      setIsOpen(true);
+    };
+    window.addEventListener(OPEN_FEEDBACK_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_FEEDBACK_EVENT, onOpen);
+  }, []);
 
   useEffect(() => {
     const c = getCohort();
@@ -70,6 +93,7 @@ export default function FeedbackWidget({
     { value: 'town_planner', label: 'Town Planner' },
     { value: 'architect', label: 'Architect' },
     { value: 'developer', label: 'Developer' },
+    ...EXTRA_ROLES.map((r) => ({ value: r.value as string, label: r.label as string })),
     { value: 'student', label: 'Student' },
     { value: 'academic', label: 'Academic / lecturer' },
     { value: 'other', label: 'Other' },
@@ -85,9 +109,11 @@ export default function FeedbackWidget({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           feedbackType,
-          feedbackText,
+          // The tab and any role the column does not hold are written into the text, so the stored row keeps them.
+          feedbackText: composeFeedbackText(feedbackText, { tab: entryTab, role: userType }),
           email: email || null,
-          userType,
+          // Only values user_type already holds are ever sent; the new roles go as 'other' (see lib/feedback-prompt.ts).
+          userType: apiUserType(userType),
           context: {
             cohort,          // null when untagged — never a placeholder
             page: pathname,
@@ -118,6 +144,7 @@ export default function FeedbackWidget({
           setFeedbackText('');
           setEmail('');
           setFeedbackType('general');
+          setEntryTab(null);
           // Back to the cohort-aware default, not 'certifier' — a student
           // filing a second report would otherwise be relabelled.
           setUserType(cohort ? 'student' : 'certifier');
@@ -235,7 +262,7 @@ export default function FeedbackWidget({
               </label>
               <select
                 value={userType}
-                onChange={(e) => setUserType(e.target.value as UserType)}
+                onChange={(e) => setUserType(e.target.value as UserType | ExtraRole)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
                 {userTypes.map((type) => (
