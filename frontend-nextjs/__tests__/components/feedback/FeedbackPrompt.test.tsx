@@ -136,8 +136,7 @@ describe('FeedbackPrompt', () => {
   it('uses no liability wording in its own copy (pre-pr-review check 5)', () => {
     mount();
     const copy = screen.getByTestId('feedback-prompt').textContent ?? '';
-    expect(copy).not.toMatch(
-      /\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|reliable)\b/i,
-    );
+    // One line on purpose: the scanner skips any line containing expect(, which is how a list of banned words can sit in a test.
+    expect(copy).not.toMatch(/\b(safe|feasible|compliant|should|recommend|suitable|adequate|sufficient|approved|guaranteed|certified|confirmed|verified|ensure|assure|accurate|definitive|comprehensive|reliable)\b/i);
   });
 });
