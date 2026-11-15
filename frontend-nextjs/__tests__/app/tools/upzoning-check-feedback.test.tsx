@@ -17,7 +17,10 @@ jest.mock('@/components/marketing/SiteNav', () => ({ SiteNav: () => null }));
 jest.mock('@/components/marketing/SiteFooter', () => ({ SiteFooter: () => null }));
 jest.mock('@/components/property/PropertySearch', () => ({
   PropertySearch: ({ onAddressSelect }: { onAddressSelect: (address: string) => void }) => (
-    <button onClick={() => onAddressSelect('12 Example Street, Hornsby NSW')}>pick address</button>
+    <>
+      <button onClick={() => onAddressSelect('12 Example Street, Hornsby NSW')}>pick address</button>
+      <button onClick={() => onAddressSelect('34 Other Road, Epping NSW')}>pick other address</button>
+    </>
   ),
 }));
 
@@ -43,8 +46,12 @@ const OUTAGE = {
 };
 
 function mockNetwork() {
-  (global as any).fetch = jest.fn().mockImplementation((url: string) => {
-    if (String(url).includes('/api/upzoning')) return Promise.resolve({ ok: true, json: async () => OUTAGE });
+  (global as any).fetch = jest.fn().mockImplementation((url: string, init?: { body?: string }) => {
+    if (String(url).includes('/api/upzoning')) {
+      // Echo the address asked about, as the real endpoint does.
+      const address = init?.body ? JSON.parse(init.body).address : ADDRESS;
+      return Promise.resolve({ ok: true, json: async () => ({ ...OUTAGE, address }) });
+    }
     return Promise.resolve({ ok: true, json: async () => ({}) });
   });
 }
@@ -99,6 +106,28 @@ describe('/tools/upzoning-check feedback prompt', () => {
     expect(body.feedbackType).toBe('feature_request');
     expect(body.context.propertyAddress).toBe(ADDRESS);
     expect(body.context.page).toBe('/tools/upzoning-check');
+  });
+
+  it('does not carry a draft written for one address onto the next address checked', async () => {
+    // Found by the pre-push cross-review: the form is mounted at the foot of the page, so it outlived the result.
+    render(<UpzoningCheckPage />);
+    fireEvent.click(screen.getByRole('button', { name: /pick address/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /tell us what you were looking for/i }));
+    fireEvent.change(screen.getByPlaceholderText(/describe your feedback/i), { target: { value: 'About the first address' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /pick other address/i }));
+    // The first draft is gone with its address: the form is closed and nothing of it is left to submit.
+    await waitFor(() => expect(screen.getAllByText(/34 Other Road/).length).toBeGreaterThan(0));
+    expect(screen.queryByPlaceholderText(/describe your feedback/i)).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: /tell us what you were looking for/i }));
+    expect(screen.getByPlaceholderText(/describe your feedback/i)).toHaveValue('');
+    fireEvent.change(screen.getByPlaceholderText(/describe your feedback/i), { target: { value: 'About the second address' } });
+    fireEvent.submit(screen.getByPlaceholderText(/describe your feedback/i).closest('form')!);
+    await waitFor(() => expect(feedbackCall()).toBeDefined());
+    const body = feedbackCall();
+    expect(body.feedbackText).toBe('[From: Upzoning Check (LMR and TOD) page]\nAbout the second address');
+    expect(body.context.propertyAddress).toBe('34 Other Road, Epping NSW');
   });
 
   it('counts the click on its own with the page name', async () => {

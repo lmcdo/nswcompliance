@@ -495,8 +495,9 @@ export default function UpzoningCheckPage() {
         </section>
       )}
 
-      {/* The form the prompt above opens. No floating button on this public page: the prompt is the only way in. */}
-      <FeedbackWidget propertyAddress={result?.address} launcher={false} />
+      {/* The form the prompt above opens. No floating button on this public page: the prompt is the only way in.
+          Keyed on the address so a draft written for one address cannot be sent with the next one (cross-review). */}
+      <FeedbackWidget key={result?.address ?? 'no-result'} propertyAddress={result?.address} launcher={false} />
 
       <SiteFooter />
     </main>
