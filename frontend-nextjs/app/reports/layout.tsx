@@ -18,16 +18,13 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: 'NSW Property Intelligence — PlotDetect',
-  description: 'NSW property intelligence reports: granny flat eligibility, flood risk, solar yield, DA activity.',
+  description: 'The mapped facts about a NSW property, each shown with its source.',
 };
 
+// Private pilot (lib/pilot-focus.ts): the menu shows Council Rules and Site Facts only.
 const NAV_ITEMS = [
+  { href: '/assessment', label: 'Council Rules' },
   { href: '/reports/intelligence-brief', label: 'Site Facts' },
-  { href: '/reports/threat-radar', label: 'Development Monitoring' },
-  { href: '/reports/granny-flat', label: 'Granny Flat' },
-  { href: '/reports/flood', label: 'Flood' },
-  { href: '/reports/pre-da-history', label: 'Site History' },
-  { href: '/reports/conveyancing', label: 'Conveyancing' },
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
@@ -66,12 +63,9 @@ export default async function ReportsLayout({ children }: { children: React.Reac
       <main className="max-w-5xl mx-auto px-6 py-10">{children}</main>
       <footer className="bg-slate-950 border-t border-slate-800/50 mt-16">
         <div className="max-w-5xl mx-auto px-6 py-6 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-          <span>&copy; {new Date().getFullYear()} PlotDetect &mdash; NSW property intelligence</span>
+          <span>&copy; {new Date().getFullYear()} PlotDetect</span>
           <div className="flex flex-wrap gap-4">
             <Link href="/how-it-works" className="hover:text-slate-300 transition-colors">How it works</Link>
-            <Link href="/pricing" className="hover:text-slate-600 transition-colors">Pricing</Link>
-            <Link href="/for/builders" className="hover:text-slate-300 transition-colors">Embed program</Link>
-            <Link href="/site-directory" className="hover:text-slate-300 transition-colors">Site directory</Link>
             <Link href="/privacy" className="hover:text-slate-300 transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-slate-300 transition-colors">Terms</Link>
           </div>

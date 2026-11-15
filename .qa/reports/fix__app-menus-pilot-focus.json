@@ -1,0 +1,31 @@
+{
+ "tier": "minor",
+ "justification": "Navigation links and a page description in one layout, plus one guard-test line. No data, no query, no regulatory text. Recorded rather than skipped because it closes a hole in the pilot-focus guard.",
+ "commit_hash": "7bb659ba",
+ "files": [
+  "frontend-nextjs/app/reports/layout.tsx",
+  "frontend-nextjs/__tests__/lib/pilot-focus-links.test.ts"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=pilot-focus-links",
+  "fails_when": "app/reports/layout.tsx links to any path outside PILOT_ALLOWED_LINKS, such as /reports/granny-flat, /pricing, /for/builders or /site-directory.",
+  "external_authority": "PILOT_ALLOWED_LINKS in lib/pilot-focus.ts, the owner decision of 2026-11-09."
+ },
+ "break_it": [
+  {
+   "scenario": "Someone adds an old report back to the shared header menu.",
+   "what_happens": "Every Site Facts page shows the withdrawn products again, on the app and on canibuildit.com.au.",
+   "mitigated": true,
+   "how": "app/reports/layout.tsx is now scanned by the guard test. Observed red: adding /reports/granny-flat failed the test, removing it passed.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=pilot-focus-links"
+  }
+ ],
+ "mutation_analysis": "Added the Granny Flat item back to NAV_ITEMS: the guard failed with 'app/reports/layout.tsx:28 /reports/granny-flat'. Restored: 11 of 11 pass.",
+ "residual_risk": "The guard exempts exactly one external address, https://plotdetect.com.au (the header logo). Other pages under app/reports still carry their own cross-sell cards; they are reachable only by address and are not scanned.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "The root site is lmcdo/website PR 19.",
+  "manual_verify": "Yes: open /reports/intelligence-brief and read the header and footer."
+ }
+}

@@ -29,6 +29,7 @@ const NAV_FILES = [
   'app/(tools)/layout.tsx',
   'app/site-directory/page.tsx',
   'app/reports/page.tsx',
+  'app/reports/layout.tsx',
   'app/page.tsx',
   'app/pricing/page.tsx',
   // The company pages the menu and footer link to.
@@ -55,6 +56,8 @@ function offendingLinks(): string[] {
   for (const rel of NAV_FILES) {
     for (const { line, value } of hrefs(rel)) {
       if (value.startsWith('mailto:') || value.startsWith('#')) continue;
+      // The reports header logo deliberately leads out to the root site; that one address, nothing else external.
+      if (value === 'https://plotdetect.com.au') continue;
       // An allowed path may carry a trailing template expression (the ?address= passthrough); nothing else.
       const clean = value.replace(/\$\{[^}]*\}$/, '').split(/[?#]/)[0];
       if (!PILOT_ALLOWED_LINKS.includes(clean)) bad.push(`${rel}:${line}  ${value}`);
