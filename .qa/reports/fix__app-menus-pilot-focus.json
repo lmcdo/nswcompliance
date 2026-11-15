@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Navigation links and a page description in one layout, plus one guard-test line. No data, no query, no regulatory text. Recorded rather than skipped because it closes a hole in the pilot-focus guard.",
- "commit_hash": "7bb659ba",
+ "commit_hash": "04cf1086",
  "files": [
   "frontend-nextjs/app/reports/layout.tsx",
   "frontend-nextjs/__tests__/lib/pilot-focus-links.test.ts"
