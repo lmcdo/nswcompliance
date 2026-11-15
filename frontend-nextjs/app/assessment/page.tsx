@@ -29,6 +29,7 @@ import { PropertyDetailsComprehensive } from '@/components/property-details-comp
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import { InstrumentCurrency } from '@/components/compliance/InstrumentCurrency';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
+import FeedbackPrompt from '@/components/feedback/FeedbackPrompt';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI, useSpatialContext } from '@/hooks';
 import { SpatialContextCard } from '@/components/property/SpatialContextCard';
@@ -531,6 +532,8 @@ export default function AssessmentPage() {
                     />
                   </ErrorBoundary>
                 )}
+                {/* A visible way to say what the page did not answer. Opens the existing feedback widget. */}
+                <FeedbackPrompt tab={viewMode} />
                 {/* Regulatory Tabs - SEPP purple, LEP amber, DCP green */}
                 <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">
