@@ -1,0 +1,109 @@
+{
+  "tier": "standard",
+  "justification": "Adds a visible prompt above the assessment tabs that opens the existing feedback widget, and changes what the widget sends: the tab it was opened from and, for four new roles, the role are written into the message text, and the new roles go to the API as 'other'. Seven files across a page, a shared widget, a helper and tests, so the three-file floor for the minor tier is exceeded. The submit payload reaches a production table through an existing route, which is why this is not treated as a copy change.",
+  "commit_hash": "aa0685c1",
+  "files": [
+    "frontend-nextjs/lib/feedback-prompt.ts",
+    "frontend-nextjs/components/feedback/FeedbackPrompt.tsx",
+    "frontend-nextjs/components/feedback/FeedbackWidget.tsx",
+    "frontend-nextjs/app/assessment/page.tsx",
+    "frontend-nextjs/COMPONENT_MAP.md",
+    "frontend-nextjs/__tests__/lib/feedback-prompt.test.ts",
+    "frontend-nextjs/__tests__/components/feedback/FeedbackPrompt.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --runTestsByPath __tests__/components/feedback/FeedbackPrompt.test.tsx __tests__/lib/feedback-prompt.test.ts --ci",
+    "fails_when": "The widget sends a role the user_type column might reject, drops the tab from the stored message, leaves the tab attached to the next submission, or stops opening when the prompt fires. All four were injected on this branch and measured, not reasoned about. Mutation 1, apiUserType returns the new role unchanged: 5 of 29 tests fail. Mutation 2, composeFeedbackText drops the tab line: 7 of 29 fail. Mutation 3, the widget no longer clears the tab after a save: 1 of 29 fails. Mutation 4, the widget stops listening for the open event: 6 of 29 fail.",
+    "observed_red": "Yes, observed on this branch on 2026-11-15, not assumed. With apiUserType changed to return the role unchanged, the command printed 5 failed of 29 tests, among them the component test sends a new role as other and the three per-role helper cases. With the event listener removed from the widget it printed 6 failed of 29. With the tab line dropped from composeFeedbackText it printed 7 failed of 29. With the tab no longer cleared after a save it printed 1 failed of 29. The same command printed 0 failed of 29 on the unmodified code.",
+    "external_authority": "The body the widget POSTs to /api/feedback is read from the mocked fetch call and asserted field by field, so the tests judge what leaves the browser for the real route and not the helper's own return value. The route's own fallback, userType || 'other' at app/api/feedback/route.ts, is the authority for why 'other' is a safe value to send."
+  },
+  "pre_impl": {
+    "existing_data": "components/feedback/FeedbackWidget.tsx was already mounted on /assessment, posting to /api/feedback, which saves to user_feedback and emails the operator. It already had a Feature Request type and a role list. COMPONENT_MAP.md and the prior-art sweep found it before any code was written, so no second endpoint, table or email template was built.",
+    "assumption_mismatch": "I first assumed a feedback button had to be added from scratch and that it should reuse the canibuildit lead route. Reading that route showed it sends confirmation emails and has per-type templates and verdict recomputation, which is far heavier than a feedback prompt. I also assumed I could check production's constraint on user_type; the read-only catalog query was denied by the permission classifier, so the design sends only values the column already holds.",
+    "new_vs_existing": "Two small new files and no new endpoint or storage. FeedbackPrompt.tsx is a visible entry point only. lib/feedback-prompt.ts holds the event name, the extra roles and the text builder. Everything else is an edit to the existing widget and one mount line on the assessment page."
+  },
+  "functions": [
+    {
+      "name": "apiUserType",
+      "file_line": "frontend-nextjs/lib/feedback-prompt.ts:43",
+      "input": "the role string chosen in the widget's I am a select, which may now be one of four new roles",
+      "output": "the string sent as user_type: 'other' for a new role, otherwise the value unchanged",
+      "if_none": "an unknown value passes through unchanged, and an empty string is handled by the route's own userType || 'other' fallback, so nothing new is introduced"
+    },
+    {
+      "name": "composeFeedbackText",
+      "file_line": "frontend-nextjs/lib/feedback-prompt.ts:51",
+      "input": "the typed message plus the tab the form was opened from and the chosen role",
+      "output": "the message with a one-line bracketed prefix only when a tab or a new role exists, otherwise the message unchanged",
+      "if_none": "with no tab and an existing role the original text is returned untouched, which a test asserts, so the floating button's submissions are not altered"
+    },
+    {
+      "name": "FeedbackPrompt.handleClick",
+      "file_line": "frontend-nextjs/components/feedback/FeedbackPrompt.tsx:20",
+      "input": "a click on the Tell us what you were looking for button, with the current tab id as a prop",
+      "output": "one feedback_prompt_clicked event carrying only the tab, then a window event that opens the widget",
+      "if_none": "if PostHog throws, the error is swallowed and the form still opens, which a test asserts"
+    }
+  ],
+  "values": [
+    {
+      "value": "clean: 7 feedback suites passed, 68 tests, including the three existing widget suites unchanged",
+      "read_at": "npx jest --runTestsByPath on the seven feedback test files in frontend-nextjs, 2026-11-15",
+      "if_missing": "without the existing widget suites passing there is no evidence the floating button's behaviour is unchanged"
+    },
+    {
+      "value": "tsc --noEmit: 0 errors across frontend-nextjs; eslint clean on the five changed source and test files",
+      "read_at": "npx tsc --noEmit -p . and npx eslint on the changed files in frontend-nextjs, 2026-11-15",
+      "if_missing": "an untyped role value or a bad import would reach the build"
+    },
+    {
+      "value": "full suite at the time of the first run: 222 of 223 suites and 2712 of 2713 tests passed, the single failure being a mistake in a test written for this change, fixed by wrapping a timer advance in act",
+      "read_at": "npx jest with the path pattern feedback, which matched the worktree folder name and so ran everything, 2026-11-15",
+      "if_missing": "it is the only evidence that no unrelated suite was broken by the widget edit"
+    },
+    {
+      "value": "mutation 1: 5 failed of 29; mutation 2: 7 failed of 29; mutation 3: 1 failed of 29; mutation 4: 6 failed of 29; files restored identical by hash",
+      "read_at": "a script applying each replacement, running jest on the two new test files and restoring from a backup, 2026-11-15",
+      "if_missing": "without them there is no proof the assertions do anything, as opposed to passing on any code"
+    }
+  ],
+  "queries": "N/A — no SQL is added or changed. The existing INSERT in app/api/feedback/route.ts is untouched, and the only change to what it receives is a bracketed prefix in the text and the value other in place of a new role.",
+  "break_it": [
+    {
+      "scenario": "Production's user_type column carries a CHECK constraint that rejects a value the new select offers, so every submission from that role fails with a 500.",
+      "what_happens": "The visitor sees Failed to submit feedback and nothing is saved, the exact silent loss this change must not create. The constraint could not be read, because the read-only catalog query was denied.",
+      "mitigated": true,
+      "how": "The four new roles are never sent as user_type. apiUserType maps them to other, which the route already uses as its own fallback, and a test asserts the posted body. Mutation 1 shows the test fails if the role is sent unchanged.",
+      "repro": "cd frontend-nextjs && npx jest --runTestsByPath __tests__/components/feedback/FeedbackPrompt.test.tsx -t \"sends a new role as other\""
+    },
+    {
+      "scenario": "The tab from one prompt-opened submission is still attached to the next submission made with the floating button.",
+      "what_happens": "A later message about something else carries a From line naming a tab the visitor was no longer thinking about, which pollutes the stored feedback with a wrong location.",
+      "mitigated": true,
+      "how": "The widget clears the stored tab when a save succeeds. A test saves once from the prompt, waits for the reset, submits again from the floating button and asserts the second text has no prefix. Mutation 3 fails that test.",
+      "repro": "cd frontend-nextjs && npx jest --runTestsByPath __tests__/components/feedback/FeedbackPrompt.test.tsx -t \"does not carry the tab\""
+    },
+    {
+      "scenario": "The prompt is shown on /assessment but the FeedbackWidget mount is removed from the same page in a later edit.",
+      "what_happens": "Clicking the prompt counts a click and then nothing opens, so the page invites feedback it cannot take and nobody notices from the code.",
+      "mitigated": false,
+      "how": "Not mitigated by an automated test, because there is no page-level test for /assessment. Both mounts sit in one file and COMPONENT_MAP.md records the pairing, which is documentation and not enforcement.",
+      "repro": "delete the FeedbackWidget element near the end of frontend-nextjs/app/assessment/page.tsx, load /assessment with a property selected, click Tell us what you were looking for, and observe that no form opens"
+    },
+    {
+      "scenario": "A visitor opens the page before any property is loaded, or while it is loading.",
+      "what_happens": "If the prompt appeared with no property it would invite feedback about a page that has shown nothing yet, and the stored message would carry a tab with no address.",
+      "mitigated": true,
+      "how": "The prompt is mounted inside the same block that renders the tabs, which only renders when loading is false and a property is selected. The widget's own floating button remains available at all other times.",
+      "repro": "load /assessment with no address and confirm the blue strip is absent, then search an address and confirm it appears above the tab bar"
+    }
+  ],
+  "mutation_analysis": "Four mutations on the new and edited code, each run and each caught. Mutation 1 sends the new role unchanged: 5 of 29 fail, covering the helper cases and the component test that checks the posted userType. Mutation 2 drops the tab line: 7 of 29 fail, the widest, because every prompt-opened submission asserts its prefix. Mutation 3 stops clearing the tab after a save: 1 of 29 fails, the single test written for that case, so it is a real guard and not redundant. Mutation 4 removes the event listener: 6 of 29 fail, covering every test that opens the form from the prompt. Each run restored the original files, confirmed by hash. A first attempt crashed on a Windows text-decoding error after applying mutation 1 and left that file broken; it was restored from its backup immediately and the script was fixed to always restore in a finally block.",
+  "residual_risk": "Production's constraint on user_type was never read, so the claim that other is safe rests on the route using it as its own fallback, not on the schema. The assessment page has no page-level test, so the prompt-and-widget pairing is checked by two components rendered together in a test, not by the real page. The prompt shows one message to every visitor regardless of role, and nothing yet measures whether it increases feedback; the feedback_prompt_clicked event exists to measure that. Traffic to this page was 355 visitors in 30 days in August 2026, so counts will be small and should be read as qualitative signals.",
+  "post_merge": {
+    "db_reset": "No. No migration, no schema change and no new table. The existing user_feedback insert is unchanged.",
+    "secrets": "None written. npm ci was run in the worktree; no environment file was copied or created, and nothing secret was added to any committed file.",
+    "other_repo": "No. Single repository.",
+    "manual_verify": "Yes, two things after the preview deploy: load /assessment with a property and confirm the blue strip appears above the tab bar and opens the form with Feature Request selected, then submit a test message as a builder and confirm a row appears in user_feedback with user_type other and the text starting with a From and Role line."
+  }
+}
