@@ -1,0 +1,40 @@
+{
+ "tier": "minor",
+ "justification": "Display-only change in the LEP tab: the map rows stop printing a hard-coded clause and an unchecked mark, and the flood tile stops printing 'No' when the portal holds no flood map. No query, schema or data changes; reads fields the API already returns (floodProne, floodMapNote). Recorded with an observed-red mutation because it changes what a flood answer says.",
+ "commit_hash": "30d8ee8e",
+ "files": [
+  "frontend-nextjs/components/compliance/LepControls.tsx",
+  "frontend-nextjs/components/compliance/LandUseZoningCard.tsx",
+  "frontend-nextjs/components/compliance/MinimumLotSizeCard.tsx",
+  "frontend-nextjs/__tests__/components/compliance/lep-controls-map-rows-honesty.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=lep-controls-map-rows-honesty",
+  "fails_when": "the height, FSR or lot-size row prints 'LEP Clause 4.x' or the unchecked mark; the flood tile prints 'No' while floodProne is null; or the zone card shows the unchecked mark with no cited clause.",
+  "external_authority": "The live API for 8 pilot addresses (2026-11-16): 6 of 8 returned floodProne null with floodMapNote 'no flood planning map on the NSW Planning Portal for this LEP', while the tab printed 'No'. Owner ruling 2026-11-16: remove the 'Citation not yet checked' mark."
+ },
+ "break_it": [
+  {
+   "scenario": "A council has no portal flood planning map and no council flood layer.",
+   "what_happens": "Before: the tile said 'No', read as 'not flood affected'. After: 'No flood map found' with the note as a tooltip.",
+   "mitigated": true,
+   "how": "floodProne null now falls to the 'No flood map found' branch; only floodProne === false prints 'No'.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=lep-controls-map-rows-honesty"
+  },
+  {
+   "scenario": "Someone re-adds a hard-coded 'LEP Clause 4.3'.",
+   "what_happens": "The same clause number prints for every council whether or not it is right.",
+   "mitigated": true,
+   "how": "The test asserts no 'LEP Clause \\d' text on the page.",
+   "repro": "same command"
+  }
+ ],
+ "mutation_analysis": "Restored the original three component files with the new test in place: 3 of 6 tests failed (map rows, flood unknown, zone badge with no clause). With the change: 6 of 6 pass. citation-badge-inventory, citation-unchecked-mark, your-project-summary, no-fabricated-citations and lep-controls-hazard-not-checked still pass (110 tests).",
+ "residual_risk": "The tile cannot say whether a lot IS flood affected where no map exists; it says so plainly. The citation mark still shows wherever a clause is actually cited (keySite, DCP rows). The flood-one-answer plan steps 2 to 4 are untouched.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "Open /assessment for 128 Park Ave, Ashfield, open the Planning Controls tab: Flood Mapping reads 'No flood map found' and no 'Citation not yet checked' appears on zone, height, FSR or lot size."
+ }
+}

@@ -135,7 +135,7 @@ export function LandUseZoningCard({
               </Badge>
             )}
             {/* The clause is the Planning Portal's own text; no script here proves it. */}
-            {citation && <CitationUncheckedBadge checked={false} />}
+            {citation && legislativeClause && <CitationUncheckedBadge checked={false} />}
             {amendment && (
               <Badge className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700">
                 {amendment}

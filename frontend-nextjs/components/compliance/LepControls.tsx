@@ -135,7 +135,7 @@ export function LepControls({
                   {constraints.maxHeight}m
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.3 <CitationUncheckedBadge checked={false} />
+                  {lepName ? `${lepName} — ` : ''}Height of Buildings Map
                 </div>
               </div>
             )}
@@ -156,7 +156,7 @@ export function LepControls({
                   </div>
                 )}
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.4{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''} <CitationUncheckedBadge checked={false} />
+                  {lepName ? `${lepName} — ` : ''}Floor Space Ratio Map{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
                 </div>
               </div>
             )}
@@ -172,7 +172,7 @@ export function LepControls({
                   {constraints.minLotSize}m²
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.1 <CitationUncheckedBadge checked={false} />
+                  {lepName ? `${lepName} — ` : ''}Lot Size Map
                 </div>
               </div>
             )}
@@ -255,7 +255,16 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Flood Mapping</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-amber-800' : 'text-gray-400'}`}>
-                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : (wasNotChecked(constraints, 'spatial_overlays') ? notCheckedLabel : 'No')}
+                {constraints?.dcpFloodMap?.inFloodArea
+                  ? (constraints.dcpFloodMap.classification || 'Yes')
+                  : constraints?.floodProne === true
+                    ? 'Yes'
+                    : wasNotChecked(constraints, 'spatial_overlays')
+                      ? notCheckedLabel
+                      : constraints?.floodProne === false
+                        ? 'No'
+                        // The portal holds no flood planning map for this LEP: the answer is unknown, not "No".
+                        : <span title={constraints?.floodMapNote || 'No flood planning map was found for this lot'}>No flood map found</span>}
               </span>
             </div>
 

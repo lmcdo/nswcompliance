@@ -34,7 +34,7 @@ export function MinimumLotSizeCard({
             </Badge>
           )}
           {/* The clause is the Planning Portal's own text; no script here proves it. */}
-          {citation && <CitationUncheckedBadge checked={false} />}
+          {citation && legislativeClause && <CitationUncheckedBadge checked={false} />}
           {amendment && (
             <Badge className="text-xs px-2 py-0.5 bg-green-100 text-green-800">
               {amendment}
