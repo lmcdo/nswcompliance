@@ -31,6 +31,12 @@ describe('privacy page', () => {
     expect(t).toMatch(/email address if you choose to add one/i);
   });
 
+  it('names the operator by ABN, not ABN pending', () => {
+    const t = text();
+    expect(t).toMatch(/ABN 76 629 477 885/);
+    expect(t).not.toMatch(/ABN pending/);
+  });
+
   it('keeps the promise that nothing is sold or used for advertising', () => {
     expect(text()).toMatch(/do not sell your personal information/i);
   });
