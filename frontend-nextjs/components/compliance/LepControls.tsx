@@ -60,6 +60,12 @@ export function LepControls({
   const lepName = zoneResult?.['EPI Name']
     || (constraints?.lga ? `${constraints.lga} Local Environmental Plan` : 'Local Environmental Plan');
 
+  // Each standard names the instrument of ITS OWN map layer when the portal gave one; the zone layer's name is the fallback.
+  const layerInstrument = (layerName: string) => {
+    const name = planningLayers?.find((layer) => layer.layerName === layerName)?.results?.[0]?.['EPI Name'];
+    return typeof name === 'string' && name.trim() ? name.trim() : lepName;
+  };
+
   // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
   const notChecked = (key: HazardKey) =>
     hazardUnchecked(constraints, key)
@@ -135,7 +141,7 @@ export function LepControls({
                   {constraints.maxHeight}m
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.3 <CitationUncheckedBadge checked={false} />
+                  {layerInstrument('Height of Buildings Map')} — Height of Buildings Map
                 </div>
               </div>
             )}
@@ -156,7 +162,7 @@ export function LepControls({
                   </div>
                 )}
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.4{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''} <CitationUncheckedBadge checked={false} />
+                  {layerInstrument('Floor Space Ratio Map')} — Floor Space Ratio Map{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
                 </div>
               </div>
             )}
@@ -172,7 +178,7 @@ export function LepControls({
                   {constraints.minLotSize}m²
                 </div>
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.1 <CitationUncheckedBadge checked={false} />
+                  {layerInstrument('Lot Size Map')} — Lot Size Map
                 </div>
               </div>
             )}
@@ -255,7 +261,19 @@ export function LepControls({
                 <span className="text-xs text-gray-700 truncate">Flood Mapping</span>
               </div>
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-amber-800' : 'text-gray-400'}`}>
-                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : (wasNotChecked(constraints, 'spatial_overlays') ? notCheckedLabel : 'No')}
+                {constraints?.dcpFloodMap?.inFloodArea
+                  ? (constraints.dcpFloodMap.classification || 'Yes')
+                  : constraints?.floodProne === true
+                    ? 'Yes'
+                    : wasNotChecked(constraints, 'spatial_overlays')
+                      ? notCheckedLabel
+                      : constraints?.floodProne === false
+                        ? 'No'
+                        : constraints?.floodProne === null
+                          // The portal holds no flood planning map for this LEP: the answer is unknown, not "No".
+                          ? <span title={constraints?.floodMapNote || 'No flood planning map was found for this lot'}>No flood map found</span>
+                          // Field missing altogether (loading or a contract mismatch): say so, do not guess.
+                          : notCheckedLabel}
               </span>
             </div>
 
