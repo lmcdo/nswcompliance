@@ -60,6 +60,12 @@ export function LepControls({
   const lepName = zoneResult?.['EPI Name']
     || (constraints?.lga ? `${constraints.lga} Local Environmental Plan` : 'Local Environmental Plan');
 
+  // Each standard names the instrument of ITS OWN map layer when the portal gave one; the zone layer's name is the fallback.
+  const layerInstrument = (layerName: string) => {
+    const name = planningLayers?.find((layer) => layer.layerName === layerName)?.results?.[0]?.['EPI Name'];
+    return typeof name === 'string' && name.trim() ? name.trim() : lepName;
+  };
+
   // A hazard map that did not answer is "Not checked", never "No" (lib/hazard-unchecked.ts).
   const notChecked = (key: HazardKey) =>
     hazardUnchecked(constraints, key)
@@ -135,7 +141,7 @@ export function LepControls({
                   {constraints.maxHeight}m
                 </div>
                 <div className="text-xs text-gray-500">
-                  {lepName ? `${lepName} — ` : ''}Height of Buildings Map
+                  {layerInstrument('Height of Buildings Map')} — Height of Buildings Map
                 </div>
               </div>
             )}
@@ -156,7 +162,7 @@ export function LepControls({
                   </div>
                 )}
                 <div className="text-xs text-gray-500">
-                  {lepName ? `${lepName} — ` : ''}Floor Space Ratio Map{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
+                  {layerInstrument('Floor Space Ratio Map')} — Floor Space Ratio Map{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
                 </div>
               </div>
             )}
@@ -172,7 +178,7 @@ export function LepControls({
                   {constraints.minLotSize}m²
                 </div>
                 <div className="text-xs text-gray-500">
-                  {lepName ? `${lepName} — ` : ''}Lot Size Map
+                  {layerInstrument('Lot Size Map')} — Lot Size Map
                 </div>
               </div>
             )}

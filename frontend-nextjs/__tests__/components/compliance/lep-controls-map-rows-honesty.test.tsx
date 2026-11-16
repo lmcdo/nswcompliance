@@ -42,6 +42,18 @@ describe('LEP map rows', () => {
   });
 });
 
+describe('instrument named on each row', () => {
+  it('uses the height layer own instrument when it differs from the zone layer', () => {
+    const mixed = [
+      { layerName: 'Land Zoning Map', results: [{ 'EPI Name': 'Penrith Local Environmental Plan 2010' }] },
+      { layerName: 'Height of Buildings Map', results: [{ 'EPI Name': 'Other Environmental Plan 2020' }] },
+    ] as any;
+    render(<LepControls planningLayers={mixed} constraints={base} />);
+    expect(screen.getByText(/Other Environmental Plan 2020 — Height of Buildings Map/)).toBeInTheDocument();
+    expect(screen.getByText(/Penrith Local Environmental Plan 2010 — Lot Size Map/)).toBeInTheDocument();
+  });
+});
+
 describe('flood tile', () => {
   it('prints "No flood map found" when the portal holds no flood planning map (unknown is not No)', () => {
     render(<LepControls planningLayers={layers} constraints={{ ...base, floodProne: null, floodMapNote: 'no map for this LEP' }} />);
