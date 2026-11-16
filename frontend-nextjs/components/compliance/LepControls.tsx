@@ -263,8 +263,11 @@ export function LepControls({
                       ? notCheckedLabel
                       : constraints?.floodProne === false
                         ? 'No'
-                        // The portal holds no flood planning map for this LEP: the answer is unknown, not "No".
-                        : <span title={constraints?.floodMapNote || 'No flood planning map was found for this lot'}>No flood map found</span>}
+                        : constraints?.floodProne === null
+                          // The portal holds no flood planning map for this LEP: the answer is unknown, not "No".
+                          ? <span title={constraints?.floodMapNote || 'No flood planning map was found for this lot'}>No flood map found</span>
+                          // Field missing altogether (loading or a contract mismatch): say so, do not guess.
+                          : notCheckedLabel}
               </span>
             </div>
 

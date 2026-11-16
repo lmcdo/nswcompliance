@@ -47,6 +47,11 @@ describe('flood tile', () => {
     render(<LepControls planningLayers={layers} constraints={{ ...base, floodProne: null, floodMapNote: 'no map for this LEP' }} />);
     expect(tileValue('Flood Mapping')).toBe('No flood map found');
   });
+  it('prints "Not checked" when floodProne is missing altogether, not a guess', () => {
+    const { floodProne: _omit, ...noFlood } = base;
+    render(<LepControls planningLayers={layers} constraints={noFlood} />);
+    expect(tileValue('Flood Mapping')).toBe('Not checked');
+  });
   it('prints "No" only when the council map says the lot is clear', () => {
     render(<LepControls planningLayers={layers} constraints={{ ...base, floodProne: false }} />);
     expect(tileValue('Flood Mapping')).toBe('No');
