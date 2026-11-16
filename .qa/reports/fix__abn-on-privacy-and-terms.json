@@ -1,0 +1,31 @@
+{
+ "tier": "minor",
+ "justification": "One word-level text change on the privacy page (ABN pending to the owner's confirmed ABN) plus one test. No data, query or regulatory text.",
+ "commit_hash": "dfae4a96",
+ "files": [
+  "frontend-nextjs/app/privacy/page.tsx",
+  "frontend-nextjs/__tests__/app/privacy-session-recording.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=privacy-session-recording",
+  "fails_when": "the privacy page stops showing ABN 76 629 477 885 or shows ABN pending again.",
+  "external_authority": "The owner confirmed the ABN on ABN Lookup (abr.business.gov.au) on 2026-11-16."
+ },
+ "break_it": [
+  {
+   "scenario": "Someone restores the old wording.",
+   "what_happens": "The page says ABN pending while outreach messages carry the ABN.",
+   "mitigated": true,
+   "how": "The new test asserts the ABN is present and that 'ABN pending' is absent.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=privacy-session-recording"
+  }
+ ],
+ "mutation_analysis": "The test asserts presence of the number and absence of the old phrase; either regression fails it.",
+ "residual_risk": "The assistant did not look the ABN up itself; the owner confirmed it.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "Website Terms PR is in lmcdo/website.",
+  "manual_verify": "Open /privacy and read the first paragraph."
+ }
+}

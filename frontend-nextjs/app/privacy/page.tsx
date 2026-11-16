@@ -19,7 +19,7 @@ export default function PrivacyPage() {
 
         <h2>Who we are</h2>
         <p>
-          plotdetect.com.au is operated by PlotDetect (ABN pending), an Australian property intelligence
+          plotdetect.com.au is operated by PlotDetect (ABN 76 629 477 885), an Australian property intelligence
           service. This policy explains what personal information we collect, why we collect it, and how
           we use it.
         </p>
