@@ -1,0 +1,31 @@
+{
+ "tier": "minor",
+ "justification": "One bullet of plain text on the privacy page saying what the Feedback button saves, plus one test. No data, query or regulatory text. Recorded because it is a user-facing privacy statement.",
+ "commit_hash": "f6f9e6ed",
+ "files": [
+  "frontend-nextjs/app/privacy/page.tsx",
+  "frontend-nextjs/__tests__/app/privacy-session-recording.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=privacy-session-recording",
+  "fails_when": "the privacy page stops saying what the Feedback button saves, or stops saying the email is optional.",
+  "external_authority": "components/feedback/FeedbackWidget.tsx and app/api/feedback, which save the message, page, role and optional email to user_feedback and email the operator."
+ },
+ "break_it": [
+  {
+   "scenario": "The privacy bullet is edited and drops the optional-email wording.",
+   "what_happens": "The page no longer matches what the form does.",
+   "mitigated": true,
+   "how": "Observed red: changing the wording to 'if you add it' failed 1 of 4 tests; restored, 4 of 4 pass.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=privacy-session-recording"
+  }
+ ],
+ "mutation_analysis": "Reworded the optional-email phrase: the new test failed (1 failed, 3 passed). Restored: 4 passed.",
+ "residual_risk": "The page still says 'ABN pending' until the owner confirms the ABN shows on the register. Whether recording masks form text depends on the PostHog project setting, which this change does not verify.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "Open /privacy and read the Usage data and Feedback bullets."
+ }
+}

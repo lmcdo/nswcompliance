@@ -46,6 +46,11 @@ export default function PrivacyPage() {
             The web address of a page can also include an address you searched for. This data is used to
             improve the product.
           </li>
+          <li>
+            <strong>Feedback</strong> you send through the Feedback button: your message, the page you
+            were on, the role you pick, and your email address if you choose to add one. It is saved in
+            our database and emailed to us. We use it to reply to you and to fix what you reported.
+          </li>
         </ul>
 
         <h2>How we use your information</h2>

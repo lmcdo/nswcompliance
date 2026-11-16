@@ -25,6 +25,12 @@ describe('privacy page', () => {
     expect(t).not.toMatch(/PostHog — anonymous usage analytics/);
   });
 
+  it('says what the Feedback button saves and that the email is optional', () => {
+    const t = text();
+    expect(t).toMatch(/Feedback you send through the Feedback button/i);
+    expect(t).toMatch(/email address if you choose to add one/i);
+  });
+
   it('keeps the promise that nothing is sold or used for advertising', () => {
     expect(text()).toMatch(/do not sell your personal information/i);
   });
