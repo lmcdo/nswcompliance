@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "One bullet of plain text on the privacy page saying what the Feedback button saves, plus one test. No data, query or regulatory text. Recorded because it is a user-facing privacy statement.",
- "commit_hash": "f6f9e6ed",
+ "commit_hash": "123fb161",
  "files": [
   "frontend-nextjs/app/privacy/page.tsx",
   "frontend-nextjs/__tests__/app/privacy-session-recording.test.tsx"
