@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Display-only change in the LEP tab: the map rows stop printing a hard-coded clause and an unchecked mark, and the flood tile stops printing 'No' when the portal holds no flood map. No query, schema or data changes; reads fields the API already returns (floodProne, floodMapNote). Recorded with an observed-red mutation because it changes what a flood answer says.",
- "commit_hash": "30d8ee8e",
+ "commit_hash": "4ea99191",
  "files": [
   "frontend-nextjs/components/compliance/LepControls.tsx",
   "frontend-nextjs/components/compliance/LandUseZoningCard.tsx",
