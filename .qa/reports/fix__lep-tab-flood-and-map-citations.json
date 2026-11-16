@@ -1,5 +1,5 @@
 {
- "tier": "minor",
+ "tier": "standard",
  "justification": "Display-only change in the LEP tab: the map rows stop printing a hard-coded clause and an unchecked mark, and the flood tile stops printing 'No' when the portal holds no flood map. No query, schema or data changes; reads fields the API already returns (floodProne, floodMapNote). Recorded with an observed-red mutation because it changes what a flood answer says.",
  "commit_hash": "4ea99191",
  "files": [
@@ -11,7 +11,8 @@
  "falsifiable_check": {
   "command": "cd frontend-nextjs && npx jest --testPathPatterns=lep-controls-map-rows-honesty",
   "fails_when": "the height, FSR or lot-size row prints 'LEP Clause 4.x' or the unchecked mark; the flood tile prints 'No' while floodProne is null; or the zone card shows the unchecked mark with no cited clause.",
-  "external_authority": "The live API for 8 pilot addresses (2026-11-16): 6 of 8 returned floodProne null with floodMapNote 'no flood planning map on the NSW Planning Portal for this LEP', while the tab printed 'No'. Owner ruling 2026-11-16: remove the 'Citation not yet checked' mark."
+  "external_authority": "The live API for 8 pilot addresses (2026-11-16): 6 of 8 returned floodProne null with floodMapNote 'no flood planning map on the NSW Planning Portal for this LEP', while the tab printed 'No'. Owner ruling 2026-11-16: remove the 'Citation not yet checked' mark.",
+  "observed_red": "YES, forced. With the three original component files restored and the new test in place, 3 of 6 tests failed: the map rows still printed 'LEP Clause 4.x' with the unchecked mark, the flood tile printed 'No' for floodProne null, and the zone card showed the mark with no clause. With the change, 6 of 6 pass."
  },
  "break_it": [
   {
@@ -27,6 +28,13 @@
    "mitigated": true,
    "how": "The test asserts no 'LEP Clause \\d' text on the page.",
    "repro": "same command"
+  },
+  {
+   "scenario": "The council flood layer is down (spatial_overlays query failed).",
+   "what_happens": "The tile must say 'Not checked', not 'No flood map found' or 'No'.",
+   "mitigated": true,
+   "how": "wasNotChecked(spatial_overlays) is evaluated before the floodProne branches; the existing lep-controls-hazard-not-checked test still passes.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=lep-controls-hazard-not-checked"
   }
  ],
  "mutation_analysis": "Restored the original three component files with the new test in place: 3 of 6 tests failed (map rows, flood unknown, zone badge with no clause). With the change: 6 of 6 pass. citation-badge-inventory, citation-unchecked-mark, your-project-summary, no-fabricated-citations and lep-controls-hazard-not-checked still pass (110 tests).",
@@ -36,5 +44,19 @@
   "secrets": "None.",
   "other_repo": "No.",
   "manual_verify": "Open /assessment for 128 Park Ave, Ashfield, open the Planning Controls tab: Flood Mapping reads 'No flood map found' and no 'Citation not yet checked' appears on zone, height, FSR or lot size."
- }
+ },
+ "pre_impl": {
+  "existing_data": "No new data or query. The API already returns floodProne (null when the portal holds no flood planning map) and floodMapNote for every address; the component ignored floodProne unless dcpFloodMap had a hit. Live check 2026-11-16 on 8 pilot addresses: 6 returned floodProne null with the note 'no flood planning map on the NSW Planning Portal for this LEP' and the tab printed 'No'; Hornsby returned false with 'No part of this lot is in a flood planning area'; Penrith has dcpFloodMap with classifications.",
+  "assumption_mismatch": "The component assumed 'no council flood layer hit' means 'No'. The API's own field says that case is unknown when the portal has no map for the LEP. The rows also assumed clause 4.3, 4.4 and 4.1 apply in every council; those values come from map layers that name no clause, and lib/citation-display.ts says to name only what the source named.",
+  "new_vs_existing": "No new mechanism. It reads two fields the API already provides and reuses the shared badge, which now appears only where a clause is cited. The wider flood plan (ce-flood-one-answer-PLAN-2026-10-28) steps 2 to 4 are untouched; its honesty step already shipped for other surfaces (#1539 to #1541) but not this tile."
+ },
+ "functions": [
+  {
+   "name": "LepControls (Flood Mapping tile, map rows)",
+   "file_line": "frontend-nextjs/components/compliance/LepControls.tsx:132",
+   "input": "constraints (floodProne, floodMapNote, dcpFloodMap, notChecked), planningLayers (EPI Name), lotArea",
+   "output": "the rendered Planning Controls tiles",
+   "if_none": "floodProne null with no council flood hit prints 'No flood map found' (tooltip: the note); unknown LEP name falls back to '<LGA> Local Environmental Plan', never a year"
+  }
+ ]
 }
