@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "One word-level text change on the privacy page (ABN pending to the owner's confirmed ABN) plus one test. No data, query or regulatory text.",
- "commit_hash": "dfae4a96",
+ "commit_hash": "d4610759",
  "files": [
   "frontend-nextjs/app/privacy/page.tsx",
   "frontend-nextjs/__tests__/app/privacy-session-recording.test.tsx"
