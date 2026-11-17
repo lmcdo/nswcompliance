@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds a production table and a trigger on dcp_chapter_registry (migration 126) plus a backfill script. Not Minor: it touches the live pipeline's registry table and creates evidence data. Not Critical: new objects only, no existing row or column changes, the trigger cannot block a write, and the ledger is append-only.",
- "commit_hash": "1377bbb3",
+ "commit_hash": "171684be",
  "files": [
   "migrations/126_dcp_source_versions.sql",
   "scripts/backfill_dcp_source_versions.py",
