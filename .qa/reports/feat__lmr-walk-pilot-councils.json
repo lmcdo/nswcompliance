@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds 7 data files that the housing-reform area check reads to measure real walking distance. Not Minor: it changes what the check answers (yes/no/borderline instead of can't tell) for 7 pilot councils. Not Critical: no schema, no database write, no new code path in the decision logic; the files are read by the existing, already-tested reader and an unreadable file still gives 'can't tell'.",
- "commit_hash": "033c770c",
+ "commit_hash": "40439d32",
  "files": [
   "data/lmr_walk/pilot-blacktown.npz",
   "data/lmr_walk/pilot-hornsby.npz",
