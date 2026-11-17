@@ -10,6 +10,7 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PATTERN_BOOK_CHECK_SHOWN } from '@/lib/pilot-focus';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
@@ -24,11 +25,13 @@ interface PathwaySummaryCardProps {
 
 export function PathwaySummaryCard({
   propertyData,
-  patternBookStatus,
+  patternBookStatus: patternBookStatusProp,
   exemptComplyingCount = 0,
   housingLmrApplicable = null,
   zoneCode
 }: PathwaySummaryCardProps) {
+  // While the Pattern Book check is hidden (lib/pilot-focus.ts), its status is ignored everywhere in this card.
+  const patternBookStatus = PATTERN_BOOK_CHECK_SHOWN ? patternBookStatusProp : undefined;
 
   // Determine fastest pathway
   const getFastestPathway = (): string => {
@@ -80,23 +83,25 @@ export function PathwaySummaryCard({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
 
-          {/* Pattern Book CDC */}
-          <div className="flex items-center gap-2">
-            {patternBookStatus === 'ELIGIBLE' ? (
-              <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-            ) : patternBookStatus === 'CONDITIONAL' ? (
-              <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
-            ) : (
-              <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-            )}
-            <span>
-              Pattern Book CDC (10 days): <strong>
-                {patternBookStatus === 'ELIGIBLE' ? 'Eligible' :
-                 patternBookStatus === 'CONDITIONAL' ? 'Conditional' :
-                 'Ineligible'}
-              </strong>
-            </span>
-          </div>
+          {/* Pattern Book CDC (hidden for the pilot: lib/pilot-focus.ts) */}
+          {PATTERN_BOOK_CHECK_SHOWN && (
+            <div className="flex items-center gap-2">
+              {patternBookStatus === 'ELIGIBLE' ? (
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+              ) : patternBookStatus === 'CONDITIONAL' ? (
+                <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+              )}
+              <span>
+                Pattern Book CDC (10 days): <strong>
+                  {patternBookStatus === 'ELIGIBLE' ? 'Eligible' :
+                   patternBookStatus === 'CONDITIONAL' ? 'Conditional' :
+                   'Ineligible'}
+                </strong>
+              </span>
+            </div>
+          )}
 
           {/* Exempt & Complying */}
           <div className="flex items-center gap-2">

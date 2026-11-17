@@ -1,0 +1,62 @@
+{
+ "tier": "standard",
+ "justification": "Hides a user-facing eligibility verdict (Pattern Book CDC) for the pilot behind one switch, in three places: the SEPP tab card, the pathway summary row, and the PDF pathway list. No data or query change; the route still exists and is not called while the switch is off.",
+ "commit_hash": "3f65e675",
+ "files": [
+  "frontend-nextjs/lib/pilot-focus.ts",
+  "frontend-nextjs/components/compliance/StateLevelControls.tsx",
+  "frontend-nextjs/components/compliance/PathwaySummaryCard.tsx",
+  "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx",
+  "frontend-nextjs/__tests__/components/compliance/pattern-book-hidden.test.tsx"
+ ],
+ "pre_impl": {
+  "existing_data": "Live check 2026-11-16 on 8 pilot addresses: /api/pathway/pattern-book-eligibility returned INELIGIBLE for every lot, with numericCheck requiring lot_size_min 900 AND 600 AND 1500 m2 together (Penrith: actual 512.28 m2, three failures).",
+  "assumption_mismatch": "The check assumes every listed minimum must be met together. NSW Pattern Book guidance says the lot test is the LEP minimum for the housing type AND the minimum for the specific design, per design. The thresholds also come from an Exempt and Complying Codes Schedule 1 extraction (2026-02-26), not the Pattern Book Development Code (Part 3BA, from July 2025).",
+  "new_vs_existing": "No new mechanism. One boolean in lib/pilot-focus.ts (the pilot-focus list) gates the existing card, summary row and the PDF row. Nothing is deleted; set it to true after the check is rebuilt from Part 3BA and measured."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=pattern-book-hidden",
+  "fails_when": "the switch is turned on, the pathway summary prints any 'Pattern Book' text with the switch off, or a caller of /api/pathway/pattern-book-eligibility is not behind the switch.",
+  "observed_red": "YES, forced. With PATTERN_BOOK_CHECK_SHOWN set to true, 2 of 3 tests failed (the switch assertion and the pathway summary); restored to false, 3 of 3 pass. An earlier run also failed because the summary banner could still say 'Pattern Book CDC (10-day approval)' when a status was passed in; fixed by ignoring the status while the switch is off."
+ },
+ "functions": [
+  {
+   "name": "PathwaySummaryCard",
+   "file_line": "frontend-nextjs/components/compliance/PathwaySummaryCard.tsx:25",
+   "input": "patternBookStatus (ignored while hidden), exemptComplyingCount, housingLmrApplicable",
+   "output": "the Approval Pathways card without a Pattern Book line",
+   "if_none": "no status means no Pattern Book text; other pathways unchanged"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone passes an ELIGIBLE status into the summary card.",
+   "what_happens": "Before the fix the fastest-pathway banner printed 'Pattern Book CDC (10-day approval)'.",
+   "mitigated": true,
+   "how": "The card now derives patternBookStatus from the switch, so a passed status is ignored; the test loops over four statuses.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=pattern-book-hidden"
+  },
+  {
+   "scenario": "A new caller of the Pattern Book route is added without the switch.",
+   "what_happens": "The hidden verdict comes back through another surface.",
+   "mitigated": true,
+   "how": "The test requires the switch within 400 characters before every fetch of the route in the two known files; a new file would need adding to the list.",
+   "repro": "same command"
+  },
+  {
+   "scenario": "The PDF export runs with the switch off.",
+   "what_happens": "pathwaySummary must still list Exempt and Complying, Housing SEPP and DA without throwing on a missing eligibility object.",
+   "mitigated": true,
+   "how": "eligibility is null-guarded with optional chaining and the Pattern Book row is added only when eligibility exists; tsc and the related suites pass.",
+   "repro": "cd frontend-nextjs && npx tsc --noEmit"
+  }
+ ],
+ "mutation_analysis": "Switch turned on: 2 of 3 new tests fail. Switch off: 3 pass. 89 related tests pass; tsc clean.",
+ "residual_risk": "The Pattern Book blog page and the PatternBookEligibilityCard file remain, unreachable from the assessment page. The pilot-focus test does not scan this component list.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "Open /assessment for 71 Pyramid St, Emu Plains, SEPP tab: no Pattern Book card, and the Approval Pathways card shows no Pattern Book line."
+ }
+}

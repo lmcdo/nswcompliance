@@ -91,6 +91,15 @@ export const PILOT_UNLISTED_PREFIXES = [
   '/site-directory',
 ] as const;
 
+/**
+ * Pattern Book CDC check, hidden for the pilot (owner ruling 2026-11-16).
+ * The check required three different lot-size minimums (900, 600 and 1500 m2) at once, so any lot under
+ * 1,500 m2 showed "Ineligible"; it was built from the Exempt and Complying Codes Schedule 1 extraction, not
+ * the Pattern Book Development Code (Part 3BA, from July 2025), whose lot rules are per design.
+ * Set to true only after the check is rebuilt from Part 3BA and measured. Audit: ce-tabs-audit-sepp-lep-2026-11-16.md.
+ */
+export const PATTERN_BOOK_CHECK_SHOWN = false;
+
 /** True when a path or URL is withdrawn from navigation and search for the pilot. */
 export function isPilotUnlisted(pathOrUrl: string): boolean {
   let path = pathOrUrl;
