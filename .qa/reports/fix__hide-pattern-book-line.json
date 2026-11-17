@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Hides a user-facing eligibility verdict (Pattern Book CDC) for the pilot behind one switch, in three places: the SEPP tab card, the pathway summary row, and the PDF pathway list. No data or query change; the route still exists and is not called while the switch is off.",
- "commit_hash": "3f65e675",
+ "commit_hash": "47bb2478",
  "files": [
   "frontend-nextjs/lib/pilot-focus.ts",
   "frontend-nextjs/components/compliance/StateLevelControls.tsx",
