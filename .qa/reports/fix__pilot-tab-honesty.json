@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Two text changes and no logic: the Ashfield plan name on the controls card now matches the registry and the council's own page (Ashfield DCP 2016, not a hardcoded 2022), and the overdue-check message states the last completed check date instead of a wrong 'twice-monthly' cadence. Nothing is computed differently.",
- "commit_hash": "1377bbb3",
+ "commit_hash": "039e6b15",
  "files": [
   "scripts/conveyancing_db.py",
   "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
