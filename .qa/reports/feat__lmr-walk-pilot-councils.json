@@ -1,0 +1,83 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds 7 data files that the housing-reform area check reads to measure real walking distance. Not Minor: it changes what the check answers (yes/no/borderline instead of can't tell) for 7 pilot councils. Not Critical: no schema, no database write, no new code path in the decision logic; the files are read by the existing, already-tested reader and an unreadable file still gives 'can't tell'.",
+ "commit_hash": "033c770c",
+ "files": [
+  "data/lmr_walk/pilot-blacktown.npz",
+  "data/lmr_walk/pilot-hornsby.npz",
+  "data/lmr_walk/pilot-northern_beaches.npz",
+  "data/lmr_walk/pilot-parramatta.npz",
+  "data/lmr_walk/pilot-penrith.npz",
+  "data/lmr_walk/pilot-waverley.npz",
+  "data/lmr_walk/pilot-wollongong.npz",
+  "tests/test_lmr_data_files.py",
+  "scripts/lmr_area/area_check_test.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Walking files existed for 5 areas only (cb-bankstown, georges-river, inner-west x3, kuringgai, woollahra), covering 3 of the 10 pilot councils. The other 7 returned can't-tell when a lot was inside 800 m straight line. Station entrances already in data/law/lmr_station_entrances.json; town centres from the Town Centres layer.",
+  "assumption_mismatch": "I first said the walk was not measured at all; it is measured, and walk_m is null only when the straight line already exceeds 800 m (a walk cannot be shorter). The real gap was coverage, not method.",
+  "new_vs_existing": "Same builder (build_walk_surfaces.py) and packer (pack_walk_surfaces.py) as the existing five areas, one area per council, no code change to the reader or the rules. Only change to scripts: an optional --boxes argument and an LMR_CAP env var on the test script so it can draw lots from other areas.",
+  "external_source_error": "Footpaths are OpenStreetMap data and the judge router is also OpenStreetMap-based, so both can share a missing path. The test shows agreement between two methods, not ground truth.",
+  "frontend_type": "N/A - no frontend change.",
+  "user_failure_mode": "A wrong 'yes' would tell a user a lot is in the housing area when it is not. The rules show a range and 'borderline' near the limit, and say 'can't tell' when no footpath is within 40 m."
+ },
+ "falsifiable_check": {
+  "command": "LMR_SURF_DIR=../lmr_walk python scripts/lmr_area/area_check_test.py --n 100 --seed 20261117 --boxes=<council bboxes>  then scripts/lmr_area/area_check_score.py",
+  "fails_when": "The new files are absent: lots in the 7 councils fall back to 'walking_measure_unavailable' (can't tell) instead of a measured walk, so the can't-tell share rises well above 5%.",
+  "observed_red": "Before these files, the walking reader had no surface for these councils; lots inside 800 m straight line returned cant_tell(walking_measure_unavailable). With the files: 4 of 182 real can't-tell (2.2%), 122 of 122 yes/no answers agree with the independent router (0 opposite), range holds 88 of 97 (91%). Run on 2 fresh 100-lot sets plus 3 top-ups, seeds 20261117, 20261118, 20261121-23, 20261131-32."
+ },
+ "functions": [
+  {
+   "name": "load_surface",
+   "file_line": "services/lmr_walk_surface.py",
+   "input": "path to a packed .npz walking file",
+   "output": "Surface with distances, anchors, bbox; rejects files with too few nodes",
+   "if_none": "unreadable or invalid file gives can't-tell, never a guessed distance"
+  },
+  {
+   "name": "test_exactly_the_expected_walking_files_exist",
+   "file_line": "tests/test_lmr_data_files.py",
+   "input": "the folder data/lmr_walk searched for all .npz walking files",
+   "output": "pins the exact file list so an unexpected file or a missing file fails",
+   "if_none": "an empty folder fails the comparison, so a missing file cannot pass silently"
+  }
+ ],
+ "values": "N/A - no value is read from a database or API at runtime by this change; the new files hold precomputed footpath distances.",
+ "queries": "N/A - no database query. Lots were drawn from the NSW Property layer by the test script only.",
+ "break_it": [
+  {
+   "scenario": "A wrong 'yes' outside the 7 new councils: 19 Ryde Road, Pymble (Ku-ring-gai) says yes at 548 m, router says 1,055 m.",
+   "what_happens": "That lot would show in the housing area when the router says it is not.",
+   "mitigated": false,
+   "how": "Not caused by these files (Ku-ring-gai file is unchanged). Cause not yet diagnosed; logged as an open item, not hidden.",
+   "repro": "python scripts/lmr_area/area_check_test.py --boxes=-33.80,151.12,-33.74,151.16 and look at 19 RYDE ROAD PYMBLE"
+  },
+  {
+   "scenario": "A lot has no footpath within 40 m of the surface.",
+   "what_happens": "Answer is can't-tell with reason walking_measure_unavailable, never a made-up distance.",
+   "mitigated": true,
+   "how": "MAX_GAP_M 40 and ZERO_GUARD_M 50 in services/lmr_walk_surface.py",
+   "repro": "4 such lots in the 182 tested, all reported as can't-tell"
+  },
+  {
+   "scenario": "A new .npz is over the repo file limit or has too few nodes.",
+   "what_happens": "Pre-commit large-file gate blocks the commit, or the reader refuses the file.",
+   "mitigated": true,
+   "how": "test_walking_files_exist_fit_the_repo_limit_and_load checks size under 2 MB and MIN_NODES; largest file is 554,300 bytes",
+   "repro": "pytest tests/test_lmr_data_files.py"
+  },
+  {
+   "scenario": "A walking file is added but not copied into the deployed image.",
+   "what_happens": "Deployed lots get a reason and no area.",
+   "mitigated": true,
+   "how": "Dockerfile.python already copies the whole data/lmr_walk/ folder; test_the_python_image_copies_every_file_the_area_check_reads covers it",
+   "repro": "pytest tests/test_lmr_data_files.py::test_the_python_image_copies_every_file_the_area_check_reads"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy, run the area check on one lot per new council against the live API and confirm a measured walk, not can't-tell."
+ }
+}

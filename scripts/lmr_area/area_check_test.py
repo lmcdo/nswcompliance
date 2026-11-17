@@ -73,7 +73,7 @@ def draw(n, seed, stations, tcs, boxes):
         anchors.append((sum(a for a, _ in ll) / len(ll), sum(b for _, b in ll) / len(ll), str(t["label"])))
     anchors = [a for a in anchors if any(b[0] <= a[0] <= b[2] and b[1] <= a[1] <= b[3] for b in boxes)]
     rng.shuffle(anchors)
-    CAP = 5   # at most 5 lots from any one station or town centre. (An earlier version stopped once it had enough candidates, and the
+    CAP = int(__import__("os").environ.get("LMR_CAP", "5"))   # at most 5 (default) lots from any one station or town centre. (An earlier version stopped once it had enough candidates, and the
               # first station alone supplied all 100 lots: the whole test was one station, Lidcombe. This cap prevents that.)
     from concurrent.futures import ThreadPoolExecutor
 
@@ -172,6 +172,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--seed", type=int, default=20261107)
+    ap.add_argument("--boxes", default="", help="optional: 'S,W,N,E;S,W,N,E' areas to draw lots from, instead of the five original ones")
     a = ap.parse_args()
     stations = json.loads((HERE / STATIONS_FIX).read_text(encoding="utf-8"))
     stations_judge = json.loads((HERE / STATIONS_JUDGE).read_text(encoding="utf-8"))
@@ -180,6 +181,8 @@ if __name__ == "__main__":
     print("surfaces", len(surfaces), flush=True)
     boxes = [(-33.99, 150.99, -33.78, 151.30), (-34.06, 151.00, -33.93, 151.17), (-33.95, 150.98, -33.88, 151.08),
              (-33.82, 151.10, -33.70, 151.20), (-33.93, 151.20, -33.85, 151.29)]
+    if a.boxes:
+        boxes = [tuple(float(v) for v in b.split(",")) for b in a.boxes.split(";") if b.strip()]
     out_path = HERE / OUT_NAME
     res = json.loads(out_path.read_text()) if out_path.exists() else {"lots": []}
     done = {r["address"] for r in res["lots"]}
