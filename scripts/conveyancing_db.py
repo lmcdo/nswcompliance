@@ -246,7 +246,7 @@ _CONTROL_TYPE_LABELS: dict[str, str] = {
 _LGA_SLUG_TO_DCP_NAME: dict[str, str] = {
     "marrickville":         "Inner West DCP 2022 (Marrickville precinct)",
     "leichhardt":           "Inner West DCP 2022 (Leichhardt precinct)",
-    "ashfield":             "Inner West DCP 2022 (Ashfield precinct)",
+    "ashfield":             "Inner West Ashfield DCP 2016",
     "waverley":             "Waverley DCP 2022",
     "woollahra":            "Woollahra DCP",
     "ku_ring_gai":          "Ku-ring-gai DCP",
