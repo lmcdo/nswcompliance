@@ -30,6 +30,10 @@ WALK_FILES = [
     "data/lmr_walk/cb-bankstown.npz", "data/lmr_walk/georges-river.npz", "data/lmr_walk/inner-west-1of3.npz",
     "data/lmr_walk/inner-west-2of3.npz", "data/lmr_walk/inner-west-3of3.npz", "data/lmr_walk/kuringgai.npz",
     "data/lmr_walk/woollahra.npz",
+    # Added 2026-11-17: the seven pilot councils that had no walking file (one per council, built from OpenStreetMap footpaths).
+    "data/lmr_walk/pilot-blacktown.npz", "data/lmr_walk/pilot-hornsby.npz", "data/lmr_walk/pilot-northern_beaches.npz",
+    "data/lmr_walk/pilot-parramatta.npz", "data/lmr_walk/pilot-penrith.npz", "data/lmr_walk/pilot-waverley.npz",
+    "data/lmr_walk/pilot-wollongong.npz",
 ]
 REPO_FILE_LIMIT = 2 * 1024 * 1024  # the pre-commit large-file gate
 
