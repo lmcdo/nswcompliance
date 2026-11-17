@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Two text changes in user-facing components plus one test: an explanatory line where the clause list is absent, and a rewording of the registration prompt. No data, query or regulatory text.",
- "commit_hash": "b283dc8c",
+ "commit_hash": "1cba3a28",
  "files": [
   "frontend-nextjs/components/compliance/YourProjectSummary.tsx",
   "frontend-nextjs/components/compliance/VerifyRegistrationPrompt.tsx",
