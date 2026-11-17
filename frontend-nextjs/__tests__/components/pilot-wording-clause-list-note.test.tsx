@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react';
 import { buildLepRows, buildSiteFlags } from '@/lib/project-summary';
 import { YourProjectSummaryView, CLAUSE_LIST_HOUSE_ONLY_TEXT } from '@/components/compliance/YourProjectSummary';
 import { VerifyRegistrationPrompt } from '@/components/compliance/VerifyRegistrationPrompt';
+import { PILOT_COUNCILS } from '@/lib/pilot-focus';
 
 const LEP = { maxHeight: 9.5, maxFsr: 0.65, minLotSize: 480.5, lepName: 'Fixture Local Environmental Plan 2000', legislationUrl: 'https://example.test/lep' };
 
@@ -48,7 +49,7 @@ describe('registration prompt wording', () => {
   it('names the private pilot and makes no across-NSW or date promise', () => {
     render(<VerifyRegistrationPrompt councilName="Sydney" address="1 Test Street" />);
     const t = document.body.textContent ?? '';
-    expect(t).toMatch(/private pilot for ten councils/);
+    expect(t).toContain(`private pilot for ${PILOT_COUNCILS.length} councils`);
     expect(t).toMatch(/No promise of dates/);
     expect(t).not.toMatch(/across NSW/i);
     expect(t).not.toMatch(/expanding/i);

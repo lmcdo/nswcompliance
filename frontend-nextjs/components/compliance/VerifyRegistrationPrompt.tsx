@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Mail } from 'lucide-react';
+import { PILOT_COUNCILS } from '@/lib/pilot-focus';
 
 interface VerifyRegistrationPromptProps {
   councilName?: string;
@@ -91,7 +92,7 @@ export function VerifyRegistrationPrompt({ councilName, address, source = 'asses
               Want to hear if more councils are added?
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Council Rules is in a private pilot for ten councils. Leave your email if you would like to hear when that changes. No promise of dates.
+              {`Council Rules is in a private pilot for ${PILOT_COUNCILS.length} councils. Leave your email if you would like to hear when that changes. No promise of dates.`}
             </p>
 
             <form onSubmit={handleSubmit} className="mt-3 flex flex-wrap items-center gap-2">
