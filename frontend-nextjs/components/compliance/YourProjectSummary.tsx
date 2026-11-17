@@ -16,6 +16,7 @@
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { zoneCode } from '@/lib/zone-code';
+import { pilotCouncilKey } from '@/lib/pilot-focus';
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { PlanBriefView, usePlanBriefRows } from '@/components/compliance/PlanBrief';
@@ -64,7 +65,13 @@ export interface YourProjectSummaryViewProps {
   planBrief?: React.ReactNode;
   /** Row keys whose clauses are listed in planBrief: their empty table rows say so instead of "not found". */
   briefKeys?: ReadonlySet<string> | null;
+  /** True in a pilot council when the picked project type has figures but no clause list (the list covers a new house only). */
+  clauseListNote?: boolean;
 }
+
+/** Shown where the clause list would be, so it does not vanish without a word when another project type is picked. */
+export const CLAUSE_LIST_HOUSE_ONLY_TEXT =
+  'The list of the plan’s own clauses covers a new house in this pilot. For this project type the table above shows the plan’s figures only. Read the council’s plan for anything else.';
 
 function EntryCells({ entry }: { entry: SummaryEntry }) {
   // Document and clause as text; the page is the link. Shown whether or not the citation has been proven: which rows are
@@ -202,6 +209,9 @@ export function YourProjectSummaryView(p: YourProjectSummaryViewProps) {
           {p.dcpLoadError && <p className="text-xs text-slate-600" data-testid="load-error">The council plan controls could not be loaded. {NOT_FOUND_TEXT}.</p>}
 
           {p.planBrief}
+          {!p.planBrief && p.clauseListNote && (
+            <p className="text-xs text-slate-600" data-testid="clause-list-note">{CLAUSE_LIST_HOUSE_ONLY_TEXT}</p>
+          )}
 
           {(p.flags.flags.length > 0 || p.flags.unchecked.length > 0) && (
             <div data-testid="site-flags">
@@ -277,6 +287,7 @@ export function YourProjectSummary({ formerCouncil, constraints, planningLayers 
       flags={buildSiteFlags(constraints)}
       planBrief={planBrief}
       briefKeys={briefKeys}
+      clauseListNote={briefOn && !planBrief && controlsType !== 'dwelling_house' && !!pilotCouncilKey(formerCouncil, null)}
     />
   );
 }

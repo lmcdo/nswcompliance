@@ -88,10 +88,10 @@ export function VerifyRegistrationPrompt({ councilName, address, source = 'asses
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900">
-              Get notified when we add more councils and export features
+              Want to hear if more councils are added?
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              We're expanding DCP coverage across NSW. Register to hear first.
+              Council Rules is in a private pilot for ten councils. Leave your email if you would like to hear when that changes. No promise of dates.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-3 flex flex-wrap items-center gap-2">

@@ -1,0 +1,39 @@
+{
+ "tier": "minor",
+ "justification": "Two text changes in user-facing components plus one test: an explanatory line where the clause list is absent, and a rewording of the registration prompt. No data, query or regulatory text.",
+ "commit_hash": "b283dc8c",
+ "files": [
+  "frontend-nextjs/components/compliance/YourProjectSummary.tsx",
+  "frontend-nextjs/components/compliance/VerifyRegistrationPrompt.tsx",
+  "frontend-nextjs/__tests__/components/pilot-wording-clause-list-note.test.tsx"
+ ],
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && npx jest --testPathPatterns=pilot-wording-clause-list-note",
+  "fails_when": "the clause-list note is missing for a pilot council with a non-house project type, shows when the clause list itself shows, or the registration prompt again says 'across NSW' or 'expanding'.",
+  "external_authority": "Live page 2026-11-17: picking Dual occupancy, Secondary dwelling or Subdivision on a Penrith address removed 'From the plan (indicative)' with no explanation; a non-pilot address said 'We're expanding DCP coverage across NSW'. Owner ruling 2026-11-17: reword, add the explainer."
+ },
+ "break_it": [
+  {
+   "scenario": "The plan brief is switched off or still loading.",
+   "what_happens": "The note must not appear, or it would say the list covers a house only when the list simply has not arrived.",
+   "mitigated": true,
+   "how": "The note requires briefOn (flag on and controls loaded), no clause list, a mapped non-house controls type, and a pilot council.",
+   "repro": "cd frontend-nextjs && npx jest --testPathPatterns=pilot-wording-clause-list-note"
+  },
+  {
+   "scenario": "A non-pilot council is picked.",
+   "what_happens": "The pilot notice already explains; the clause-list note must not also appear.",
+   "mitigated": true,
+   "how": "pilotCouncilKey(formerCouncil, null) must be truthy.",
+   "repro": "same command"
+  }
+ ],
+ "mutation_analysis": "Original components restored with the new test in place: 2 of 4 tests failed (note missing; prompt still says expanding across NSW). With the change: 4 of 4 pass. 46 related tests and tsc pass.",
+ "residual_risk": "The note is not shown for project types with no mapped controls (Subdivision, Other): the table already says 'no key controls for this project'. It is shown in pilot councils only.",
+ "post_merge": {
+  "db_reset": "No.",
+  "secrets": "None.",
+  "other_repo": "No.",
+  "manual_verify": "On a Penrith address pick Dual occupancy: the note appears under the table. On a Sydney address, the registration prompt reads 'Want to hear if more councils are added?'."
+ }
+}
