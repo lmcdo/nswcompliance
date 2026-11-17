@@ -1695,6 +1695,8 @@ export function ProvisionsByTocStructure({
               body: JSON.stringify({ propertyData }),
             })
           : null;
+        // With the check switched on, a failed response must skip the summary, exactly as before (no quiet substitute).
+        if (PATTERN_BOOK_CHECK_SHOWN && !pbRes?.ok) throw new Error('Pattern Book eligibility unavailable');
         {
           const pbResult: any = pbRes?.ok ? await pbRes.json() : null;
           const eligibility: any = pbResult ? (pbResult.data?.eligibility || pbResult) : null;
