@@ -19,9 +19,6 @@ MIGRATION = REPO / "migrations" / "126_dcp_source_versions.sql"
 OUTER = re.compile(r"^[ \t]*(BEGIN|COMMIT);[ \t]*\r?$", re.M)
 T0 = datetime(2026, 2, 28, 3, 0, 0, tzinfo=timezone.utc)
 
-pytestmark = [pytest.mark.database, pytest.mark.integration]
-
-
 def _connect():
     if os.environ.get("PYTEST_REAL_DB") != "1" or not os.environ.get("DATABASE_URL"):
         pytest.skip("real database test: run with PYTEST_REAL_DB=1 DATABASE_URL=... pytest -o addopts= -m database")
@@ -36,6 +33,8 @@ def _row(key="source-pdfs/dcps/zz_test/v1.0-baseline/zz-chapter.pdf", at=T0):
     return ("zz_test", "zz-chapter", "v1.0-baseline", key, "stored", 10, "abc123", None, at, "r2_listing_backfill")
 
 
+@pytest.mark.database
+@pytest.mark.integration
 def test_migration_backfill_guards_and_trigger_in_a_rolled_back_transaction():
     import psycopg2
 
