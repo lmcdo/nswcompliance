@@ -1,0 +1,38 @@
+{
+ "tier": "minor",
+ "justification": "Two text changes and no logic: the Ashfield plan name on the controls card now matches the registry and the council's own page (Ashfield DCP 2016, not a hardcoded 2022), and the overdue-check message states the last completed check date instead of a wrong 'twice-monthly' cadence. Nothing is computed differently.",
+ "commit_hash": "039e6b15",
+ "files": [
+  "scripts/conveyancing_db.py",
+  "frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx"
+ ],
+ "break_it": [
+  {
+   "scenario": "The Ashfield label edit accidentally changes the label of another council in the same map.",
+   "what_happens": "Another council's controls card would show the wrong plan name beside its controls.",
+   "mitigated": true,
+   "how": "Only the ashfield key's value changed; the other 13 entries are untouched and 292 related tests pass.",
+   "repro": "git diff origin/main -- scripts/conveyancing_db.py"
+  },
+  {
+   "scenario": "The plan is overdue but no completed check date is on record (verifiedDateLabel is empty).",
+   "what_happens": "The new message would print an empty date or the word undefined.",
+   "mitigated": true,
+   "how": "The text falls back to 'no completed check is on record' when the date label is empty.",
+   "repro": "Read the isStale block in ProvisionsByTocStructure.tsx"
+  },
+  {
+   "scenario": "The old Ashfield label is still pinned by a test or a cached page.",
+   "what_happens": "A test would fail, or users would see the old name until the cache refreshed.",
+   "mitigated": true,
+   "how": "No test pins the old string (searched tests); the label is read per request by the Python service.",
+   "repro": "grep -rn 'Ashfield precinct' tests frontend-nextjs/__tests__"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - open an Ashfield address on the live app, Council Rules tab, and confirm the controls card says Inner West Ashfield DCP 2016; Northern Beaches should show the last completed check date in its overdue notice."
+ }
+}
