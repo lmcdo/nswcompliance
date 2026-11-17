@@ -9,6 +9,7 @@
  */
 
 import { lepLimits } from '@/lib/see/lep-limits';
+import { PATTERN_BOOK_CHECK_SHOWN } from '@/lib/pilot-focus';
 import { cornerStatus } from '@/lib/geometry/corner-status';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
@@ -1686,37 +1687,46 @@ export function ProvisionsByTocStructure({
       let patternBookData: PropertyContext['pattern_book_cdc'] = undefined;
       let pathwaySummary: PropertyContext['pathway_summary'] = undefined;
       try {
-        const pbRes = await fetch('/api/pathway/pattern-book-eligibility', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ propertyData }),
-        });
-        if (pbRes.ok) {
-          const pbResult = await pbRes.json();
-          const eligibility = pbResult.data?.eligibility || pbResult;
-          patternBookData = {
-            status: eligibility.status || 'INELIGIBLE',
-            exclusion_count: 217,
-            numeric_standards_count: 199,
-            override_rules_count: 9,
-            blockers: eligibility.exclusionCheck?.exclusions?.map((e: any) => e.constraint) || [],
-            pathway_timeframe: eligibility.status === 'ELIGIBLE' ? '10-day approval' : undefined,
-          };
+        // Pattern Book check hidden for the pilot (lib/pilot-focus.ts): no fetch, no Pattern Book row.
+        const pbRes = PATTERN_BOOK_CHECK_SHOWN
+          ? await fetch('/api/pathway/pattern-book-eligibility', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ propertyData }),
+            })
+          : null;
+        // With the check switched on, a failed response must skip the summary, exactly as before (no quiet substitute).
+        if (PATTERN_BOOK_CHECK_SHOWN && !pbRes?.ok) throw new Error('Pattern Book eligibility unavailable');
+        {
+          const pbResult: any = pbRes?.ok ? await pbRes.json() : null;
+          const eligibility: any = pbResult ? (pbResult.data?.eligibility || pbResult) : null;
+          if (eligibility) {
+            patternBookData = {
+              status: eligibility.status || 'INELIGIBLE',
+              exclusion_count: 217,
+              numeric_standards_count: 199,
+              override_rules_count: 9,
+              blockers: eligibility.exclusionCheck?.exclusions?.map((e: any) => e.constraint) || [],
+              pathway_timeframe: eligibility.status === 'ELIGIBLE' ? '10-day approval' : undefined,
+            };
+          }
           const isResZone = ['R1', 'R2', 'R3', 'R4', 'RU5'].includes(zone?.split(' ')[0] || '');
           const isHousingZone = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0] || '');
           const recommended =
-            eligibility.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
+            eligibility?.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
             isResZone ? 'Exempt & Complying Development' :
             isHousingZone && heritage === false ? 'Housing SEPP (Low-Mid Rise)' :
             'Development Application (DA)';
           pathwaySummary = {
             recommended_pathway: recommended,
             pathways: [
-              { name: 'Pattern Book CDC', status: eligibility.status === 'ELIGIBLE' ? 'Available' : eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available', timeframe: '10 days', notes: eligibility.status === 'ELIGIBLE' ? undefined : patternBookData.blockers?.length ? patternBookData.blockers[0] : 'See exclusions' },
+              ...(eligibility && patternBookData
+                ? [{ name: 'Pattern Book CDC', status: eligibility.status === 'ELIGIBLE' ? 'Available' : eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available', timeframe: '10 days', notes: eligibility.status === 'ELIGIBLE' ? undefined : patternBookData.blockers?.length ? patternBookData.blockers[0] : 'See exclusions' }]
+                : []),
               { name: 'Exempt & Complying Development', status: isResZone ? 'Available' : 'Not Available', timeframe: '20 days', notes: isResZone ? 'For eligible work types (deck, fence, carport, pool)' : 'Zone not eligible' },
               { name: 'Housing SEPP (Low-Mid Rise)', status: !isHousingZone ? 'Not Available' : heritage === false ? 'Available' : heritage == null ? 'Conditional' : 'Not Available', timeframe: '25 days', notes: !isHousingZone ? 'Zone not eligible' : heritage == null ? 'Heritage not checked: the planning map did not answer' : heritage ? 'Heritage area excluded' : undefined },
               { name: 'Development Application (DA)', status: 'Available', timeframe: '50+ days', notes: 'Always available — required when other pathways excluded' },
-            ],
+            ] as NonNullable<PropertyContext['pathway_summary']>['pathways'],
           };
         }
       } catch {

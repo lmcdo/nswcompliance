@@ -20,6 +20,7 @@ import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { PatternBookEligibilityCard } from './PatternBookEligibilityCard';
+import { PATTERN_BOOK_CHECK_SHOWN } from '@/lib/pilot-focus';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
@@ -451,8 +452,8 @@ export function StateLevelControls({
 
       const zoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
 
-      // Fetch Pattern Book eligibility
-      try {
+      // Fetch Pattern Book eligibility (hidden for the pilot: lib/pilot-focus.ts)
+      if (PATTERN_BOOK_CHECK_SHOWN) try {
         const pbResponse = await fetch('/api/pathway/pattern-book-eligibility', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -726,14 +727,16 @@ export function StateLevelControls({
       )}
 
       {/* Pattern Book CDC Pathway - Pathway triage for housing developments */}
-      <PatternBookEligibilityCard
-        propertyData={propertyData}
-        onNavigateToDcp={onNavigateToDcp}
-        lotDimensions={propertyData?.lotDimensions || null}
-        lotSize={lotSize || null}
-        address={propertyData?.address || null}
-        strataInfo={strataInfo}
-      />
+      {PATTERN_BOOK_CHECK_SHOWN && (
+        <PatternBookEligibilityCard
+          propertyData={propertyData}
+          onNavigateToDcp={onNavigateToDcp}
+          lotDimensions={propertyData?.lotDimensions || null}
+          lotSize={lotSize || null}
+          address={propertyData?.address || null}
+          strataInfo={strataInfo}
+        />
+      )}
 
       {/* SEPP Section */}
       <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}`}>
