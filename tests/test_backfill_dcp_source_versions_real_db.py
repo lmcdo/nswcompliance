@@ -61,11 +61,15 @@ def test_migration_backfill_guards_and_trigger_in_a_rolled_back_transaction():
 
         # 3. dcp_source_as_at returns the file held at a moment, and nothing before the first record.
         bf.insert_rows(cur, [_row(key="source-pdfs/dcps/zz_test/v1.1-2026-03-02/zz-chapter.pdf", at=T0 + timedelta(days=2))])
-        cur.execute("SELECT r2_key FROM dcp_source_as_at('zz_test', 'zz-chapter', %s)", (T0 + timedelta(days=1),))
+        held = ["stored", "received"]
+        cur.execute("SELECT r2_key FROM dcp_source_as_at('zz_test', 'zz-chapter', %s, %s)", (T0 + timedelta(days=1), held))
         assert cur.fetchone()[0].endswith("v1.0-baseline/zz-chapter.pdf")
-        cur.execute("SELECT r2_key FROM dcp_source_as_at('zz_test', 'zz-chapter', %s)", (T0 + timedelta(days=3),))
+        cur.execute("SELECT r2_key FROM dcp_source_as_at('zz_test', 'zz-chapter', %s, %s)", (T0 + timedelta(days=3), held))
         assert cur.fetchone()[0].endswith("v1.1-2026-03-02/zz-chapter.pdf")
-        cur.execute("SELECT count(*) FROM dcp_source_as_at('zz_test', 'zz-chapter', %s)", (T0 - timedelta(days=1),))
+        cur.execute("SELECT count(*) FROM dcp_source_as_at('zz_test', 'zz-chapter', %s, %s)", (T0 - timedelta(days=1), held))
+        assert cur.fetchone()[0] == 0
+        # 'served' asks a different question: the stored-only rows above are not live events, so nothing is returned.
+        cur.execute("SELECT count(*) FROM dcp_source_as_at('zz_test', 'zz-chapter', %s, %s)", (T0 + timedelta(days=3), ["live"]))
         assert cur.fetchone()[0] == 0
 
         # 4. The registry trigger logs a received file (staged path set) for any writer.

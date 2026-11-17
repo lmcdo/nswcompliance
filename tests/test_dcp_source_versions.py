@@ -88,6 +88,15 @@ def test_the_registry_trigger_can_never_block_a_write():
     assert "ON CONFLICT (r2_key, event) DO NOTHING" in body
 
 
+def test_as_at_lookup_forces_the_caller_to_choose_held_or_served():
+    """A staged file that was never published must not be returned as 'the rule in force' by default (cross-review 2026-11-18)."""
+    sql = _sql()
+    sig = sql.split("CREATE OR REPLACE FUNCTION dcp_source_as_at(", 1)[1].split(") RETURNS", 1)[0]
+    assert re.search(r"p_events\s+text\[\]\s*$", sig.strip())
+    assert "DEFAULT" not in sig
+    assert "Neither is a statement of the law in force" in sql
+
+
 def test_no_existing_table_is_altered_or_emptied():
     sql = _sql()
     for bad in (r"ALTER\s+TABLE\s+dcp_chapter_registry", r"DROP\s+TABLE", r"\bDELETE\s+FROM\b", r"\bUPDATE\s+\w+\s+SET\b", r"\bTRUNCATE\s+TABLE\b"):

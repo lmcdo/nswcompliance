@@ -104,10 +104,14 @@ SELECT v.*,
        lead(v.captured_at) OVER (PARTITION BY v.council, v.chapter_key, v.event ORDER BY v.captured_at, v.id) AS superseded_at
 FROM dcp_source_versions v;
 
--- The file we held for a chapter at a moment: the latest 'stored' or 'received' row at or before p_at. NULL result = nothing recorded then.
+-- The file recorded for a chapter at a moment: the latest row of the chosen events at or before p_at. No row = nothing recorded then.
+-- The caller MUST choose the events (no default), because the two questions differ:
+--   ARRAY['stored','received']  "which file did we HOLD": includes a received file that was never published or was rejected.
+--   ARRAY['live']               "which file was being SERVED": recorded only from the day the trigger was applied.
+-- Neither is a statement of the law in force; that is a legal question this table does not answer.
 CREATE OR REPLACE FUNCTION dcp_source_as_at(
     p_council text, p_chapter_key text, p_at timestamptz,
-    p_events text[] DEFAULT ARRAY['stored', 'received']
+    p_events text[]
 ) RETURNS SETOF dcp_source_versions
 LANGUAGE sql STABLE AS $$
     SELECT * FROM dcp_source_versions
