@@ -1696,7 +1696,8 @@ export function ProvisionsByTocStructure({
             })
           : null;
         {
-          const eligibility: any = pbRes?.ok ? ((await pbRes.json()).data?.eligibility ?? null) : null;
+          const pbResult: any = pbRes?.ok ? await pbRes.json() : null;
+          const eligibility: any = pbResult ? (pbResult.data?.eligibility || pbResult) : null;
           if (eligibility) {
             patternBookData = {
               status: eligibility.status || 'INELIGIBLE',
