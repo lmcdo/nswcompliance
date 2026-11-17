@@ -39,7 +39,7 @@ def rows_from_objects(objs: Iterable[dict]) -> tuple[list[tuple], list[str]]:
     rows: list[tuple] = []
     skipped: list[str] = []
     for o in objs:
-        key = o.get("Key", "")
+        key = o.get("Key") or ""
         p = parse_key(key)
         lm = o.get("LastModified")
         if p is None or lm is None:
@@ -67,8 +67,21 @@ def list_objects(env: dict[str, str]) -> list[dict]:
     )
     out: list[dict] = []
     for page in s3.get_paginator("list_objects_v2").paginate(Bucket=env["R2_BUCKET_NAME"], Prefix=PREFIX):
-        out += page.get("Contents", [])
+        out += page.get("Contents") or []
     return out
+
+
+INSERT_SQL = (
+    "INSERT INTO dcp_source_versions (council, chapter_key, version_label, r2_key, event, size_bytes, etag, content_hash, captured_at, source) "
+    "VALUES %s ON CONFLICT (r2_key, event) DO NOTHING"
+)
+
+
+def insert_rows(cur: Any, rows: list[tuple]) -> None:
+    """Insert ledger rows once each: a repeat of the same (file, event) is ignored, never duplicated."""
+    from psycopg2.extras import execute_values
+
+    execute_values(cur, INSERT_SQL, rows)
 
 
 def main(argv: list[str]) -> int:
@@ -85,8 +98,9 @@ def main(argv: list[str]) -> int:
     if not apply:
         print("DRY RUN: nothing written. Re-run with --apply.")
         return 0
+    # prior-art-checked: reuse not viable because this block only moves the ledger insert into the shared insert_rows helper above; the
+    # other repo hits (legislation monitor, enrichment pipeline, frontend clients) write unrelated tables and share only generic words.
     import psycopg2
-    from psycopg2.extras import execute_values
 
     conn = psycopg2.connect(env["DATABASE_URL"], connect_timeout=20)
     cur = conn.cursor()
@@ -94,12 +108,7 @@ def main(argv: list[str]) -> int:
     before = _count(cur)
     for i in range(0, len(rows), BATCH):
         chunk = rows[i:i + BATCH]
-        execute_values(
-            cur,
-            "INSERT INTO dcp_source_versions (council, chapter_key, version_label, r2_key, event, size_bytes, etag, content_hash, captured_at, source) "
-            "VALUES %s ON CONFLICT (r2_key, event) DO NOTHING",
-            chunk,
-        )
+        insert_rows(cur, chunk)
         conn.commit()
         print(f"DONE {min(i + BATCH, len(rows))}/{len(rows)}", flush=True)
     after = _count(cur)

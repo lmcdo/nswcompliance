@@ -5,7 +5,8 @@
  "files": [
   "migrations/126_dcp_source_versions.sql",
   "scripts/backfill_dcp_source_versions.py",
-  "tests/test_dcp_source_versions.py"
+  "tests/test_dcp_source_versions.py",
+  "tests/test_backfill_dcp_source_versions_real_db.py"
  ],
  "pre_impl": {
   "existing_data": "R2 already holds 803 council PDFs (2.2 GB) from 2026-02-28 under source-pdfs/dcps/{council}/{version}/{chapter}.pdf; r2_monitor writes each new version to a new path and never deletes. dcp_chapter_registry keeps only the current path and (since migration 125) staged_* columns. dcp_monitor_chapter_results holds daily outcomes since 2026-10-22.",
@@ -18,7 +19,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_dcp_source_versions.py -q",
   "fails_when": "The registry trigger loses its exception handler, or the ledger loses its append-only guard, or the backfill guesses a path shape it cannot read.",
-  "observed_red": "Mutation 1 (exception handler replaced by RAISE EXCEPTION) made test_the_registry_trigger_can_never_block_a_write FAIL (1 failed, 16 passed). Mutation 2 (append-only guard replaced by AFTER INSERT) made test_the_ledger_is_append_only_and_idempotent FAIL (1 failed, 16 passed). Restored: 17 passed."
+  "observed_red": "Mutation 1 (exception handler replaced by RAISE EXCEPTION) made test_the_registry_trigger_can_never_block_a_write FAIL (1 failed, 16 passed). Mutation 2 (append-only guard replaced by AFTER INSERT) made test_the_ledger_is_append_only_and_idempotent FAIL (1 failed, 16 passed). Restored: 17 passed. Real-database test (rolled-back transaction, migration applied inside it): 1 passed, covering idempotent insert, UPDATE/DELETE/TRUNCATE refused, dcp_source_as_at before/between/after records, trigger logs 'received', and a forced CHECK(false) failure inside the ledger does not block the registry update."
  },
  "functions": [
   {
@@ -34,6 +35,13 @@
    "input": "a list of R2 listing entries with Key, Size, ETag and LastModified",
    "output": "insert tuples for the ledger plus a list of skipped keys",
    "if_none": "an entry without a date or a readable key goes to the skipped list, not into the ledger"
+  },
+  {
+   "name": "insert_rows",
+   "file_line": "scripts/backfill_dcp_source_versions.py",
+   "input": "a cursor and a list of ledger row tuples",
+   "output": "inserts each file and event once, ignoring repeats",
+   "if_none": "an empty list inserts nothing and raises no error"
   }
  ],
  "values": "N/A - no value is derived from a database or API reading; the script only copies object names, sizes, ETags and dates from the R2 listing.",
