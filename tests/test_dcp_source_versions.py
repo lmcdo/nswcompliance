@@ -101,3 +101,9 @@ def test_no_existing_table_is_altered_or_emptied():
     sql = _sql()
     for bad in (r"ALTER\s+TABLE\s+dcp_chapter_registry", r"DROP\s+TABLE", r"\bDELETE\s+FROM\b", r"\bUPDATE\s+\w+\s+SET\b", r"\bTRUNCATE\s+TABLE\b"):
         assert not re.search(bad, sql, re.I), bad
+
+
+def test_a_missing_version_label_is_recorded_as_not_recorded_never_guessed_from_the_path():
+    sql = _sql()
+    assert "split_part" not in sql
+    assert sql.count("'(not recorded)'") == 2

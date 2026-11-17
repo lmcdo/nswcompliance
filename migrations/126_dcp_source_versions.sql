@@ -72,7 +72,7 @@ BEGIN
                 (council, chapter_key, version_label, r2_key, event, size_bytes, content_hash, captured_at, source)
             VALUES
                 (NEW.council, NEW.chapter_key,
-                 COALESCE(NEW.r2_version_label, split_part(NEW.r2_current_path, '/', 4)),
+                 COALESCE(NEW.r2_version_label, '(not recorded)'),
                  NEW.r2_current_path, 'live', NEW.url_content_length, NEW.content_hash, now(), 'registry_trigger')
             ON CONFLICT (r2_key, event) DO NOTHING;
         END IF;
@@ -82,7 +82,7 @@ BEGIN
                 (council, chapter_key, version_label, r2_key, event, size_bytes, content_hash, captured_at, source)
             VALUES
                 (NEW.council, NEW.chapter_key,
-                 COALESCE(NEW.staged_version_label, split_part(NEW.staged_r2_path, '/', 4)),
+                 COALESCE(NEW.staged_version_label, '(not recorded)'),
                  NEW.staged_r2_path, 'received', NEW.staged_url_content_length, NEW.staged_content_hash,
                  COALESCE(NEW.staged_at, now()), 'registry_trigger')
             ON CONFLICT (r2_key, event) DO NOTHING;
