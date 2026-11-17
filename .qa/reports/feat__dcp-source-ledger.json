@@ -1,0 +1,96 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds a production table and a trigger on dcp_chapter_registry (migration 126) plus a backfill script. Not Minor: it touches the live pipeline's registry table and creates evidence data. Not Critical: new objects only, no existing row or column changes, the trigger cannot block a write, and the ledger is append-only.",
+ "commit_hash": "171684be",
+ "files": [
+  "migrations/126_dcp_source_versions.sql",
+  "scripts/backfill_dcp_source_versions.py",
+  "tests/test_dcp_source_versions.py",
+  "tests/test_backfill_dcp_source_versions_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "R2 already holds 803 council PDFs (2.2 GB) from 2026-02-28 under source-pdfs/dcps/{council}/{version}/{chapter}.pdf; r2_monitor writes each new version to a new path and never deletes. dcp_chapter_registry keeps only the current path and (since migration 125) staged_* columns. dcp_monitor_chapter_results holds daily outcomes since 2026-10-22.",
+  "assumption_mismatch": "I first told the owner no dated archive of old PDFs existed. That was untested; the bucket listing shows the files exist and only the ledger of when each was held is missing.",
+  "new_vs_existing": "New table plus trigger plus backfill. Nothing in r2_monitor or any extraction script changes: a trigger on the registry captures every writer (monitor, confirm_chapter, repoint, populate scripts, staged commit).",
+  "external_source_error": "captured_at is the R2 LastModified (when our copy was stored), not the council's publication date; R2 ETag is MD5 for single-part uploads, not sha256. Both limits are stated in the migration header and plan.",
+  "frontend_type": "N/A - no frontend change.",
+  "user_failure_mode": "If the ledger were wrong, an evidence statement could name the wrong file for a date. Mitigation: append-only, unique per (file, event), limits stated, and 'nothing recorded' is returned as no row, never a guess."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dcp_source_versions.py -q",
+  "fails_when": "The registry trigger loses its exception handler, or the ledger loses its append-only guard, or the backfill guesses a path shape it cannot read.",
+  "observed_red": "Mutation 1 (exception handler replaced by RAISE EXCEPTION) made test_the_registry_trigger_can_never_block_a_write FAIL (1 failed, 16 passed). Mutation 2 (append-only guard replaced by AFTER INSERT) made test_the_ledger_is_append_only_and_idempotent FAIL (1 failed, 16 passed). Restored: 17 passed. Real-database test (rolled-back transaction, migration applied inside it): 1 passed, covering idempotent insert, UPDATE/DELETE/TRUNCATE refused, dcp_source_as_at before/between/after records, trigger logs 'received', and a forced CHECK(false) failure inside the ledger does not block the registry update."
+ },
+ "functions": [
+  {
+   "name": "parse_key",
+   "file_line": "scripts/backfill_dcp_source_versions.py",
+   "input": "an R2 object key string",
+   "output": "council, version label and chapter key, only for the exact five part PDF shape",
+   "if_none": "returns None so the caller reports the key as skipped and never guesses"
+  },
+  {
+   "name": "rows_from_objects",
+   "file_line": "scripts/backfill_dcp_source_versions.py",
+   "input": "a list of R2 listing entries with Key, Size, ETag and LastModified",
+   "output": "insert tuples for the ledger plus a list of skipped keys",
+   "if_none": "an entry without a date or a readable key goes to the skipped list, not into the ledger"
+  },
+  {
+   "name": "insert_rows",
+   "file_line": "scripts/backfill_dcp_source_versions.py",
+   "input": "a cursor and a list of ledger row tuples",
+   "output": "inserts each file and event once, ignoring repeats",
+   "if_none": "an empty list inserts nothing and raises no error"
+  }
+ ],
+ "values": "N/A - no value is derived from a database or API reading; the script only copies object names, sizes, ETags and dates from the R2 listing.",
+ "queries": [
+  {
+   "purpose": "Insert one ledger row per R2 file, once",
+   "file_line": "scripts/backfill_dcp_source_versions.py main",
+   "where_clause": "INSERT ... ON CONFLICT (r2_key, event) DO NOTHING (no WHERE; idempotent by the unique key)"
+  },
+  {
+   "purpose": "Count ledger rows before and after to report how many were added",
+   "file_line": "scripts/backfill_dcp_source_versions.py _count",
+   "where_clause": "SELECT count(*) FROM dcp_source_versions (no filter needed: new table)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The registry trigger raises an error while the monitor is updating a chapter.",
+   "what_happens": "A council intake or the daily monitor would fail because of the logging step.",
+   "mitigated": true,
+   "how": "The trigger body catches every error and turns it into a warning; a test pins this and a mutation proved it.",
+   "repro": "python -m pytest tests/test_dcp_source_versions.py::test_the_registry_trigger_can_never_block_a_write"
+  },
+  {
+   "scenario": "Someone edits or deletes ledger rows to change the history.",
+   "what_happens": "The evidence of which file was held when would be unreliable.",
+   "mitigated": true,
+   "how": "BEFORE UPDATE OR DELETE and BEFORE TRUNCATE guards raise an error; row level security hides the table from the public key.",
+   "repro": "python -m pytest tests/test_dcp_source_versions.py::test_the_ledger_is_append_only_and_idempotent"
+  },
+  {
+   "scenario": "The backfill is run twice or run after the trigger has already logged some files.",
+   "what_happens": "Duplicate rows would double count versions.",
+   "mitigated": true,
+   "how": "UNIQUE (r2_key, event) with ON CONFLICT DO NOTHING; the script prints rows before and after.",
+   "repro": "Run the script with --apply twice and compare the added count (second run adds 0)."
+  },
+  {
+   "scenario": "An R2 key has an unexpected shape, such as an extra folder level.",
+   "what_happens": "A wrong chapter name could be recorded and later cited as evidence.",
+   "mitigated": true,
+   "how": "parse_key accepts only the exact five part shape; everything else is printed as skipped.",
+   "repro": "python -m pytest tests/test_dcp_source_versions.py::test_parse_key_refuses_anything_it_cannot_read_exactly"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - migration 126 must be applied to production BEFORE merge (schema contract CI reads the live catalog); then run the backfill dry run, apply, and check ledger rows equals the R2 object count (803 at 2026-11-18)."
+ }
+}
