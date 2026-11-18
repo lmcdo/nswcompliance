@@ -541,3 +541,8 @@ def test_the_outline_query_needs_the_point_strictly_inside_the_lot_and_the_note_
     r = d.decide(lot(lot_source={"source": "snapshot", "as_of": None}), FACTS)
     n = next(x for x in r["notes"] if "lot outline was read" in x)
     assert "None" not in n and "as at" not in n
+
+
+def test_a_ring_with_a_missing_coordinate_is_not_an_outline():
+    bad = [[150.0, -33.0], [150.001, None], [150.001, -33.001], [150.0, -33.001], [150.0, -33.0]]
+    assert _lot([(_json.dumps({"type": "Polygon", "coordinates": [bad]}), T)])[0] is None

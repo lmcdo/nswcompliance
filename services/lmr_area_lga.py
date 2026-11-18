@@ -188,7 +188,9 @@ def lot_outline_from_snapshot(lat: float, lng: float, *, connect: Optional[Calla
         ring = (gj.get("coordinates") or [[]])[0] if gj.get("type") == "Polygon" else None
         if not ring or len(ring) < 4:
             return None
-        return [[float(x), float(y)] for x, y in ring], _date(rows[0][1])
+        if any(pt is None or len(pt) < 2 or pt[0] is None or pt[1] is None for pt in ring):
+            return None   # a ring with a missing coordinate is not an outline
+        return [[float(pt[0]), float(pt[1])] for pt in ring], _date(rows[0][1])
     except Exception as exc:  # noqa: BLE001 -- no outline from our copy: the live service is asked
         logger.warning("lot outline snapshot lookup failed: %s", exc)
         return None
