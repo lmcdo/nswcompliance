@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,54 @@ def lga_best_guess(lat: float, lng: float, *, connect: Optional[Callable[[], Any
         return {"council": best[0], "as_of": _date(best[3]), "alternatives": [r[0] for r in rows[1:]]}
     except Exception as exc:  # noqa: BLE001 -- no guess is better than a wrong one
         logger.warning("council best-guess lookup failed: %s", exc)
+        return None
+    finally:
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_BUSHFIRE_COPY = Path(__file__).resolve().parent.parent / "data" / "law" / "maps" / "bushfire_copy.json"
+_SQL_BF_POINT = "SELECT EXISTS (SELECT 1 FROM spatial_overlays WHERE layer_type = 'bushfire' AND ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326)))"
+_SQL_BF_LOT = ("SELECT EXISTS (SELECT 1 FROM spatial_overlays WHERE layer_type = 'bushfire' "
+               "AND ST_Intersects(geom, ST_MakeValid(ST_SetSRID(ST_GeomFromText(%s), 4326))))")
+
+
+def bushfire_copy_info() -> Optional[dict]:
+    """The committed record of when our bush fire copy was refreshed and what it is known to lack, or None if unreadable."""
+    import json
+
+    try:
+        info = json.loads(_BUSHFIRE_COPY.read_text(encoding="utf-8"))
+        return info if isinstance(info, dict) and info.get("refreshed_on") else None
+    except (OSError, ValueError):
+        return None
+
+
+def bushfire_from_snapshot(lat: float, lng: float, rings: Optional[list], *, connect: Optional[Callable[[], Any]] = None) -> Optional[dict]:
+    """{"point": bool, "lot": bool | None, "as_of": date} from OUR copy of bush fire prone land, or None when it cannot answer (no connection, an
+    error, or no record of when the copy was made). "lot" is None when no lot outline is given. Same read-only short-limit connection as the council lookup."""
+    info = bushfire_copy_info()
+    if info is None:
+        return None
+    conn = None
+    try:
+        conn = (connect or _connect)()
+        if conn is None:
+            return None
+        cur = conn.cursor()
+        cur.execute(_SQL_BF_POINT, (lng, lat))
+        point = bool(cur.fetchone()[0])
+        lot = None
+        if rings and len(rings) >= 4:
+            wkt = "POLYGON((" + ", ".join(f"{float(x)} {float(y)}" for x, y in rings) + "))"
+            cur.execute(_SQL_BF_LOT, (wkt,))
+            lot = bool(cur.fetchone()[0])
+        return {"point": point, "lot": lot, "as_of": str(info.get("refreshed_on"))}
+    except Exception as exc:  # noqa: BLE001 -- no answer from our copy: the live map is asked as before
+        logger.warning("bush fire snapshot lookup failed: %s", exc)
         return None
     finally:
         try:

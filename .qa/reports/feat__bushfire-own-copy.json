@@ -1,0 +1,87 @@
+{
+ "tier": "standard",
+ "justification": "Standard: step 2 (bush fire part) of ce-layers-own-copy-SCOPE-2026-11-18.md. Bush fire prone land is read from our own overlay copy first. Not Minor: it changes where a legal exclusion check gets its answer. Not Critical: a hit in our copy only makes the check stricter, a clear in our copy is never trusted (the live map must confirm, otherwise the answer stays unknown), no schema or rule change.",
+ "commit_hash": "3928e14f",
+ "files": [
+  "services/lmr_area_lga.py",
+  "services/lmr_area_inputs.py",
+  "services/lmr_area_decision.py",
+  "services/housing_sepp_gates_api.py",
+  "data/law/maps/bushfire_copy.json",
+  "tests/test_lmr_area_lga.py",
+  "tests/test_lmr_area_lga_real_db.py",
+  "scripts/refresh_bushfire_new_areas.py"
+ ],
+ "pre_impl": {
+  "existing_data": "spatial_overlays holds 232,393 bushfire rows (GiST index) after the 2026-11-18 additive refresh; 804 live areas are still missing and 6,066 held areas are gone from the live map. Point query 0.1 s.",
+  "assumption_mismatch": "I assumed that after adding the new areas our copy would be a safe source of 'clear'. Measured on 60 random lots: 6 were clear in our copy but bush fire prone on the live map (existing areas changed shape), 0 the other way. So a clear in our copy is never an answer.",
+  "new_vs_existing": "Adds bushfire_from_snapshot (read-only, injected by the API route like the council lookup) and _bushfire_resolved: own hit final; own clear confirmed on the live map with a 6 s limit; live silent leaves unknown with a note. bushfire_copy.json records the copy date and what it lacks.",
+  "external_source_error": "The copy is incomplete in a known way (measured miss 6 of 60), recorded in bushfire_copy.json and in the answer's note. A hit it does give has never been clear on the live map in the sample (10 of 10 agreed).",
+  "frontend_type": "N/A - the answer gains an optional bushfire_source in measured and one note; the card already shows notes.",
+  "user_failure_mode": "A false clear would let a bush fire prone lot look eligible. Guarded: a clear in our copy never becomes an answer; if the live map does not answer the rule stays unknown and the answer says our copy is known to miss areas."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_area_lga.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database -k bushfire",
+  "fails_when": "A clear in our copy is accepted as an answer, the live check is skipped, or a hit in our copy is ignored.",
+  "observed_red": "Break A (trust our clear when live is silent) failed 2 tests; break B (skip the live check on a clear) failed 3; break C (ignore a hit in our copy) failed 2. Restored: 61 passed in the file, 195 area-check tests pass. Real data (outside pytest): 60 random lots, both hit 10, both clear 44, own CLEAR but live HIT 6, own HIT but live clear 0, own lookup 0.21 s average. Real-data test (PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1): a hit in our copy was never clear on the live map, passed (625 s)."
+ },
+ "functions": [
+  {
+   "name": "bushfire_from_snapshot",
+   "file_line": "services/lmr_area_lga.py",
+   "input": "a latitude, longitude and an optional lot outline",
+   "output": "whether the point and the lot touch bush fire prone land in our copy plus the copy date, or None",
+   "if_none": "no connection, an error or no copy record gives None so the live map decides as before"
+  },
+  {
+   "name": "_bushfire_resolved",
+   "file_line": "services/lmr_area_inputs.py",
+   "input": "a point, an optional lot outline and an optional own-copy lookup",
+   "output": "the layer result and a source marker saying what our copy showed",
+   "if_none": "without a usable copy the live map alone decides with its old limits"
+  }
+ ],
+ "values": [
+  {
+   "value": "whether a point or lot touches bush fire prone land, and the copy refresh date",
+   "read_at": "services/lmr_area_lga.py bushfire_from_snapshot (spatial_overlays) and data/law/maps/bushfire_copy.json",
+   "if_missing": "None, so the live map decides; with neither the rule is unknown and the answer is can't tell"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Does our bushfire copy touch this point, and this lot outline",
+   "file_line": "services/lmr_area_lga.py _SQL_BF_POINT and _SQL_BF_LOT",
+   "where_clause": "WHERE layer_type = 'bushfire' AND ST_Intersects(geom, point or valid polygon); EXISTS checks, read-only session, 3 s statement limit, GiST index"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Our copy says clear for a lot that is bush fire prone on the live map.",
+   "what_happens": "A bush fire prone lot could be shown as eligible.",
+   "mitigated": true,
+   "how": "A clear in our copy is never an answer: the live map confirms it, and if the live map is silent the rule stays unknown with a note that our copy is known to miss areas. Two tests and breaks A and B pin this.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_when_live_is_silent_our_clear_is_never_an_answer_it_stays_unknown"
+  },
+  {
+   "scenario": "Our copy holds an area the state has since dropped.",
+   "what_happens": "A lot could be excluded by an area that no longer exists.",
+   "mitigated": true,
+   "how": "Stricter, not looser; 6,066 such areas are recorded in bushfire_copy.json and the answer says the copy date. In the sample no lot was prone in our copy but clear live.",
+   "repro": "PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 python -m pytest tests/test_lmr_area_lga_real_db.py -k bushfire"
+  },
+  {
+   "scenario": "The live map stalls while checking a clear.",
+   "what_happens": "The answer waits on a slow server.",
+   "mitigated": true,
+   "how": "The confirmation uses a 6 s limit and one try; a hit in our copy needs no live call at all.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_clear_in_our_copy_is_checked_live_with_a_short_limit_and_live_wins"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy call /pipeline/housing-sepp/area-check for a known bush fire prone address and confirm the note; the bushfire layer should still be rebuilt in full (see bushfire_copy.json)."
+ }
+}

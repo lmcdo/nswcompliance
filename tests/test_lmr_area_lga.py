@@ -153,11 +153,12 @@ def test_the_source_and_the_note_say_which_part_of_the_copy_decided(monkeypatch)
 def test_area_check_hands_the_fallback_down_to_the_layer_fetch(monkeypatch):
     seen = {}
     monkeypatch.setattr(inp, "fetch_lot_rings", lambda lat, lng: None)
-    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None, lga_guess=None: seen.update(fb=lga_fallback, g=lga_guess) or lot())
+    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None, lga_guess=None, bushfire_fn=None: seen.update(fb=lga_fallback, g=lga_guess, bf=bushfire_fn) or lot())
     marker = lambda *a: ("PENRITH", "2026-06-18")  # noqa: E731
     g = lambda *a: None  # noqa: E731
-    inp.area_check(-33.75, 150.7, lga_fallback=marker, lga_guess=g)
-    assert seen["fb"] is marker and seen["g"] is g
+    bf = lambda *a: None  # noqa: E731
+    inp.area_check(-33.75, 150.7, lga_fallback=marker, lga_guess=g, bushfire_fn=bf)
+    assert seen["fb"] is marker and seen["g"] is g and seen["bf"] is bf
 
 
 def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
@@ -166,7 +167,7 @@ def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
     seen = {}
     monkeypatch.setattr(inp, "area_check", lambda lat, lng, **kw: seen.update(kw) or {"ok": True})
     assert api.housing_sepp_area_check(-33.75, 150.7) == {"ok": True}
-    assert seen["lga_fallback"] is lga.lga_from_snapshot and seen["lga_guess"] is lga.lga_best_guess and "flood_fn" in seen
+    assert seen["lga_fallback"] is lga.lga_from_snapshot and seen["lga_guess"] is lga.lga_best_guess and seen["bushfire_fn"] is lga.bushfire_from_snapshot and "flood_fn" in seen
 
 
 def test_a_normal_live_answer_adds_no_source_field_anywhere(monkeypatch):
@@ -357,3 +358,129 @@ def test_the_unsure_note_does_not_invent_another_council_when_none_was_found():
     r = d.decide(lot(lga="PENRITH", lga_source={**SNAP, "unsure": True, "alternatives": []}), FACTS)
     n = next(x for x in r["notes"] if "could not be sure" in x)
     assert "no other council was found nearby" in n and "could also be" not in n
+
+
+
+# ---- bush fire prone land: our copy first, the live map confirms --------------------------------------------------------------------
+
+RING = [[150.0, -33.0], [150.001, -33.0], [150.001, -33.001], [150.0, -33.001], [150.0, -33.0]]
+OWN_HIT = {"point": True, "lot": True, "as_of": "2026-11-18"}
+OWN_CLEAR = {"point": False, "lot": False, "as_of": "2026-11-18"}
+LIVE_CLEAR = {"point": False, "lot": False}
+LIVE_SILENT = {"point": None, "lot": None}
+BF_SRC = {"source": "snapshot", "as_of": "2026-11-18", "confirmed": False}
+
+
+def _live(monkeypatch, result):
+    calls = []
+    monkeypatch.setattr(inp, "_layer", lambda key, lat, lng, rings, **kw: calls.append((key, kw)) or result)
+    return calls
+
+
+def test_a_hit_in_our_copy_is_final_and_the_live_map_is_not_asked(monkeypatch):
+    calls = _live(monkeypatch, LIVE_CLEAR)
+    got = inp._bushfire_resolved(-33.7, 150.7, RING, lambda *a: OWN_HIT)
+    assert got == ({"point": True, "lot": True}, {**BF_SRC, "found": "hit"}) and calls == []
+
+
+def test_a_clear_in_our_copy_is_checked_live_with_a_short_limit_and_live_wins(monkeypatch):
+    calls = _live(monkeypatch, {"point": True, "lot": True})
+    got = inp._bushfire_resolved(-33.7, 150.7, RING, lambda *a: OWN_CLEAR)
+    assert got == ({"point": True, "lot": True}, None)          # our copy lacked an area the live map has: live wins
+    assert calls == [("bushfire", {"timeout": inp.BUSHFIRE_LIVE_CHECK_TIMEOUT_S, "attempts": 1})]
+
+
+def test_when_live_is_silent_our_clear_is_never_an_answer_it_stays_unknown(monkeypatch):
+    _live(monkeypatch, LIVE_SILENT)
+    result, src = inp._bushfire_resolved(-33.7, 150.7, RING, lambda *a: OWN_CLEAR)
+    assert result == LIVE_SILENT and src == {**BF_SRC, "found": "clear_unconfirmed"}
+    assert d.layer_state(result) == "unknown"          # the decision sees unknown, never clear
+
+
+def test_a_half_answered_live_map_counts_as_silent(monkeypatch):
+    _live(monkeypatch, {"point": False, "lot": None})
+    result, src = inp._bushfire_resolved(-33.7, 150.7, RING, lambda *a: OWN_CLEAR)
+    assert src == {**BF_SRC, "found": "clear_unconfirmed"} and result == {"point": False, "lot": None}
+
+
+@pytest.mark.parametrize("own", [None, lambda *a: None, lambda *a: {"point": "yes", "as_of": "x"}, lambda *a: {"point": False}])
+def test_without_a_usable_copy_the_live_map_alone_decides_as_before(monkeypatch, own):
+    calls = _live(monkeypatch, LIVE_SILENT)
+    assert inp._bushfire_resolved(-33.7, 150.7, RING, own) == (LIVE_SILENT, None)
+    assert calls == [("bushfire", {})]                       # the old limits: no shortened wait when there is no copy to fall back on
+
+
+def test_a_failing_copy_lookup_falls_back_to_live(monkeypatch):
+    _live(monkeypatch, LIVE_CLEAR)
+
+    def boom(*a):
+        raise RuntimeError("db")
+
+    assert inp._bushfire_resolved(-33.7, 150.7, RING, boom) == (LIVE_CLEAR, None)
+
+
+def test_the_unconfirmed_note_says_so_and_the_answer_is_not_clear():
+    r = d.decide(lot(bushfire={"point": None, "lot": None}, bushfire_source={**BF_SRC, "found": "clear_unconfirmed"}), FACTS)
+    n = next(x for x in r["notes"] if "bush fire prone land map did not answer" in x)
+    assert "2026-11-18" in n and "NOT treated as clear" in n and "Planning Portal" in n
+    assert r["lmr"]["answer"] == "cant_tell"
+    r = d.decide(lot(bushfire={"point": True, "lot": True}, bushfire_source={**BF_SRC, "found": "hit"}), FACTS)
+    r = d.decide(lot(bushfire={"point": True, "lot": True}, bushfire_source={**BF_SRC, "found": "hit"}), FACTS)
+    assert any("found in our own copy" in x and "live state map was not needed" in x for x in r["notes"]) and r["lmr"]["answer"] == "no"
+    assert not any("bush fire" in x.lower() for x in d.decide(lot(), FACTS)["notes"])
+
+
+def test_fetch_layers_keeps_the_bushfire_source_only_when_the_copy_was_used(monkeypatch, quiet_layers):
+    monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: (True, "PENRITH"))
+    out = inp.fetch_layers(-33.7, 150.7, RING, None, None, lambda *a: OWN_HIT)
+    assert out["bushfire"] == {"point": True, "lot": True} and out["bushfire_source"]["found"] == "hit"
+    out = inp.fetch_layers(-33.7, 150.7, RING, None, None, None)
+    assert "bushfire_source" not in out
+
+
+# ---- bushfire_from_snapshot --------------------------------------------------------------------------------------------------------
+
+class _CurBF:
+    def __init__(self, answers, boom=False):
+        self.answers, self.boom, self.sqls = list(answers), boom, []
+
+    def execute(self, sql, args=None):
+        if self.boom:
+            raise RuntimeError("statement timeout")
+        self.sqls.append((sql, args))
+
+    def fetchone(self):
+        return (self.answers.pop(0),)
+
+
+def _bf(answers, rings=RING, boom=False, info=True, monkeypatch=None):
+    conn = _Conn(_CurBF(answers, boom))
+    return lga.bushfire_from_snapshot(-33.0005, 150.0005, rings, connect=lambda: conn), conn
+
+
+def test_the_copy_answers_point_and_lot_with_the_refresh_date_and_closes():
+    got, conn = _bf([False, True])
+    assert got == {"point": False, "lot": True, "as_of": "2026-11-18"} and conn.closed
+    assert conn.cur.sqls[0][1] == (150.0005, -33.0005) and conn.cur.sqls[1][1][0].startswith("POLYGON((150.0 -33.0")
+
+
+def test_without_a_lot_outline_only_the_point_is_asked_and_lot_is_none():
+    got, conn = _bf([True], rings=None)
+    assert got == {"point": True, "lot": None, "as_of": "2026-11-18"} and len(conn.cur.sqls) == 1
+
+
+def test_an_error_or_no_connection_or_no_record_of_the_copy_date_gives_none(monkeypatch):
+    assert _bf([], boom=True)[0] is None
+    assert lga.bushfire_from_snapshot(-33.0, 150.0, RING, connect=lambda: None) is None
+    monkeypatch.setattr(lga, "_BUSHFIRE_COPY", lga._BUSHFIRE_COPY.parent / "does_not_exist.json")
+    assert _bf([False, False])[0] is None
+
+
+def test_the_committed_copy_record_names_the_date_and_what_the_copy_lacks():
+    info = lga.bushfire_copy_info()
+    assert info["refreshed_on"] >= "2026-11-18" and info["areas_missing_from_our_copy"] >= 0 and info["areas_in_our_copy_gone_from_live"] >= 0
+
+
+def test_the_bushfire_queries_are_read_only_exists_checks_on_the_bushfire_layer():
+    for q in (lga._SQL_BF_POINT, lga._SQL_BF_LOT):
+        assert q.upper().startswith("SELECT EXISTS") and "layer_type = 'bushfire'" in q and "ST_Intersects" in q
