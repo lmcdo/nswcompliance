@@ -588,7 +588,8 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
     if src is not None and src.get("source") == "snapshot":
         when = f" as at {src.get('as_of')}" if src.get("as_of") else ""
-        notes.append(f"The council ({m.get('lga')}) was read from our own copy of the council boundaries{when}, because the live state boundary service did not give an answer.")
+        how = f" (taken from {src.get('how')})" if src.get("how") else ""
+        notes.append(f"The council ({m.get('lga')}) was read from our own copy of the lot boundaries{when}{how}, because the live state boundary service did not give an answer.")
     return {"pathway": pathway, "headline": _headline(pathway, lmr, tod), "lmr": lmr, "tod": tod,
             "not_checked": nc, "warnings": warnings,
             "notes": notes, "law_version_date": facts.version_date,

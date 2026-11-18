@@ -45,8 +45,9 @@ def _date(at: Any) -> Optional[str]:
     return at.date().isoformat() if hasattr(at, "date") else (str(at)[:10] if at else None)
 
 
-def lga_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], Any]] = None) -> Optional[tuple[str, Optional[str]]]:
-    """(council, as_of 'YYYY-MM-DD') when a lot contains the point, or exactly one council is within about 100 m; else None. See the module note."""
+def lga_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], Any]] = None) -> Optional[tuple[str, Optional[str], str]]:
+    """(council, as_of 'YYYY-MM-DD', how) when a lot contains the point (how = "the lot at this point") or exactly one council is within about
+    100 m (how = "the lots around this point"); else None. See the module note."""
     conn = None
     try:
         conn = (connect or _connect)()
@@ -60,11 +61,11 @@ def lga_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], 
         rows = raw
         containing = [r for r in rows if r[1]]
         if len(containing) == 1:
-            return containing[0][0], _date(containing[0][2])    # the lot the point is in decides, even near a border
+            return containing[0][0], _date(containing[0][2]), "the lot at this point"   # the lot the point is in decides, even near a border
         if containing:
             return None   # two lots of different councils contain one point: not possible in good data, so never guess
         if len(rows) == 1:
-            return rows[0][0], _date(rows[0][2])               # nothing contains it (a road): one council all round
+            return rows[0][0], _date(rows[0][2]), "the lots around this point"   # nothing contains it (a road): one council all round
         return None       # nothing near, or a border: never guess
     except Exception as exc:  # noqa: BLE001 -- a failed substitute is no answer, never a guess
         logger.warning("council snapshot lookup failed: %s", exc)

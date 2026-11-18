@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: changes how the area check learns the council, which gates the whole answer (the four excluded councils). Not Minor: it adds a database-backed fallback and changes the live call's limits. Not Critical: the live service is still asked first and its answer (even 'no council') is never overridden, the fallback answers only when a lot contains the point or exactly one council is within about 100 m, and every failure leaves the answer at can't tell exactly as before.",
- "commit_hash": "95a42aaa",
+ "commit_hash": "ca7497cd",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
@@ -23,14 +23,14 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
   "fails_when": "The fallback accepts a border, swaps latitude and longitude, or replaces the live answer; or the decision drops the source note.",
-  "observed_red": "Deliberate breaks, each failing a named test: (A) accept a road between councils: test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road (2 failed); (B) let the fallback override a live 'no council' answer: test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback (1 failed); (C) ignore the containing lot: test_the_lot_the_point_is_in_decides_even_when_another_council_is_close (1 failed). Earlier round: accepting a border, swapping lat/lng and skipping live each failed a test. Restored: 65 passed (all area-check tests 168 passed). Real database plus live service: 3 passed (excluded councils resolve to themselves or nothing; 16 shifted points never differ from live; 20 random lots agree with live where both answer)."
+  "observed_red": "Deliberate breaks, each failing a named test: (A) accept a road between councils: test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road (2 failed); (B) let the fallback override a live 'no council' answer: test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback (1 failed); (C) ignore the containing lot: test_the_lot_the_point_is_in_decides_even_when_another_council_is_close (1 failed). Earlier round: accepting a border, swapping lat/lng and skipping live each failed a test. Restored: 65 passed (all area-check tests 168 passed). Real database plus live service: 3 passed (excluded councils resolve to themselves or nothing; 16 shifted points never differ from live; 20 random lots agree with live where both answer). Final round: also a lot with no council name near the point makes the fallback say nothing (3 tests), and the note names which part decided; 172 area-check tests pass and 3 real database tests pass."
  },
  "functions": [
   {
    "name": "lga_from_snapshot",
    "file_line": "services/lmr_area_lga.py",
    "input": "a latitude and longitude and an optional connection factory",
-   "output": "the council and the as-at date when exactly one council is within 40 m, else None",
+   "output": "the council, the as-at date and which part decided (the lot at the point, or the lots around it) when sure, else None",
    "if_none": "None means no council, so the decision stays at can't tell; it never raises"
   },
   {
@@ -95,7 +95,7 @@
    "scenario": "A user reads an answer without knowing the council came from our copy, or is told the service timed out when it returned an error.",
    "what_happens": "Wrong assumption about the source or the cause.",
    "mitigated": true,
-   "how": "measured.lga_source carries source and date; the note states the copy's date and says the service 'did not give an answer', never 'in time'.",
+   "how": "measured.lga_source (only present when the copy was used) carries source, date and which part decided; the note states the copy date, says the service did not give an answer, never in time, and says whether the lot at the point or the lots around it decided.",
    "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell"
   }
  ],

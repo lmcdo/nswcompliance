@@ -120,14 +120,29 @@ def test_fetch_layers_without_a_fallback_is_unchanged(monkeypatch, quiet_layers)
 def test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell():
     r = d.decide(lot(lga="PENRITH", lga_source=SNAP), FACTS)
     assert r["lmr"]["answer"] == "yes"
-    assert any("our own copy of the council boundaries as at 2026-06-18" in n and "PENRITH" in n for n in r["notes"])
+    assert any("our own copy of the lot boundaries as at 2026-06-18" in n and "PENRITH" in n for n in r["notes"])
     assert not any("in time" in n for n in r["notes"])           # an error is not always a timeout, so the note never says so
     assert r["measured"]["lga_source"] == SNAP
 
 
+def test_the_source_and_the_note_say_which_part_of_the_copy_decided(monkeypatch):
+    monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: NO_ANSWER)
+    name, src = inp._lga_resolved(-33.75, 150.7, lambda *a: ("PENRITH", "2026-06-18", "the lots around this point"))
+    assert name == "PENRITH" and src == {**SNAP, "how": "the lots around this point"}
+    r = d.decide(lot(lga=name, lga_source=src), FACTS)
+    assert any("(taken from the lots around this point)" in n for n in r["notes"])
+
+
+def test_a_normal_live_answer_adds_no_source_field_anywhere(monkeypatch):
+    r = d.decide(lot(lga="PENRITH"), FACTS)
+    assert "lga_source" not in r["measured"]
+    monkeypatch.setattr(inp, "gather", lambda lat, lng, **kw: lot(lga="PENRITH"))
+    assert "lga_source" not in inp.area_check(-33.75, 150.7)["measured"]
+
+
 def test_no_note_when_the_live_service_answered():
     r = d.decide(lot(lga="PENRITH"), FACTS)
-    assert not any("own copy of the council boundaries" in n for n in r["notes"])
+    assert not any("own copy of the lot boundaries" in n for n in r["notes"])
 
 
 def test_both_failing_is_still_cant_tell_never_yes():
@@ -209,17 +224,17 @@ T = dt.datetime(2026, 6, 18, 3, 0, tzinfo=dt.timezone.utc)
 
 def test_a_lot_containing_the_point_decides_with_its_date_and_the_connection_is_closed():
     got, conn = _lookup([(" PENRITH ", True, T)])
-    assert got == ("PENRITH", "2026-06-18") and conn.closed
+    assert got == ("PENRITH", "2026-06-18", "the lot at this point") and conn.closed
     assert conn.cur.args == (150.7, -33.75, 150.7, -33.75, lga.NEAR_DEG)   # longitude then latitude, twice, then the distance
 
 
 def test_the_lot_the_point_is_in_decides_even_when_another_council_is_close():
     got, _ = _lookup([("PENRITH", True, T), ("BLUE MOUNTAINS", False, T)])
-    assert got == ("PENRITH", "2026-06-18")
+    assert got == ("PENRITH", "2026-06-18", "the lot at this point")
 
 
 def test_on_a_road_with_one_council_all_round_that_council_is_returned():
-    assert _lookup([("HAWKESBURY", False, T)])[0] == ("HAWKESBURY", "2026-06-18")
+    assert _lookup([("HAWKESBURY", False, T)])[0] == ("HAWKESBURY", "2026-06-18", "the lots around this point")
 
 
 def test_on_a_road_between_two_councils_gives_no_answer():
