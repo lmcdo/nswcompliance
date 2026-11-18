@@ -126,8 +126,8 @@ def _features(j: Optional[dict]) -> Optional[list]:
     return None if j is None else (j.get("features") or [])
 
 
-def _hit(url: str, params: dict) -> Optional[bool]:
-    f = _features(_get_json(url, params, post=True))
+def _hit(url: str, params: dict, **limits: Any) -> Optional[bool]:
+    f = _features(_get_json(url, params, post=True, **limits))
     return None if f is None else len(f) > 0
 
 
@@ -206,10 +206,39 @@ def _heritage(rings: Optional[list]) -> dict:
     return out
 
 
-def _layer(key: str, lat: float, lng: float, rings: Optional[list]) -> dict:
-    pt = _hit(LAYERS[key], _point_params(lat, lng, out_fields="OBJECTID"))
-    lot = _hit(LAYERS[key], _poly_params(rings, out_fields="OBJECTID")) if rings else None
+def _layer(key: str, lat: float, lng: float, rings: Optional[list], **limits: Any) -> dict:
+    pt = _hit(LAYERS[key], _point_params(lat, lng, out_fields="OBJECTID"), **limits)
+    lot = _hit(LAYERS[key], _poly_params(rings, out_fields="OBJECTID"), **limits) if rings else None
     return {"point": pt, "lot": lot}
+
+
+# prior-art-checked: reuse not viable because this wraps this module's own _layer for one layer; the own-copy lookup is services/lmr_area_lga.py,
+# injected by the caller like the council lookup. Rule: our copy lacks about 800 live areas, so its "clear" is never trusted alone.
+BUSHFIRE_LIVE_CHECK_TIMEOUT_S = 6
+
+
+def _bushfire_resolved(lat: float, lng: float, rings: Optional[list], own: Optional[Any]) -> tuple[dict, Optional[dict]]:
+    """(layer result, source). Our copy first: a point on bush fire prone land is final (keeping an area only makes the check stricter).
+    A "clear" in our copy is NEVER an answer: measured 2026-11-18, 6 of 60 random lots were clear in our copy but bush fire prone on the live map.
+    So the live map confirms; if it does not answer the result stays unknown (can't tell) and the source says what our copy showed.
+    source is None when the live map gave the answer."""
+    mine = None
+    if own is not None:
+        try:
+            got = own(lat, lng, rings)
+            if isinstance(got, dict) and isinstance(got.get("point"), bool) and got.get("as_of"):
+                mine = got
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("lmr inputs: own bush fire copy failed: %s", exc)
+    if mine is not None and mine.get("point") is True:
+        return {"point": True, "lot": mine.get("lot")}, {"source": "snapshot", "as_of": str(mine.get("as_of")), "confirmed": False, "found": "hit"}
+    limits = {"timeout": BUSHFIRE_LIVE_CHECK_TIMEOUT_S, "attempts": 1} if mine is not None else {}
+    live = _layer("bushfire", lat, lng, rings, **limits)
+    if live.get("point") is not None and (live.get("lot") is not None or not rings):
+        return live, None
+    if mine is not None:   # the live map is silent: stay unknown, and say what our (known to be incomplete) copy showed
+        return live, {"source": "snapshot", "as_of": str(mine.get("as_of")), "confirmed": False, "found": "clear_unconfirmed" if not (mine.get("lot") or mine.get("point")) else "part"}
+    return live, None
 
 
 def _noise_bands(lat: float, lng: float, rings: Optional[list]) -> Optional[list]:
@@ -313,21 +342,26 @@ def _flood_answer(lga: Optional[str], rings: Optional[list], flood_fn: Any) -> O
 
 # prior-art-checked: reuse not viable because the hits are pip internals and a blog page; this only adds one optional argument to this
 # module's own fetch_layers (the council fallback, supplied by the caller) and changes no layer, source or query.
-def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None) -> dict:
+def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
+                 bushfire_fn: Optional[Any] = None) -> dict:
     """The map-service measurements for one lot (TOD, accelerated TOD, exclusion map, bush fire, heritage, council). Network only,
     except the optional `lga_fallback(lat, lng) -> (council, as_of) | None`, which the caller supplies (it owns any database connection)."""
     from concurrent.futures import ThreadPoolExecutor
 
     with ThreadPoolExecutor(max_workers=10) as ex:
         futs = {k: ex.submit(_layer, k, lat, lng, rings) for k in (
-            "tod_map", "accelerated", "exclusion", "bushfire",
+            "tod_map", "accelerated", "exclusion",
             "georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")}
         f_her = ex.submit(_heritage, rings)
+        f_bf = ex.submit(_bushfire_resolved, lat, lng, rings, bushfire_fn)
         f_lga = ex.submit(_lga_resolved, lat, lng, lga_fallback, lga_guess)
         f_noise = ex.submit(_noise_bands, lat, lng, rings)
         out: dict[str, Any] = {k: f.result() for k, f in futs.items()}
         out["airport_noise"] = f_noise.result()
         out["heritage"] = f_her.result()
+        out["bushfire"], bf_source = f_bf.result()  # noqa: bracket-access -- assignment into our own dict
+        if bf_source:
+            out["bushfire_source"] = bf_source  # noqa: bracket-access -- assignment into our own dict
         lga_name, lga_source = f_lga.result()
         out["lga"] = lga_name  # noqa: bracket-access -- assignment into our own dict
         if lga_source:
@@ -338,7 +372,7 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
            walk_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
-           lot_fn: Optional[Any] = None) -> dict:
+           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
     `flood_fn` (optional) is called with the lot outline as WKT (or None) ONLY when the lot is in one of the 23 councils s164(1)(g) names,
@@ -362,7 +396,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
-    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess)
+    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn)
     m["lot_outline"] = bool(rings) and len(rings) >= 4
     if lot_source:
         m["lot_source"] = lot_source  # noqa: bracket-access -- assignment into our own dict   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)

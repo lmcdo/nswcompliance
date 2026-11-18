@@ -1,0 +1,9 @@
+{
+  "layer": "spatial_overlays layer_type=bushfire (NSW RFS bush fire prone land, Fire/BFPL layer 0)",
+  "refreshed_on": "2026-11-18",
+  "live_areas_then": 227131,
+  "areas_missing_from_our_copy": 804,
+  "areas_in_our_copy_gone_from_live": 6066,
+  "note": "A 'bush fire prone' hit in our copy is trusted. A 'clear' is NEVER trusted: it is checked against the live map, and if the live map does not answer the result stays unknown. Update this file whenever the copy is refreshed.",
+  "measured_miss": "2026-11-18: of 60 random lot points, 6 were clear in our copy but bush fire prone on the live map (existing areas have changed shape, not only new ones added); 0 were prone in our copy but clear live. So a clear in our copy is never trusted. A full rebuild of this layer is needed to fix it."
+}

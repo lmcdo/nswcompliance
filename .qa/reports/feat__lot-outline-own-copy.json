@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: follow-up to merged #1648/#1649. The lot outline is now read from our own lot copy first, then the live state property service. Not Minor: the outline feeds the walk and the exclusion checks. Not Critical: read-only, no rule or schema change, falls back to the previous live behaviour when our copy has no outline, and the answer says when the outline came from our copy.",
- "commit_hash": "1d3b25dd",
+ "commit_hash": "dfa9de43",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",

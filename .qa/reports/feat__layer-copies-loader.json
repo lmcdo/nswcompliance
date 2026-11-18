@@ -1,0 +1,97 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds 10 data files and a download script (step 1 of ce-layers-own-copy-SCOPE-2026-11-18.md). Not Minor: the files will later feed the area check. Not Critical: nothing reads them yet, no database write, no behaviour change; the script never saves a partial copy.",
+ "commit_hash": "53e5d75c",
+ "files": [
+  "scripts/lmr_area/download_map_layers.py",
+  "tests/test_lmr_map_layers_data.py",
+  "data/law/maps/manifest.json",
+  ".gitignore",
+  "data/law/maps/tod_sites.geojson.gz",
+  "data/law/maps/heritage_shr.part1of2.geojson.gz",
+  "data/law/maps/heritage_shr.part2of2.geojson.gz",
+  "data/law/maps/coastal_vuln.geojson.gz",
+  "tests/test_download_map_layers_real.py"
+ ],
+ "pre_impl": {
+  "existing_data": "The area check asks 8 state map layers live per lot (services/lmr_area_inputs.LAYERS). spatial_overlays already holds bushfire, EPI heritage and coastal wetlands; it holds none of the 8 below. Live feature counts read 2026-11-18: TOD sites 9,597; accelerated TOD 8; exclusion 4; Hawkesbury-Nepean 11; Georges 1; coastal vulnerability 10; airport noise 29; State Heritage Register 1,825.",
+  "assumption_mismatch": "I first assumed every layer would fit one file under the 2 MB repo limit; the State Heritage Register is 2.46 MB gzipped, so the script splits a big layer into numbered parts.",
+  "new_vs_existing": "New read-only downloader; scripts/ingest_spatial_overlays.py (the database loader) is unchanged and is used separately for the bushfire refresh.",
+  "external_source_error": "The copy is as at the day it was read (read_on in the manifest). Coordinates are rounded to 6 decimal places (about 0.1 m). A changed live map is not seen until the script is re-run; step 3 of the plan adds the refresh and a comparison check.",
+  "frontend_type": "N/A - no frontend change.",
+  "user_failure_mode": "Nothing reads these files yet, so no answer changes. When step 2 reads them, a stale copy could say clear where the live map now says hit; the manifest date and the planned 45-day limit and comparison check are the answer to that."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_map_layers_data.py -q; PYTEST_REAL_HTTP=1 python -m pytest tests/test_download_map_layers_real.py -o addopts= -m integration",
+  "fails_when": "A saved file is edited or truncated, a layer or file is missing or stray, a file is over the limit, or the script writes a partial copy.",
+  "observed_red": "Flipping one byte in lmr_exclusion.geojson.gz made 2 tests fail (hash and geometry checks); restored: 9 passed. Script tests: a failed page, a short layer and a failed layer in a batch each stop the copy or the manifest; a layer over the limit is split into parts. Real-layer test (PYTEST_REAL_HTTP=1): the 6 small saved layers each match the live layer exactly (feature count and every geometry), 6 passed; it skips rather than passes when the live service does not answer or real HTTP is off. round_coords now leaves None and booleans alone."
+ },
+ "functions": [
+  {
+   "name": "fetch_layer",
+   "file_line": "scripts/lmr_area/download_map_layers.py",
+   "input": "the web address of one state map layer",
+   "output": "every feature of the layer as GeoJSON in WGS84, or None",
+   "if_none": "a missing count, a failed page or a short layer returns None and nothing is saved"
+  },
+  {
+   "name": "round_coords",
+   "file_line": "scripts/lmr_area/download_map_layers.py",
+   "input": "nested lists of longitude and latitude numbers",
+   "output": "the same nesting with every number rounded to six decimal places",
+   "if_none": "non-number leaves pass through unchanged"
+  }
+ ],
+ "values": "N/A - no value is read at runtime; the script copies map features once.",
+ "queries": "N/A - no database query; the script reads public state map services over HTTP and writes files.",
+ "break_it": [
+  {
+   "scenario": "One page of a large layer cannot be read.",
+   "what_happens": "A truncated map could be saved and later read as complete, clearing lots that are inside the layer.",
+   "mitigated": true,
+   "how": "fetch_layer returns None unless the feature count read equals the layer's own count; no file or manifest is written for a failed layer.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_layer_that_returns_fewer_features_than_its_count_is_not_saved"
+  },
+  {
+   "scenario": "A saved map file is edited or corrupted later.",
+   "what_happens": "The area check could read altered boundaries.",
+   "mitigated": true,
+   "how": "The manifest holds each file's sha256 and feature count and a test checks them; flipping one byte fails two tests.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_every_file_is_listed_unmodified_and_fits_the_repo_limit"
+  },
+  {
+   "scenario": "A layer grows past the repo's 2 MB file limit.",
+   "what_happens": "The commit would be blocked or the copy dropped.",
+   "mitigated": true,
+   "how": "The script splits it into numbered parts until each is under the limit and the test checks every file size.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_layer_over_the_repo_limit_is_split_into_numbered_parts"
+  },
+  {
+   "scenario": "A refresh is run on an existing copy and a later layer fails.",
+   "what_happens": "New files for some layers would sit beside old ones under an old manifest.",
+   "mitigated": true,
+   "how": "Every layer is read and checked in memory first; files and manifest are written only if all succeed; a test shows the old files and manifest stay exactly as they were.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_nothing_is_overwritten_when_a_later_layer_fails"
+  },
+  {
+   "scenario": "A service ignores the page offset and returns the same page twice, so the count matches but half the map is missing.",
+   "what_happens": "A duplicated half-map would be saved as complete.",
+   "mitigated": true,
+   "how": "Features must carry unique ids; repeated or missing ids reject the layer.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_service_that_repeats_a_page_is_not_saved"
+  },
+  {
+   "scenario": "A layer has the right count and unique ids but one feature has an empty geometry.",
+   "what_happens": "A complete-looking copy would silently miss that area and a later map test would clear lots inside it.",
+   "mitigated": true,
+   "how": "A feature with no geometry rejects the whole layer; all 8 real layers still download with no change to any file.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_feature_with_no_geometry_rejects_the_layer"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No - data files only; nothing reads them until step 2."
+ }
+}
