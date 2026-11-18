@@ -1,0 +1,31 @@
+{
+  "tier": "minor",
+  "justification": "One LICENSE line and 25 files removed from git tracking. No code, query or user-facing text changed.",
+  "commit_hash": "50059f20",
+  "files": [
+    "LICENSE"
+  ],
+  "pre_impl": {
+    "existing_data": "none",
+    "assumption_mismatch": "none: backups/ is already in .gitignore, so untracking matches the intended state",
+    "new_vs_existing": "Existing tracked files only; local copies stay on disk"
+  },
+  "functions": [],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Merging deletes the 25 untracked dump files from every other checkout that pulls it",
+      "what_happens": "Local copies of the database dumps vanish from disk",
+      "mitigated": true,
+      "how": "A full copy was saved outside the repo at C:/Users/lawre/Downloads/solvyra/backups-untracked-2026-11-18 before the change",
+      "repro": "git ls-files backups | wc -l prints 0 on this branch"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
