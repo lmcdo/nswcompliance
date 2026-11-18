@@ -46,6 +46,32 @@ def test_points_in_the_four_excluded_councils_resolve_to_that_council():
 
 @pytest.mark.database
 @pytest.mark.integration
+def test_points_shifted_into_roads_in_the_excluded_councils_never_get_a_different_council_than_the_live_service():
+    """A point 30-60 m off a lot (a road reserve, or geocode drift) is where a neighbour's lots could be the nearest: no wrong council allowed."""
+    c, cur = _conn()
+    try:
+        pts = []
+        for name in EXCLUDED:
+            cur.execute("SELECT ST_Y(ST_PointOnSurface(geom)), ST_X(ST_PointOnSurface(geom)) FROM lot_search_index "
+                        "WHERE lga_name = %s LIMIT 400", (name,))
+            rows = cur.fetchall()
+            random.Random(11).shuffle(rows)
+            for lat, lng in rows[:4]:
+                dlat, dlng = random.Random(lat).choice([(0.0003, 0), (-0.0003, 0), (0, 0.0004), (0, -0.0004), (0.0006, 0.0006), (-0.0006, -0.0006)])
+                pts.append((lat + dlat, lng + dlng))
+    finally:
+        c.close()
+    wrong = []
+    for lat, lng in pts:
+        snap = lga.lga_from_snapshot(lat, lng)
+        answered, live = inp._lga_live(lat, lng)
+        if snap is not None and answered and live is not None and snap[0].upper() != live.upper():
+            wrong.append((snap[0], live, lat, lng))
+    assert wrong == [], wrong
+
+
+@pytest.mark.database
+@pytest.mark.integration
 def test_the_snapshot_agrees_with_the_live_service_wherever_both_answer():
     c, cur = _conn()
     try:
@@ -57,7 +83,7 @@ def test_the_snapshot_agrees_with_the_live_service_wherever_both_answer():
     random.Random(20261118).shuffle(rows)
     both = disagree = 0
     for _name, lat, lng in rows[:20]:
-        live = inp._lga(lat, lng)
+        answered, live = inp._lga_live(lat, lng)
         snap = lga.lga_from_snapshot(lat, lng)
         if live is None or snap is None:
             continue

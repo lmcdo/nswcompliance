@@ -1,6 +1,6 @@
 {
  "tier": "standard",
- "justification": "Standard: changes how the area check learns the council, which gates the whole answer (the four excluded councils). Not Minor: it adds a database-backed fallback and changes the live call's limits. Not Critical: the live service is still asked first and unchanged when it answers, the fallback answers only when exactly one council is within 40 m, and every failure leaves the answer at can't tell exactly as before.",
+ "justification": "Standard: changes how the area check learns the council, which gates the whole answer (the four excluded councils). Not Minor: it adds a database-backed fallback and changes the live call's limits. Not Critical: the live service is still asked first and its answer (even 'no council') is never overridden, the fallback answers only when a lot contains the point or exactly one council is within about 100 m, and every failure leaves the answer at can't tell exactly as before.",
  "commit_hash": "95a42aaa",
  "files": [
   "services/lmr_area_lga.py",
@@ -16,14 +16,14 @@
   "existing_data": "lot_search_index holds lga_name on 3,126,418 lots (128 distinct councils) with geom SRID 4326, a GiST index (idx_lsi_geom) and computed_at (2026-06-18). The four councils the law excludes appear under the same names the live service returns. The live state boundary service answered in 0.1-0.3 s when called alone but stalled in waves: in 8 bursts of the engine's real requests latency rose from 1 s to 7 s with six requests stalling together; on 2026-11-18 the council lookup failed 11 times in a row over about 4 minutes.",
   "assumption_mismatch": "I first assumed the boundary service was simply slow. Measured, it is fast when idle and stalls intermittently on shared government servers; it could not be made to fail on demand.",
   "new_vs_existing": "Adds services/lmr_area_lga.py (one read-only lookup) and injects it from the API route, the same way flood_fn is injected, so lmr_area_inputs stays database-free. No rule, source, law figure or layer changes.",
-  "external_source_error": "The copy is a snapshot (computed 2026-06-18); council boundaries rarely change and the answer says 'as at' the date whenever the copy is used. Live is still asked first. Agreement measured 2026-11-18: 60 of 60 random lots, 0 ambiguous. Random lots are mostly far from borders, so a border returns nothing by design.",
+  "external_source_error": "The copy is a snapshot (computed 2026-06-18); council boundaries rarely change and the answer says 'as at' the date whenever the copy is used. Live is asked first. Measured 2026-11-18 with the final rules: 60 of 60 random lot points returned that lot's council; 48 of 48 points shifted 30-60 m into roads in the four excluded councils returned the same council as the live service (0 wrong, 0 refused). No status flag exists on lot_search_index (it is built from the cadastre snapshot); a lot's council does not change when a lot is subdivided.",
   "frontend_type": "N/A - the API response gains an optional measured.lga_source and one note; no frontend change.",
-  "user_failure_mode": "A wrong council could wrongly include or exclude one of the four excluded councils. Guarded by the one-council rule (a border gives no answer), the 40 m limit, and live-first. A missing council still gives can't tell."
+  "user_failure_mode": "A wrong council could wrongly include or exclude one of the four excluded councils. Guarded by: the lot containing the point decides; otherwise only exactly one council within about 100 m counts (a road between councils or a border gives no answer); live first and never overridden; a missing council still gives can't tell. The review's wide-road case is pinned by a test and a deliberate break."
  },
  "falsifiable_check": {
   "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
   "fails_when": "The fallback accepts a border, swaps latitude and longitude, or replaces the live answer; or the decision drops the source note.",
-  "observed_red": "Mutation 1 (accept 2+ councils) failed test_two_councils_nearby_is_a_border_and_gives_no_answer. Mutation 2 (swap lat and lng) failed test_one_council_nearby_is_returned_with_its_date_and_the_connection_is_closed. Mutation 3 (skip live, always use fallback) failed 2 tests incl. test_fetch_layers_records_the_snapshot_source_only_when_it_was_used. Restored: 28 passed; all area-check tests 162 passed. Real database plus live service: 2 passed (8 lots in each of the 4 excluded councils resolve to their council or to nothing, never another; 20 random lots agree with the live service wherever both answer)."
+  "observed_red": "Deliberate breaks, each failing a named test: (A) accept a road between councils: test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road (2 failed); (B) let the fallback override a live 'no council' answer: test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback (1 failed); (C) ignore the containing lot: test_the_lot_the_point_is_in_decides_even_when_another_council_is_close (1 failed). Earlier round: accepting a border, swapping lat/lng and skipping live each failed a test. Restored: 65 passed (all area-check tests 168 passed). Real database plus live service: 3 passed (excluded councils resolve to themselves or nothing; 16 shifted points never differ from live; 20 random lots agree with live where both answer)."
  },
  "functions": [
   {
@@ -34,6 +34,13 @@
    "if_none": "None means no council, so the decision stays at can't tell; it never raises"
   },
   {
+   "name": "_get_json",
+   "file_line": "services/lmr_area_inputs.py",
+   "input": "a url, parameters and optional timeout and attempts",
+   "output": "the parsed answer or None after the allowed tries",
+   "if_none": "None means the service did not answer; defaults stay 12 seconds and 2 tries"
+  },
+  {
    "name": "_lga_resolved",
    "file_line": "services/lmr_area_inputs.py",
    "input": "a point and an optional fallback function",
@@ -41,11 +48,11 @@
    "if_none": "no live answer and no usable fallback returns no council and no marker"
   },
   {
-   "name": "_get_json",
+   "name": "_lga_live",
    "file_line": "services/lmr_area_inputs.py",
-   "input": "a url, parameters and optional timeout and attempts",
-   "output": "the parsed answer or None after the allowed tries",
-   "if_none": "None means the service did not answer; defaults stay 12 seconds and 2 tries"
+   "input": "a latitude and longitude for the live state boundary service",
+   "output": "a pair: whether the service answered, and the council it named or None",
+   "if_none": "an answer naming no council is returned as answered with no council, never replaced"
   }
  ],
  "values": [
@@ -59,36 +66,36 @@
   {
    "purpose": "Which council owns the lot or lots within 40 m of this point",
    "file_line": "services/lmr_area_lga.py _SQL",
-   "where_clause": "WHERE ST_DWithin(geom, ST_SetSRID(ST_Point(lng, lat), 4326), 0.0004) GROUP BY lga_name; read-only session, 3 s statement limit, uses idx_lsi_geom (11-38 ms measured)"
+   "where_clause": "WHERE ST_DWithin(geom, point, 0.001) GROUP BY lga_name, with bool_or(ST_Intersects(geom, point)) marking a containing lot; read-only session, 3 s statement limit, uses idx_lsi_geom (about 150 ms including a fresh connection)"
   }
  ],
  "break_it": [
   {
-   "scenario": "The point is on a road between two councils, or on a border.",
-   "what_happens": "Lots of two councils lie within 40 m, so a guess could pick the wrong one and mis-handle an excluded council.",
+   "scenario": "The point is on a road or wide reserve between two councils, or in an excluded council's road with only a neighbour's lots nearest.",
+   "what_happens": "A guess could name the neighbour and mis-handle an excluded council.",
    "mitigated": true,
-   "how": "Two or more councils within 40 m returns None, so the decision says can't tell; a test and a mutation pin this.",
-   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_two_councils_nearby_is_a_border_and_gives_no_answer"
+   "how": "A lot containing the point decides; otherwise exactly one council within about 100 m is needed, so a road between councils returns None. Pinned by tests and a deliberate break; 48 of 48 shifted real points matched the live service.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road"
   },
   {
-   "scenario": "The database is slow, down or unset when the live service is also stalling.",
+   "scenario": "The live service answers but names no council (for example a point off the land).",
+   "what_happens": "The fallback could override the authority and invent a council.",
+   "mitigated": true,
+   "how": "An answered-but-empty live result is returned as is and the fallback is never called; tested and broken on purpose.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback"
+  },
+  {
+   "scenario": "The database is slow, down or unset when the live service is also failing.",
    "what_happens": "No council could be found at all.",
    "mitigated": true,
    "how": "3 s connect and statement limits, any error returns None, and the result is the same can't tell as before this change.",
    "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_database_error_gives_no_answer_and_still_closes"
   },
   {
-   "scenario": "The live service answers, but the snapshot would have said something different.",
-   "what_happens": "Two sources of truth could disagree.",
+   "scenario": "A user reads an answer without knowing the council came from our copy, or is told the service timed out when it returned an error.",
+   "what_happens": "Wrong assumption about the source or the cause.",
    "mitigated": true,
-   "how": "Live is asked first and used whenever it answers; the snapshot is never consulted then. Opt-in test shows 0 disagreements on 20 random lots.",
-   "repro": "PYTEST_REAL_DB=1 python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database"
-  },
-  {
-   "scenario": "A user reads an answer without knowing the council came from our copy.",
-   "what_happens": "They may assume the live state boundary was used.",
-   "mitigated": true,
-   "how": "measured.lga_source carries the source and date, and decide() adds a plain note stating the copy's date.",
+   "how": "measured.lga_source carries source and date; the note states the copy's date and says the service 'did not give an answer', never 'in time'.",
    "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell"
   }
  ],

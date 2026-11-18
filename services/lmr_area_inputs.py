@@ -236,23 +236,33 @@ LGA_LIVE_TIMEOUT_S = 5
 LGA_LIVE_ATTEMPTS = 1
 
 
-def _lga(lat: float, lng: float) -> Optional[str]:
+# prior-art-checked: reuse not viable because this splits this module's own council lookup in two (answered or not) so a live "no council"
+# answer is never overridden by the fallback; no new source or query.
+def _lga_live(lat: float, lng: float) -> tuple[bool, Optional[str]]:
+    """(answered, council). answered False = the live service gave no answer (stall or error). answered True with None = it answered and
+    named no council (or a blank one): that is the authority's answer and the fallback must not override it."""
     f = _features(_get_json(LAYERS["lga"], _point_params(lat, lng, out_fields="lganame"), post=True,
                             timeout=LGA_LIVE_TIMEOUT_S, attempts=LGA_LIVE_ATTEMPTS))
+    if f is None:
+        return False, None
     if not f:
-        return None
+        return True, None
     name = (f[0].get("attributes") or {}).get("lganame")
-    return name.strip() if isinstance(name, str) and name.strip() else None
+    return True, (name.strip() if isinstance(name, str) and name.strip() else None)
+
+
+def _lga(lat: float, lng: float) -> Optional[str]:
+    return _lga_live(lat, lng)[1]
 
 
 # prior-art-checked: reuse not viable because no other code resolves the council from our own lot table; the substitute itself lives in
 # services/lmr_area_lga.py and is injected by the caller (this module holds no database connection), the same pattern as flood_fn.
 def _lga_resolved(lat: float, lng: float, fallback: Optional[Any]) -> tuple[Optional[str], Optional[dict]]:
-    """(council, source). The live state service first; if it does not answer, the caller's fallback. source is None when the live
-    service answered, else {"source": "snapshot", "as_of": date}. Both failing gives (None, None): the decision says can't tell."""
-    name = _lga(lat, lng)
-    if name:
-        return name, None
+    """(council, source). The live state service first; only if it gives NO answer (stall or error) the caller's fallback. source is None
+    when the live service answered, else {"source": "snapshot", "as_of": date}. Both failing gives (None, None): can't tell."""
+    answered, name = _lga_live(lat, lng)
+    if answered:
+        return name, None   # the live service answered (even "no council"): never overridden
     if fallback is None:
         return None, None
     try:
