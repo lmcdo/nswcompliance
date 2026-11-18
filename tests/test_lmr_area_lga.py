@@ -407,3 +407,10 @@ def test_the_note_says_when_the_outline_came_from_our_copy():
     r = d.decide(lot(lot_source={"source": "snapshot", "as_of": "2026-06-18"}), FACTS)
     assert any("lot outline was read from our own copy" in n and "2026-06-18" in n for n in r["notes"])
     assert not any("lot outline was read" in n for n in d.decide(lot(), FACTS)["notes"])
+
+
+def test_the_outline_query_needs_the_point_strictly_inside_the_lot_and_the_note_never_says_as_at_none():
+    assert "ST_Contains((d).geom" in lga._SQL_LOT and "ST_Intersects((d).geom" not in lga._SQL_LOT
+    r = d.decide(lot(lot_source={"source": "snapshot", "as_of": None}), FACTS)
+    n = next(x for x in r["notes"] if "lot outline was read" in x)
+    assert "None" not in n and "as at" not in n

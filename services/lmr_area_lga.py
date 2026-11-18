@@ -116,7 +116,7 @@ def lga_best_guess(lat: float, lng: float, *, connect: Optional[Callable[[], Any
 _SQL_LOT = (
     "SELECT ST_AsGeoJSON((d).geom), computed_at FROM (SELECT ST_Dump(geom) AS d, computed_at FROM lot_search_index "
     "WHERE ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))) s "
-    "WHERE ST_Intersects((d).geom, ST_SetSRID(ST_Point(%s, %s), 4326)) ORDER BY ST_Area((d).geom) LIMIT 1"
+    "WHERE ST_Contains((d).geom, ST_SetSRID(ST_Point(%s, %s), 4326)) ORDER BY ST_Area((d).geom) LIMIT 1"   # strictly inside, as the live reader requires: a point on a shared boundary gets no outline
 )
 
 

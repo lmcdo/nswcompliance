@@ -587,7 +587,7 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     # prior-art-checked: reuse not viable because this only words one more note in this module's own notes list (no new source or rule).
     ls = m.get("lot_source") if isinstance(m.get("lot_source"), dict) else None
     if ls is not None:
-        notes.append(f"The lot outline was read from our own copy of the lot boundaries as at {ls.get('as_of')}, not from the live state property map; a lot subdivided or merged since then may differ.")
+        notes.append(f"The lot outline was read from our own copy of the lot boundaries{' as at ' + str(ls.get('as_of')) if ls.get('as_of') else ''}, not from the live state property map; a lot subdivided or merged since then may differ.")
     src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
     if src is not None and src.get("unsure"):
         alt_list = src.get("alternatives") or []
