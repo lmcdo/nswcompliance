@@ -1,6 +1,6 @@
 {
   "tier": "minor",
-  "justification": "Markdown handoff documents only (a research report, its notes and a context file) under a new handoff/ folder. No code, no data, nothing imported or served.",
+  "justification": "Markdown handoff documents only (research reports, their notes and a context file) under handoff/. No code, no data, nothing imported or served.",
   "commit_hash": "15da64d",
   "files": [
     "handoff/2026-11-14-intent-research/AI buyer intent discovery 2026.md",
@@ -8,7 +8,13 @@
     "handoff/2026-11-14-intent-research/research_notes/data_access.md",
     "handoff/2026-11-14-intent-research/research_notes/market_and_build.md",
     "handoff/2026-11-14-intent-research/research_notes/techniques.md",
-    "handoff/2026-11-14-intent-research/research_notes/tools_landscape.md"
+    "handoff/2026-11-14-intent-research/research_notes/tools_landscape.md",
+    "handoff/2026-11-18-jobs-volunteering/Jobs volunteering and open sourcing.md",
+    "handoff/2026-11-18-jobs-volunteering/research_notes/employment.md",
+    "handoff/2026-11-18-jobs-volunteering/research_notes/funding_pathways.md",
+    "handoff/2026-11-18-jobs-volunteering/research_notes/open_source.md",
+    "handoff/2026-11-18-jobs-volunteering/research_notes/repo_audit.md",
+    "handoff/2026-11-18-jobs-volunteering/research_notes/volunteering_civic_tech.md"
   ],
   "break_it": [
     {
