@@ -34,18 +34,36 @@ def lot(**over):
 
 # ---- _lga_resolved: live first, fallback only when live gives no answer -------------------------------------------------------------
 
-def test_live_answer_is_used_and_the_fallback_is_never_called(monkeypatch):
+def test_our_own_copy_answers_first_and_the_live_service_is_not_even_asked(monkeypatch):
+    def boom(lat, lng):
+        raise AssertionError("live service asked although our copy was sure")
+
+    monkeypatch.setattr(inp, "_lga_live", boom)
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: ("PENRITH", "2026-06-18", "the lot at this point")) == (
+        "PENRITH", {**SNAP, "how": "the lot at this point"})
+
+
+def test_when_our_copy_is_unsure_the_live_answer_is_used_and_a_live_no_council_is_never_overridden(monkeypatch):
     monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: (True, "PENRITH"))
-    called = []
-    assert inp._lga_resolved(-33.75, 150.7, lambda *a: called.append(a) or ("HORNSBY", "2026-06-18")) == ("PENRITH", None)
-    assert called == []
-
-
-def test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback(monkeypatch):
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: None, lambda *a: {"council": "HORNSBY", "as_of": "x", "alternatives": []}) == ("PENRITH", None)
     monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: ANSWERED_NONE)
-    called = []
-    assert inp._lga_resolved(-33.75, 150.7, lambda *a: called.append(a) or ("PENRITH", "2026-06-18")) == (None, None)
-    assert called == []
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: None, lambda *a: {"council": "HORNSBY", "as_of": "x", "alternatives": []}) == (None, None)
+
+
+def test_when_both_are_unsure_or_silent_our_best_guess_is_given_and_marked_unsure(monkeypatch):
+    monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: NO_ANSWER)
+    name, src = inp._lga_resolved(-33.75, 150.7, lambda *a: None, lambda *a: {"council": " PENRITH ", "as_of": "2026-06-18", "alternatives": ["BLUE MOUNTAINS"]})
+    assert name == "PENRITH" and src == {**SNAP, "unsure": True, "alternatives": ["BLUE MOUNTAINS"]}
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: None, lambda *a: None) == (None, None)
+    assert inp._lga_resolved(-33.75, 150.7, None, None) == (None, None)
+
+
+def test_the_unsure_note_gives_the_reason_the_best_answer_and_the_other_possibility():
+    src = {**SNAP, "unsure": True, "alternatives": ["BLUE MOUNTAINS"]}
+    r = d.decide(lot(lga="PENRITH", lga_source=src), FACTS)
+    n = next(x for x in r["notes"] if "could not be sure" in x)
+    assert "border" in n and "best answer is PENRITH" in n and "BLUE MOUNTAINS" in n and "as at 2026-06-18" in n
+    assert r["lmr"]["answer"] == "yes"       # an answer is given, not can't tell
 
 
 def test_fallback_is_used_when_live_gives_no_answer_and_the_source_says_so(monkeypatch):
@@ -101,11 +119,10 @@ def quiet_layers(monkeypatch):
 
 
 def test_fetch_layers_records_the_snapshot_source_only_when_it_was_used(monkeypatch, quiet_layers):
-    monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: NO_ANSWER)
-    out = inp.fetch_layers(-33.75, 150.7, None, lambda *a: ("PENRITH", "2026-06-18"))
-    assert out["lga"] == "PENRITH" and out["lga_source"] == SNAP
     monkeypatch.setattr(inp, "_lga_live", lambda lat, lng: (True, "HORNSBY"))
     out = inp.fetch_layers(-33.75, 150.7, None, lambda *a: ("PENRITH", "2026-06-18"))
+    assert out["lga"] == "PENRITH" and out["lga_source"] == SNAP
+    out = inp.fetch_layers(-33.75, 150.7, None, lambda *a: None)
     assert out["lga"] == "HORNSBY" and "lga_source" not in out
 
 
@@ -134,13 +151,13 @@ def test_the_source_and_the_note_say_which_part_of_the_copy_decided(monkeypatch)
 
 
 def test_area_check_hands_the_fallback_down_to_the_layer_fetch(monkeypatch):
-    """The review feared a TypeError: area_check forwards its keywords, so the fallback must reach fetch_layers unchanged."""
     seen = {}
     monkeypatch.setattr(inp, "fetch_lot_rings", lambda lat, lng: None)
-    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None: seen.update(fb=lga_fallback) or lot())
+    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None, lga_guess=None: seen.update(fb=lga_fallback, g=lga_guess) or lot())
     marker = lambda *a: ("PENRITH", "2026-06-18")  # noqa: E731
-    inp.area_check(-33.75, 150.7, lga_fallback=marker)
-    assert seen["fb"] is marker
+    g = lambda *a: None  # noqa: E731
+    inp.area_check(-33.75, 150.7, lga_fallback=marker, lga_guess=g)
+    assert seen["fb"] is marker and seen["g"] is g
 
 
 def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
@@ -149,7 +166,7 @@ def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
     seen = {}
     monkeypatch.setattr(inp, "area_check", lambda lat, lng, **kw: seen.update(kw) or {"ok": True})
     assert api.housing_sepp_area_check(-33.75, 150.7) == {"ok": True}
-    assert seen["lga_fallback"] is lga.lga_from_snapshot and "flood_fn" in seen
+    assert seen["lga_fallback"] is lga.lga_from_snapshot and seen["lga_guess"] is lga.lga_best_guess and "flood_fn" in seen
 
 
 def test_a_normal_live_answer_adds_no_source_field_anywhere(monkeypatch):
@@ -314,3 +331,29 @@ def test_the_query_is_read_only_spatial_and_limited_to_a_short_distance():
     assert sql.lstrip().upper().startswith("SELECT") and "ST_DWithin" in sql and "ST_Intersects" in sql and "4326" in sql
     assert "lot_search_index" in sql
     assert lga.NEAR_DEG <= 0.0015 and lga.CONNECT_TIMEOUT_S <= 5 and lga.STATEMENT_TIMEOUT_MS <= 5000
+
+
+
+def _guess(rows=None, boom=False):
+    conn = _Conn(_Cur(rows, boom))
+    return lga.lga_best_guess(-33.75, 150.7, connect=lambda: conn), conn
+
+
+def test_best_guess_prefers_the_containing_lot_then_the_nearest_and_lists_the_others():
+    got, conn = _guess([("BLUE MOUNTAINS", False, 0.0002, T), ("PENRITH", True, 0.0, T)])
+    assert got == {"council": "PENRITH", "as_of": "2026-06-18", "alternatives": ["BLUE MOUNTAINS"]} and conn.closed
+    got, _ = _guess([("A", False, 0.0008, T), ("B", False, 0.0003, T)])
+    assert got["council"] == "B" and got["alternatives"] == ["A"]
+
+
+def test_best_guess_says_nothing_when_nothing_is_near_or_on_error():
+    assert _guess([])[0] is None
+    got, conn = _guess(boom=True)
+    assert got is None and conn.closed
+    assert lga.lga_best_guess(-33.75, 150.7, connect=lambda: None) is None
+
+
+def test_the_unsure_note_does_not_invent_another_council_when_none_was_found():
+    r = d.decide(lot(lga="PENRITH", lga_source={**SNAP, "unsure": True, "alternatives": []}), FACTS)
+    n = next(x for x in r["notes"] if "could not be sure" in x)
+    assert "no other council was found nearby" in n and "could also be" not in n

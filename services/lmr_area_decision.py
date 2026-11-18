@@ -586,7 +586,14 @@ def _decide(m: dict, facts: LawFacts) -> dict:
         notes.append("A council plan may set a maximum car parking rate; the parking standards of Chapter 6 apply only if none does. Check the council's own plan.")
     # prior-art-checked: reuse not viable because this only words one more note in this module's own notes list (no new source or rule).
     src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
-    if src is not None and src.get("source") == "snapshot":
+    if src is not None and src.get("unsure"):
+        alt_list = src.get("alternatives") or []
+        alts = ", ".join(alt_list)
+        other = f"; it could also be {alts}" if alt_list else "; no other council was found nearby, but only part of the picture was available"
+        notes.append(f"We could not be sure which council this point is in (it is close to a council border or a road between councils). Our best answer is {m.get('lga')}, "
+                     f"read from our own copy of the lot boundaries as at {src.get('as_of')}{other}. The answer above uses {m.get('lga')}. "
+                     "Check the council on the NSW Planning Portal before relying on it.")
+    elif src is not None and src.get("source") == "snapshot":
         when = f" as at {src.get('as_of')}" if src.get("as_of") else ""
         how = f" (taken from {src.get('how')})" if src.get("how") else ""
         notes.append(f"The council ({m.get('lga')}) was read from our own copy of the lot boundaries{when}{how}, because the live state boundary service did not give an answer.")
