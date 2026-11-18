@@ -76,3 +76,38 @@ def lga_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], 
                 conn.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+_SQL_GUESS = (
+    "SELECT lga_name, bool_or(ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))) AS inside, "
+    "min(ST_Distance(geom, ST_SetSRID(ST_Point(%s, %s), 4326))) AS dist, max(computed_at) "
+    "FROM lot_search_index WHERE ST_DWithin(geom, ST_SetSRID(ST_Point(%s, %s), 4326), %s) AND lga_name IS NOT NULL GROUP BY lga_name"
+)
+
+
+def lga_best_guess(lat: float, lng: float, *, connect: Optional[Callable[[], Any]] = None) -> Optional[dict]:
+    """Our best answer when lga_from_snapshot is unsure (a border, a road between councils): the council whose lot contains the point, else the
+    nearest council's lot, with the other councils listed so the answer can say so. Returns {"council","as_of","alternatives"} or None
+    (nothing within about 100 m, or any error). Used only after our own copy was unsure AND the live service gave no answer."""
+    conn = None
+    try:
+        conn = (connect or _connect)()
+        if conn is None:
+            return None
+        cur = conn.cursor()
+        cur.execute(_SQL_GUESS, (lng, lat, lng, lat, lng, lat, NEAR_DEG))
+        rows = [(str(n).strip(), bool(inside), float(dist or 0), at) for n, inside, dist, at in cur.fetchall() if n and str(n).strip()]
+        if not rows:
+            return None
+        rows.sort(key=lambda r: (not r[1], r[2]))
+        best = rows[0]
+        return {"council": best[0], "as_of": _date(best[3]), "alternatives": [r[0] for r in rows[1:]]}
+    except Exception as exc:  # noqa: BLE001 -- no guess is better than a wrong one
+        logger.warning("council best-guess lookup failed: %s", exc)
+        return None
+    finally:
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass

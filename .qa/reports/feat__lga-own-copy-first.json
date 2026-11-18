@@ -1,0 +1,98 @@
+{
+ "tier": "standard",
+ "justification": "Standard: follow-up to merged #1648 at the owner's request. Our own lot copy is now asked first (no wait for a stalling government service); live is second; if both are unsure a labelled best guess is used with the other possibilities named. Not Minor: it changes the order of sources for the council that gates the answer. Not Critical: no rule, law figure or schema changes and a guess always says so.",
+ "commit_hash": "1f61e532",
+ "files": [
+  "services/lmr_area_lga.py",
+  "services/lmr_area_inputs.py",
+  "services/lmr_area_decision.py",
+  "services/housing_sepp_gates_api.py",
+  "tests/test_lmr_area_lga.py"
+ ],
+ "pre_impl": {
+  "existing_data": "lot_search_index holds lga_name on 3,126,418 lots (128 distinct councils) with geom SRID 4326, a GiST index (idx_lsi_geom) and computed_at (2026-06-18). The four councils the law excludes appear under the same names the live service returns. The live state boundary service answered in 0.1-0.3 s when called alone but stalled in waves: in 8 bursts of the engine's real requests latency rose from 1 s to 7 s with six requests stalling together; on 2026-11-18 the council lookup failed 11 times in a row over about 4 minutes.",
+  "assumption_mismatch": "I first assumed the boundary service was simply slow. Measured, it is fast when idle and stalls intermittently on shared government servers; it could not be made to fail on demand.",
+  "new_vs_existing": "Extends the merged fallback (#1648): order is own copy, then live, then best guess; adds lga_best_guess and an 'unsure' note. The API route passes both lookups.",
+  "external_source_error": "The copy is a snapshot (computed 2026-06-18); council boundaries rarely change and the answer says 'as at' the date whenever the copy is used. Live is asked first. Measured 2026-11-18 with the final rules: 60 of 60 random lot points returned that lot's council; 48 of 48 points shifted 30-60 m into roads in the four excluded councils returned the same council as the live service (0 wrong, 0 refused). No status flag exists on lot_search_index (it is built from the cadastre snapshot); a lot's council does not change when a lot is subdivided.",
+  "frontend_type": "N/A - the API response gains an optional measured.lga_source and one note; no frontend change.",
+  "user_failure_mode": "A best guess could be the wrong council near a border. It is used only when our copy was unsure and live gave no answer; the note says it is unsure, gives the reason (border or road), names the other council(s) and the copy date, and tells the reader to check the portal."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
+  "fails_when": "The fallback accepts a border, swaps latitude and longitude, or replaces the live answer; or the decision drops the source note.",
+  "observed_red": "Order and guess tests: 178 area-check tests pass (4 old-order tests rewritten, 5 new). Real data: a Penrith/Blue Mountains border point returned PENRITH from the lot at the point, and the guess listed BLUE MOUNTAINS as the alternative in 0.36 s. Known limit: the guess near a border can be wrong; it is labelled unsure."
+ },
+ "functions": [
+  {
+   "name": "lga_best_guess",
+   "file_line": "services/lmr_area_lga.py",
+   "input": "a latitude and longitude and an optional connection factory",
+   "output": "the best council, the copy date and the other councils nearby, or None",
+   "if_none": "nothing within about 100 m or any error gives None and the decision says can't tell"
+  },
+  {
+   "name": "_lga_resolved",
+   "file_line": "services/lmr_area_inputs.py",
+   "input": "a point, our sure lookup and an optional best-guess lookup",
+   "output": "the council plus a source marker saying whether it came from our copy, was live, or is an unsure guess",
+   "if_none": "all three silent returns no council, so can't tell"
+  }
+ ],
+ "values": [
+  {
+   "value": "council name (lga_name) and the copy's computed_at date for lots near the point",
+   "read_at": "services/lmr_area_lga.py lga_from_snapshot, from lot_search_index",
+   "if_missing": "no lot near, a border, or a database problem gives None and the decision says can't tell"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Which council owns the lot or lots within 40 m of this point",
+   "file_line": "services/lmr_area_lga.py _SQL",
+   "where_clause": "WHERE ST_DWithin(geom, point, 0.001) GROUP BY lga_name, with bool_or(ST_Intersects(geom, point)) marking a containing lot; read-only session, 3 s statement limit, uses idx_lsi_geom (about 150 ms including a fresh connection)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The point is on a road or wide reserve between two councils, or in an excluded council's road with only a neighbour's lots nearest.",
+   "what_happens": "A guess could name the neighbour and mis-handle an excluded council.",
+   "mitigated": true,
+   "how": "A lot containing the point decides; otherwise exactly one council within about 100 m is needed, so a road between councils returns None. Pinned by tests and a deliberate break; 48 of 48 shifted real points matched the live service.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road"
+  },
+  {
+   "scenario": "The live service answers but names no council (for example a point off the land).",
+   "what_happens": "The fallback could override the authority and invent a council.",
+   "mitigated": true,
+   "how": "An answered-but-empty live result is returned as is and the fallback is never called; tested and broken on purpose.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback"
+  },
+  {
+   "scenario": "The database is slow, down or unset when the live service is also failing.",
+   "what_happens": "No council could be found at all.",
+   "mitigated": true,
+   "how": "3 s connect and statement limits, any error returns None, and the result is the same can't tell as before this change.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_database_error_gives_no_answer_and_still_closes"
+  },
+  {
+   "scenario": "A user reads an answer without knowing the council came from our copy, or is told the service timed out when it returned an error.",
+   "what_happens": "Wrong assumption about the source or the cause.",
+   "mitigated": true,
+   "how": "measured.lga_source (only present when the copy was used) carries source, date and which part decided; the note states the copy date, says the service did not give an answer, never in time, and says whether the lot at the point or the lots around it decided.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell"
+  },
+  {
+   "scenario": "A point lies in water or on the far side of a council border where only one council lots are nearby, and the live service is down.",
+   "what_happens": "The fallback could name that one nearby council for a point that is in no lot.",
+   "mitigated": true,
+   "how": "Only reached when no lot contains the point and the live service gave no answer; real addresses sit inside a lot, which decides. The note says the council was taken from the lots around the point, so the inference is visible. Known limit, stated in the plan.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_on_a_road_with_one_council_all_round_that_council_is_returned"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy call /pipeline/housing-sepp/area-check for a Penrith point and confirm measured.lga is PENRITH; the fallback only shows when the live service stalls, so confirm by the opt-in real database test."
+ }
+}
