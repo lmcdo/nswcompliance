@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: step 2 (bush fire part) of ce-layers-own-copy-SCOPE-2026-11-18.md. Bush fire prone land is read from our own overlay copy first. Not Minor: it changes where a legal exclusion check gets its answer. Not Critical: a hit in our copy only makes the check stricter, a clear in our copy is never trusted (the live map must confirm, otherwise the answer stays unknown), no schema or rule change.",
- "commit_hash": "3928e14f",
+ "commit_hash": "83fec079",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
