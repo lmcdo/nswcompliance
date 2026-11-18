@@ -100,10 +100,20 @@ def test_a_service_that_repeats_a_page_is_not_saved(monkeypatch):
     def fake(url, params, tries=4):
         if params.get("returnCountOnly"):
             return {"count": 4}
-        return {"features": [{"type": "Feature", "geometry": None, "properties": {"OBJECTID": 1}}, {"type": "Feature", "geometry": None, "properties": {"OBJECTID": 2}}]}
+        return {"features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]}, "properties": {"OBJECTID": 1}}, {"type": "Feature", "geometry": {"type": "Point", "coordinates": [1, 2]}, "properties": {"OBJECTID": 2}}]}
 
     monkeypatch.setattr(dl, "get", fake)
     assert dl.fetch_layer("http://x") is None
+
+
+def test_a_feature_with_no_geometry_rejects_the_layer(monkeypatch):
+    """Review case: right count, unique ids, but one feature has geometry None: a saved copy would silently miss that area."""
+    feat = lambda n, g: {"type": "Feature", "geometry": g, "properties": {"OBJECTID": n}}  # noqa: E731
+    poly = {"type": "Polygon", "coordinates": [[[151.0, -33.0], [151.1, -33.0], [151.1, -33.1], [151.0, -33.0]]]}
+    monkeypatch.setattr(dl, "get", lambda url, params, tries=4: {"count": 2} if params.get("returnCountOnly") else {"features": [feat(1, poly), feat(2, None)]})
+    assert dl.fetch_layer("http://x") is None
+    monkeypatch.setattr(dl, "get", lambda url, params, tries=4: {"count": 2} if params.get("returnCountOnly") else {"features": [feat(1, poly), feat(2, poly)]})
+    assert dl.fetch_layer("http://x") is not None
 
 
 def test_features_without_an_id_are_not_trusted(monkeypatch):

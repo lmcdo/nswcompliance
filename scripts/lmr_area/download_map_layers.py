@@ -88,6 +88,9 @@ def fetch_layer(url: str) -> Optional[dict]:
     if any(i is None for i in ids) or len(set(ids)) != len(ids):
         print("    FAILED: features missing an id or repeated (the service ignored the page offset?)", flush=True)
         return None
+    if any(not (f.get("geometry") or {}).get("coordinates") for f in feats):
+        print("    FAILED: a feature has no geometry, so a later map test could not use it", flush=True)
+        return None
     for f in feats:
         g = f.get("geometry")
         if g and "coordinates" in g:

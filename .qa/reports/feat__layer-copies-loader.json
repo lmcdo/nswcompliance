@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds 10 data files and a download script (step 1 of ce-layers-own-copy-SCOPE-2026-11-18.md). Not Minor: the files will later feed the area check. Not Critical: nothing reads them yet, no database write, no behaviour change; the script never saves a partial copy.",
- "commit_hash": "f1e0564e",
+ "commit_hash": "c0429a01",
  "files": [
   "scripts/lmr_area/download_map_layers.py",
   "tests/test_lmr_map_layers_data.py",
@@ -79,6 +79,13 @@
    "mitigated": true,
    "how": "Features must carry unique ids; repeated or missing ids reject the layer.",
    "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_service_that_repeats_a_page_is_not_saved"
+  },
+  {
+   "scenario": "A layer has the right count and unique ids but one feature has an empty geometry.",
+   "what_happens": "A complete-looking copy would silently miss that area and a later map test would clear lots inside it.",
+   "mitigated": true,
+   "how": "A feature with no geometry rejects the whole layer; all 8 real layers still download with no change to any file.",
+   "repro": "python -m pytest tests/test_lmr_map_layers_data.py::test_a_feature_with_no_geometry_rejects_the_layer"
   }
  ],
  "post_merge": {
