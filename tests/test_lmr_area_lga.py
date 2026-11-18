@@ -166,7 +166,7 @@ def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
     seen = {}
     monkeypatch.setattr(inp, "area_check", lambda lat, lng, **kw: seen.update(kw) or {"ok": True})
     assert api.housing_sepp_area_check(-33.75, 150.7) == {"ok": True}
-    assert seen["lga_fallback"] is lga.lga_from_snapshot and seen["lga_guess"] is lga.lga_best_guess and "flood_fn" in seen
+    assert seen["lot_fn"] is lga.lot_outline_from_snapshot and seen["lga_fallback"] is lga.lga_from_snapshot and seen["lga_guess"] is lga.lga_best_guess and "flood_fn" in seen
 
 
 def test_a_normal_live_answer_adds_no_source_field_anywhere(monkeypatch):
@@ -357,3 +357,53 @@ def test_the_unsure_note_does_not_invent_another_council_when_none_was_found():
     r = d.decide(lot(lga="PENRITH", lga_source={**SNAP, "unsure": True, "alternatives": []}), FACTS)
     n = next(x for x in r["notes"] if "could not be sure" in x)
     assert "no other council was found nearby" in n and "could also be" not in n
+
+
+# ---- the lot outline from our own copy ---------------------------------------------------------------------------------------------
+
+import json as _json
+
+RING = [[150.0, -33.0], [150.001, -33.0], [150.001, -33.001], [150.0, -33.001], [150.0, -33.0]]
+
+
+def _lot(rows=None, boom=False):
+    conn = _Conn(_Cur(rows, boom))
+    return lga.lot_outline_from_snapshot(-33.0005, 150.0005, connect=lambda: conn), conn
+
+
+def test_the_lot_outline_comes_from_our_copy_with_its_date():
+    got, conn = _lot([(_json.dumps({"type": "Polygon", "coordinates": [RING]}), T)])
+    assert got == (RING, "2026-06-18") and conn.closed
+
+
+@pytest.mark.parametrize("rows", [[], [(_json.dumps({"type": "Point", "coordinates": [1, 2]}), T)],
+                                  [(_json.dumps({"type": "Polygon", "coordinates": [RING[:3]]}), T)]])
+def test_no_lot_or_a_bad_shape_gives_no_outline(rows):
+    assert _lot(rows)[0] is None
+
+
+def test_an_outline_lookup_error_gives_none_and_closes():
+    got, conn = _lot(boom=True)
+    assert got is None and conn.closed
+
+
+def test_gather_uses_our_outline_first_and_skips_the_live_property_service(monkeypatch):
+    monkeypatch.setattr(inp, "fetch_lot_rings", lambda *a: (_ for _ in ()).throw(AssertionError("live property service asked")))
+    monkeypatch.setattr(inp, "fetch_layers", lambda *a, **k: {"lga": "PENRITH"})
+    monkeypatch.setattr(inp, "load_stations", lambda: None)
+    m = inp.gather(-33.0005, 150.0005, lot_fn=lambda la, lo: (RING, "2026-06-18"))
+    assert m["lot_outline"] is True and m["lot_source"] == {"source": "snapshot", "as_of": "2026-06-18"}
+
+
+def test_gather_falls_back_to_the_live_service_when_our_copy_has_no_outline(monkeypatch):
+    monkeypatch.setattr(inp, "fetch_lot_rings", lambda *a: RING)
+    monkeypatch.setattr(inp, "fetch_layers", lambda *a, **k: {"lga": "PENRITH"})
+    monkeypatch.setattr(inp, "load_stations", lambda: None)
+    m = inp.gather(-33.0005, 150.0005, lot_fn=lambda la, lo: None)
+    assert m["lot_outline"] is True and "lot_source" not in m
+
+
+def test_the_note_says_when_the_outline_came_from_our_copy():
+    r = d.decide(lot(lot_source={"source": "snapshot", "as_of": "2026-06-18"}), FACTS)
+    assert any("lot outline was read from our own copy" in n and "2026-06-18" in n for n in r["notes"])
+    assert not any("lot outline was read" in n for n in d.decide(lot(), FACTS)["notes"])
