@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: changes how the area check learns the council, which gates the whole answer (the four excluded councils). Not Minor: it adds a database-backed fallback and changes the live call's limits. Not Critical: the live service is still asked first and unchanged when it answers, the fallback answers only when exactly one council is within 40 m, and every failure leaves the answer at can't tell exactly as before.",
- "commit_hash": "3bf9af92",
+ "commit_hash": "95a42aaa",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
