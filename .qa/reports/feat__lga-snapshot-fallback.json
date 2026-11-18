@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: changes how the area check learns the council, which gates the whole answer (the four excluded councils). Not Minor: it adds a database-backed fallback and changes the live call's limits. Not Critical: the live service is still asked first and its answer (even 'no council') is never overridden, the fallback answers only when a lot contains the point or exactly one council is within about 100 m, and every failure leaves the answer at can't tell exactly as before.",
- "commit_hash": "ca7497cd",
+ "commit_hash": "2d4c33f3",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
@@ -21,9 +21,9 @@
   "user_failure_mode": "A wrong council could wrongly include or exclude one of the four excluded councils. Guarded by: the lot containing the point decides; otherwise only exactly one council within about 100 m counts (a road between councils or a border gives no answer); live first and never overridden; a missing council still gives can't tell. The review's wide-road case is pinned by a test and a deliberate break."
  },
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
+  "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
   "fails_when": "The fallback accepts a border, swaps latitude and longitude, or replaces the live answer; or the decision drops the source note.",
-  "observed_red": "Deliberate breaks, each failing a named test: (A) accept a road between councils: test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road (2 failed); (B) let the fallback override a live 'no council' answer: test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback (1 failed); (C) ignore the containing lot: test_the_lot_the_point_is_in_decides_even_when_another_council_is_close (1 failed). Earlier round: accepting a border, swapping lat/lng and skipping live each failed a test. Restored: 65 passed (all area-check tests 168 passed). Real database plus live service: 3 passed (excluded councils resolve to themselves or nothing; 16 shifted points never differ from live; 20 random lots agree with live where both answer). Final round: also a lot with no council name near the point makes the fallback say nothing (3 tests), and the note names which part decided; 172 area-check tests pass and 3 real database tests pass."
+  "observed_red": "Deliberate breaks, each failing a named test: (A) accept a road between councils: test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road (2 failed); (B) let the fallback override a live 'no council' answer: test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback (1 failed); (C) ignore the containing lot: test_the_lot_the_point_is_in_decides_even_when_another_council_is_close (1 failed). Earlier round: accepting a border, swapping lat/lng and skipping live each failed a test. Restored: 65 passed (all area-check tests 168 passed). Real database plus live service: 3 passed (excluded councils resolve to themselves or nothing; 16 shifted points never differ from live; 20 random lots agree with live where both answer). Final round: also a lot with no council name near the point makes the fallback say nothing (3 tests), and the note names which part decided; 172 area-check tests pass and 3 real database tests pass. CORRECTION found by the cross-review: an earlier run reported 3 database tests passed while the two live comparisons were vacuous, because tests/conftest_mocks.py replaces requests with a stand-in unless PYTEST_REAL_HTTP=1, so no lot was ever compared. Fixed: the comparisons now need PYTEST_REAL_HTTP=1, skip (not pass) when fewer than 8 points or 10 lots could be compared, and use a patient live call (25 s, 3 tries). Final: with PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 the 3 database tests pass in 137 s with real comparisons and no disagreement; without PYTEST_REAL_HTTP the 2 live comparisons skip. Script measurements (outside pytest, real live calls): 60 of 60 lot points and 48 of 48 shifted points matched. Also added: area_check hands lga_fallback to fetch_layers, and the API route passes lga_from_snapshot (174 area-check tests pass)."
  },
  "functions": [
   {
@@ -97,6 +97,13 @@
    "mitigated": true,
    "how": "measured.lga_source (only present when the copy was used) carries source, date and which part decided; the note states the copy date, says the service did not give an answer, never in time, and says whether the lot at the point or the lots around it decided.",
    "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell"
+  },
+  {
+   "scenario": "A point lies in water or on the far side of a council border where only one council lots are nearby, and the live service is down.",
+   "what_happens": "The fallback could name that one nearby council for a point that is in no lot.",
+   "mitigated": true,
+   "how": "Only reached when no lot contains the point and the live service gave no answer; real addresses sit inside a lot, which decides. The note says the council was taken from the lots around the point, so the inference is visible. Known limit, stated in the plan.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_on_a_road_with_one_council_all_round_that_council_is_returned"
   }
  ],
  "post_merge": {

@@ -133,6 +133,25 @@ def test_the_source_and_the_note_say_which_part_of_the_copy_decided(monkeypatch)
     assert any("(taken from the lots around this point)" in n for n in r["notes"])
 
 
+def test_area_check_hands_the_fallback_down_to_the_layer_fetch(monkeypatch):
+    """The review feared a TypeError: area_check forwards its keywords, so the fallback must reach fetch_layers unchanged."""
+    seen = {}
+    monkeypatch.setattr(inp, "fetch_lot_rings", lambda lat, lng: None)
+    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None: seen.update(fb=lga_fallback) or lot())
+    marker = lambda *a: ("PENRITH", "2026-06-18")  # noqa: E731
+    inp.area_check(-33.75, 150.7, lga_fallback=marker)
+    assert seen["fb"] is marker
+
+
+def test_the_api_route_passes_the_snapshot_lookup_as_the_fallback(monkeypatch):
+    from services import housing_sepp_gates_api as api
+
+    seen = {}
+    monkeypatch.setattr(inp, "area_check", lambda lat, lng, **kw: seen.update(kw) or {"ok": True})
+    assert api.housing_sepp_area_check(-33.75, 150.7) == {"ok": True}
+    assert seen["lga_fallback"] is lga.lga_from_snapshot and "flood_fn" in seen
+
+
 def test_a_normal_live_answer_adds_no_source_field_anywhere(monkeypatch):
     r = d.decide(lot(lga="PENRITH"), FACTS)
     assert "lga_source" not in r["measured"]
