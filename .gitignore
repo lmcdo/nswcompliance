@@ -881,3 +881,6 @@ data/page_integrity/
 
 # Low-and-mid-rise area check: scratch working folder of scripts/lmr_area (downloads, caches, test results). The committed data is data/law/lmr_station_entrances.json and data/lmr_walk/*.npz.
 data/lmr_area_work/
+
+# Saved copies of the state map layers the area check reads (scripts/lmr_area/download_map_layers.py); overrides *.gz above
+!data/law/maps/*.geojson.gz

@@ -1,0 +1,116 @@
+{
+ "read_on": "2026-11-18",
+ "note": "Our copy of state map layers; read_on is the date they were downloaded.",
+ "layers": {
+  "tod_sites": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/752",
+   "use": "TOD Sites Map (s164(1)(c))",
+   "features": 9597,
+   "files": [
+    {
+     "file": "tod_sites.geojson.gz",
+     "features": 9597,
+     "bytes": 793050,
+     "sha256": "5b0ab80804c1f928920a809984e1560f2a2ec528920dfd4001e68520bbc8781d"
+    }
+   ]
+  },
+  "accelerated_tod": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/759",
+   "use": "Accelerated TOD Precinct map (s164(1)(l))",
+   "features": 8,
+   "files": [
+    {
+     "file": "accelerated_tod.geojson.gz",
+     "features": 8,
+     "bytes": 18153,
+     "sha256": "f3343c686f0c6a5fbe40c730838b1c2a4473dcbd14eb989bbe991af243dbfeb8"
+    }
+   ]
+  },
+  "lmr_exclusion": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/776",
+   "use": "Low and Mid Rise Housing Exclusion Map (s164(1)(m))",
+   "features": 4,
+   "files": [
+    {
+     "file": "lmr_exclusion.geojson.gz",
+     "features": 4,
+     "bytes": 9314,
+     "sha256": "06356160d6bdbc47cbf722392db96a1244ce3bc32237b88237860855f66e3316"
+    }
+   ]
+  },
+  "hn_catchment": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/157",
+   "use": "Hawkesbury-Nepean catchment (s164(1)(f))",
+   "features": 11,
+   "files": [
+    {
+     "file": "hn_catchment.geojson.gz",
+     "features": 11,
+     "bytes": 159455,
+     "sha256": "d9f90986aabbf4995bd071de2929e6fc5fe51b9bd58124b07fd510f56d5f0e6e"
+    }
+   ]
+  },
+  "georges_catchment": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/147",
+   "use": "Georges River catchment (s164(1)(f1))",
+   "features": 1,
+   "files": [
+    {
+     "file": "georges_catchment.geojson.gz",
+     "features": 1,
+     "bytes": 76288,
+     "sha256": "c754e28e2bc72a6f3d82e896726275faf99f9b0b3429948e8c500a860aaf6b5f"
+    }
+   ]
+  },
+  "coastal_vuln": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/251",
+   "use": "Coastal vulnerability areas (s164(1)(b))",
+   "features": 10,
+   "files": [
+    {
+     "file": "coastal_vuln.geojson.gz",
+     "features": 10,
+     "bytes": 639438,
+     "sha256": "5d0cbd3dca5964a9d7b22d8ddececacfba40989ab5055701f43040e427470df5"
+    }
+   ]
+  },
+  "airport_noise": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Protection/MapServer/235",
+   "use": "Airport noise contour bands (s164(1)(h))",
+   "features": 29,
+   "files": [
+    {
+     "file": "airport_noise.geojson.gz",
+     "features": 29,
+     "bytes": 150692,
+     "sha256": "2f5f07472b2126d361f85351d9e3f607cbc44ca98e695004a30d1b5d8bc68c45"
+    }
+   ]
+  },
+  "heritage_shr": {
+   "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_Principal_Planning/MapServer/221",
+   "use": "State Heritage Register (s164(1)(d))",
+   "features": 1825,
+   "files": [
+    {
+     "file": "heritage_shr.part1of2.geojson.gz",
+     "features": 913,
+     "bytes": 416546,
+     "sha256": "76f1401453b2292e0e9f38033b489f6faabe96b3a1e03516438c21032fddf844"
+    },
+    {
+     "file": "heritage_shr.part2of2.geojson.gz",
+     "features": 912,
+     "bytes": 2050113,
+     "sha256": "38f6d370dfd3e8e4ea74dca92bbe64a90ddb5124da285f069f28acd9c0eed5ac"
+    }
+   ]
+  }
+ }
+}
