@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "One LICENSE line and 25 files removed from git tracking. No code, query or user-facing text changed.",
-  "commit_hash": "15fb6f5b",
+  "commit_hash": "50059f20",
   "files": [
     "LICENSE"
   ],
