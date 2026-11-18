@@ -58,6 +58,8 @@ def get(url: str, params: dict, tries: int = 4) -> Optional[dict]:
 
 
 def round_coords(x: Any) -> Any:
+    if x is None or isinstance(x, bool):
+        return x
     if isinstance(x, (int, float)):
         return round(float(x), 6)
     return [round_coords(v) for v in x] if isinstance(x, list) else x

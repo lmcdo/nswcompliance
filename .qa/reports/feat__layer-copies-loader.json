@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds 10 data files and a download script (step 1 of ce-layers-own-copy-SCOPE-2026-11-18.md). Not Minor: the files will later feed the area check. Not Critical: nothing reads them yet, no database write, no behaviour change; the script never saves a partial copy.",
- "commit_hash": "d8cb79ad",
+ "commit_hash": "ec99664c",
  "files": [
   "scripts/lmr_area/download_map_layers.py",
   "tests/test_lmr_map_layers_data.py",
@@ -10,7 +10,8 @@
   "data/law/maps/tod_sites.geojson.gz",
   "data/law/maps/heritage_shr.part1of2.geojson.gz",
   "data/law/maps/heritage_shr.part2of2.geojson.gz",
-  "data/law/maps/coastal_vuln.geojson.gz"
+  "data/law/maps/coastal_vuln.geojson.gz",
+  "tests/test_download_map_layers_real.py"
  ],
  "pre_impl": {
   "existing_data": "The area check asks 8 state map layers live per lot (services/lmr_area_inputs.LAYERS). spatial_overlays already holds bushfire, EPI heritage and coastal wetlands; it holds none of the 8 below. Live feature counts read 2026-11-18: TOD sites 9,597; accelerated TOD 8; exclusion 4; Hawkesbury-Nepean 11; Georges 1; coastal vulnerability 10; airport noise 29; State Heritage Register 1,825.",
@@ -21,9 +22,9 @@
   "user_failure_mode": "Nothing reads these files yet, so no answer changes. When step 2 reads them, a stale copy could say clear where the live map now says hit; the manifest date and the planned 45-day limit and comparison check are the answer to that."
  },
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_lmr_map_layers_data.py -q",
+  "command": "python -m pytest tests/test_lmr_map_layers_data.py -q; PYTEST_REAL_HTTP=1 python -m pytest tests/test_download_map_layers_real.py -o addopts= -m integration",
   "fails_when": "A saved file is edited or truncated, a layer or file is missing or stray, a file is over the limit, or the script writes a partial copy.",
-  "observed_red": "Flipping one byte in lmr_exclusion.geojson.gz made 2 tests fail (hash and geometry checks); restored: 9 passed. Script tests: a failed page, a short layer and a failed layer in a batch each stop the copy or the manifest; a layer over the limit is split into parts."
+  "observed_red": "Flipping one byte in lmr_exclusion.geojson.gz made 2 tests fail (hash and geometry checks); restored: 9 passed. Script tests: a failed page, a short layer and a failed layer in a batch each stop the copy or the manifest; a layer over the limit is split into parts. Real-layer test (PYTEST_REAL_HTTP=1): the 6 small saved layers each match the live layer exactly (feature count and every geometry), 6 passed; it skips rather than passes when the live service does not answer or real HTTP is off. round_coords now leaves None and booleans alone."
  },
  "functions": [
   {
