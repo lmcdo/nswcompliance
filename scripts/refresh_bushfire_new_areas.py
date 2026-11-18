@@ -29,6 +29,7 @@ from services.geom_pieces import explode_rows  # noqa: E402
 
 LAYER = "bushfire"
 BATCH = 200
+MIN_LIVE_AREAS = 100_000   # the layer holds about 227,000; far fewer means the service errored, not that areas were removed
 PIECE_BASE_LIMIT = 1_000_000   # source_oid at or above this is a stored piece of a split area, not an original id
 
 
@@ -70,6 +71,9 @@ def _run(argv: list[str], conn) -> int:
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '120000'")
     live, held = live_ids(), held_ids(cur)
+    if len(live) < MIN_LIVE_AREAS:
+        print(f"STOPPED: the live service returned only {len(live)} area ids (expected over {MIN_LIVE_AREAS}); nothing was compared or written")
+        return 1
     new, gone = sorted(live - held), sorted(held - live)
     print(f"live areas {len(live)} | held {len(held)} | NEW (to add) {len(new)} | held but gone from live (NOT touched) {len(gone)}")
     if not apply:

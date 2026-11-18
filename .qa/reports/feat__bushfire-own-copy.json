@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: step 2 (bush fire part) of ce-layers-own-copy-SCOPE-2026-11-18.md. Bush fire prone land is read from our own overlay copy first. Not Minor: it changes where a legal exclusion check gets its answer. Not Critical: a hit in our copy only makes the check stricter, a clear in our copy is never trusted (the live map must confirm, otherwise the answer stays unknown), no schema or rule change.",
- "commit_hash": "2f942738",
+ "commit_hash": "2ee3aaea",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
@@ -19,7 +19,7 @@
   "new_vs_existing": "Adds bushfire_from_snapshot (read-only, injected by the API route like the council lookup) and _bushfire_resolved: own hit final; own clear confirmed on the live map with a 6 s limit; live silent leaves unknown with a note. bushfire_copy.json records the copy date and what it lacks.",
   "external_source_error": "The copy is incomplete in a known way (measured miss 6 of 60), recorded in bushfire_copy.json and in the answer's note. A hit it does give has never been clear on the live map in the sample (10 of 10 agreed).",
   "frontend_type": "N/A - the answer gains an optional bushfire_source in measured and one note; the card already shows notes.",
-  "user_failure_mode": "A false clear would let a bush fire prone lot look eligible. Guarded: a clear in our copy never becomes an answer; if the live map does not answer the rule stays unknown and the answer says our copy is known to miss areas."
+  "user_failure_mode": "A false clear would let a bush fire prone lot look eligible. Guarded: a clear in our copy never becomes an answer; if the live map does not answer the rule stays unknown and the answer says our copy is known to miss areas. Accepted and stated trade-off: a hit in our copy is final, and about 6,066 held areas are gone from the live map, so a lot on a dropped area could be excluded wrongly; in a 60-lot sample no lot was prone in our copy but clear live, the note names the copy date, and the full rebuild is the fix."
  },
  "falsifiable_check": {
   "command": "python -m pytest tests/test_lmr_area_lga.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database -k bushfire",
@@ -77,6 +77,13 @@
    "mitigated": true,
    "how": "The confirmation uses a 6 s limit and one try; a hit in our copy needs no live call at all.",
    "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_clear_in_our_copy_is_checked_live_with_a_short_limit_and_live_wins"
+  },
+  {
+   "scenario": "The state service returns an error instead of its id list during a refresh.",
+   "what_happens": "An empty live list would report every held area as gone and exit successfully, hiding a stale copy.",
+   "mitigated": true,
+   "how": "A live id list under 100,000 stops the run with a failure exit and writes nothing.",
+   "repro": "python -m pytest tests/test_refresh_bushfire_new_areas.py::test_an_empty_or_short_live_id_list_stops_the_run_with_failure_and_writes_nothing"
   }
  ],
  "post_merge": {

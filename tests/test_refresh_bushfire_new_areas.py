@@ -48,12 +48,26 @@ def test_a_dry_run_writes_nothing_and_the_connection_is_closed(monkeypatch, caps
     conn = _Conn()
     monkeypatch.setenv("DATABASE_URL", "x")
     monkeypatch.setattr(rb.psycopg2, "connect", lambda *a, **k: conn)
+    monkeypatch.setattr(rb, "MIN_LIVE_AREAS", 3)
     monkeypatch.setattr(rb, "live_ids", lambda: {1, 2, 3, 4})
     monkeypatch.setattr(rb, "held_ids", lambda cur: {1, 2, 9})
     assert rb.main([]) == 0
     out = capsys.readouterr().out
     assert "NEW (to add) 2" in out and "gone from live (NOT touched) 1" in out and "DRY RUN" in out
     assert not any("INSERT" in q.upper() or "DELETE" in q.upper() for q in conn.cur.sql) and conn.closed
+
+
+def test_an_empty_or_short_live_id_list_stops_the_run_with_failure_and_writes_nothing(monkeypatch, capsys):
+    """Review case: the service replies with an error, live_ids() is empty, and a run would report every held area as gone and exit 0."""
+    conn = _Conn()
+    monkeypatch.setenv("DATABASE_URL", "x")
+    monkeypatch.setattr(rb.psycopg2, "connect", lambda *a, **k: conn)
+    monkeypatch.setattr(rb, "held_ids", lambda cur: {1, 2, 9})
+    for live in (set(), {1, 2, 3}):
+        monkeypatch.setattr(rb, "live_ids", lambda live=live: live)
+        assert rb.main(["--apply"]) == 1
+        assert "STOPPED" in capsys.readouterr().out
+    assert not any("INSERT" in q.upper() for q in conn.cur.sql) and conn.closed
 
 
 def test_the_only_write_the_script_can_make_is_an_insert_that_ignores_existing_rows():
