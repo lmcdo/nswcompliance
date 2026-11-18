@@ -22,7 +22,7 @@ def feats(*attrs):
 
 def fake(monkeypatch, by_key):
     """by_key: substring of the url -> response dict, or None for 'did not answer'."""
-    def _get(url, params, post=False):
+    def _get(url, params, post=False, **kw):
         for k, v in by_key.items():
             if k in url:
                 return v
@@ -175,7 +175,7 @@ def test_fetch_layers_measures_the_five_new_maps_on_the_lot_outline(monkeypatch)
 def test_each_new_map_uses_its_own_layer_and_a_failure_is_none(monkeypatch):
     seen = []
 
-    def _get(url, params, post=False):
+    def _get(url, params, post=False, **kw):
         seen.append(url)
         return None if "MapServer/251/" in url else feats()
     monkeypatch.setattr(inp, "_get_json", _get)
@@ -241,7 +241,7 @@ def test_noise_bands_are_read_from_the_portal_layer_by_lot_outline(monkeypatch):
 def test_pipeline_query_uses_the_law_distance_and_a_failure_is_none(monkeypatch):
     seen = {}
 
-    def _get(url, params, post=False):
+    def _get(url, params, post=False, **kw):
         seen.update(url=url, **params)
         return feats({"feature_name": "NSW Border to Sydney", "operator": "APA"})
     monkeypatch.setattr(inp, "_get_json", _get)

@@ -584,10 +584,16 @@ def _decide(m: dict, facts: LawFacts) -> dict:
         notes.append("The lot is in a heritage conservation area. s164(1)(d) names heritage items, not conservation areas, so this is not counted as an exclusion.")
     if lmr["answer"] == YES:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         notes.append("A council plan may set a maximum car parking rate; the parking standards of Chapter 6 apply only if none does. Check the council's own plan.")
+    # prior-art-checked: reuse not viable because this only words one more note in this module's own notes list (no new source or rule).
+    src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
+    if src is not None and src.get("source") == "snapshot":
+        when = f" as at {src.get('as_of')}" if src.get("as_of") else ""
+        how = f" (taken from {src.get('how')})" if src.get("how") else ""
+        notes.append(f"The council ({m.get('lga')}) was read from our own copy of the lot boundaries{when}{how}, because the live state boundary service did not give an answer.")
     return {"pathway": pathway, "headline": _headline(pathway, lmr, tod), "lmr": lmr, "tod": tod,
             "not_checked": nc, "warnings": warnings,
             "notes": notes, "law_version_date": facts.version_date,
-            "measured": {k: m.get(k) for k in ("lga", "straight_m", "sched12_straight_m", "walk") if k in m}}
+            "measured": {k: m.get(k) for k in ("lga", "lga_source", "straight_m", "sched12_straight_m", "walk") if k in m}}
 
 
 def _headline(pathway: str, lmr: dict, tod: dict) -> str:

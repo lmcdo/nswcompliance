@@ -84,12 +84,19 @@ HERITAGE_CONSERVATION_CLASSES = {"Conservation Area - General", "Conservation Ar
 HERITAGE_UNDECIDED_CLASSES = {"Aboriginal Place of Heritage Significance", "Aboriginal Object"}  # text does not say
 
 
-def _get_json(url: str, params: dict, post: bool = False) -> Optional[dict]:
-    """The single network choke point (tests replace it). None = did not answer; never raises."""
-    for attempt in range(2):
+# prior-art-checked: reuse not viable because the only hits are pip's vendored copy of requests; this adds two optional arguments to this
+# module's own network helper so the council lookup can fail fast (its defaults are unchanged for every other caller).
+def _get_json(url: str, params: dict, post: bool = False, *, timeout: Optional[float] = None,
+              attempts: Optional[int] = None) -> Optional[dict]:
+    """The single network choke point (tests replace it). None = did not answer; never raises.
+
+    `timeout` and `attempts` default to TIMEOUT_S and 2; the council lookup passes shorter limits because it has a local substitute.
+    """
+    limit = timeout or TIMEOUT_S
+    for attempt in range(attempts or 2):
         try:
-            r = (requests.post(url, data=params, headers=_UA, timeout=TIMEOUT_S) if post
-                 else requests.get(url, params=params, headers=_UA, timeout=TIMEOUT_S))
+            r = (requests.post(url, data=params, headers=_UA, timeout=limit) if post
+                 else requests.get(url, params=params, headers=_UA, timeout=limit))
             r.raise_for_status()
             j = r.json()
             if isinstance(j, dict) and "features" in j and "error" not in j:
@@ -224,12 +231,50 @@ def _pipeline_near(lat: float, lng: float, rings: Optional[list], metres: float)
     return {"hit": len(feats) > 0, "names": [(f.get("attributes") or {}).get("feature_name") for f in feats]}
 
 
-def _lga(lat: float, lng: float) -> Optional[str]:
-    f = _features(_get_json(LAYERS["lga"], _point_params(lat, lng, out_fields="lganame"), post=True))
+# The live council lookup fails fast (5 s, one try) because a local substitute exists; the state servers stall in waves (measured 2026-11-18).
+LGA_LIVE_TIMEOUT_S = 5
+LGA_LIVE_ATTEMPTS = 1
+
+
+# prior-art-checked: reuse not viable because this splits this module's own council lookup in two (answered or not) so a live "no council"
+# answer is never overridden by the fallback; no new source or query.
+def _lga_live(lat: float, lng: float) -> tuple[bool, Optional[str]]:
+    """(answered, council). answered False = the live service gave no answer (stall or error). answered True with None = it answered and
+    named no council (or a blank one): that is the authority's answer and the fallback must not override it."""
+    f = _features(_get_json(LAYERS["lga"], _point_params(lat, lng, out_fields="lganame"), post=True,
+                            timeout=LGA_LIVE_TIMEOUT_S, attempts=LGA_LIVE_ATTEMPTS))
+    if f is None:
+        return False, None
     if not f:
-        return None
+        return True, None
     name = (f[0].get("attributes") or {}).get("lganame")
-    return name.strip() if isinstance(name, str) and name.strip() else None
+    return True, (name.strip() if isinstance(name, str) and name.strip() else None)
+
+
+def _lga(lat: float, lng: float) -> Optional[str]:
+    return _lga_live(lat, lng)[1]
+
+
+# prior-art-checked: reuse not viable because no other code resolves the council from our own lot table; the substitute itself lives in
+# services/lmr_area_lga.py and is injected by the caller (this module holds no database connection), the same pattern as flood_fn.
+def _lga_resolved(lat: float, lng: float, fallback: Optional[Any]) -> tuple[Optional[str], Optional[dict]]:
+    """(council, source). The live state service first; only if it gives NO answer (stall or error) the caller's fallback. source is None
+    when the live service answered, else {"source": "snapshot", "as_of": date}. Both failing gives (None, None): can't tell."""
+    answered, name = _lga_live(lat, lng)
+    if answered:
+        return name, None   # the live service answered (even "no council"): never overridden
+    if fallback is None:
+        return None, None
+    try:
+        got = fallback(lat, lng)
+        if isinstance(got, (tuple, list)) and len(got) in (2, 3) and isinstance(got[0], str) and got[0].strip():
+            src = {"source": "snapshot", "as_of": str(got[1]) if got[1] else None}
+            if len(got) == 3 and got[2]:
+                src["how"] = str(got[2])   # which part of the copy decided: the lot at the point, or the lots around it
+            return got[0].strip(), src
+    except Exception as exc:  # noqa: BLE001 -- a failed fallback is no answer, never a guess
+        logger.warning("lmr inputs: council fallback failed: %s", exc)
+    return None, None
 
 
 def _epsg_for(lng: float) -> int:
@@ -258,8 +303,11 @@ def _flood_answer(lga: Optional[str], rings: Optional[list], flood_fn: Any) -> O
         return {"value": None, "reason": f"flood lookup failed: {type(exc).__name__}"}
 
 
-def fetch_layers(lat: float, lng: float, rings: Optional[list]) -> dict:
-    """The map-service measurements for one lot (TOD, accelerated TOD, exclusion map, bush fire, heritage, council). Network only."""
+# prior-art-checked: reuse not viable because the hits are pip internals and a blog page; this only adds one optional argument to this
+# module's own fetch_layers (the council fallback, supplied by the caller) and changes no layer, source or query.
+def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Optional[Any] = None) -> dict:
+    """The map-service measurements for one lot (TOD, accelerated TOD, exclusion map, bush fire, heritage, council). Network only,
+    except the optional `lga_fallback(lat, lng) -> (council, as_of) | None`, which the caller supplies (it owns any database connection)."""
     from concurrent.futures import ThreadPoolExecutor
 
     with ThreadPoolExecutor(max_workers=10) as ex:
@@ -267,18 +315,21 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list]) -> dict:
             "tod_map", "accelerated", "exclusion", "bushfire",
             "georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")}
         f_her = ex.submit(_heritage, rings)
-        f_lga = ex.submit(_lga, lat, lng)
+        f_lga = ex.submit(_lga_resolved, lat, lng, lga_fallback)
         f_noise = ex.submit(_noise_bands, lat, lng, rings)
         out: dict[str, Any] = {k: f.result() for k, f in futs.items()}
         out["airport_noise"] = f_noise.result()
         out["heritage"] = f_her.result()
-        out["lga"] = f_lga.result()
+        lga_name, lga_source = f_lga.result()
+        out["lga"] = lga_name  # noqa: bracket-access -- assignment into our own dict
+        if lga_source:
+            out["lga_source"] = lga_source  # noqa: bracket-access -- assignment into our own dict
     return out
 
 
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
            walk_surfaces: Optional[list] = None, layers: Optional[dict] = None,
-           flood_fn: Optional[Any] = None) -> dict:
+           flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
     `flood_fn` (optional) is called with the lot outline as WKT (or None) ONLY when the lot is in one of the 23 councils s164(1)(g) names,
@@ -294,7 +345,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
-    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings)
+    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback)
     m["lot_outline"] = bool(rings) and len(rings) >= 4   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)
     if "sydney_anef" not in m:
         try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. A lot wholly off the chart's map is "outside".
