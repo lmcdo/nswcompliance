@@ -351,3 +351,9 @@ def test_best_guess_says_nothing_when_nothing_is_near_or_on_error():
     got, conn = _guess(boom=True)
     assert got is None and conn.closed
     assert lga.lga_best_guess(-33.75, 150.7, connect=lambda: None) is None
+
+
+def test_the_unsure_note_does_not_invent_another_council_when_none_was_found():
+    r = d.decide(lot(lga="PENRITH", lga_source={**SNAP, "unsure": True, "alternatives": []}), FACTS)
+    n = next(x for x in r["notes"] if "could not be sure" in x)
+    assert "no other council was found nearby" in n and "could also be" not in n
