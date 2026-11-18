@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: follow-up to merged #1648 at the owner's request. Our own lot copy is now asked first (no wait for a stalling government service); live is second; if both are unsure a labelled best guess is used with the other possibilities named. Not Minor: it changes the order of sources for the council that gates the answer. Not Critical: no rule, law figure or schema changes and a guess always says so.",
- "commit_hash": "1f61e532",
+ "commit_hash": "eaaf5f5c",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
