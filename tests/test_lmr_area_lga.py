@@ -240,8 +240,18 @@ def test_no_lot_nearby_gives_no_answer():
     assert _lookup([])[0] is None
 
 
-def test_blank_names_are_ignored():
+def test_blank_names_are_never_skipped_over():
     assert _lookup([("", True, T), (None, True, T)])[0] is None
+
+
+def test_a_containing_lot_with_no_council_name_is_not_replaced_by_a_neighbour():
+    """The review's case: the lot the point is in has no council name and a neighbour's lot is near: say nothing, never the neighbour."""
+    assert _lookup([(None, True, T), ("PENRITH", False, T)])[0] is None
+    assert _lookup([("", True, T), ("PENRITH", False, T)])[0] is None
+
+
+def test_a_nearby_lot_with_no_council_name_makes_a_road_answer_unsure():
+    assert _lookup([("PENRITH", False, T), (None, False, T)])[0] is None
 
 
 def test_a_database_error_gives_no_answer_and_still_closes():

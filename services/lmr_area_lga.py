@@ -54,7 +54,10 @@ def lga_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], 
             return None
         cur = conn.cursor()
         cur.execute(_SQL, (lng, lat, lng, lat, NEAR_DEG))
-        rows = [(str(n).strip(), bool(inside), at) for n, inside, at in cur.fetchall() if n and str(n).strip()]
+        raw = [((str(n).strip() if n else ""), bool(inside), at) for n, inside, at in cur.fetchall()]
+        if any(not name for name, _inside, _at in raw):
+            return None   # a lot with no council name nearby (above all one containing the point) makes the picture unsure: never skip it
+        rows = raw
         containing = [r for r in rows if r[1]]
         if len(containing) == 1:
             return containing[0][0], _date(containing[0][2])    # the lot the point is in decides, even near a border
