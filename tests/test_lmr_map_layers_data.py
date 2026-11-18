@@ -89,10 +89,38 @@ def test_a_layer_whose_count_or_pages_cannot_be_read_is_not_saved(monkeypatch):
         calls.append(params)
         if params.get("returnCountOnly"):
             return {"count": 3}
-        return {"features": [{"type": "Feature", "geometry": None, "properties": {}}]} if len(calls) == 2 else None
+        return {"features": [{"type": "Feature", "geometry": None, "properties": {"OBJECTID": 1}}]} if len(calls) == 2 else None
 
     monkeypatch.setattr(dl, "get", fake)
     assert dl.fetch_layer("http://x") is None      # second page failed: nothing returned, so nothing written
+
+
+def test_a_service_that_repeats_a_page_is_not_saved(monkeypatch):
+    """Review case: the service ignores the page offset and returns the same 2 features twice for a layer of 4."""
+    def fake(url, params, tries=4):
+        if params.get("returnCountOnly"):
+            return {"count": 4}
+        return {"features": [{"type": "Feature", "geometry": None, "properties": {"OBJECTID": 1}}, {"type": "Feature", "geometry": None, "properties": {"OBJECTID": 2}}]}
+
+    monkeypatch.setattr(dl, "get", fake)
+    assert dl.fetch_layer("http://x") is None
+
+
+def test_features_without_an_id_are_not_trusted(monkeypatch):
+    monkeypatch.setattr(dl, "get", lambda url, params, tries=4: {"count": 1} if params.get("returnCountOnly") else {"features": [{"type": "Feature", "geometry": None, "properties": {}}]})
+    assert dl.fetch_layer("http://x") is None
+
+
+def test_nothing_is_overwritten_when_a_later_layer_fails(monkeypatch, tmp_path):
+    """Review case: layer a is read fine, layer b fails: the old files and manifest must stay exactly as they were."""
+    monkeypatch.setattr(dl, "OUT_DIR", tmp_path)
+    (tmp_path / "a.geojson.gz").write_bytes(b"OLD")
+    (tmp_path / "manifest.json").write_text("OLD")
+    monkeypatch.setattr(dl, "LAYERS", {"a": ("http://a", "use a"), "b": ("http://b", "use b")})
+    fc = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": None, "properties": {"OBJECTID": 1}}]}
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: fc if url == "http://a" else None)
+    assert dl.main(["--apply"]) == 1
+    assert (tmp_path / "a.geojson.gz").read_bytes() == b"OLD" and (tmp_path / "manifest.json").read_text() == "OLD"
 
 
 def test_a_layer_that_returns_fewer_features_than_its_count_is_not_saved(monkeypatch):
@@ -121,7 +149,7 @@ def test_a_layer_over_the_repo_limit_is_split_into_numbered_parts(monkeypatch, t
     monkeypatch.setattr(dl, "LAYERS", {"big": ("http://big", "use")})
     monkeypatch.setattr(dl, "REPO_FILE_LIMIT", 3000)
     rnd = os.urandom
-    feats = [{"type": "Feature", "geometry": None, "properties": {"k": rnd(300).hex()}} for _ in range(12)]   # incompressible
+    feats = [{"type": "Feature", "geometry": None, "properties": {"OBJECTID": n, "k": rnd(300).hex()}} for n in range(12)]   # incompressible
     monkeypatch.setattr(dl, "fetch_layer", lambda url: {"type": "FeatureCollection", "features": feats})
     assert dl.main(["--apply"]) == 0
     info = json.loads((tmp_path / "manifest.json").read_text())["layers"]["big"]

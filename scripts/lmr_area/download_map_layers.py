@@ -84,6 +84,10 @@ def fetch_layer(url: str) -> Optional[dict]:
         print(f"    {len(feats)}/{want}", flush=True)
     if len(feats) != want:
         return None
+    ids = [(f.get("properties") or {}).get("OBJECTID", f.get("id")) for f in feats]
+    if any(i is None for i in ids) or len(set(ids)) != len(ids):
+        print("    FAILED: features missing an id or repeated (the service ignored the page offset?)", flush=True)
+        return None
     for f in feats:
         g = f.get("geometry")
         if g and "coordinates" in g:
@@ -95,6 +99,7 @@ def main(argv: list[str]) -> int:
     apply = "--apply" in argv
     manifest: dict[str, Any] = {"read_on": date.today().isoformat(), "note": "Our copy of state map layers; read_on is the date they were downloaded.", "layers": {}}
     failed, too_big = [], []
+    pending: list[tuple[str, bytes]] = []
     for name, (url, use) in LAYERS.items():
         print(f"{name}: {use}", flush=True)
         fc = fetch_layer(url)
@@ -118,11 +123,11 @@ def main(argv: list[str]) -> int:
         print(f"  {len(feats)} features, {sum(len(g) for g in gzs):,} bytes gzipped in {len(gzs)} file(s)")
         manifest["layers"][name] = {"source": url, "use": use, "features": len(feats), "files": [
             {"file": nm, "features": len(c), "bytes": len(g), "sha256": hashlib.sha256(g).hexdigest()} for nm, c, g in zip(names, chunks, gzs)]}
-        if apply:
-            OUT_DIR.mkdir(parents=True, exist_ok=True)
-            for nm, g in zip(names, gzs):
-                (OUT_DIR / nm).write_bytes(g)
+        pending += list(zip(names, gzs))   # written only after EVERY layer has been read and checked
     if apply and not failed and not too_big:
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        for nm, g in pending:
+            (OUT_DIR / nm).write_bytes(g)
         (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {len(manifest['layers'])} files and manifest.json to {OUT_DIR}")
     elif not apply:
