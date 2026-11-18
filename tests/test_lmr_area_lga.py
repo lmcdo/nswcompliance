@@ -1,0 +1,226 @@
+"""The council-name fallback (services/lmr_area_lga.py) and how the area check uses it.
+
+Properties pinned: the live service is asked first and its answer is untouched; the fallback is used only when the live service does not answer;
+a fallback that is unsure (border, nothing near, error) gives no council, so the decision stays "can't tell"; and an answer that used the
+fallback says so in plain words.
+"""
+import datetime as dt
+
+import pytest
+import requests
+
+from services import lmr_area_decision as d
+from services import lmr_area_inputs as inp
+from services import lmr_area_lga as lga
+
+FACTS = d.LawFacts.load()
+CLEAR = {"point": False, "lot": False}
+SNAP = {"source": "snapshot", "as_of": "2026-06-18"}
+
+
+def lot(**over):
+    """A lot that is clear on every rule and 450 m from a station (same shape as tests/test_lmr_area_decision.py)."""
+    base = {
+        "lga": "Inner West", "tod_map": CLEAR, "accelerated": CLEAR, "exclusion": CLEAR, "bushfire": CLEAR,
+        "heritage": {"item": False, "conservation_area": False, "state_register": False},
+        "sched12_straight_m": 5000.0, "straight_m": 300.0,
+        "walk": {"m": 450.0, "anchor": "Ashfield station", "entrance_id": "node/1", "valid": True},
+    }
+    base.update(over)
+    return base
+
+
+# ---- _lga_resolved: live first, fallback only when live does not answer ------------------------------------------------------------
+
+def test_live_answer_is_used_and_the_fallback_is_never_called(monkeypatch):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: "PENRITH")
+    called = []
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: called.append(a) or ("HORNSBY", "2026-06-18")) == ("PENRITH", None)
+    assert called == []
+
+
+def test_fallback_is_used_when_live_does_not_answer_and_the_source_says_so(monkeypatch):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: None)
+    assert inp._lga_resolved(-33.75, 150.7, lambda *a: (" PENRITH ", "2026-06-18")) == ("PENRITH", SNAP)
+
+
+@pytest.mark.parametrize("fallback", [
+    None,                                         # no fallback supplied
+    lambda *a: None,                              # fallback unsure
+    lambda *a: (None, "2026-06-18"),              # no name
+    lambda *a: ("", "2026-06-18"),                # empty name
+    lambda *a: "PENRITH",                         # wrong shape
+])
+def test_no_usable_fallback_leaves_no_council(monkeypatch, fallback):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: None)
+    assert inp._lga_resolved(-33.75, 150.7, fallback) == (None, None)
+
+
+def test_a_fallback_that_raises_is_no_answer_not_a_crash(monkeypatch):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: None)
+
+    def boom(*a):
+        raise RuntimeError("db down")
+
+    assert inp._lga_resolved(-33.75, 150.7, boom) == (None, None)
+
+
+# ---- fetch_layers carries the source ----------------------------------------------------------------------------------------------
+
+@pytest.fixture
+def quiet_layers(monkeypatch):
+    monkeypatch.setattr(inp, "_layer", lambda *a: {"point": False, "lot": False})
+    monkeypatch.setattr(inp, "_heritage", lambda rings: {"item": False, "conservation_area": False, "state_register": False})
+    monkeypatch.setattr(inp, "_noise_bands", lambda *a: None)
+
+
+def test_fetch_layers_records_the_snapshot_source_only_when_it_was_used(monkeypatch, quiet_layers):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: None)
+    out = inp.fetch_layers(-33.75, 150.7, None, lambda *a: ("PENRITH", "2026-06-18"))
+    assert out["lga"] == "PENRITH" and out["lga_source"] == SNAP
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: "HORNSBY")
+    out = inp.fetch_layers(-33.75, 150.7, None, lambda *a: ("PENRITH", "2026-06-18"))
+    assert out["lga"] == "HORNSBY" and "lga_source" not in out
+
+
+def test_fetch_layers_without_a_fallback_is_unchanged(monkeypatch, quiet_layers):
+    monkeypatch.setattr(inp, "_lga", lambda lat, lng: None)
+    out = inp.fetch_layers(-33.75, 150.7, None)
+    assert out["lga"] is None and "lga_source" not in out
+
+
+# ---- the decision ------------------------------------------------------------------------------------------------------------------
+
+def test_an_answer_that_used_the_snapshot_says_so_and_is_not_cant_tell():
+    r = d.decide(lot(lga="PENRITH", lga_source=SNAP), FACTS)
+    assert r["lmr"]["answer"] == "yes"
+    assert any("our own copy of the council boundaries as at 2026-06-18" in n and "PENRITH" in n for n in r["notes"])
+    assert r["measured"]["lga_source"] == SNAP
+
+
+def test_no_note_when_the_live_service_answered():
+    r = d.decide(lot(lga="PENRITH"), FACTS)
+    assert not any("own copy of the council boundaries" in n for n in r["notes"])
+
+
+def test_both_failing_is_still_cant_tell_never_yes():
+    r = d.decide(lot(lga=None), FACTS)
+    assert r["lmr"]["answer"] == "cant_tell"
+
+
+@pytest.mark.parametrize("name", ["BATHURST REGIONAL", "BLUE MOUNTAINS", "HAWKESBURY", "WOLLONDILLY"])
+def test_the_four_excluded_councils_are_still_excluded_when_the_name_came_from_the_snapshot(name):
+    r = d.decide(lot(lga=name, lga_source=SNAP), FACTS)
+    assert r["lmr"]["answer"] == "no"
+
+
+# ---- the live call fails fast ------------------------------------------------------------------------------------------------------
+
+class _Timeout:
+    def __init__(self):
+        self.calls = []
+
+    def post(self, url, data=None, headers=None, timeout=None):
+        self.calls.append(timeout)
+        raise requests.exceptions.ReadTimeout("stalled")
+
+    get = post
+
+
+def test_get_json_defaults_are_unchanged_and_the_limits_can_be_shortened(monkeypatch):
+    fake = _Timeout()
+    monkeypatch.setattr(inp.requests, "post", fake.post)
+    monkeypatch.setattr(inp.time, "sleep", lambda s: None)
+    assert inp._get_json("http://x", {}, post=True) is None
+    assert fake.calls == [inp.TIMEOUT_S, inp.TIMEOUT_S]
+    fake.calls.clear()
+    assert inp._get_json("http://x", {}, post=True, timeout=5, attempts=1) is None
+    assert fake.calls == [5]
+
+
+def test_the_council_lookup_uses_one_short_try(monkeypatch):
+    fake = _Timeout()
+    monkeypatch.setattr(inp.requests, "post", fake.post)
+    monkeypatch.setattr(inp.time, "sleep", lambda s: None)
+    assert inp._lga(-33.75, 150.7) is None
+    assert fake.calls == [inp.LGA_LIVE_TIMEOUT_S] and inp.LGA_LIVE_TIMEOUT_S < inp.TIMEOUT_S
+
+
+# ---- lga_from_snapshot: only answers when sure --------------------------------------------------------------------------------------
+
+class _Cur:
+    def __init__(self, rows=None, boom=False):
+        self.rows, self.boom, self.args = rows or [], boom, None
+
+    def execute(self, sql, args=None):
+        if self.boom:
+            raise RuntimeError("statement timeout")
+        self.sql, self.args = sql, args
+
+    def fetchall(self):
+        return self.rows
+
+
+class _Conn:
+    def __init__(self, cur):
+        self.cur, self.closed = cur, False
+
+    def cursor(self):
+        return self.cur
+
+    def close(self):
+        self.closed = True
+
+
+def _lookup(rows=None, boom=False):
+    conn = _Conn(_Cur(rows, boom))
+    return lga.lga_from_snapshot(-33.75, 150.7, connect=lambda: conn), conn
+
+
+T = dt.datetime(2026, 6, 18, 3, 0, tzinfo=dt.timezone.utc)
+
+
+def test_one_council_nearby_is_returned_with_its_date_and_the_connection_is_closed():
+    got, conn = _lookup([(" PENRITH ", T)])
+    assert got == ("PENRITH", "2026-06-18") and conn.closed
+    assert conn.cur.args == (150.7, -33.75, lga.NEAR_DEG)   # longitude first, then latitude, then the 40 m distance
+
+
+def test_two_councils_nearby_is_a_border_and_gives_no_answer():
+    got, conn = _lookup([("PENRITH", T), ("BLUE MOUNTAINS", T)])
+    assert got is None and conn.closed
+
+
+def test_no_lot_nearby_gives_no_answer():
+    assert _lookup([])[0] is None
+
+
+def test_blank_names_are_ignored():
+    assert _lookup([("", T), (None, T)])[0] is None
+
+
+def test_a_database_error_gives_no_answer_and_still_closes():
+    got, conn = _lookup(boom=True)
+    assert got is None and conn.closed
+
+
+def test_no_connection_available_gives_no_answer():
+    assert lga.lga_from_snapshot(-33.75, 150.7, connect=lambda: None) is None
+
+
+def test_a_connection_that_raises_gives_no_answer():
+    def bad():
+        raise OSError("refused")
+
+    assert lga.lga_from_snapshot(-33.75, 150.7, connect=bad) is None
+
+
+def test_without_a_database_setting_the_default_connection_gives_no_answer(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert lga.lga_from_snapshot(-33.75, 150.7) is None
+
+
+def test_the_query_is_read_only_spatial_and_limited_to_a_short_distance():
+    sql = lga._SQL
+    assert sql.lstrip().upper().startswith("SELECT") and "ST_DWithin" in sql and "4326" in sql and "lot_search_index" in sql
+    assert lga.NEAR_DEG <= 0.0005 and lga.CONNECT_TIMEOUT_S <= 5 and lga.STATEMENT_TIMEOUT_MS <= 5000

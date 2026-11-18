@@ -34,7 +34,7 @@ def stations_doc(near_name="Ashfield station"):
 
 @pytest.fixture(autouse=True)
 def quiet(monkeypatch):
-    monkeypatch.setattr(inp, "_get_json", lambda url, params, post=False: {"features": [{"attributes": {"lganame": "INNER WEST", "OBJECTID": 1}}]} if "FeatureServer/8" in url else {"features": []})
+    monkeypatch.setattr(inp, "_get_json", lambda url, params, post=False, **kw: {"features": [{"attributes": {"lganame": "INNER WEST", "OBJECTID": 1}}]} if "FeatureServer/8" in url else {"features": []})
     monkeypatch.setattr(inp, "town_centre_polygons", lambda *a, **k: [])
 
 
