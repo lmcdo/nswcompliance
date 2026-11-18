@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds 10 data files and a download script (step 1 of ce-layers-own-copy-SCOPE-2026-11-18.md). Not Minor: the files will later feed the area check. Not Critical: nothing reads them yet, no database write, no behaviour change; the script never saves a partial copy.",
- "commit_hash": "c0429a01",
+ "commit_hash": "53e5d75c",
  "files": [
   "scripts/lmr_area/download_map_layers.py",
   "tests/test_lmr_map_layers_data.py",

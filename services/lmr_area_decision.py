@@ -585,6 +585,13 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     if lmr["answer"] == YES:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         notes.append("A council plan may set a maximum car parking rate; the parking standards of Chapter 6 apply only if none does. Check the council's own plan.")
     # prior-art-checked: reuse not viable because this only words one more note in this module's own notes list (no new source or rule).
+    bs = m.get("bushfire_source") if isinstance(m.get("bushfire_source"), dict) else None
+    if bs is not None and bs.get("source") == "snapshot":
+        if bs.get("found") == "hit":
+            notes.append(f"Bush fire prone land was found in our own copy of the state map (refreshed {bs.get('as_of')}); the live state map was not needed.")
+        else:
+            notes.append(f"The live bush fire prone land map did not answer. Our own copy (refreshed {bs.get('as_of')}) shows no bush fire prone land here, but our copy is known to miss "
+                         "some areas on the state map (about 1 in 10 lots tested), so this is NOT treated as clear: check the property on the NSW Planning Portal.")
     src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
     if src is not None and src.get("unsure"):
         alt_list = src.get("alternatives") or []

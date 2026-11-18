@@ -117,3 +117,29 @@ def test_the_snapshot_agrees_with_the_live_service_wherever_both_answer():
     if both < 10:
         pytest.skip(f"only {both} lots could be compared (the live service did not answer enough); not a pass")
     assert disagree == 0, f"{disagree} of {both} lots disagreed with the live service"
+
+
+@pytest.mark.database
+@pytest.mark.integration
+def test_a_hit_in_our_bushfire_copy_is_never_clear_on_the_live_map():
+    """The safe direction: our copy is known to MISS some live areas (a clear is never trusted), but an area it HOLDS must still be bush fire prone live.
+    Needs PYTEST_REAL_DB=1 and PYTEST_REAL_HTTP=1; skips (not passes) when too few points could be compared."""
+    _require_real_http()
+    c, cur = _conn()
+    try:
+        cur.execute("SELECT ST_Y(ST_PointOnSurface(geom)), ST_X(ST_PointOnSurface(geom)) FROM lot_search_index TABLESAMPLE SYSTEM (0.05) LIMIT 400")
+        pts = cur.fetchall()
+    finally:
+        c.close()
+    random.Random(5).shuffle(pts)
+    compared = wrong = 0
+    for lat, lng in pts[:24]:
+        own = lga.bushfire_from_snapshot(lat, lng, None)
+        live = inp._hit(inp.LAYERS["bushfire"], inp._point_params(lat, lng, out_fields="OBJECTID"), timeout=25, attempts=2)
+        if own is None or live is None:
+            continue
+        compared += 1
+        wrong += bool(own["point"]) and not live
+    if compared < 12:
+        pytest.skip(f"only {compared} points could be compared (the live service did not answer enough); not a pass")
+    assert wrong == 0, f"{wrong} of {compared} points were bush fire prone in our copy but clear on the live map"
