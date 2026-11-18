@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: step 2 (bush fire part) of ce-layers-own-copy-SCOPE-2026-11-18.md. Bush fire prone land is read from our own overlay copy first. Not Minor: it changes where a legal exclusion check gets its answer. Not Critical: a hit in our copy only makes the check stricter, a clear in our copy is never trusted (the live map must confirm, otherwise the answer stays unknown), no schema or rule change.",
- "commit_hash": "83fec079",
+ "commit_hash": "2f942738",
  "files": [
   "services/lmr_area_lga.py",
   "services/lmr_area_inputs.py",
@@ -10,7 +10,8 @@
   "data/law/maps/bushfire_copy.json",
   "tests/test_lmr_area_lga.py",
   "tests/test_lmr_area_lga_real_db.py",
-  "scripts/refresh_bushfire_new_areas.py"
+  "scripts/refresh_bushfire_new_areas.py",
+  "tests/test_refresh_bushfire_new_areas.py"
  ],
  "pre_impl": {
   "existing_data": "spatial_overlays holds 232,393 bushfire rows (GiST index) after the 2026-11-18 additive refresh; 804 live areas are still missing and 6,066 held areas are gone from the live map. Point query 0.1 s.",
@@ -23,7 +24,7 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_lmr_area_lga.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database -k bushfire",
   "fails_when": "A clear in our copy is accepted as an answer, the live check is skipped, or a hit in our copy is ignored.",
-  "observed_red": "Break A (trust our clear when live is silent) failed 2 tests; break B (skip the live check on a clear) failed 3; break C (ignore a hit in our copy) failed 2. Restored: 61 passed in the file, 195 area-check tests pass. Real data (outside pytest): 60 random lots, both hit 10, both clear 44, own CLEAR but live HIT 6, own HIT but live clear 0, own lookup 0.21 s average. Real-data test (PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1): a hit in our copy was never clear on the live map, passed (625 s)."
+  "observed_red": "Break A (trust our clear when live is silent) failed 2 tests; break B (skip the live check on a clear) failed 3; break C (ignore a hit in our copy) failed 2. Restored: 61 passed in the file, 195 area-check tests pass. Real data (outside pytest): 60 random lots, both hit 10, both clear 44, own CLEAR but live HIT 6, own HIT but live clear 0, own lookup 0.21 s average. Real-data test (PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1): a hit in our copy was never clear on the live map, passed (625 s). Refresh script: 3 unit tests (rows built like the loader, a dry run writes nothing and closes the connection, the only write is INSERT ... DO NOTHING) and a real-database dry run against the live map (held over 200,000, missing under 20,000)."
  },
  "functions": [
   {

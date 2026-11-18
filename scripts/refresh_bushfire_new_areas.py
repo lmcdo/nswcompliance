@@ -58,8 +58,15 @@ def build_rows(features: list[dict], value_field: str = "d_Category") -> list[tu
 
 
 def main(argv: list[str]) -> int:
-    apply = "--apply" in argv
     conn = psycopg2.connect(os.environ["DATABASE_URL"], connect_timeout=20)
+    try:
+        return _run(argv, conn)
+    finally:
+        conn.close()
+
+
+def _run(argv: list[str], conn) -> int:
+    apply = "--apply" in argv
     cur = conn.cursor()
     cur.execute("SET statement_timeout = '120000'")
     live, held = live_ids(), held_ids(cur)
