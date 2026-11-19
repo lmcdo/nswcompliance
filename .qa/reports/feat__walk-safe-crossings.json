@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in builder mode (--safe) and a reason-text change. No committed walking file, no database and no served answer changes in this branch: the committed files in data/lmr_walk are old-rule and unchanged. Not Minor because the lookup and the packed file format change. Not Critical because nothing is served from a safe build until it is rebuilt and tested.",
-  "commit_hash": "30fb8267",
+  "commit_hash": "94b613e6",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lmr_safe_crossings.py tests/test_lmr_walk_surface.py -q -o addopts= (48 + walk-surface tests), plus a hand-run mutation check that breaks safe_crossings.py 16 ways",
     "observed_red": "Ran 16 deliberately broken copies of safe_crossings.py, one change each (for example: unmarked crossings accepted; only one side of a busy road walkable; side copies not marked). First run killed 14 of 16; two survived, so I added test_walking_along_the_other_side_of_a_busy_road_is_also_possible and test_an_along_the_road_path_keeps_its_own_group_and_does_not_join_either_side. Second run: 16 of 16 failed a test.",

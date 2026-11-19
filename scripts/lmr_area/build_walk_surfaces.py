@@ -151,7 +151,7 @@ def fetch_in_pieces(points, per=3):
             return None
         for e in jp["elements"]:
             merged[(e["type"], e["id"])] = e
-        stamp = stamp or (jp.get("osm3s") or {}).get("timestamp_osm_base", "")
+        stamp = stamp or (jp.get("osm3s") or {}).get("timestamp_osm_base") or ""
         print(f"  piece {n_}/{len(pieces)}: {len(merged)} elements so far", flush=True)
     return {"elements": list(merged.values()), "osm3s": {"timestamp_osm_base": stamp}}
 
@@ -165,7 +165,7 @@ elif a.safe:
     j = fetch_in_pieces(kept_ll)
 else:
     j = overpass(q)
-if a.safe and j and not any(e.get("tags") for e in j.get("elements", []) if e.get("type") == "node"):
+if a.safe and j and not any(e.get("tags") for e in (j.get("elements") or []) if e.get("type") == "node"):
     # Crossings and signals are tags on nodes. Without them every busy road is uncrossable and the build looks fine.
     sys.exit("--safe needs node tags, and this download has none on any node (was it fetched with 'out skel'?)")
 if not j or not j.get("elements"):
