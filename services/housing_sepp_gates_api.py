@@ -127,3 +127,20 @@ def housing_sepp_area_check(lat: float, lng: float) -> dict:
     from services.lmr_area_inputs import area_check
     from services.lmr_area_lga import bushfire_from_snapshot, lga_best_guess, lga_from_snapshot, lot_outline_from_snapshot
     return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot)
+
+
+@router.get("/housing-sepp/evidence")
+def housing_sepp_evidence(lat: float, lng: float) -> dict:
+    """GET /pipeline/housing-sepp/evidence?lat=&lng=
+
+    The data behind the printable site evidence page: the section 164 exclusions (law wording, source checked, result, clause, page),
+    the walking range, the council's own controls and the council files held with their dates. Shapes the area check; adds no figure.
+
+    prior-art-checked: reuses housing_sepp_area_check (above) and services/evidence_statement.py; no other endpoint returns the law wording per paragraph.
+    """
+    if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
+        raise HTTPException(status_code=422, detail="lat/lng outside NSW")
+    from services import evidence_council, evidence_statement
+    area = housing_sepp_area_check(lat, lng)
+    lga = (area.get("measured") or {}).get("lga")
+    return evidence_statement.build(area, evidence_council.council_controls(lga), evidence_council.council_files(lga))

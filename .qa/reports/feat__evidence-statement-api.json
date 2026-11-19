@@ -1,0 +1,121 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds one read-only endpoint that reshapes the existing area check plus two read-only database lookups. Not Minor: it is a new served surface that prints law wording and results for a lot. Not Critical: it adds no regulatory number, writes nothing, and every result is copied from the area check unchanged.",
+ "commit_hash": "9714b8b9",
+ "files": [
+  "services/evidence_statement.py",
+  "services/evidence_council.py",
+  "services/housing_sepp_gates_api.py",
+  "tests/test_evidence_statement.py",
+  "tests/test_evidence_council_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Penrith holds 46 current council controls, 6 of them for dwelling_house, and 4 stored file versions (2 chapters). The registry holds the council file date as the raw Last-Modified text for the 2 current files.",
+  "assumption_mismatch": "I expected a separate council column on dcp_setback_controls; the column is lga. The controls, the file ledger and the registry all use the same slug (penrith), checked on live rows.",
+  "new_vs_existing": "area-check already returns every rule with clause and page but not the law wording per paragraph nor a row for the paragraphs no rule covers; this adds those rows and reuses the area check, the saved law file and the existing council-key mapper. The council controls reuse fetch_dcp_setbacks after the producer ratchet in CI refused a second query of dcp_setback_controls.",
+  "external_source_error": "If the database or a state map does not answer, the section is returned as unreadable or unknown with the reason, never as empty or clear."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_evidence_statement.py -q",
+  "fails_when": "A paragraph row is dropped or added, a layer that did not answer is shown as clear, a database that did not answer is shown as no controls, or an earlier file version is given a council file date.",
+  "observed_red": "Not run red first; the checks were written together with the code. Checked instead by the mutation questions in the break-it list below.",
+  "observed_green": "11 tests pass. Live call for 2 Hand Avenue Penrith returned 13 exclusion rows with letters a b c d e f f1 g h i k l m, walking range 454-754 m against the limit read from the saved law, 6 controls and 4 file versions. Real database tests for Penrith controls and files also pass (2 of 2, run with PYTEST_REAL_DB=1, not skipped)."
+ },
+ "functions": [
+  {
+   "name": "exclusions",
+   "file_line": "services/evidence_statement.py",
+   "input": "the area check answer and the saved law facts",
+   "output": "one row per live paragraph of section 164(1) with law words, clause, page, source checked and result",
+   "if_none": "a paragraph no rule covers is printed as not checked, never dropped or called clear"
+  },
+  {
+   "name": "council_controls",
+   "file_line": "services/evidence_council.py",
+   "input": "the council name from the area check",
+   "output": "the council's own current dwelling house controls with its words, clause and page",
+   "if_none": "an unknown council or a database that does not answer gives status unreadable with the reason; zero rows gives status none"
+  },
+  {
+   "name": "council_files",
+   "file_line": "services/evidence_council.py",
+   "input": "the council name from the area check",
+   "output": "the council files held by chapter with the date we held them from and the council file date for the current file",
+   "if_none": "an earlier version carries the note not kept for earlier versions instead of a date"
+  }
+ ],
+ "values": [
+  {
+   "value": "the result for each exclusion paragraph",
+   "read_at": "services/lmr_area_decision.py rules, copied unchanged",
+   "if_missing": "shown as not checked or could not be determined"
+  },
+  {
+   "value": "the council file date",
+   "read_at": "dcp_chapter_registry.url_last_modified, current file only",
+   "if_missing": "null for the current file; the note says not kept for earlier ones"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Current dwelling house controls for one council, read through the existing guarded producer fetch_dcp_setbacks",
+   "file_line": "services/evidence_council.py council_controls -> scripts/conveyancing_db.py fetch_dcp_setbacks",
+   "where_clause": "WHERE lga = key AND is_current AND needs_review is not true, precinct-specific rows dropped by the producer; read-only connection, 8 s limit"
+  },
+  {
+   "purpose": "Stored file versions for one council with their replaced date and the registry file date",
+   "file_line": "services/evidence_council.py _FILES_SQL",
+   "where_clause": "WHERE council = key AND event = stored; read-only connection, 5 s limit"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A state map layer does not answer for the lot.",
+   "what_happens": "A clear would be a negative nobody measured.",
+   "mitigated": true,
+   "how": "The area check rule gives unknown and the row says could not be determined.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k unanswered -q"
+  },
+  {
+   "scenario": "The whole area check fails and returns the failure answer.",
+   "what_happens": "The page would have no rows or crash.",
+   "mitigated": true,
+   "how": "All 13 paragraphs are still returned as not checked.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k failed_area -q"
+  },
+  {
+   "scenario": "The database is down or DATABASE_URL is unset.",
+   "what_happens": "The page would say the council has no controls.",
+   "mitigated": true,
+   "how": "status is unreadable with a reason, distinct from none.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k db_down -q"
+  },
+  {
+   "scenario": "A paragraph is repealed in a later saved law version.",
+   "what_happens": "A row for repealed law would print.",
+   "mitigated": true,
+   "how": "Repealed paragraphs are skipped, so j has no row.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k thirteen -q"
+  },
+  {
+   "scenario": "The current dwelling house controls query for one council returns a control that is under review, or the council name maps to the wrong key.",
+   "what_happens": "A council control still under review would be printed as the council's rule, or a council would show no controls.",
+   "mitigated": true,
+   "how": "The query keeps only is_current rows that are not under review and uses the shared council key mapper; a controls row set is shaped with the council's own words, clause and page.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k controls -q"
+  },
+  {
+   "scenario": "The stored file versions query for one council returns an earlier version.",
+   "what_happens": "An earlier file would be shown with the council file date of the current one.",
+   "mitigated": true,
+   "how": "Only the current file (not replaced) carries the registry file date; earlier versions say not kept for earlier versions.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k files -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Call GET /pipeline/housing-sepp/evidence for 2 Hand Avenue on the deployed service and count 13 exclusion rows."
+ }
+}
