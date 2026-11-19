@@ -1,12 +1,13 @@
 {
  "tier": "standard",
  "justification": "Standard: adds one read-only endpoint that reshapes the existing area check plus two read-only database lookups. Not Minor: it is a new served surface that prints law wording and results for a lot. Not Critical: it adds no regulatory number, writes nothing, and every result is copied from the area check unchanged.",
- "commit_hash": "8adda089",
+ "commit_hash": "b98b52e3",
  "files": [
   "services/evidence_statement.py",
   "services/evidence_council.py",
   "services/housing_sepp_gates_api.py",
-  "tests/test_evidence_statement.py"
+  "tests/test_evidence_statement.py",
+  "tests/test_evidence_council_real_db.py"
  ],
  "pre_impl": {
   "existing_data": "Penrith holds 46 current council controls, 6 of them for dwelling_house, and 4 stored file versions (2 chapters). The registry holds the council file date as the raw Last-Modified text for the 2 current files.",
@@ -18,7 +19,7 @@
   "command": "python -m pytest tests/test_evidence_statement.py -q",
   "fails_when": "A paragraph row is dropped or added, a layer that did not answer is shown as clear, a database that did not answer is shown as no controls, or an earlier file version is given a council file date.",
   "observed_red": "Not run red first; the checks were written together with the code. Checked instead by the mutation questions in the break-it list below.",
-  "observed_green": "11 tests pass. Live call for 2 Hand Avenue Penrith returned 13 exclusion rows with letters a b c d e f f1 g h i k l m, walking range 454-754 m against the limit read from the saved law, 6 controls and 4 file versions."
+  "observed_green": "11 tests pass. Live call for 2 Hand Avenue Penrith returned 13 exclusion rows with letters a b c d e f f1 g h i k l m, walking range 454-754 m against the limit read from the saved law, 6 controls and 4 file versions. Real database tests for Penrith controls and files also pass (2 of 2, run with PYTEST_REAL_DB=1, not skipped)."
  },
  "functions": [
   {
