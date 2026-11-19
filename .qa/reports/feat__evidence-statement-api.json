@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds one read-only endpoint that reshapes the existing area check plus two read-only database lookups. Not Minor: it is a new served surface that prints law wording and results for a lot. Not Critical: it adds no regulatory number, writes nothing, and every result is copied from the area check unchanged.",
- "commit_hash": "22d5333f",
+ "commit_hash": "9714b8b9",
  "files": [
   "services/evidence_statement.py",
   "services/evidence_council.py",
