@@ -372,7 +372,7 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
            walk_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
-           bushfire_fn: Optional[Any] = None) -> dict:
+           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
     `flood_fn` (optional) is called with the lot outline as WKT (or None) ONLY when the lot is in one of the 23 councils s164(1)(g) names,
@@ -383,13 +383,23 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     from shapely.geometry import MultiPoint, Polygon
     from shapely.ops import transform, unary_union
 
+    lot_source = None
+    if rings is None and lot_fn is not None:   # our own copy of the lot outline first: no wait on the state property service
+        try:
+            got = lot_fn(lat, lng)
+            if isinstance(got, (tuple, list)) and len(got) == 2 and got[0]:
+                rings, lot_source = got[0], {"source": "snapshot", "as_of": str(got[1]) if got[1] else None}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("lmr inputs: own lot outline failed: %s", exc)
     if rings is None:
         rings = fetch_lot_rings(lat, lng)
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
     m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn)
-    m["lot_outline"] = bool(rings) and len(rings) >= 4   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)
+    m["lot_outline"] = bool(rings) and len(rings) >= 4
+    if lot_source:
+        m["lot_source"] = lot_source  # noqa: bracket-access -- assignment into our own dict   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)
     if "sydney_anef" not in m:
         try:   # Sydney Airport's endorsed 2045 chart: local geometry on committed data, no network. A lot wholly off the chart's map is "outside".
             m["sydney_anef"] = sydney_anef.classify_all(lat, lng, rings)

@@ -592,6 +592,9 @@ def _decide(m: dict, facts: LawFacts) -> dict:
         else:
             notes.append(f"The live bush fire prone land map did not answer. Our own copy (refreshed {bs.get('as_of')}) shows no bush fire prone land here, but our copy is known to miss "
                          "some areas on the state map (about 1 in 10 lots tested), so this is NOT treated as clear: check the property on the NSW Planning Portal.")
+    ls = m.get("lot_source") if isinstance(m.get("lot_source"), dict) else None
+    if ls is not None:
+        notes.append(f"The lot outline was read from our own copy of the lot boundaries{' as at ' + str(ls.get('as_of')) if ls.get('as_of') else ''}, not from the live state property map; a lot subdivided or merged since then may differ.")
     src = m.get("lga_source") if isinstance(m.get("lga_source"), dict) else None
     if src is not None and src.get("unsure"):
         alt_list = src.get("alternatives") or []

@@ -1,0 +1,77 @@
+{
+ "tier": "standard",
+ "justification": "Standard: follow-up to merged #1648/#1649. The lot outline is now read from our own lot copy first, then the live state property service. Not Minor: the outline feeds the walk and the exclusion checks. Not Critical: read-only, no rule or schema change, falls back to the previous live behaviour when our copy has no outline, and the answer says when the outline came from our copy.",
+ "commit_hash": "dfa9de43",
+ "files": [
+  "services/lmr_area_lga.py",
+  "services/lmr_area_inputs.py",
+  "services/lmr_area_decision.py",
+  "services/housing_sepp_gates_api.py",
+  "tests/test_lmr_area_lga.py"
+ ],
+ "pre_impl": {
+  "existing_data": "lot_search_index geom (MultiPolygon, SRID 4326, GiST index) holds every lot. On 2026-11-18 the live area check returned can't tell in 32 s because the live property service stalled and no lot outline came back; the council fix of #1649 worked.",
+  "assumption_mismatch": "I first assumed the boundary service was simply slow. Measured, it is fast when idle and stalls intermittently on shared government servers; it could not be made to fail on demand.",
+  "new_vs_existing": "Adds lot_outline_from_snapshot beside the council lookups; gather tries it before fetch_lot_rings; the API route passes it as lot_fn.",
+  "external_source_error": "The copy is a snapshot (computed 2026-06-18); council boundaries rarely change and the answer says 'as at' the date whenever the copy is used. Live is asked first. Measured 2026-11-18 with the final rules: 60 of 60 random lot points returned that lot's council; 48 of 48 points shifted 30-60 m into roads in the four excluded councils returned the same council as the live service (0 wrong, 0 refused). No status flag exists on lot_search_index (it is built from the cadastre snapshot); a lot's council does not change when a lot is subdivided.",
+  "frontend_type": "N/A - the API response gains an optional measured.lga_source and one note; no frontend change.",
+  "user_failure_mode": "Our copy could give an outline that differs from the live one after a subdivision or merge. Mitigated: the answer states the copy date; on 14 real lots our outline overlapped the live one by at least 100 percent (worst 1.0)."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_area_lga.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q ; PYTEST_REAL_DB=1 PYTEST_REAL_HTTP=1 DATABASE_URL=... python -m pytest tests/test_lmr_area_lga_real_db.py -o addopts= -m database",
+  "fails_when": "The fallback accepts a border, swaps latitude and longitude, or replaces the live answer; or the decision drops the source note.",
+  "observed_red": "187 area-check tests pass (7 new: outline from copy, bad shapes, errors, gather uses copy first and skips live, falls back to live when none, note shown only when copy used). Real data: outline for a real Penrith lot in 0.23 s; 14 of 14 random lots overlapped the live property outline by more than 90 percent."
+ },
+ "functions": [
+  {
+   "name": "lot_outline_from_snapshot",
+   "file_line": "services/lmr_area_lga.py",
+   "input": "a latitude and longitude and an optional connection factory",
+   "output": "the outer ring of the smallest lot containing the point and the copy date, or None",
+   "if_none": "no containing lot, a bad shape or any error gives None so the live property service is asked as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "council name (lga_name) and the copy's computed_at date for lots near the point",
+   "read_at": "services/lmr_area_lga.py lga_from_snapshot, from lot_search_index",
+   "if_missing": "no lot near, a border, or a database problem gives None and the decision says can't tell"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Which council owns the lot or lots within 40 m of this point",
+   "file_line": "services/lmr_area_lga.py _SQL",
+   "where_clause": "WHERE ST_DWithin(geom, point, 0.001) GROUP BY lga_name, with bool_or(ST_Intersects(geom, point)) marking a containing lot; read-only session, 3 s statement limit, uses idx_lsi_geom (about 150 ms including a fresh connection)"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The point is on a road or wide reserve between two councils, or in an excluded council's road with only a neighbour's lots nearest.",
+   "what_happens": "A guess could name the neighbour and mis-handle an excluded council.",
+   "mitigated": true,
+   "how": "A lot containing the point decides; otherwise exactly one council within about 100 m is needed, so a road between councils returns None. Pinned by tests and a deliberate break; 48 of 48 shifted real points matched the live service.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_an_excluded_council_is_never_lost_to_a_neighbour_across_a_wide_road"
+  },
+  {
+   "scenario": "The live service answers but names no council (for example a point off the land).",
+   "what_happens": "The fallback could override the authority and invent a council.",
+   "mitigated": true,
+   "how": "An answered-but-empty live result is returned as is and the fallback is never called; tested and broken on purpose.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_a_live_answer_of_no_council_is_never_overridden_by_the_fallback"
+  },
+  {
+   "scenario": "A lot was subdivided or merged after our copy was made.",
+   "what_happens": "The outline used for the walk and exclusions would be the old one.",
+   "mitigated": true,
+   "how": "The answer carries a note with the copy date and says the lot may differ; live is used if our copy has no outline.",
+   "repro": "python -m pytest tests/test_lmr_area_lga.py::test_the_note_says_when_the_outline_came_from_our_copy"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after deploy call /pipeline/housing-sepp/area-check for a Penrith point and confirm measured.lga is PENRITH; the fallback only shows when the live service stalls, so confirm by the opt-in real database test."
+ }
+}

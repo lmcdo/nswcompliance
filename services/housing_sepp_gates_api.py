@@ -125,5 +125,5 @@ def housing_sepp_area_check(lat: float, lng: float) -> dict:
     if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
         raise HTTPException(status_code=422, detail="lat/lng outside NSW")
     from services.lmr_area_inputs import area_check
-    from services.lmr_area_lga import bushfire_from_snapshot, lga_best_guess, lga_from_snapshot
-    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot)
+    from services.lmr_area_lga import bushfire_from_snapshot, lga_best_guess, lga_from_snapshot, lot_outline_from_snapshot
+    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot)

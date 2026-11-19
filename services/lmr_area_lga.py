@@ -160,3 +160,43 @@ def bushfire_from_snapshot(lat: float, lng: float, rings: Optional[list], *, con
                 conn.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+_SQL_LOT = (
+    "SELECT ST_AsGeoJSON((d).geom), computed_at FROM (SELECT ST_Dump(geom) AS d, computed_at FROM lot_search_index "
+    "WHERE ST_Intersects(geom, ST_SetSRID(ST_Point(%s, %s), 4326))) s "
+    "WHERE ST_Contains((d).geom, ST_SetSRID(ST_Point(%s, %s), 4326)) ORDER BY ST_Area((d).geom) LIMIT 1"   # strictly inside, as the live reader requires: a point on a shared boundary gets no outline
+)
+
+
+def lot_outline_from_snapshot(lat: float, lng: float, *, connect: Optional[Callable[[], Any]] = None) -> Optional[tuple[list, Optional[str]]]:
+    """(outer ring as [lng, lat] pairs, as_of date) of the smallest lot in OUR copy that contains the point, else None. Same read-only,
+    short-limit connection as the council lookup; never raises; None leaves the caller to ask the live property service."""
+    import json
+
+    conn = None
+    try:
+        conn = (connect or _connect)()
+        if conn is None:
+            return None
+        cur = conn.cursor()
+        cur.execute(_SQL_LOT, (lng, lat, lng, lat))
+        rows = cur.fetchall()
+        if not rows:
+            return None
+        gj = json.loads(rows[0][0])
+        ring = (gj.get("coordinates") or [[]])[0] if gj.get("type") == "Polygon" else None
+        if not ring or len(ring) < 4:
+            return None
+        if any(pt is None or len(pt) < 2 or pt[0] is None or pt[1] is None for pt in ring):
+            return None   # a ring with a missing coordinate is not an outline
+        return [[float(pt[0]), float(pt[1])] for pt in ring], _date(rows[0][1])
+    except Exception as exc:  # noqa: BLE001 -- no outline from our copy: the live service is asked
+        logger.warning("lot outline snapshot lookup failed: %s", exc)
+        return None
+    finally:
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            pass
