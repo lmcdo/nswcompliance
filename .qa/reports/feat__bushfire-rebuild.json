@@ -9,7 +9,9 @@
   "tests/test_rebuild_lot_bushfire_flag.py",
   "scripts/refresh_bushfire_new_areas.py",
   "data/law/maps/bushfire_copy.json",
-  "tests/test_lmr_area_lga.py"
+  "tests/test_lmr_area_lga.py",
+  "tests/test_rebuild_bushfire_overlay_real_db.py",
+  "tests/test_rebuild_lot_bushfire_flag_real_db.py"
  ],
  "pre_impl": {
   "existing_data": "spatial_overlays held 235,798 bushfire rows loaded 2026-04..05; 804 live areas missing, 6,066 gone from live; lot_search_index.bushfire_prone true on 584,867 of 3,126,418 lots. Measured on 2,000 lots: 232 flags (11.6%) differ from the new layer.",
@@ -18,7 +20,7 @@
   "external_source_error": "6 live areas (ids 176076, 216529, 218402, 218452, 218453, 225279) return a server error every time; they are named explicitly on the command line and recorded in bushfire_copy.json."
  },
  "falsifiable_check": {
-  "command": "python -m pytest tests/test_rebuild_bushfire_overlay.py tests/test_rebuild_lot_bushfire_flag.py tests/test_lmr_area_lga.py tests/test_refresh_bushfire_new_areas.py -q",
+  "command": "python -m pytest tests/test_rebuild_bushfire_overlay.py tests/test_rebuild_lot_bushfire_flag.py tests/test_lmr_area_lga.py tests/test_refresh_bushfire_new_areas.py -q ; PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_rebuild_lot_bushfire_flag_real_db.py tests/test_rebuild_bushfire_overlay_real_db.py -o addopts= -m database",
   "fails_when": "The swap runs with staging missing areas, a batch the service leaves empty is counted as done, the backup is a second table in the database, or the lot script writes a lot whose flag did not change.",
   "observed_red": "Run on the real service: the first version staged 224,932 of 227,131 areas and reported done; the test with a fake service that returns an empty list for big batches failed until the retry was added.",
   "observed_green": "80 tests pass across the bush fire scripts and area-check tests; 4 more pass for the lot flag script. Live check: 150 of 150 test points matched the state map after staging and 8 of 8 after the swap."

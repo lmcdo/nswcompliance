@@ -42,7 +42,7 @@ def live_ids() -> set[int]:
 def held_ids(cur) -> set[int]:
     cur.execute("SELECT DISTINCT CASE WHEN source_oid >= %s THEN (source_oid - %s) / 100000 ELSE source_oid END FROM spatial_overlays "
                 "WHERE layer_type = %s AND source_oid IS NOT NULL", (PIECE_OID_BASE, PIECE_OID_BASE, LAYER))
-    return {int(o) for (o,) in cur.fetchall()}
+    return {int(o) for (o,) in cur.fetchall() if o is not None}
 
 
 def build_rows(features: list[dict], value_field: str = "d_Category") -> list[tuple]:

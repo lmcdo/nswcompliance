@@ -102,7 +102,7 @@ def missing_is_acceptable(missing: list[int]) -> tuple[bool, list[int]]:
 def staged_ids(cur) -> set[int]:
     """Original area ids held in staging. A complex area is stored split into pieces keyed PIECE_OID_BASE + id * 100000 + n, so those count as the original id."""
     cur.execute(f"SELECT DISTINCT CASE WHEN source_oid >= %s THEN (source_oid - %s) / 100000 ELSE source_oid END FROM {STAGE}", (PIECE_OID_BASE, PIECE_OID_BASE))
-    return {int(o) for (o,) in cur.fetchall()}
+    return {int(o) for (o,) in cur.fetchall() if o is not None}
 
 
 def _fetch_small(ids: list[int]):
