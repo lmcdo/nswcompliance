@@ -42,7 +42,7 @@ _SEVERITY = {"excludes": 4, "unknown": 3, "warn": 2, "clear": 1}
 RESULT_WORDS = {
     "excludes": "The lot is excluded under this paragraph",
     "unknown": "Could not be determined",
-    "warn": "Possible exclusion, not confirmed",
+    "warn": "A possible exclusion was identified; this tool could not determine whether it applies",
     "clear": "No exclusion found",
     "not_checked": "Not checked by this tool",
 }
@@ -98,7 +98,7 @@ def walk(area: dict) -> dict:
             "anchor": f.get("anchor"), "straight_m": f.get("straight_m"), "limit_m": f.get("limit_m"),
             "walk_low_m": f.get("walk_low_m"), "walk_best_m": f.get("walk_best_m"), "walk_high_m": f.get("walk_high_m"),
             "share_of_range_inside": lmr.get("share_of_range_inside"), "detail": lmr.get("detail"),
-            "heuristic": lmr.get("heuristic") or dec.WALK_HEURISTIC}
+            "heuristic": lmr.get("heuristic")}
 
 
 def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts] = None) -> dict:

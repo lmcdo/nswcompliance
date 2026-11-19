@@ -100,3 +100,7 @@ def test_files_earlier_version_has_no_council_date():
     f = ec.council_files("Penrith", connect=lambda: _Conn(rows))["files"]
     assert f[0]["council_file_date"] == "Tue, 29 Sep 2026" and f[1]["council_file_date"] is None
     assert f[1]["council_file_date_note"] == "not kept for earlier versions"
+
+
+def test_walk_heuristic_is_not_invented_when_absent():
+    assert es.walk({})["heuristic"] is None

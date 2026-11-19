@@ -28,7 +28,7 @@ _CONTROLS_SQL = (
 )
 _FILES_SQL = (
     "SELECT v.chapter_key, v.version_label, v.captured_at, v.superseded_at, r.url_last_modified, r.council_url "
-    "FROM dcp_source_versions_dated v LEFT JOIN dcp_chapter_registry r ON r.council = v.council AND r.chapter_key = v.chapter_key "
+    "FROM dcp_source_versions_dated v LEFT JOIN dcp_chapter_registry r ON r.council = v.council AND r.chapter_key = v.chapter_key AND r.is_active "
     "WHERE v.council = %s AND v.event = 'stored' ORDER BY v.chapter_key, v.captured_at DESC"
 )
 
