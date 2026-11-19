@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Standard: rebuilds the bush fire prone land overlay and the lot-level bush fire flag from the state map. Not Minor: it replaces 235,798 production rows and rewrites a flag on lots. Not Critical: nothing in the served rules changes, the old rows and old flags are saved to files first, the swap is one transaction that refuses unless a 150-point check against the live map passed, and a clear in our copy is still confirmed on the live map.",
+ "commit_hash": "7f60da29",
+ "files": [
+  "scripts/rebuild_bushfire_overlay.py",
+  "tests/test_rebuild_bushfire_overlay.py",
+  "scripts/rebuild_lot_bushfire_flag.py",
+  "tests/test_rebuild_lot_bushfire_flag.py",
+  "scripts/refresh_bushfire_new_areas.py",
+  "data/law/maps/bushfire_copy.json",
+  "tests/test_lmr_area_lga.py"
+ ],
+ "pre_impl": {
+  "existing_data": "spatial_overlays held 235,798 bushfire rows loaded 2026-04..05; 804 live areas missing, 6,066 gone from live; lot_search_index.bushfire_prone true on 584,867 of 3,126,418 lots. Measured on 2,000 lots: 232 flags (11.6%) differ from the new layer.",
+  "assumption_mismatch": "I counted staged areas by id and reported 6,522 missing; complex areas are stored as split pieces keyed 10^12 + id*100000 + n, so the real figure was 2,199. Separately the state service answers some large batches with an empty list, which the first version counted as done.",
+  "new_vs_existing": "The existing loader deletes before it writes and takes about 7 minutes per 500 areas. This stages into its own table, verifies against the live map, then swaps in one transaction; the lot flag script recomputes one flag with the index builder's centroid rule and writes only lots that change.",
+  "external_source_error": "6 live areas (ids 176076, 216529, 218402, 218452, 218453, 225279) return a server error every time; they are named explicitly on the command line and recorded in bushfire_copy.json."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_rebuild_bushfire_overlay.py tests/test_rebuild_lot_bushfire_flag.py tests/test_lmr_area_lga.py tests/test_refresh_bushfire_new_areas.py -q",
+  "fails_when": "The swap runs with staging missing areas, a batch the service leaves empty is counted as done, the backup is a second table in the database, or the lot script writes a lot whose flag did not change.",
+  "observed_red": "Run on the real service: the first version staged 224,932 of 227,131 areas and reported done; the test with a fake service that returns an empty list for big batches failed until the retry was added.",
+  "observed_green": "80 tests pass across the bush fire scripts and area-check tests; 4 more pass for the lot flag script. Live check: 150 of 150 test points matched the state map after staging and 8 of 8 after the swap."
+ },
+ "functions": [
+  {
+   "name": "missing_is_acceptable",
+   "file_line": "scripts/rebuild_bushfire_overlay.py",
+   "input": "a list of live area ids not in staging",
+   "output": "whether the gap is acceptable and which ids were accepted",
+   "if_none": "an empty list is acceptable; more than 20 ids, or any id neither proven unstorable nor named by a person, is not"
+  },
+  {
+   "name": "backup_to_file",
+   "file_line": "scripts/rebuild_bushfire_overlay.py",
+   "input": "a database cursor on the production overlay table",
+   "output": "the path of a CSV holding every old bushfire row and the row count",
+   "if_none": "no rows gives an empty file and a zero count, and the swap then rolls back because the delete count must match"
+  },
+  {
+   "name": "changed_lots",
+   "file_line": "scripts/rebuild_lot_bushfire_flag.py",
+   "input": "lot id, old flag and new flag rows",
+   "output": "only the lots whose flag really changes",
+   "if_none": "an empty list gives an empty list and nothing is written; a NULL old flag counts as false"
+  }
+ ],
+ "values": [
+  {
+   "value": "which lots touch bush fire prone land",
+   "read_at": "spatial_overlays layer_type bushfire, lot centroid inside the area, written to lot_search_index.bushfire_prone",
+   "if_missing": "a lot with no hit is set false; the old value is saved to a CSV first"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Compare each lot's flag with the rebuilt overlay and update only changes",
+   "file_line": "scripts/rebuild_lot_bushfire_flag.py _SQL_COMPARE",
+   "where_clause": "WHERE lotidstring = ANY(batch of 2000); layer_type = 'bushfire' with ST_Intersects on the lot centroid, GiST index, 100 s statement limit"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The swap deletes the old rows and the new rows then fail to insert or the disk fills.",
+   "what_happens": "The bush fire layer would be empty.",
+   "mitigated": true,
+   "how": "One transaction: it rolled back cleanly when the disk filled on 2026-11-19, leaving 235,798 old rows. It also rolls back unless the deleted count equals the backup count and enough rows were inserted.",
+   "repro": "python -m pytest tests/test_rebuild_bushfire_overlay.py -q"
+  },
+  {
+   "scenario": "The flag comparison for a batch of lots runs past the 100 second statement limit (lots with very large shapes), so the query is cancelled.",
+   "what_happens": "Without a fallback the worker retried the same batch forever and the lots after it were never compared, leaving old flags in place silently.",
+   "mitigated": true,
+   "how": "A cancelled batch is retried at a quarter of the size, down to one lot, and grows back after a success; progress is printed after every batch and saved, so a stalled worker is visible and resumable.",
+   "repro": "python -m pytest tests/test_rebuild_lot_bushfire_flag.py -q"
+  },
+  {
+   "scenario": "A worker is stopped or crashes part way through, then re-run, or two workers cover the same lots.",
+   "what_happens": "Lots could be skipped, or the same lot written twice with a wrong saved 'old' value.",
+   "mitigated": true,
+   "how": "Each first character belongs to exactly one worker (tested: no group dropped or doubled). A worker saves its last finished lot after every batch and resumes after it; re-comparing a lot already updated finds no change and writes nothing, so the saved old values stay those of the first write.",
+   "repro": "python -m pytest tests/test_rebuild_lot_bushfire_flag.py -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Yes - after merge run the area check for a known bush fire prone address and confirm the note; spatial_overlays_bushfire_new is dropped once the lot flags finish."
+ }
+}
