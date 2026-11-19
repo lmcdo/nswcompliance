@@ -63,7 +63,10 @@ class Surface:
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
         # "original" = every way joins wherever two share a node; anything else (e.g. "safe-crossings-v2") crosses busy roads only at formal crossings
         self.walk_rule: str = str(doc.get("walk_rule") or "original")
-        self.cutoff_m: float = float(self.dist.max()) if len(self.dist) else 0.0
+        # The distance the build stored out to (declared), not the farthest point it happened to store; older files fall back to the latter.
+        declared = doc.get("cutoff_m")
+        self.cutoff_m: float = float(declared) if isinstance(declared, (int, float)) and not isinstance(declared, bool) and declared > 0 \
+            else (float(self.dist.max()) if len(self.dist) else 0.0)
         # Footpath points with no route to any station within the cutoff (safe-crossing builds only). Empty for older files.
         self.has_stranded_list: bool = doc.get("stranded") is not None
         self.stranded_xy = np.asarray(doc.get("stranded") if doc.get("stranded") is not None else [], dtype=float).reshape(-1, 2)

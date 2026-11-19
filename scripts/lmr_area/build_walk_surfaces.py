@@ -139,6 +139,9 @@ if a.from_file:
     j.setdefault("osm3s", {"timestamp_osm_base": f"saved file {Path(a.from_file).name}"})
 else:
     j = overpass(q)
+if a.safe and j and not any(e.get("tags") for e in j.get("elements", []) if e.get("type") == "node"):
+    # Crossings and signals are tags on nodes. Without them every busy road is uncrossable and the build looks fine.
+    sys.exit("--safe needs node tags, and this download has none on any node (was it fetched with 'out skel'?)")
 if not j or not j.get("elements"):
     sys.exit("overpass failed")
 print(f"downloaded {len(j['elements'])} elements in {time.time()-t0:.0f}s", flush=True)

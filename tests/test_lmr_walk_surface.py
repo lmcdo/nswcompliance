@@ -103,6 +103,16 @@ def test_safe_surface_without_the_list_names_both_causes_rather_than_guessing():
     assert "no route from it to a station within 2990 m" in why
 
 
+def test_reason_uses_the_declared_build_distance_not_the_farthest_stored_point():
+    """A safe build stored to 2000 m whose farthest reachable point is 850 m must say 2000, not 850."""
+    s = surface(n=86)   # farthest stored walk is 850 m
+    s2 = ws.Surface({"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": s.bbox_m, "anchors": s.anchors, "graph_nodes": 300,
+                     "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)][:86] + [[X0 + 5000, Y0, 850.0, 0]] * 120,
+                     "walk_rule": "safe-crossings-v2", "cutoff_m": 2000, "stranded": [[X0, Y0 + 300]]}, "t")
+    assert s2.cutoff_m == 2000.0 and "within 2000 m" in s2.no_walk_reason(np.array([[X0, Y0 + 300]]) )
+    assert surface().cutoff_m == 2990.0   # no declared value: falls back to the farthest stored point
+
+
 def test_surface_reads_its_rule_from_the_file(tmp_path):
     doc = {"epsg": EPSG, "built": "2026-11-19", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
            "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "walk_rule": "safe-crossings-v2",

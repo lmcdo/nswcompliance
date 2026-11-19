@@ -40,8 +40,9 @@ def strips(doc: dict) -> list[dict]:
         part = dict(doc)
         part["bbox_m"] = [core_lo, y_lo, core_hi, y_hi]
         part["nodes"] = nodes[keep]
-        st = np.asarray(doc.get("stranded") or [], dtype=float).reshape(-1, 2)
-        part["stranded"] = st[(st[:, 0] >= core_lo - NODE_MARGIN_M) & (st[:, 0] <= core_hi + NODE_MARGIN_M)] if len(st) else st
+        if doc.get("stranded") is not None:   # absent stays absent: "not calculated" is not "calculated, none"
+            st = np.asarray(doc["stranded"], dtype=float).reshape(-1, 2)  # noqa: bracket-access -- guarded by the .get() above
+            part["stranded"] = st[(st[:, 0] >= core_lo - NODE_MARGIN_M) & (st[:, 0] <= core_hi + NODE_MARGIN_M)] if len(st) else st
         out.append(part)
     return out
 

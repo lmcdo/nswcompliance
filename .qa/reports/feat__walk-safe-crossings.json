@@ -112,6 +112,20 @@
       "mitigated": false,
       "how": "Not fixed. The router cannot judge the safe rule. Ground truth needs a planner walking real routes.",
       "repro": "build Pymble both ways with --from-file, sample 25 changed points, ask routing.openstreetmap.de for each walk (run once on 2026-11-19, not kept in the repo)"
+    },
+    {
+      "scenario": "A station entrance snapped to a busy-road node is joined to both sides of that road (Sol review, build_walk_surfaces.py)",
+      "what_happens": "If the entrance is really on one side, lots on the far side get a walk that skips the crossing. Deliberate for Pymble, where the station sits beside the highway; wrong for an entrance set back from a road.",
+      "mitigated": false,
+      "how": "Not fixed. Needs a measurement of how many entrances snap to a busy-road node, and then connecting only the side the entrance is on. Open before any safe build is served.",
+      "repro": "build a safe surface and list entrances whose snapped node is in the busy-node set"
+    },
+    {
+      "scenario": "Side labels on a busy road are set per node from the first way that touches it, so adjoining ways drawn in opposite directions could connect opposite sides (Sol review, safe_crossings.py)",
+      "what_happens": "A route could switch sides of a busy road without a formal crossing. Not seen at Pymble, where only 1% of changed walks were affected, but not ruled out.",
+      "mitigated": false,
+      "how": "Not fixed. Needs a count of busy-road joins where the two ways run in opposite directions, then one consistent orientation along each road. Open before any safe build is served.",
+      "repro": "count consecutive busy-road ways sharing a node whose directions oppose, on the Pymble download"
     }
   ],
   "post_merge": {
