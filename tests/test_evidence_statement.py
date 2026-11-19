@@ -75,6 +75,14 @@ class _Conn:
         pass
 
 
+def _entry(**o):
+    e = {"semantic_type": "front_setback", "dev_type": "dwelling_house", "value_min": 4.5, "value_max": None, "unit": "m", "requirement": "4.5 m",  # noqa: regulatory-number -- test fixture
+         "notes": "", "applicability": None, "source_text": "words", "clause": "", "clause_unchecked": "2.8", "clause_shown": False,
+         "pdf_page": 32, "source_chapter_key": "ch", "dcp_version": "v1"}
+    e.update(o)
+    return e
+
+
 def test_controls_unknown_council_is_unreadable_not_empty():
     assert ec.council_controls(None)["status"] == "unreadable"
 
@@ -86,11 +94,22 @@ def test_controls_db_down_is_unreadable_not_none():
     assert ec.council_controls("Penrith", connect=lambda: None)["status"] == "unreadable"
 
 
-def test_controls_rows_shaped_with_words_clause_page():
-    from decimal import Decimal
-    row = ("landscaping_min", "dwelling_house", Decimal("40"), None, "%", None, None, "words", "2.8", 32, "ch", "v1", None)
-    out = ec.council_controls("Penrith", connect=lambda: _Conn([row]))
-    assert out["status"] == "ok" and out["controls"][0]["council_words"] == "words" and out["controls"][0]["page"] == 32
+def test_controls_producer_failure_is_unreadable():
+    def bad(conn, key):
+        raise RuntimeError("query failed")
+    assert ec.council_controls("Penrith", connect=lambda: _Conn([]), fetch=bad)["status"] == "unreadable"
+
+
+def test_controls_none_when_producer_finds_no_rows():
+    assert ec.council_controls("Penrith", connect=lambda: _Conn([]), fetch=lambda c, k: None)["status"] == "none"
+
+
+def test_controls_keep_dwelling_house_only_with_words_clause_page_and_proof_flag():
+    data = {"setbacks": [_entry(), _entry(dev_type="dual_occupancy")], "as_at_line": "as at x"}
+    out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data)
+    assert out["status"] == "ok" and out["council"] == "penrith" and len(out["controls"]) == 1
+    c = out["controls"][0]
+    assert c["council_words"] == "words" and c["page"] == 32 and c["clause"] == "2.8" and c["clause_shown"] is False
 
 
 def test_files_earlier_version_has_no_council_date():

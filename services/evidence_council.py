@@ -3,8 +3,9 @@
 Both functions return {"status": "ok" | "none" | "unreadable", ...}: an unreadable database is never shown as "no rows".
 Connection is read-only with a short timeout, like services/lmr_area_lga.py.
 
-prior-art-checked: no existing reader joins dcp_setback_controls with dcp_source_versions for one lot; lmr_area_lga._connect is
-private to that module and returns None without DATABASE_URL, so the same read-only options are repeated here (10 lines).
+prior-art-checked: the council controls come from scripts/conveyancing_db.fetch_dcp_setbacks, the one guarded producer of this fact (precinct-specific,
+zone and under-review rows are dropped there; a clause label is shown only when proven). No second query of dcp_setback_controls here (the producer
+ratchet, scripts/page_integrity/lint_producers.py, forbids one). lmr_area_lga._connect is private to that module, so its read-only options are repeated.
 """
 from __future__ import annotations
 
@@ -17,15 +18,9 @@ from services.council_key import to_council_key
 logger = logging.getLogger(__name__)
 
 CONNECT_TIMEOUT_S = 3
-STATEMENT_TIMEOUT_MS = 5000
+STATEMENT_TIMEOUT_MS = 8000   # fetch_dcp_setbacks runs several small reads
 DEV_TYPE = "dwelling_house"
 
-_CONTROLS_SQL = (
-    "SELECT control_type, dev_type, value_min, value_max, unit, condition, applicability, source_text, section_ref, pdf_page, "
-    "source_chapter_key, dcp_version, effective_date FROM dcp_setback_controls "
-    "WHERE lga = %s AND dev_type = %s AND is_current AND COALESCE(needs_review, false) = false "
-    "ORDER BY source_chapter_key, section_ref, control_type"
-)
 _FILES_SQL = (
     "SELECT v.chapter_key, v.version_label, v.captured_at, v.superseded_at, r.url_last_modified, r.council_url "
     "FROM dcp_source_versions_dated v LEFT JOIN dcp_chapter_registry r ON r.council = v.council AND r.chapter_key = v.chapter_key AND r.is_active "
@@ -72,18 +67,47 @@ def _run(sql: str, args: tuple, connect: Optional[Callable[[], Any]]) -> Optiona
                 pass
 
 
-def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]] = None) -> dict:
-    """The council's own current controls for a dwelling house, with the council's words, clause and page. Rows under review are left out."""
+def _default_fetch(conn: Any, key: str) -> Optional[dict]:
+    try:
+        from scripts.conveyancing_db import fetch_dcp_setbacks
+    except ImportError:  # the image copies scripts/ files flat next to services/
+        from conveyancing_db import fetch_dcp_setbacks
+    return fetch_dcp_setbacks(conn, key, raise_on_error=True)
+
+
+def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]] = None,
+                     fetch: Optional[Callable[[Any, str], Optional[dict]]] = None) -> dict:
+    """The council's own current dwelling house controls, with its words, clause and page, from the one guarded producer.
+
+    status: ok (rows), none (the producer found no current rows), unreadable (council unknown or the database did not answer).
+    A clause label proven against the council's page is "clause" with clause_shown true; an unproven stored label is returned as
+    "clause" with clause_shown false, so the page can say so.
+    """
     key = to_council_key(lga)
     if key is None:
         return {"status": "unreadable", "council": None, "reason": "the council for this lot is not known", "controls": []}
-    rows = _run(_CONTROLS_SQL, (key, DEV_TYPE), connect)
-    if rows is None:
+    conn = None
+    try:
+        conn = (connect or _connect)()
+        if conn is None:
+            return {"status": "unreadable", "council": key, "reason": "the controls database did not answer", "controls": []}
+        data = (fetch or _default_fetch)(conn, key)
+    except Exception as exc:  # noqa: BLE001 -- an unreadable database is reported as unreadable, never as empty
+        logger.warning("evidence council controls failed: %s", exc)
         return {"status": "unreadable", "council": key, "reason": "the controls database did not answer", "controls": []}
-    controls = [{"control_type": r[0], "dev_type": r[1], "value_min": _num(r[2]), "value_max": _num(r[3]), "unit": r[4], "condition": r[5],
-                 "applicability": r[6], "council_words": r[7], "clause": r[8], "page": r[9], "chapter": r[10], "plan_version": r[11],
-                 "effective_date": _iso(r[12])} for r in rows]
-    return {"status": "ok" if controls else "none", "council": key, "dev_type": DEV_TYPE, "controls": controls}
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+    rows = [e for e in ((data or {}).get("setbacks") or []) if e.get("dev_type") == DEV_TYPE]
+    controls = [{"control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),
+                 "unit": e.get("unit"), "requirement": e.get("requirement"), "condition": e.get("notes") or None,
+                 "applicability": e.get("applicability"), "council_words": e.get("source_text"),
+                 "clause": e.get("clause") or e.get("clause_unchecked") or None, "clause_shown": bool(e.get("clause_shown")),
+                 "page": e.get("pdf_page"), "chapter": e.get("source_chapter_key"), "plan_version": e.get("dcp_version")} for e in rows]
+    return {"status": "ok" if controls else "none", "council": key, "dev_type": DEV_TYPE, "as_at_line": (data or {}).get("as_at_line"), "controls": controls}
 
 
 def council_files(lga: Optional[str], *, connect: Optional[Callable[[], Any]] = None) -> dict:

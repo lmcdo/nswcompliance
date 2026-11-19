@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds one read-only endpoint that reshapes the existing area check plus two read-only database lookups. Not Minor: it is a new served surface that prints law wording and results for a lot. Not Critical: it adds no regulatory number, writes nothing, and every result is copied from the area check unchanged.",
- "commit_hash": "55103e3b",
+ "commit_hash": "626024e0",
  "files": [
   "services/evidence_statement.py",
   "services/evidence_council.py",
@@ -12,7 +12,7 @@
  "pre_impl": {
   "existing_data": "Penrith holds 46 current council controls, 6 of them for dwelling_house, and 4 stored file versions (2 chapters). The registry holds the council file date as the raw Last-Modified text for the 2 current files.",
   "assumption_mismatch": "I expected a separate council column on dcp_setback_controls; the column is lga. The controls, the file ledger and the registry all use the same slug (penrith), checked on live rows.",
-  "new_vs_existing": "area-check already returns every rule with clause and page but not the law wording per paragraph nor a row for the paragraphs no rule covers; this adds those rows and reuses the area check, the saved law file and the existing council-key mapper.",
+  "new_vs_existing": "area-check already returns every rule with clause and page but not the law wording per paragraph nor a row for the paragraphs no rule covers; this adds those rows and reuses the area check, the saved law file and the existing council-key mapper. The council controls reuse fetch_dcp_setbacks after the producer ratchet in CI refused a second query of dcp_setback_controls.",
   "external_source_error": "If the database or a state map does not answer, the section is returned as unreadable or unknown with the reason, never as empty or clear."
  },
  "falsifiable_check": {
@@ -58,9 +58,9 @@
  ],
  "queries": [
   {
-   "purpose": "Current dwelling house controls for one council that are not under review",
-   "file_line": "services/evidence_council.py _CONTROLS_SQL",
-   "where_clause": "WHERE lga = key AND dev_type = dwelling_house AND is_current AND needs_review is not true; read-only connection, 5 s limit"
+   "purpose": "Current dwelling house controls for one council, read through the existing guarded producer fetch_dcp_setbacks",
+   "file_line": "services/evidence_council.py council_controls -> scripts/conveyancing_db.py fetch_dcp_setbacks",
+   "where_clause": "WHERE lga = key AND is_current AND needs_review is not true, precinct-specific rows dropped by the producer; read-only connection, 8 s limit"
   },
   {
    "purpose": "Stored file versions for one council with their replaced date and the registry file date",
