@@ -1532,6 +1532,185 @@
       }
     ]
   },
+  "inner_west": {
+    "ANNANDALE": [
+      {
+        "area_id": "inner-west-lep-6-24",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.24: Lot 11 DP 499846, 1-5 Chester Street, Annandale",
+        "row_selector": {
+          "ids": [
+            8665,
+            8760,
+            8761,
+            23452
+          ]
+        },
+        "rows_withheld": 4,
+        "suburbs": [
+          "ANNANDALE"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to land at Lot 11, DP 499846",
+        "applies_to_page": 82,
+        "evidence": "LEP clause 6.24 (PDF page 82, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): Lot 11 DP 499846, 1-5 Chester Street, Annandale. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      }
+    ],
+    "LEICHHARDT": [
+      {
+        "area_id": "inner-west-lep-6-16",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.16: Lot 1 DP 632522 (141 Allen Street) and Lot X DP 381373 (159 Allen Street), Leichhardt",
+        "row_selector": {
+          "ids": [
+            8659,
+            8692,
+            8747,
+            23401,
+            23403,
+            23404,
+            23405,
+            23406,
+            23408,
+            23409,
+            23410,
+            23411
+          ]
+        },
+        "rows_withheld": 12,
+        "suburbs": [
+          "LEICHHARDT"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to the following land",
+        "applies_to_page": 76,
+        "evidence": "LEP clause 6.16 (PDF page 76, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): Lot 1 DP 632522 (141 Allen Street) and Lot X DP 381373 (159 Allen Street), Leichhardt. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      },
+      {
+        "area_id": "inner-west-lep-6-17",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.17: Lots at 168 Norton Street, Leichhardt (DP 1119151, DP 963000, DP 1112635, Section 3 DP 328)",
+        "row_selector": {
+          "ids": [
+            8660,
+            8751,
+            23414,
+            23416,
+            23417,
+            23424
+          ]
+        },
+        "rows_withheld": 6,
+        "suburbs": [
+          "LEICHHARDT"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to the following land at 168 Norton Street, Leichhardt",
+        "applies_to_page": 78,
+        "evidence": "LEP clause 6.17 (PDF page 78, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): Lots at 168 Norton Street, Leichhardt (DP 1119151, DP 963000, DP 1112635, Section 3 DP 328). Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      },
+      {
+        "area_id": "inner-west-lep-6-19",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.19: 17 Marion Street, Leichhardt",
+        "row_selector": {
+          "ids": [
+            23425,
+            23426,
+            23427
+          ]
+        },
+        "rows_withheld": 3,
+        "suburbs": [
+          "LEICHHARDT"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to Lots 21, 22, 24 and 25, Section 1, DP 328 and Lots A and B, DP 377714",
+        "applies_to_page": 79,
+        "evidence": "LEP clause 6.19 (PDF page 79, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): 17 Marion Street, Leichhardt. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      }
+    ],
+    "LILYFIELD": [
+      {
+        "area_id": "inner-west-lep-6-18",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.18: Lot 1 DP 432612, 101-103 Lilyfield Road, Lilyfield",
+        "row_selector": {
+          "ids": [
+            23422
+          ]
+        },
+        "rows_withheld": 1,
+        "suburbs": [
+          "LILYFIELD"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to Lot 1, DP 432612",
+        "applies_to_page": 78,
+        "evidence": "LEP clause 6.18 (PDF page 78, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): Lot 1 DP 432612, 101-103 Lilyfield Road, Lilyfield. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      },
+      {
+        "area_id": "inner-west-lep-6-25",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.25: Lot 2 DP 1015843, 469-483 Balmain Road, Lilyfield",
+        "row_selector": {
+          "ids": [
+            8667,
+            8765,
+            23455,
+            23457,
+            23459,
+            23461,
+            23463
+          ]
+        },
+        "rows_withheld": 7,
+        "suburbs": [
+          "LILYFIELD"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to Lot 2, DP 1015843",
+        "applies_to_page": 83,
+        "evidence": "LEP clause 6.25 (PDF page 83, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): Lot 2 DP 1015843, 469-483 Balmain Road, Lilyfield. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      }
+    ],
+    "PETERSHAM": [
+      {
+        "area_id": "inner-west-lep-6-26",
+        "council": "inner_west",
+        "chapter_key": "",
+        "title": "Inner West LEP 2022 clause 6.26: 287-309 Trafalgar Street, Petersham",
+        "row_selector": {
+          "ids": [
+            8669,
+            8762,
+            23468
+          ]
+        },
+        "rows_withheld": 3,
+        "suburbs": [
+          "PETERSHAM"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This clause applies to Lot 1, DP 1208130 and Lot 10, DP 1004198",
+        "applies_to_page": 85,
+        "evidence": "LEP clause 6.26 (PDF page 85, live copy https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/leps/inner_west/v2026-10-29/inner-west-lep-2022.pdf) applies only to the named lot(s): 287-309 Trafalgar Street, Petersham. Exact-lot proof failed (see not_covered entry), so shown in the may-apply box for the suburb."
+      }
+    ]
+  },
   "ku_ring_gai": {
     "PYMBLE": [
       {
