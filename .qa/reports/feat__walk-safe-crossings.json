@@ -136,6 +136,20 @@
       "mitigated": true,
       "how": "services/lmr_area_decision.py _crossings_only only adds two detail lines and never feeds the verdict; services/lmr_area_inputs.py wraps the second lookup so any failure becomes a reason string. tests/test_lmr_two_walks.py compares the decision with those lines removed.",
       "repro": "python -m pytest tests/test_lmr_two_walks.py -q"
+    },
+    {
+      "scenario": "A lot on one side of a busy road sits within 40 m of a station-connected footpath on the other side (Sol review, services/lmr_area_inputs.py)",
+      "what_happens": "The lookup accepts the far-side point and shows a crossings-only walk that skips the crossing. Same limit as the original lookup, which only snaps to the nearest stored point.",
+      "mitigated": false,
+      "how": "Not fixed. Needs a check that the lot's frontage and the matched point are on the same side of a busy road. Open before any safe build is served; the crossings-only line is advisory and says to check the crossings on the ground.",
+      "repro": "pick a lot opposite a footpath across a busy road in a built safe area"
+    },
+    {
+      "scenario": "An old-rule file is placed in data/lmr_walk_safe and shown as a crossings-only walk (Sol review)",
+      "what_happens": "The planner sees an unrestricted distance labelled as crossings-only.",
+      "mitigated": true,
+      "how": "services/lmr_walk_surface.py walk_from_lot_safe refuses any surface whose walk_rule is 'original'. Tests: test_crossings_only_walk_refuses_a_surface_built_without_the_safe_rule.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -k crossings_only"
     }
   ],
   "post_merge": {

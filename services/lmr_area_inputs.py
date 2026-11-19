@@ -464,7 +464,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     try:   # the second walk must never break the first: any failure here is a reason string, not an exception
         safe_list = safe_surfaces if safe_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.SAFE_SURFACE_DIR)]
         if safe_list:
-            m["walk_safe"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors)  # noqa: bracket-access -- set above in this function
+            m["walk_safe"] = walk_mod.walk_from_lot_safe(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors)  # noqa: bracket-access -- set above in this function
     except Exception as exc:  # noqa: BLE001
         logger.warning("crossings-only walk failed: %s", exc)
         m["walk_safe"] = {"m": None, "valid": False, "reason": f"the crossings-only map could not be read ({type(exc).__name__})"}

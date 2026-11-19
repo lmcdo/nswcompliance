@@ -193,3 +193,16 @@ def test_minimum_over_surfaces_is_taken():
                        "nodes": [[X0 + i * 10.0, Y0, max(0.0, i * 10.0 - 300.0), 0] for i in range(300)], "graph_nodes": 300}, "b")
     r = walk(ring(X0 + 400, Y0 + 15), surfaces=[surface(), near], straight=200.0)
     assert r["anchor"] == "Anchor B" and r["m"] < 200 and r["optimistic_by_m"] == 150
+
+
+def test_crossings_only_walk_refuses_a_surface_built_without_the_safe_rule():
+    """An old-rule file in the safe folder must not be presented as a crossings-only walk."""
+    r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [surface()])
+    assert r["valid"] is False and r["m"] is None and "without the safe-crossing rule" in r["reason"]
+
+
+def test_crossings_only_walk_works_on_a_safe_surface():
+    s = surface()
+    s.walk_rule = "safe-crossings-v2"
+    r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [s])
+    assert r["valid"] is True and 404 <= r["m"] <= 415
