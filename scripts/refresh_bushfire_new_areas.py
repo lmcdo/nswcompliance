@@ -30,7 +30,7 @@ from services.geom_pieces import explode_rows  # noqa: E402
 LAYER = "bushfire"
 BATCH = 200
 MIN_LIVE_AREAS = 100_000   # the layer holds about 227,000; far fewer means the service errored, not that areas were removed
-PIECE_BASE_LIMIT = 1_000_000   # source_oid at or above this is a stored piece of a split area, not an original id
+PIECE_OID_BASE = 10 ** 12   # split pieces are keyed base + id * 100000 + n (services/geom_pieces.PIECE_OID_BASE); a piece counts as its original id
 
 
 def live_ids() -> set[int]:
@@ -40,8 +40,9 @@ def live_ids() -> set[int]:
 
 
 def held_ids(cur) -> set[int]:
-    cur.execute("SELECT source_oid FROM spatial_overlays WHERE layer_type = %s AND source_oid IS NOT NULL", (LAYER,))
-    return {o for (o,) in cur.fetchall() if o < PIECE_BASE_LIMIT}
+    cur.execute("SELECT DISTINCT CASE WHEN source_oid >= %s THEN (source_oid - %s) / 100000 ELSE source_oid END FROM spatial_overlays "
+                "WHERE layer_type = %s AND source_oid IS NOT NULL", (PIECE_OID_BASE, PIECE_OID_BASE, LAYER))
+    return {int(o) for (o,) in cur.fetchall() if o is not None}
 
 
 def build_rows(features: list[dict], value_field: str = "d_Category") -> list[tuple]:

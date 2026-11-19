@@ -460,13 +460,13 @@ def _bf(answers, rings=RING, boom=False, info=True, monkeypatch=None):
 
 def test_the_copy_answers_point_and_lot_with_the_refresh_date_and_closes():
     got, conn = _bf([False, True])
-    assert got == {"point": False, "lot": True, "as_of": "2026-11-18"} and conn.closed
+    assert got == {"point": False, "lot": True, "as_of": lga.bushfire_copy_info()["refreshed_on"]} and conn.closed
     assert conn.cur.sqls[0][1] == (150.0005, -33.0005) and conn.cur.sqls[1][1][0].startswith("POLYGON((150.0 -33.0")
 
 
 def test_without_a_lot_outline_only_the_point_is_asked_and_lot_is_none():
     got, conn = _bf([True], rings=None)
-    assert got == {"point": True, "lot": None, "as_of": "2026-11-18"} and len(conn.cur.sqls) == 1
+    assert got == {"point": True, "lot": None, "as_of": lga.bushfire_copy_info()["refreshed_on"]} and len(conn.cur.sqls) == 1
 
 
 def test_an_error_or_no_connection_or_no_record_of_the_copy_date_gives_none(monkeypatch):
