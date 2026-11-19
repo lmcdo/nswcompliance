@@ -53,6 +53,8 @@ def main() -> int:
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = 30000")
+        if a.name and sum(1 for x in selectors() if x.get("name") == a.name) != 1:
+            raise SystemExit(f"[ABORT] --name {a.name!r} must match exactly one entry in {LIST.name}")
         todo = []
         for sel in selectors():
             if a.name and sel.get("name") != a.name:
