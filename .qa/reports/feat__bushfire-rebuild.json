@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: rebuilds the bush fire prone land overlay and the lot-level bush fire flag from the state map. Not Minor: it replaces 235,798 production rows and rewrites a flag on lots. Not Critical: nothing in the served rules changes, the old rows and old flags are saved to files first, the swap is one transaction that refuses unless a 150-point check against the live map passed, and a clear in our copy is still confirmed on the live map.",
- "commit_hash": "7f60da29",
+ "commit_hash": "f74ae245",
  "files": [
   "scripts/rebuild_bushfire_overlay.py",
   "tests/test_rebuild_bushfire_overlay.py",
