@@ -1,0 +1,123 @@
+{
+  "tier": "standard",
+  "justification": "Adds an opt-in builder mode (--safe) and a reason-text change. No committed walking file, no database and no served answer changes in this branch: the committed files in data/lmr_walk are old-rule and unchanged. Not Minor because the lookup and the packed file format change. Not Critical because nothing is served from a safe build until it is rebuilt and tested.",
+  "commit_hash": "498f2ca9",
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_safe_crossings.py tests/test_lmr_walk_surface.py -q -o addopts= (48 + walk-surface tests), plus a hand-run mutation check that breaks safe_crossings.py 16 ways",
+    "observed_red": "Ran 16 deliberately broken copies of safe_crossings.py, one change each (for example: unmarked crossings accepted; only one side of a busy road walkable; side copies not marked). First run killed 14 of 16; two survived, so I added test_walking_along_the_other_side_of_a_busy_road_is_also_possible and test_an_along_the_road_path_keeps_its_own_group_and_does_not_join_either_side. Second run: 16 of 16 failed a test.",
+    "fails_when": "a busy road can be crossed at an unmarked spot, the two road sides are not kept apart, side copies are stored in a surface, the safe rule changes the old-rule graph, or the reason text blames the wrong cause. Mutation run: 16 of 16 broken versions failed a test."
+  },
+  "files": [
+    "scripts/lmr_area/safe_crossings.py",
+    "scripts/lmr_area/build_walk_surfaces.py",
+    "scripts/lmr_area/pack_walk_surfaces.py",
+    "services/lmr_walk_surface.py",
+    "tests/test_lmr_safe_crossings.py",
+    "tests/test_lmr_walk_surface.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Committed data/lmr_walk/*.npz (old rule, no stranded list) are read by services/lmr_walk_surface.py. Unchanged by this branch.",
+    "assumption_mismatch": "A file written before this change has no walk_rule and no stranded list. The reader treats it as the old rule with no list, and the reason text then stays the old wording. Covered by test_packed_file_keeps_the_stranded_footpath_points.",
+    "new_vs_existing": "Only a build run with --safe produces the new rule. Existing files are not rewritten. The safe build refuses the default output folder.",
+    "external_source_error": "Overpass can answer HTTP 200 with no elements and a remark. The builder now treats that as a failure and retries, instead of building an empty map (found when a Pymble build said 'graph nodes 0').",
+    "frontend_type": "No frontend type changes. The walk reason is an existing string field.",
+    "user_failure_mode": "A planner sees a 'cant_tell' with a reason. The reason now says footpath-but-no-safe-route or no-footpath, or both for a file without the list."
+  },
+  "functions": [
+    {
+      "name": "build_graph",
+      "file_line": "scripts/lmr_area/safe_crossings.py:180",
+      "input": "Overpass elements (list of dict), projection function, safe flag",
+      "output": "GraphBuild with graph, coords, groups, stats, rule and error",
+      "if_none": "Bad elements are skipped and counted. Any other failure returns a GraphBuild with error set and an empty graph. Never raises, never falls back to the other rule."
+    },
+    {
+      "name": "no_walk_reason",
+      "file_line": "services/lmr_walk_surface.py:76",
+      "input": "lot outline points or None",
+      "output": "plain-English reason string for the planner",
+      "if_none": "No outline points, or a file without the stranded list: names both causes rather than guessing."
+    },
+    {
+      "name": "write_npz",
+      "file_line": "services/lmr_walk_surface.py:99",
+      "input": "surface document, optionally with a stranded list",
+      "output": "packed .npz; list written only if the build produced one",
+      "if_none": "No list in the document means no list in the file, so a file never claims 'nothing is stranded' without having checked."
+    }
+  ],
+  "values": [
+    {
+      "value": "stranded (footpath points with no route to any station)",
+      "read_at": "scripts/lmr_area/build_walk_surfaces.py:235",
+      "nullable": "yes",
+      "guard_at": "services/lmr_walk_surface.py:70 (has_stranded_list)",
+      "if_missing": "Reason text names both causes."
+    },
+    {
+      "value": "node tags on the Overpass download",
+      "read_at": "scripts/lmr_area/safe_crossings.py:158",
+      "nullable": "yes",
+      "guard_at": "scripts/lmr_area/build_walk_surfaces.py:125 (safe build asks for node bodies)",
+      "if_missing": "A download without node tags would find no crossings at all and every busy road would be uncrossable. NOT guarded when --from-file is used: the file must have been downloaded with node tags."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A route that is safe in practice is judged unsafe because a crossing is missing or untyped in OpenStreetMap",
+      "what_happens": "The walk comes out longer or becomes cant_tell. Seen in Pymble route 3: a mapped crossing with no type was not counted.",
+      "mitigated": false,
+      "how": "Not fixed. The reason text tells the planner to check the route on the ground and the untyped count is in the build stats. Needs planner confirmation of the five Pymble routes.",
+      "repro": "python -m pytest tests/test_lmr_safe_crossings.py -k unmarked"
+    },
+    {
+      "scenario": "Every traffic-light junction is assumed to have a pedestrian phase",
+      "what_happens": "A walk can come out too short where a leg has no walk signal.",
+      "mitigated": false,
+      "how": "Not fixed. 28 such junctions at Pymble. Stated in the planner write-up. Needs planner confirmation.",
+      "repro": "python -m pytest tests/test_lmr_safe_crossings.py -k signalised"
+    },
+    {
+      "scenario": "A road class the rule always calls busy (secondary) is crossed in practice at side streets",
+      "what_happens": "The safe walk is much longer than a planner expects (Telegraph Road, Pymble, 50 km/h).",
+      "mitigated": false,
+      "how": "Not fixed. This is a design choice, flagged for planner decision.",
+      "repro": "python -m pytest tests/test_lmr_safe_crossings.py -k is_busy"
+    },
+    {
+      "scenario": "Both sides of a busy road stored at one spot: a lot across the road picks up the near side's short distance",
+      "what_happens": "The original bug returns silently.",
+      "mitigated": true,
+      "how": "scripts/lmr_area/build_walk_surfaces.py skips side copies when storing points. Mutation 'side copies not marked as copies' is caught.",
+      "repro": "python -m pytest tests/test_lmr_safe_crossings.py -k copies"
+    },
+    {
+      "scenario": "Overpass returns an empty or incomplete reply and the builder writes an empty map",
+      "what_happens": "A surface with no nodes, answered as cant_tell for the whole area.",
+      "mitigated": true,
+      "how": "scripts/lmr_area/build_walk_surfaces.py overpass(): an empty reply or a remark is a failure and is retried. The surface loader also refuses fewer than MIN_NODES.",
+      "repro": "run build_walk_surfaces.py while Overpass is overloaded; it now prints 'empty or incomplete reply' and exits 'overpass failed'"
+    },
+    {
+      "scenario": "A lot's safe walk is beyond the stored distance, or the area is cut off",
+      "what_happens": "Without the change this was an ambiguous cant_tell with the wrong reason.",
+      "mitigated": true,
+      "how": "Safe builds store to 2,000 m, and a stranded list separates 'no footpath' from 'no safe route'. Tests: test_safe_surface_with_footpath_but_no_route_says_so, test_safe_surface_with_no_footpath_near_the_lot_says_that.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -k safe_surface"
+    },
+    {
+      "scenario": "The router used as an independent check also crosses busy roads anywhere",
+      "what_happens": "Agreement with the router does not show the safe rule is right. At Pymble the router sided with the OLD walk in 19 of 25 changed points.",
+      "mitigated": false,
+      "how": "Not fixed. The router cannot judge the safe rule. Ground truth needs a planner walking real routes.",
+      "repro": "build Pymble both ways with --from-file, sample 25 changed points, ask routing.openstreetmap.de for each walk (run once on 2026-11-19, not kept in the repo)"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes - the five Pymble routes (Desktop: FIVE ROUTES - Pymble, check on the ground.md) must be confirmed by a planner before any safe build is served."
+  }
+}
