@@ -46,10 +46,13 @@ def post(url, data, timeout=420):
     return json.load(urllib.request.urlopen(r, timeout=timeout))
 
 
+OVERPASS_SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]   # tried in turn when one is down
+
+
 def overpass(q):
     for i in range(5):
         try:
-            j = post("https://overpass-api.de/api/interpreter", {"data": q})
+            j = post(OVERPASS_SERVERS[i % len(OVERPASS_SERVERS)], {"data": q})
             # Overpass answers a query it could not finish (time or memory limit) with HTTP 200, no elements and a "remark".
             # Accepting that gave "graph nodes 0": a failure that looked like an empty map.
             if j.get("remark") or not j.get("elements"):
@@ -132,11 +135,34 @@ print("query points:", len(kept_ll), flush=True)
 NODE_OUT = "body" if a.safe else "skel"   # the safe rule needs node tags (crossings, signals); the original needs coordinates only
 q = (f'[out:json][timeout:400];way["highway"]["highway"!~"motorway|motorway_link|proposed|construction|raceway|bus_guideway|escape|corridor|elevator"]'
      f'["foot"!="no"]["access"!="private"]["access"!="no"](around:{RADIUS_M},{poly});out body;>;out {NODE_OUT} qt;')
+# prior-art-checked: reuse not viable: this is the same Overpass download as overpass() above, only split into pieces and merged; nothing else in
+# the repo downloads OpenStreetMap roads (dcp_extract_changed.py and generate_conveyancing_report.py share only generic words with it).
+def fetch_in_pieces(points, per=3):
+    """A safe build asks for node tags too, which makes one request per area too big for the public server (502 or an empty reply).
+    Ask for a few anchor points at a time and merge. If any piece fails the whole build fails: a missing piece would silently drop roads."""
+    merged, stamp = {}, ""
+    pieces = [points[i:i + per] for i in range(0, len(points), per)]
+    for n_, piece in enumerate(pieces, 1):
+        qp = (f'[out:json][timeout:200];way["highway"]["highway"!~"motorway|motorway_link|proposed|construction|raceway|bus_guideway|escape|corridor|elevator"]'
+              f'["foot"!="no"]["access"!="private"]["access"!="no"](around:{RADIUS_M},{",".join(f"{la:.5f},{lo:.5f}" for la, lo in piece)});out body;>;out body qt;')
+        jp = overpass(qp)
+        if not jp:
+            print(f"  piece {n_}/{len(pieces)} failed: the whole download is abandoned", flush=True)
+            return None
+        for e in jp["elements"]:
+            merged[(e["type"], e["id"])] = e
+        stamp = stamp or (jp.get("osm3s") or {}).get("timestamp_osm_base", "")
+        print(f"  piece {n_}/{len(pieces)}: {len(merged)} elements so far", flush=True)
+    return {"elements": list(merged.values()), "osm3s": {"timestamp_osm_base": stamp}}
+
+
 t0 = time.time()
 if a.from_file:
     saved = json.loads(Path(a.from_file).read_text(encoding="utf-8"))
     j = saved if isinstance(saved, dict) else {"elements": saved}
     j.setdefault("osm3s", {"timestamp_osm_base": f"saved file {Path(a.from_file).name}"})
+elif a.safe:
+    j = fetch_in_pieces(kept_ll)
 else:
     j = overpass(q)
 if a.safe and j and not any(e.get("tags") for e in j.get("elements", []) if e.get("type") == "node"):
@@ -246,10 +272,30 @@ stranded = []
 # "no route at all" = not connected to any station, however far. A point merely farther than STORE_M is connected: it is over the
 # limit, not stranded, and must not get the "no route" reason.
 connected = nx.node_connected_component(G, "S") if a.safe else set()
+# Keep only footpath that the SAFE rule cuts off. Footpath with no route to a station under the ordinary rule either (an isolated
+# fragment: private land, a park path, the edge of the map) is not "cut off by a crossing", and saying so would mislead. Measured on the
+# saved Bankstown and Woollahra data: 96% and 92% of the unconnected points were isolated under both rules.
+cut_by_rule = set()
+if a.safe:
+    og = sc.build_graph(els, to_m, False)
+    if og.error:
+        sys.exit(f"ordinary-rule graph failed: {og.error}")
+    O = og.graph
+    O.add_node("S")
+    for k, gap, ai in src:
+        base = k[0] if sc.GraphBuild.is_line_copy(k) else k
+        if base in O:
+            O.add_edge("S", base, w=gap)
+    cut_by_rule = nx.node_connected_component(O, "S")
+    print("stranded filter: ordinary-rule graph", O.number_of_nodes() - 1, "nodes,", len(cut_by_rule) - 1, "reach a station", flush=True)
+isolated_anyway = 0
 for p, q2, dat in (G.edges(data=True) if a.safe else ()):
     if p == "S" or q2 == "S" or p in connected or q2 in connected:
         continue
     if sc.GraphBuild.is_line_copy(p) or sc.GraphBuild.is_line_copy(q2):
+        continue
+    if p not in cut_by_rule and q2 not in cut_by_rule:
+        isolated_anyway += 1   # edges, not points; counted so the log shows what was left out
         continue
     L = dat["w"]
     n = max(1, int(L // STEP))
@@ -257,7 +303,8 @@ for p, q2, dat in (G.edges(data=True) if a.safe else ()):
     xb, yb = nodes[q2]
     for i in range(n + 1):
         stranded.append([round(xa + (xb - xa) * i / n, 1), round(ya + (yb - ya) * i / n, 1)])
-print("footpath points with no route to a station:", len(stranded), flush=True)
+print("footpath points the safe rule cuts off (route exists under the ordinary rule):", len(stranded),
+      "| footpath edges isolated under both rules, left out:", isolated_anyway, flush=True)
 x0, y0 = to_m(W, S)
 x1, y1 = to_m(E, N)
 doc = {"schema": 1, "built": date.today().isoformat(), "osm_extract": (j.get("osm3s") or {}).get("timestamp_osm_base", ""), "epsg": epsg,
