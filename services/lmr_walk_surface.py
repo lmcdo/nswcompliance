@@ -61,10 +61,34 @@ class Surface:
         self.dist = arr[:, 2]
         self.anchor_idx = arr[:, 3].astype(int)
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
+        # "original" = every way joins wherever two share a node; anything else (e.g. "safe-crossings-v2") crosses busy roads only at formal crossings
+        self.walk_rule: str = str(doc.get("walk_rule") or "original")
+        self.cutoff_m: float = float(self.dist.max()) if len(self.dist) else 0.0
+        # Footpath points with no route to any station within the cutoff (safe-crossing builds only). Empty for older files.
+        self.has_stranded_list: bool = doc.get("stranded") is not None
+        self.stranded_xy = np.asarray(doc.get("stranded") if doc.get("stranded") is not None else [], dtype=float).reshape(-1, 2)
         # A station is only "built" when at least one of its entrances reaches a stored footpath node. The anchor list holds every
         # station name, including ones whose entrances sit outside the footpath download (46 to 52 of 83 names in the Inner West files).
         used = set(np.unique(self.anchor_idx).tolist())
         self.names_with_nodes = {a.get("name") for i, a in enumerate(self.anchors) if i in used}
+
+    def no_walk_reason(self, pts: Optional[np.ndarray] = None) -> str:
+        """Why a lot got no walking distance from this surface, in words a planner can act on.
+
+        `pts` are the lot's outline points. When the surface holds stranded footpath points (a safe-crossing build) the two causes are told
+        apart: footpath here but no safe route, or no footpath here. A surface without that list cannot tell, and says both."""
+        no_path = f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({self.name})"
+        if self.walk_rule == "original":
+            return no_path
+        route_gone = (f"there is a footpath next to the lot, but the map has no route from it to a station within {self.cutoff_m:.0f} m "
+                      "that crosses busy roads only at signals, zebra or marked crossings. A crossing may be missing from the map: check the route on the ground")
+        if pts is None or not self.has_stranded_list:   # cannot tell the two apart: say both
+            return f"{no_path}, or {route_gone[0].lower() + route_gone[1:]}"
+        if len(self.stranded_xy):
+            gap = np.hypot(pts[:, None, 0] - self.stranded_xy[None, :, 0], pts[:, None, 1] - self.stranded_xy[None, :, 1]).min()
+            if gap <= MAX_GAP_M:
+                return f"{route_gone} ({self.name})"
+        return no_path
 
     def covers(self, minx: float, miny: float, maxx: float, maxy: float) -> bool:
         b = self.bbox_m
@@ -82,10 +106,13 @@ def write_npz(doc: dict, path: Path) -> None:
     ox, oy = float(np.floor(arr[:, 0].min())), float(np.floor(arr[:, 1].min()))
     order = np.lexsort((arr[:, 1], arr[:, 0]))
     arr = arr[order]
-    meta = {k: v for k, v in doc.items() if k != "nodes"}
+    meta = {k: v for k, v in doc.items() if k not in ("nodes", "stranded")}
     meta["origin"] = [ox, oy]
+    # Written only when the build produced a list: a file without one must not claim "nothing is stranded".
+    st = np.asarray(doc["stranded"], dtype=float).reshape(-1, 2) if doc.get("stranded") is not None else None  # noqa: bracket-access -- guarded by the .get() on this line
+    extra = {} if st is None else {"sx": np.round((st[:, 0] - ox) * 10).astype(np.int32), "sy": np.round((st[:, 1] - oy) * 10).astype(np.int32)}
     np.savez_compressed(
-        path,
+        path, **extra,
         x=np.round((arr[:, 0] - ox) * 10).astype(np.int32), y=np.round((arr[:, 1] - oy) * 10).astype(np.int32),
         d=np.round(arr[:, 2] * 10).astype(np.uint16), a=arr[:, 3].astype(np.uint16),
         meta=np.array([json.dumps(meta)]))
@@ -95,6 +122,8 @@ def _doc_from_npz(path: str) -> dict:
     z = np.load(path, allow_pickle=False)
     meta = json.loads(str(z["meta"][0]))  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     ox, oy = meta.pop("origin")
+    if "sx" in z.files:   # older files have no stranded list
+        meta["stranded"] = np.column_stack([z["sx"] / 10.0 + ox, z["sy"] / 10.0 + oy]) if len(z["sx"]) else np.empty((0, 2))  # noqa: bracket-access -- "sx" is in z.files, checked on the line above
     meta["nodes"] = np.column_stack([z["x"] / 10.0 + ox, z["y"] / 10.0 + oy, z["d"] / 10.0, z["a"].astype(float)])  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     return meta
 
@@ -187,7 +216,7 @@ def walk_from_lot(
         near = (np.abs(s.xy[:, 0] - (minx + maxx) / 2) <= (maxx - minx) / 2 + MAX_GAP_M) & \
                (np.abs(s.xy[:, 1] - (miny + maxy) / 2) <= (maxy - miny) / 2 + MAX_GAP_M)
         if not near.any():
-            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
+            notes.append(s.no_walk_reason(pts))
             continue
         nxy, nd, na = s.xy[near], s.dist[near], s.anchor_idx[near]
         gap = np.hypot(pts[:, None, 0] - nxy[None, :, 0], pts[:, None, 1] - nxy[None, :, 1])
@@ -199,7 +228,7 @@ def walk_from_lot(
         flat = int(np.argmin(total))
         i, j = divmod(flat, total.shape[1])
         if not np.isfinite(total[i, j]):
-            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
+            notes.append(s.no_walk_reason(pts))
             continue
         cand = {"m": float(total[i, j]), "gap_m": float(gap[i, j]), "anchor_i": int(na[j]), "surface": s}
         if best is None or cand["m"] < best["m"]:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)

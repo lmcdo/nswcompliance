@@ -17,6 +17,8 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # the builder is run with -I, which does not add its own folder
+import safe_crossings as sc  # noqa: E402  (the walking graph and its safe-crossing rule; see that module's docstring)
 import networkx as nx
 import numpy as np
 from pyproj import Transformer
@@ -33,6 +35,7 @@ OUTDIR.mkdir(exist_ok=True)
 STATIONS = json.loads((HERE / os.environ.get("LMR_STATIONS", "lmr_station_entrances_final.json")).read_text(encoding="utf-8"))
 UA = {"User-Agent": "plotdetect-lmr-walk/1.0"}
 CUTOFF_M = 1100
+SAFE_STORE_M = 2000   # how far a safe-crossing build stores walks (see STORE_M below)
 RADIUS_M = 1500
 SNAP_MAX_M = 80
 TC_BUFFER_M = 15
@@ -46,7 +49,12 @@ def post(url, data, timeout=420):
 def overpass(q):
     for i in range(5):
         try:
-            return post("https://overpass-api.de/api/interpreter", {"data": q})
+            j = post("https://overpass-api.de/api/interpreter", {"data": q})
+            # Overpass answers a query it could not finish (time or memory limit) with HTTP 200, no elements and a "remark".
+            # Accepting that gave "graph nodes 0": a failure that looked like an empty map.
+            if j.get("remark") or not j.get("elements"):
+                raise RuntimeError(f"empty or incomplete reply: {str(j.get('remark'))[:120]}")
+            return j
         except Exception as e:
             print("  overpass retry", i, str(e)[:80], flush=True)
             time.sleep(10 * (i + 1))
@@ -62,7 +70,15 @@ def town_centres():
 ap = argparse.ArgumentParser()
 ap.add_argument("--bbox", required=True)
 ap.add_argument("--name", required=True)
+ap.add_argument("--safe", action="store_true",
+                help="apply the safe-crossing rule (scripts/lmr_area/safe_crossings.py). Must write to its own folder: set LMR_SURF_DIR")
+ap.add_argument("--from-file", help="read a saved Overpass download (a JSON list of elements, or {'elements': [...]}) instead of calling Overpass. "
+                "The file must have been downloaded with node tags; the result only covers where the file covers")
 a = ap.parse_args()
+if a.safe and OUTDIR.name == "walk_surfaces":
+    # A safe-crossing surface mixed into the default folder would be packed and loaded next to the original one for the same
+    # anchors. Refuse, so the two versions can never be confused.
+    sys.exit("--safe needs its own output folder: set LMR_SURF_DIR=walk_surfaces_safe")
 S, W, N, E = (float(v) for v in a.bbox.split(","))
 if (OUTDIR / f"{a.name}.json.gz").exists() or (OUTDIR / f"{a.name}.lock").exists():
     sys.exit(f"{a.name}: already built or being built by another loop; skipping")
@@ -113,25 +129,31 @@ for la, lo, _ in anchor_pts:
         kept_ll.append((la, lo))
 poly = ",".join(f"{la:.5f},{lo:.5f}" for la, lo in kept_ll)
 print("query points:", len(kept_ll), flush=True)
+NODE_OUT = "body" if a.safe else "skel"   # the safe rule needs node tags (crossings, signals); the original needs coordinates only
 q = (f'[out:json][timeout:400];way["highway"]["highway"!~"motorway|motorway_link|proposed|construction|raceway|bus_guideway|escape|corridor|elevator"]'
-     f'["foot"!="no"]["access"!="private"]["access"!="no"](around:{RADIUS_M},{poly});out body;>;out skel qt;')
+     f'["foot"!="no"]["access"!="private"]["access"!="no"](around:{RADIUS_M},{poly});out body;>;out {NODE_OUT} qt;')
 t0 = time.time()
-j = overpass(q)
-if not j:
+if a.from_file:
+    saved = json.loads(Path(a.from_file).read_text(encoding="utf-8"))
+    j = saved if isinstance(saved, dict) else {"elements": saved}
+    j.setdefault("osm3s", {"timestamp_osm_base": f"saved file {Path(a.from_file).name}"})
+else:
+    j = overpass(q)
+if not j or not j.get("elements"):
     sys.exit("overpass failed")
 print(f"downloaded {len(j['elements'])} elements in {time.time()-t0:.0f}s", flush=True)
 lon_mid = (W + E) / 2
 epsg = 28300 + int((lon_mid + 180) // 6) + 1
 to_m = Transformer.from_crs(4326, epsg, always_xy=True).transform
 els = j["elements"]
-nodes = {x["id"]: to_m(x["lon"], x["lat"]) for x in els if x["type"] == "node"}
-G = nx.Graph()
-for x in els:
-    if x["type"] != "way":
-        continue
-    ns = [k for k in x["nodes"] if k in nodes]
-    for p, q2 in zip(ns, ns[1:]):
-        G.add_edge(p, q2, w=math.hypot(nodes[p][0] - nodes[q2][0], nodes[p][1] - nodes[q2][1]))
+build = sc.build_graph(els, to_m, a.safe)
+if build.error:
+    sys.exit(f"graph build failed (rule {build.rule}): {build.error}")   # no silent fallback to the other rule
+G, nodes = build.graph, build.coords
+rule_stats = {k: v for k, v in build.stats.items() if k != "skip_notes"}
+print("walk rule:", build.rule, rule_stats, flush=True)
+if build.stats.get("skip_notes"):
+    print("skipped elements, first reasons:", build.stats["skip_notes"], flush=True)
 print("graph nodes", G.number_of_nodes(), "edges", G.number_of_edges(), flush=True)
 if G.number_of_nodes() < 200:
     sys.exit("thin graph")
@@ -148,7 +170,8 @@ for la, lo, ai in anchor_pts:
     i = int(tree.nearest(Point(x, y)))
     gap = float(np.hypot(xy[i][0] - x, xy[i][1] - y))
     if gap <= SNAP_MAX_M:
-        src.append((ids[i], gap, ai))
+        for kk in sc.physical_group(build, ids[i]):   # an entrance on a barrier node reaches every copy: standing there is not crossing
+            src.append((kk, gap, ai))
 for ai, rings in tc_polys:
     pg = transform(to_m, unary_union([Polygon(r).buffer(0) for r in rings])).buffer(TC_BUFFER_M)
     import shapely
@@ -173,11 +196,14 @@ best_ai = {}
 for k, gap, ai in src:
     if k not in best_ai or gap < best_ai[k][0]:
         best_ai[k] = (gap, ai)
-dist, paths = nx.single_source_dijkstra(G, "S", cutoff=CUTOFF_M, weight="w")
+# A safe-crossing walk is often a long detour. Stored only to 1100 m, a lot whose safe walk is 1300 m has no stored point and the
+# engine can only say "can't tell". Stored to 2000 m it gets its real number and a plain "over the limit". The old rule keeps 1100.
+STORE_M = SAFE_STORE_M if a.safe else CUTOFF_M
+dist, paths = nx.single_source_dijkstra(G, "S", cutoff=STORE_M, weight="w")
 rows = []
 for k, d in dist.items():
-    if k == "S":
-        continue
+    if k == "S" or sc.GraphBuild.is_line_copy(k):
+        continue   # a busy-road side copy shares its coordinates with the other side's copy: the lookup could take the wrong side's distance
     rows.append([round(nodes[k][0], 1), round(nodes[k][1], 1), round(d, 1), best_ai[paths[k][1]][1]])
 # Points along the streets, not only at junctions. A lot on a long street can be 70 m from the nearest junction; with junction points
 # only, the lookup let it jump sideways to a junction on another street (found on 2/87 Dunmore St, South Bexley: 485 m against a
@@ -188,6 +214,8 @@ extra = 0
 for p, q2, dat in G.edges(data=True):
     if p == "S" or q2 == "S":
         continue
+    if sc.GraphBuild.is_line_copy(p) and sc.GraphBuild.is_line_copy(q2):
+        continue   # along a busy road: no street points on the road line itself (same reason as above)
     ia, ib = node_info.get(p), node_info.get(q2)
     if ia is None and ib is None:
         continue
@@ -205,16 +233,36 @@ for p, q2, dat in G.edges(data=True):
         if ib:
             c.append((ib[0] + (L - s), ib[1]))
         d, ai = min(c)
-        if d <= CUTOFF_M:
+        if d <= STORE_M:
             rows.append([round(xa + (xb - xa) * i / n, 1), round(ya + (yb - ya) * i / n, 1), round(d, 1), ai])
             extra += 1
 print("street points added between junctions:", extra, flush=True)
+# Footpath that exists but has NO walk to any station within STORE_M (a safe-crossing build: the street is cut off by a busy road with no
+# formal crossing in the map). Stored with no distance, so the lookup can tell "footpath here, no safe route" from "no footpath here".
+stranded = []
+# "no route at all" = not connected to any station, however far. A point merely farther than STORE_M is connected: it is over the
+# limit, not stranded, and must not get the "no route" reason.
+connected = nx.node_connected_component(G, "S") if a.safe else set()
+for p, q2, dat in (G.edges(data=True) if a.safe else ()):
+    if p == "S" or q2 == "S" or p in connected or q2 in connected:
+        continue
+    if sc.GraphBuild.is_line_copy(p) or sc.GraphBuild.is_line_copy(q2):
+        continue
+    L = dat["w"]
+    n = max(1, int(L // STEP))
+    xa, ya = nodes[p]
+    xb, yb = nodes[q2]
+    for i in range(n + 1):
+        stranded.append([round(xa + (xb - xa) * i / n, 1), round(ya + (yb - ya) * i / n, 1)])
+print("footpath points with no route to a station:", len(stranded), flush=True)
 x0, y0 = to_m(W, S)
 x1, y1 = to_m(E, N)
 doc = {"schema": 1, "built": date.today().isoformat(), "osm_extract": (j.get("osm3s") or {}).get("timestamp_osm_base", ""), "epsg": epsg,
-       "bbox_m": [x0 - 1000, y0 - 1000, x1 + 1000, y1 + 1000], "cutoff_m": CUTOFF_M, "graph_nodes": G.number_of_nodes() - 1,
-       "anchors": anchors, "nodes": rows}
+       "bbox_m": [x0 - 1000, y0 - 1000, x1 + 1000, y1 + 1000], "cutoff_m": STORE_M, "graph_nodes": G.number_of_nodes() - 1,
+       "walk_rule": build.rule, "walk_rule_stats": rule_stats, "anchors": anchors, "nodes": rows}
+if a.safe:
+    doc["stranded"] = stranded   # only a safe build carries the list; an old-rule file must not claim "nothing is stranded"
 with gzip.open(OUTDIR / f"{a.name}.json.gz", "wt", encoding="utf-8") as fh:
     json.dump(doc, fh, separators=(",", ":"))
 (OUTDIR / f"{a.name}.lock").unlink(missing_ok=True)
-print(f"DONE {a.name}: stored {len(rows)} nodes within {CUTOFF_M} m of an anchor; file {(OUTDIR / (a.name + '.json.gz')).stat().st_size // 1024} KB", flush=True)
+print(f"DONE {a.name}: stored {len(rows)} nodes within {STORE_M} m of an anchor; file {(OUTDIR / (a.name + '.json.gz')).stat().st_size // 1024} KB", flush=True)
