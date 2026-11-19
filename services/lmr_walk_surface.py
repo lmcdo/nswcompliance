@@ -179,10 +179,13 @@ def sample_outline(coords_m: list[tuple[float, float]], step: float = SAMPLE_STE
     return np.asarray(pts, dtype=float)
 
 
+SAFE_WALK_RULE = "safe-crossings-v2"   # must equal scripts/lmr_area/safe_crossings.RULE_NAME; tests/test_lmr_walk_surface.py checks that
+
+
 def walk_from_lot_safe(ring_m, epsg, straight_m, touches_anchor, surfaces, required_anchors=None) -> dict:
     """The crossings-only walk. Refuses any surface not built with the safe-crossing rule: an old-rule file in the safe folder would
     otherwise be shown as a walk that crosses busy roads only at formal crossings."""
-    wrong = [s.name for s in surfaces if s.walk_rule == "original"]
+    wrong = [s.name for s in surfaces if s.walk_rule != SAFE_WALK_RULE]   # an exact match: a typo or a future rule name is refused too
     if wrong:
         return _invalid(f"the crossings-only map folder holds a file built without the safe-crossing rule ({wrong[0]}), so it was not used")
     return walk_from_lot(ring_m, epsg, straight_m, touches_anchor, surfaces, required_anchors=required_anchors)

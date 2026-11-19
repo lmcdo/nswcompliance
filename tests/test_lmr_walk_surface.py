@@ -201,6 +201,23 @@ def test_crossings_only_walk_refuses_a_surface_built_without_the_safe_rule():
     assert r["valid"] is False and r["m"] is None and "without the safe-crossing rule" in r["reason"]
 
 
+def test_crossings_only_walk_refuses_a_misspelt_or_unknown_rule_name():
+    """Only the exact safe rule name counts. A typo must not slip through as 'not original'."""
+    for bad in ("orginal", "safe-crossings-v1", "safe-crossings-v3", ""):
+        s = surface()
+        s.walk_rule = bad
+        r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [s])
+        assert r["valid"] is False and r["m"] is None, bad
+
+
+def test_the_safe_rule_name_matches_the_builder():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "lmr_area"))
+    import safe_crossings as sc
+    assert ws.SAFE_WALK_RULE == sc.RULE_NAME
+
+
 def test_crossings_only_walk_works_on_a_safe_surface():
     s = surface()
     s.walk_rule = "safe-crossings-v2"
