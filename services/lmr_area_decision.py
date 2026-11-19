@@ -445,6 +445,24 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
     return rules
 
 
+def _crossings_only(m: dict, normal_m: Optional[float]) -> dict:
+    """The walk that crosses busy roads only at traffic lights, zebra or marked crossings, shown BESIDE the normal walk. It never
+    changes the answer: NSW road rules only require a crossing within 20 m of one (reg 234), so it is a stricter reading of "safely walked"."""
+    sw = m.get("walk_safe")
+    if not isinstance(sw, dict):
+        return {}
+    sm = sw.get("m")
+    if sw.get("valid") is True and isinstance(sm, (int, float)) and not isinstance(sm, bool):
+        out = {"crossings_only_walk_m": round(sm)}
+        note = f"Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about {round(sm)} m"
+        if isinstance(normal_m, (int, float)) and not isinstance(normal_m, bool):
+            diff = round(sm) - round(normal_m)
+            note += f" ({diff:+d} m compared with the normal walk)" if diff else " (the same as the normal walk)"
+        out["crossings_only_note"] = note + ". Check the crossings on the ground."
+        return out
+    return {"crossings_only_note": f"The crossings-only walk could not be measured: {sw.get('reason') or 'no reason recorded'}"}
+
+
 def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     """Returns (answer, detail) for the distance test alone: yes / no / cant_tell."""
     outer, inner = facts.number("lmr_outer_distance"), facts.number("lmr_inner_distance")
@@ -459,6 +477,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
         return NO, {**base, "reason_code": "beyond_straight_line", "detail": "the straight line to the nearest station or town centre is longer than the walking limit"}
     wm = walk.get("m")
     if walk.get("valid") is not True or not isinstance(wm, (int, float)) or isinstance(wm, bool):
+        base.update(_crossings_only(m, None))
         return CANT, {**base, "reason_code": "walking_measure_unavailable",
                       "detail": walk.get("reason") or "the walk to the nearest station or town centre could not be measured"}
     # The walk is a RANGE, not a point. Low end: the measured walk less the measurement margin. High end: the measured walk plus
@@ -471,6 +490,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     base.update({"walk_m": round(wm), "walk_low_m": round(lo_m), "walk_high_m": round(hi_m), "walk_best_m": round(best),
                  "margin_low_m": WALK_MARGIN_LOW_M, "margin_high_m": WALK_MARGIN_HIGH_M, "entrance_unmapped_extra_m": round(opt),
                  "anchor": walk.get("anchor"), "entrance_id": walk.get("entrance_id")})
+    base.update(_crossings_only(m, wm))
     if hi_m <= outer:
         band = "inner" if hi_m <= inner else ("outer" if lo_m >= inner else "straddles_inner_limit")
         return YES, {**base, "reason_code": "walk_range_under_limit", "band": band, "inner_limit_m": inner,

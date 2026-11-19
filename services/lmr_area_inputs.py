@@ -370,7 +370,7 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
 
 
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
-           walk_surfaces: Optional[list] = None, layers: Optional[dict] = None,
+           walk_surfaces: Optional[list] = None, safe_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
            bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
@@ -418,6 +418,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     m["straight_m"] = None
     m["sched12_straight_m"] = None
     m["walk"] = None
+    m["walk_safe"] = None   # the walk that crosses busy roads only at signals, zebra or marked crossings; shown beside the normal walk, never decides
     stations = stations if stations is not None else load_stations()
     tcs = town_centre_polygons()
     if not rings or not stations or tcs is None:
@@ -460,6 +461,13 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # otherwise a farther anchor's longer walk would be taken as the answer (a wrong "no").
     m["walk"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, walk_surfaces,  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
                                        required_anchors=near_anchors)
+    try:   # the second walk must never break the first: any failure here is a reason string, not an exception
+        safe_list = safe_surfaces if safe_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.SAFE_SURFACE_DIR)]
+        if safe_list:
+            m["walk_safe"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors)  # noqa: bracket-access -- set above in this function
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("crossings-only walk failed: %s", exc)
+        m["walk_safe"] = {"m": None, "valid": False, "reason": f"the crossings-only map could not be read ({type(exc).__name__})"}
     return m
 
 

@@ -34,6 +34,8 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SURFACE_DIR = REPO_ROOT / "data" / "lmr_walk"
+# Optional second set, built with the safe-crossing rule (scripts/lmr_area/build_walk_surfaces.py --safe). Absent = no second walk shown.
+SAFE_SURFACE_DIR = REPO_ROOT / "data" / "lmr_walk_safe"
 
 # Engineering limits of the lookup, not planning figures.
 # With a point every ~15 m along every street (see the surface builder), a lot's frontage is within a few metres of a stored point.

@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in builder mode (--safe) and a reason-text change. No committed walking file, no database and no served answer changes in this branch: the committed files in data/lmr_walk are old-rule and unchanged. Not Minor because the lookup and the packed file format change. Not Critical because nothing is served from a safe build until it is rebuilt and tested.",
-  "commit_hash": "49c26ea3",
+  "commit_hash": "1c5e1cbd",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lmr_safe_crossings.py tests/test_lmr_walk_surface.py -q -o addopts= (48 + walk-surface tests), plus a hand-run mutation check that breaks safe_crossings.py 16 ways",
     "observed_red": "Ran 16 deliberately broken copies of safe_crossings.py, one change each (for example: unmarked crossings accepted; only one side of a busy road walkable; side copies not marked). First run killed 14 of 16; two survived, so I added test_walking_along_the_other_side_of_a_busy_road_is_also_possible and test_an_along_the_road_path_keeps_its_own_group_and_does_not_join_either_side. Second run: 16 of 16 failed a test.",
@@ -13,7 +13,10 @@
     "scripts/lmr_area/pack_walk_surfaces.py",
     "services/lmr_walk_surface.py",
     "tests/test_lmr_safe_crossings.py",
-    "tests/test_lmr_walk_surface.py"
+    "tests/test_lmr_walk_surface.py",
+    "services/lmr_area_decision.py",
+    "services/lmr_area_inputs.py",
+    "tests/test_lmr_two_walks.py"
   ],
   "pre_impl": {
     "existing_data": "Committed data/lmr_walk/*.npz (old rule, no stranded list) are read by services/lmr_walk_surface.py. Unchanged by this branch.",
@@ -40,7 +43,7 @@
     },
     {
       "name": "write_npz",
-      "file_line": "services/lmr_walk_surface.py:99",
+      "file_line": "services/lmr_walk_surface.py:106",
       "input": "surface document, optionally with a stranded list",
       "output": "packed .npz; list written only if the build produced one",
       "if_none": "No list in the document means no list in the file, so a file never claims 'nothing is stranded' without having checked."
@@ -126,6 +129,13 @@
       "mitigated": false,
       "how": "Not fixed. Needs a count of busy-road joins where the two ways run in opposite directions, then one consistent orientation along each road. Open before any safe build is served.",
       "repro": "count consecutive busy-road ways sharing a node whose directions oppose, on the Pymble download"
+    },
+    {
+      "scenario": "The crossings-only walk is mistaken for the answer, or its failure breaks the normal walk",
+      "what_happens": "A planner reads the longer number as the verdict, or a corrupt safe file turns a yes into an error.",
+      "mitigated": true,
+      "how": "services/lmr_area_decision.py _crossings_only only adds two detail lines and never feeds the verdict; services/lmr_area_inputs.py wraps the second lookup so any failure becomes a reason string. tests/test_lmr_two_walks.py compares the decision with those lines removed.",
+      "repro": "python -m pytest tests/test_lmr_two_walks.py -q"
     }
   ],
   "post_merge": {
