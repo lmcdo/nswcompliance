@@ -29,7 +29,9 @@ export function evidenceUrl(lat: string | null, lng: string | null): string | nu
 export function isEvidence(x: unknown): x is Evidence {
   const r = x as Partial<Evidence> | null;
   const src = (s: unknown) => !!s && typeof s === 'object' && ['ok', 'none', 'unreadable'].includes((s as { status?: string }).status ?? '');
-  return !!r && typeof r === 'object' && Array.isArray(r.exclusions) && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'
+  const rows = (a: unknown, keys: string[]) => Array.isArray(a) && a.every((e) => !!e && typeof e === 'object' && keys.every((k) => k in (e as object)));
+  return !!r && typeof r === 'object' && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
+    && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'
     && src(r.council_controls) && src(r.council_files)
-    && Array.isArray(r.council_controls?.controls) && Array.isArray(r.council_files?.files);
+    && rows(r.council_controls?.controls, ['council_words', 'page']) && rows(r.council_files?.files, ['chapter', 'version', 'current']);
 }

@@ -18,6 +18,8 @@ export default function EvidenceStatement() {
     const url = evidenceUrl(lat, lng);
     if (!url) { setError('This page needs a latitude and longitude in the address bar.'); return; }
     let live = true;
+    setData(null);
+    setError(null);
     fetch(url, { cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json().catch(() => null);
@@ -43,7 +45,7 @@ export default function EvidenceStatement() {
       </div>
       <h1 className="text-xl font-semibold">Site evidence statement</h1>
       <p className="text-gray-600">
-        {address || `Point ${lat}, ${lng}`}{data.lga ? ` (${data.lga})` : ''}. Law version dated {data.law_version_date ?? 'not given'}.
+        Point {lat}, {lng}{data.lga ? ` (${data.lga})` : ''}.{address ? ` Reference typed in the link, not checked against the point: ${address}.` : ''} Law version dated {data.law_version_date ?? 'not given'}.
       </p>
       {data.headline && <p className="mt-2">{data.headline}</p>}
 
@@ -93,8 +95,8 @@ export default function EvidenceStatement() {
             <tbody>
               {cc.controls.map((c, i) => (
                 <tr key={i} className="align-top">
-                  <td className="border p-1">{c.control_type}<br />{c.requirement}</td>
-                  <td className="border p-1">{c.council_words}</td>
+                  <td className="border p-1">{c.control_type ?? 'Control not named'}<br />{c.requirement ?? 'No requirement text'}</td>
+                  <td className="border p-1">{c.council_words ?? 'Council wording not held'}</td>
                   <td className="border p-1">
                     {c.clause ? `${c.clause}${c.clause_shown ? '' : ' (label not checked against the page)'}, ` : ''}page {c.page ?? 'not given'}
                   </td>
@@ -121,8 +123,8 @@ export default function EvidenceStatement() {
               <tr key={i}>
                 <td className="border p-1">{f.chapter}</td>
                 <td className="border p-1">{f.version}</td>
-                <td className="border p-1">{f.held_from?.slice(0, 10)}</td>
-                <td className="border p-1">{f.replaced_on?.slice(0, 10) ?? 'current'}</td>
+                <td className="border p-1">{f.held_from?.slice(0, 10) ?? 'not recorded'}</td>
+                <td className="border p-1">{f.current ? 'current' : (f.replaced_on?.slice(0, 10) ?? 'not recorded')}</td>
                 <td className="border p-1">{f.council_file_date ?? f.council_file_date_note ?? 'not recorded'}</td>
               </tr>
             ))}
