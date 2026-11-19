@@ -21,7 +21,7 @@ export interface Evidence {
 
 /** The proxy address for a point, or null when either coordinate is not a number. */
 export function evidenceUrl(lat: string | null, lng: string | null): string | null {
-  const ok = (v: string | null) => v !== null && v.trim() !== '' && Number.isFinite(Number(v));
+  const ok = (v: string | null) => typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v));
   return ok(lat) && ok(lng) ? `/api/housing-sepp/evidence?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}` : null;
 }
 
