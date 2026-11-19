@@ -135,7 +135,7 @@ def _line(points: Iterable[tuple[float, float]]) -> LineString | None:
 
 
 def _note(stats: dict[str, Any], why: str) -> None:
-    stats["skipped"] = stats.get("skipped", 0) + 1
+    stats["skipped"] = (stats.get("skipped") or 0) + 1
     notes = stats.setdefault("skip_notes", [])
     if len(notes) < MAX_SKIP_NOTES:
         notes.append(why)
