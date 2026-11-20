@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in builder mode (--safe) and a reason-text change. No committed walking file, no database and no served answer changes in this branch: the committed files in data/lmr_walk are old-rule and unchanged. Not Minor because the lookup and the packed file format change. Not Critical because nothing is served from a safe build until it is rebuilt and tested.",
-  "commit_hash": "0b2602e5",
+  "commit_hash": "a459e4c6",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lmr_safe_crossings.py tests/test_lmr_walk_surface.py -q -o addopts= (48 + walk-surface tests), plus a hand-run mutation check that breaks safe_crossings.py 16 ways",
     "observed_red": "Ran 16 deliberately broken copies of safe_crossings.py, one change each (for example: unmarked crossings accepted; only one side of a busy road walkable; side copies not marked). First run killed 14 of 16; two survived, so I added test_walking_along_the_other_side_of_a_busy_road_is_also_possible and test_an_along_the_road_path_keeps_its_own_group_and_does_not_join_either_side. Second run: 16 of 16 failed a test.",
@@ -29,7 +29,7 @@
   "functions": [
     {
       "name": "build_graph",
-      "file_line": "scripts/lmr_area/safe_crossings.py:178",
+      "file_line": "scripts/lmr_area/safe_crossings.py:179",
       "input": "Overpass elements (list of dict), projection function, safe flag",
       "output": "GraphBuild with graph, coords, groups, stats, rule and error",
       "if_none": "Bad elements are skipped and counted. Any other failure returns a GraphBuild with error set and an empty graph. Never raises, never falls back to the other rule."
@@ -120,15 +120,15 @@
       "scenario": "A station entrance snapped to a busy-road node is joined to both sides of that road (Sol review, build_walk_surfaces.py)",
       "what_happens": "If the entrance is really on one side, lots on the far side get a walk that skips the crossing. Deliberate for Pymble, where the station sits beside the highway; wrong for an entrance set back from a road.",
       "mitigated": false,
-      "how": "Not fixed. Needs a measurement of how many entrances snap to a busy-road node, and then connecting only the side the entrance is on. Open before any safe build is served.",
-      "repro": "build a safe surface and list entrances whose snapped node is in the busy-node set"
+      "how": "Measured 2026-11-20 on the 12 cut areas (scratchpad risks12.py): 0 of 435 station entrances snap to a busy-road node. Three areas (northern beaches, penrith, wollongong) have no entrance in lmr_station_entrances.json, so they are not measured. Not fixed; nothing to fix where it measures 0.",
+      "repro": "python risks12.py in the session scratchpad (builds each cut area, snaps every entrance, counts busy-road nodes)"
     },
     {
       "scenario": "Side labels on a busy road are set per node from the first way that touches it, so adjoining ways drawn in opposite directions could connect opposite sides (Sol review, safe_crossings.py)",
-      "what_happens": "A route could switch sides of a busy road without a formal crossing. Not seen at Pymble, where only 1% of changed walks were affected, but not ruled out.",
-      "mitigated": false,
-      "how": "Not fixed. Needs a count of busy-road joins where the two ways run in opposite directions, then one consistent orientation along each road. Open before any safe build is served.",
-      "repro": "count consecutive busy-road ways sharing a node whose directions oppose, on the Pymble download"
+      "what_happens": "A route could switch sides of a busy road without a formal crossing. Measured 2026-11-20: 4,184 of 51,390 same-road joins (8.1%) across the 12 areas were drawn in opposite directions (Pymble alone: 0).",
+      "mitigated": true,
+      "how": "Fixed in safe_crossings.py: each busy way is turned to agree with the way it joins (walk of the join graph). Rebuild of the 12 areas: 6,614 of 1,740,613 stored points (0.38%) get a walk 150 m or more longer; 1,470 points that were reachable only by changing sides are now unreachable. About 800 joins cannot be oriented (loops, roundabouts); counted in orientation_conflicts, not fixed.",
+      "repro": "python -m pytest tests/test_lmr_safe_crossings.py -k two_ways -q (fails with the flip disabled)"
     },
     {
       "scenario": "The crossings-only walk is mistaken for the answer, or its failure breaks the normal walk",
@@ -141,7 +141,7 @@
       "scenario": "A lot on one side of a busy road sits within 40 m of a station-connected footpath on the other side (Sol review, services/lmr_area_inputs.py)",
       "what_happens": "The lookup accepts the far-side point and shows a crossings-only walk that skips the crossing. Same limit as the original lookup, which only snaps to the nearest stored point.",
       "mitigated": false,
-      "how": "Not fixed. Needs a check that the lot's frontage and the matched point are on the same side of a busy road. Open before any safe build is served; the crossings-only line is advisory and says to check the crossings on the ground.",
+      "how": "Measured 2026-11-20 on 1,489 lots in the 12 areas: 9 lots have their nearest footpath point across a busy road, 3 of those have none on their own side within 40 m; 24 lots have no point within 40 m. Partly handled: the crossings-only note now says when the lot is within 30 m of a busy road (near_busy_road, needs a rebuilt file with busy_pts). The far-side point is still used. Open before any safe build is served.",
       "repro": "pick a lot opposite a footpath across a busy road in a built safe area"
     },
     {

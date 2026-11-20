@@ -36,6 +36,7 @@ from shapely.geometry import LineString
 from shapely.strtree import STRtree
 
 RULE_NAME = "safe-crossings-v2"
+SAME_ROAD_COS = 0.85    # two busy ways meeting at a node are the same road continuing when their directions are this close to parallel
 BUSY_PT_STEP_M = 25.0   # spacing of the busy-road points the engine uses to say "this lot is next to a busy road"
 
 # Roads: ways a vehicle drives on. Everything else the query returns (footway, path, steps, cycleway, pedestrian, track...) is a path.
@@ -260,17 +261,59 @@ def _safe_graph(nodes, node_tags, ways, stats) -> GraphBuild:
     stats["crossing_ways"] = len(crossing_ways)
     stats["crossing_ways_dropped"] = dropped
 
-    # direction of the busy road at each of its nodes: decides which side of it a path leaves on
-    road_dir: dict[int, tuple[float, float]] = {}
-    for w in busy_ways:
-        ns_ = [n for n in w["nodes"] if n in nodes]
+    # direction of the busy road at each of its nodes: decides which side of it a path leaves on.
+    # OSM draws a road as several ways and some are drawn the other way round. Each way is turned to agree with the way it joins, so
+    # "left" is the same physical side along the whole road (otherwise the walk could change sides at such a join without a crossing).
+    way_ns = {w["id"]: [n for n in w["nodes"] if n in nodes] for w in busy_ways}
+
+    def local_dir(wid: int, i: int) -> tuple[float, float]:
+        ns_ = way_ns[wid]
+        a = nodes[ns_[i - 1]] if i > 0 else nodes[ns_[i]]
+        b = nodes[ns_[i + 1]] if i < len(ns_) - 1 else nodes[ns_[i]]
+        return b[0] - a[0], b[1] - a[1]
+
+    at_node: dict[int, list[tuple[int, tuple[float, float]]]] = {}
+    for wid, ns_ in way_ns.items():
         for i, n in enumerate(ns_):
+            d = local_dir(wid, i)
+            if d[0] or d[1]:
+                at_node.setdefault(n, []).append((wid, d))
+    links: dict[int, list[tuple[int, int]]] = {}      # way -> [(other way, +1 same drawn direction / -1 opposite)]
+    for lst in at_node.values():
+        for ia in range(len(lst)):
+            for ib in range(ia + 1, len(lst)):
+                (wa, da), (wb, db) = lst[ia], lst[ib]
+                if wa == wb:
+                    continue
+                cos = (da[0] * db[0] + da[1] * db[1]) / (math.hypot(*da) * math.hypot(*db))
+                if abs(cos) > SAME_ROAD_COS:
+                    rel = 1 if cos > 0 else -1
+                    links.setdefault(wa, []).append((wb, rel))
+                    links.setdefault(wb, []).append((wa, rel))
+    sign: dict[int, int] = {}
+    conflicts = 0
+    for start in way_ns:
+        if start in sign:
+            continue
+        sign[start] = 1
+        stack = [start]
+        while stack:
+            u = stack.pop()
+            for v, rel in links.get(u, ()):
+                if v not in sign:
+                    sign[v] = sign[u] * rel
+                    stack.append(v)
+                elif sign[v] != sign[u] * rel:
+                    conflicts += 1
+    stats["orientation_flipped_ways"] = sum(1 for v in sign.values() if v < 0)
+    stats["orientation_conflicts"] = conflicts // 2   # each conflicting pair is seen from both ends; a loop (roundabout) can never agree
+    road_dir: dict[int, tuple[float, float]] = {}
+    for wid, lst_ns in way_ns.items():
+        for i, n in enumerate(lst_ns):
             if n not in road_dir:
-                a = nodes[ns_[i - 1]] if i > 0 else nodes[n]
-                b = nodes[ns_[i + 1]] if i < len(ns_) - 1 else nodes[n]
-                dx, dy = b[0] - a[0], b[1] - a[1]
-                if dx or dy:
-                    road_dir[n] = (dx, dy)
+                d = local_dir(wid, i)
+                if d[0] or d[1]:
+                    road_dir[n] = (d[0] * sign[wid], d[1] * sign[wid])
 
     def side_of(n: int, toward: int) -> int:
         """+1 or -1: which side of the busy road the segment n->toward leaves on. 0: along the road, or direction unknown."""

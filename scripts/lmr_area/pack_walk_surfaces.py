@@ -43,6 +43,9 @@ def strips(doc: dict) -> list[dict]:
         if doc.get("stranded") is not None:   # absent stays absent: "not calculated" is not "calculated, none"
             st = np.asarray(doc["stranded"], dtype=float).reshape(-1, 2)  # noqa: bracket-access -- guarded by the .get() above
             part["stranded"] = st[(st[:, 0] >= core_lo - NODE_MARGIN_M) & (st[:, 0] <= core_hi + NODE_MARGIN_M)] if len(st) else st
+        if doc.get("busy_pts") is not None:   # same rule as the stranded list: trimmed to the strip, absent stays absent
+            bp = np.asarray(doc["busy_pts"], dtype=float).reshape(-1, 2)  # noqa: bracket-access -- guarded by the .get() above
+            part["busy_pts"] = bp[(bp[:, 0] >= core_lo - NODE_MARGIN_M) & (bp[:, 0] <= core_hi + NODE_MARGIN_M)] if len(bp) else bp
         out.append(part)
     return out
 

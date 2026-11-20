@@ -245,3 +245,23 @@ def test_safe_build_lists_points_along_the_busy_road_and_the_ordinary_build_does
     assert max(b2 - a for a, b2 in zip(xs, xs[1:])) <= sc.BUSY_PT_STEP_M + 0.1
     assert sc.build_graph(cross_net(), IDENT, safe=False).busy_pts is None
     assert sc.build_graph(cross_net(road_tags={"highway": "residential"}), IDENT, safe=True).busy_pts == []
+
+
+def split_road_net(second_way_reversed):
+    """One busy road along y=0 drawn as two ways meeting at node 11. The second way is drawn east-to-west when reversed.
+    A footway leaves the road to the NORTH at node 11 (node 21) and at node 12 (node 22); one leaves to the SOUTH at node 12 (node 32)."""
+    els = [node(10, -100, 0), node(11, 0, 0), node(12, 100, 0), node(21, 0, 5), node(22, 100, 5), node(32, 100, -5)]
+    second = [12, 11] if second_way_reversed else [11, 12]
+    return els + [way(1, [10, 11], highway="primary"), way(2, second, highway="primary"),
+                  way(3, [21, 11], highway="footway"), way(4, [22, 12], highway="footway"), way(5, [32, 12], highway="footway")]
+
+
+@pytest.mark.parametrize("reversed_", [False, True])
+def test_a_road_drawn_in_two_ways_has_the_same_north_side_along_its_whole_length(reversed_):
+    """Open risk 2. The north footpaths must stay joined to each other and must NOT join the south footpath, however the second way is drawn.
+    Without one consistent orientation the reversed way's 'left' is the south side and the walk changes sides with no crossing."""
+    b = sc.build_graph(split_road_net(reversed_), IDENT, safe=True)
+    assert walk(b, [21], 22) == pytest.approx(110.0)       # north to north: 5 m connector, 100 m along the road, 5 m connector
+    assert walk(b, [21], 32) == math.inf                    # north to south: only at a formal crossing, and there is none
+    assert b.stats["orientation_conflicts"] == 0
+    assert b.stats["orientation_flipped_ways"] == (1 if reversed_ else 0)
