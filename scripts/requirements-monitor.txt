@@ -6,7 +6,7 @@ beautifulsoup4>=4.12
 lxml>=6.1.1
 pdfplumber>=0.11.10
 pypdf>=6.18.0
-anthropic>=1.5.0
+anthropic>=2.3.0
 # property-alerts dispatcher reuses services/threat_radar.py, a FastAPI router
 # module — importing it needs fastapi even in the cron context (pydantic already
 # arrives transitively via anthropic).
@@ -16,7 +16,7 @@ fastapi>=0.141.1
 # dcp-extract chapter failed with "No module named 'httpx'" (2026-09-25 03:01 UTC).
 openai>=1.0
 httpx>=0.27
-pymupdf>=1.24
+pymupdf>=2.0
 # The citation proof reads control labels printed as pictures (Ashfield "PC4.",
 # "DS5.1") with this local OCR engine; without it those labels stay unread.
 rapidocr-onnxruntime>=1.3
