@@ -1,0 +1,34 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds a printable page, one thin proxy route and a link, all reading the evidence endpoint merged in #1656. Not Minor: it is a new served page that prints law wording and results. Not Critical: it adds no regulatory number and no query, and every value shown is copied from the endpoint.",
+ "commit_hash": "e3e8fefe",
+ "files": ["frontend-nextjs/app/api/housing-sepp/evidence/route.ts", "frontend-nextjs/app/reports/evidence-statement/page.tsx", "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx", "frontend-nextjs/lib/evidence-statement.ts", "frontend-nextjs/components/compliance/StateLevelControls.tsx", "frontend-nextjs/__tests__/api/evidence-proxy.test.ts", "frontend-nextjs/__tests__/lib/evidence-statement.test.ts", "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"],
+ "pre_impl": {
+  "existing_data": "GET /pipeline/housing-sepp/evidence (#1656) returns 13 exclusion rows, the walk range, 6 council controls and 4 council files for 2 Hand Avenue Penrith.",
+  "assumption_mismatch": "The main checkout's node_modules lacks jest, so tests were run from a fresh npm ci in this worktree.",
+  "new_vs_existing": "AreaCheckCard already shows the area check inside Site Facts; no page prints the law wording, council controls and files held. The proxy is copied from the area-check proxy (same no-store and error pass-through).",
+  "external_source_error": "If the Python service or the evidence data fails, the proxy returns 502 and the page shows an error line, never an empty statement."
+ },
+ "falsifiable_check": {
+  "command": "cd frontend-nextjs && node node_modules/jest/bin/jest.js __tests__/api/evidence-proxy.test.ts __tests__/lib/evidence-statement.test.ts __tests__/components/evidence-statement-page.test.tsx",
+  "fails_when": "A partial payload renders as an empty statement, an unreadable source renders as empty, a bad coordinate calls the service, or the proxy lets Next cache the answer.",
+  "observed_red": "Not run red first; the checks were written with the code and cover the break-it list below.",
+  "observed_green": "10 tests pass across 3 files, and the existing components/compliance tests still pass."
+ },
+ "functions": [
+  {"name": "isEvidence", "file_line": "frontend-nextjs/lib/evidence-statement.ts", "input": "the JSON the proxy returned", "output": "true only when every part the page reads is present with a known status", "if_none": "null or a partial payload gives false and the page shows an error line"},
+  {"name": "evidenceUrl", "file_line": "frontend-nextjs/lib/evidence-statement.ts", "input": "lat and lng text from the address bar", "output": "the proxy address, or null", "if_none": "a missing or non-numeric coordinate gives null and nothing is fetched"},
+  {"name": "GET", "file_line": "frontend-nextjs/app/api/housing-sepp/evidence/route.ts", "input": "lat and lng query values", "output": "the Python evidence answer unchanged", "if_none": "non-numeric input gives 400; a service failure gives 502"}
+ ],
+ "values": [
+  {"value": "every result, clause, page and council wording on the page", "read_at": "the evidence endpoint JSON, shown unchanged", "if_missing": "shown as not given or not recorded, never filled in"}
+ ],
+ "queries": [],
+ "break_it": [
+  {"scenario": "The Python service returns a partial or error body.", "what_happens": "The page would print an empty statement that reads like nothing was found.", "mitigated": true, "how": "isEvidence rejects it and the page shows an alert line; the proxy turns a service error into 502.", "repro": "node node_modules/jest/bin/jest.js __tests__/components/evidence-statement-page.test.tsx"},
+  {"scenario": "The council file ledger or controls database did not answer.", "what_happens": "The section would read as no files or no controls.", "mitigated": true, "how": "Each source carries its own status; unreadable prints the reason, none prints that none are held.", "repro": "node node_modules/jest/bin/jest.js __tests__/components/evidence-statement-page.test.tsx"},
+  {"scenario": "The address bar has no coordinates or a non-number.", "what_happens": "The service would be called with a bad point.", "mitigated": true, "how": "evidenceUrl returns null, the page asks for coordinates and calls nothing; the proxy also returns 400.", "repro": "node node_modules/jest/bin/jest.js __tests__/lib/evidence-statement.test.ts __tests__/api/evidence-proxy.test.ts"},
+  {"scenario": "Next caches the evidence answer.", "what_happens": "An old law text would keep printing after the law file changes.", "mitigated": true, "how": "The proxy fetches with cache no-store and the route is force-dynamic.", "repro": "node node_modules/jest/bin/jest.js __tests__/api/evidence-proxy.test.ts"}
+ ],
+ "post_merge": {"db_reset": "No", "secrets": "No", "other_repo": "No", "manual_verify": "Open /reports/evidence-statement?lat=-33.758709788282516&lng=150.70039310488076 on the deployed app and check 13 exclusion rows and the print preview."}
+}
