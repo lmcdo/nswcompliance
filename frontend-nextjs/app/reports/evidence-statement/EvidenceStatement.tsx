@@ -79,6 +79,26 @@ export default function EvidenceStatement() {
           <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.
         </p>
       ) : null}
+      {(w.crossings_only_note || w.crossings_only_walk_m != null) && data.road_rules ? (
+        <section className="mt-2">
+          <h3 className="font-semibold">NSW road rules for pedestrians at lights and near crossings</h3>
+          {data.road_rules.status === 'ok' && data.road_rules.rules ? (
+            <>
+              <p className="text-gray-600">
+                The exact wording of the {data.road_rules.instrument ?? 'NSW Road Rules'}, copied from AustLII on {data.road_rules.copied_on ?? 'a date not recorded'}. Shown for reference. This tool does not decide whether a walk is lawful.
+              </p>
+              {data.road_rules.rules.map((rr) => (
+                <figure key={rr.clause} className="mt-2">
+                  <blockquote className="whitespace-pre-wrap border-l-2 pl-2">{rr.quote}</blockquote>
+                  <figcaption className="text-gray-600">{rr.clause}{rr.heading ? `, ${rr.heading}` : ''}. Source: {rr.source_url}</figcaption>
+                </figure>
+              ))}
+            </>
+          ) : (
+            <p>The road rules wording could not be shown: {data.road_rules.reason ?? 'no reason given'}.</p>
+          )}
+        </section>
+      ) : null}
 
       <h2 className="mt-6 text-lg font-semibold">Section 164 exclusions (law version dated {data.law_version_date ?? 'not given'})</h2>
       <table className="w-full border-collapse">

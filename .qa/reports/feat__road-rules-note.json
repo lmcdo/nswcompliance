@@ -1,0 +1,142 @@
+{
+  "tier": "Standard",
+  "justification": "Adds the exact wording of NSW Road Rules 2014 regs 231, 232 and 234 (pasted by the user from AustLII on 2026-11-20) as saved law data, and shows four quotes (231(2), 232(2), 234(1), 234(4)) on the evidence page beside the crossings-only walk line, with the clause, the source address and 'shown for reference; this tool does not decide whether a walk is lawful'. Nothing is paraphrased: each quote is cut word for word from the saved text, and the evidence data refuses to serve a quote that is not found word for word in that text, or a text whose fingerprint changed (status unreadable). Also copies the two data files into the Python image (Dockerfile.python) so production can read them. No query, no schema.",
+  "commit_hash": "cb53696a",
+  "files": [
+    "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt",
+    "data/law/road_rules_2014_pedestrian_facts.json",
+    "services/evidence_statement.py",
+    "Dockerfile.python",
+    "frontend-nextjs/lib/evidence-statement.ts",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "tests/test_evidence_statement.py",
+    "tests/test_lmr_data_files.py",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_evidence_statement.py tests/test_lmr_data_files.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
+    "observed_red": "Three hand mutations each turned tests red and were restored: changing one word of a stored quote (3 Python tests fail), deleting the Docker COPY line for the road-rules file (test_the_python_image_copies_every_file_the_area_check_reads fails), and showing the road rules without a crossings-only line (1 Jest test fails). Restored: Python 53 passed, Jest 15 passed, tsc 0 errors. After the cross-review, three more hand mutations each turned a test red and were restored: checking a quote against the whole text instead of its own regulation (2 Python tests fail), removing both protections against wrong-kind JSON (1 Python test fails; with only one removed nothing fails because the other still catches it), and letting the page accept any quote (1 Jest test fails). Restored: Python 56 passed, Jest 16 passed, tsc 0 errors. Third cross-review round: checking the whole regulation instead of the named subrule turns test_a_quote_filed_under_the_wrong_subrule_of_the_right_regulation_is_unreadable red; removing the source address check turns test_a_source_address_for_another_regulation_is_unreadable red; removing the display-field check on the page turns the not-text Jest test red. All restored: Python 59 passed, Jest 17 passed, tsc 0 errors.",
+    "fails_when": "A stored quote differs from the saved text, the saved text no longer matches its fingerprint, the image stops copying the files, or the page shows the rules without a crossings-only line.",
+    "expected": "Python 59 passed, Jest 17 passed, tsc 0 errors."
+  },
+  "pre_impl": {
+    "existing_data": "data/law holds the Housing SEPP facts and text with a text_file + text_sha256 + clause + quote pattern (extract_lmr_law_facts.text_sha256 ignores line-ending differences). This follows it; the fingerprint is checked against that same function.",
+    "assumption_mismatch": "AustLII and legislation.nsw.gov.au return HTTP 403 to automated downloads, so the text could not be fetched by a script. The user copied it from a browser and pasted it; the saved header says so and that the page gives no consolidation date.",
+    "new_vs_existing": "New: two data files, one loader (road_rules) and one optional key (road_rules) on the evidence data. Existing evidence parts are untouched.",
+    "external_source_error": "None at run time: no network call. A missing, altered or fingerprint-mismatched file gives status 'unreadable' with a reason, never a crash and never a changed quote.",
+    "frontend_type": "road_rules is optional on the page (Vercel and Railway deploy separately) and a wrong shape fails visibly in isEvidence.",
+    "user_failure_mode": "A planner never sees a paraphrase presented as the rule. If the wording cannot be verified the page says it could not be shown."
+  },
+  "functions": [
+    {
+      "name": "road_rules",
+      "file_line": "services/evidence_statement.py:160",
+      "input": "path of the facts file and the repo root (both defaulted)",
+      "output": "status ok with the quotes, clause, heading and source address, or status unreadable with a reason",
+      "if_none": "A missing file, bad JSON, JSON of the wrong kind, wrong fingerprint, missing field, a clause not in the form 'reg 234(1)', a quote not found word for word inside its own subrule, or a source address that is not the page for that regulation all give status unreadable; it never raises and never returns a quote it could not verify."
+    },
+    {
+      "name": "EvidenceStatement",
+      "file_line": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx:9",
+      "input": "lat and lng from the address bar",
+      "output": "the printable evidence page with the road rules shown only beside a crossings-only line",
+      "if_none": "No road_rules key (an older server) shows nothing; status unreadable shows a plain sentence."
+    }
+  ],
+  "values": [
+    {
+      "value": "quote, clause and source_url of each road rule",
+      "read_at": "services/evidence_statement.py:160",
+      "nullable": "no",
+      "guard_at": "services/evidence_statement.py:160 (type check, fingerprint, word-for-word check inside the named subrule, source address check)",
+      "if_missing": "status unreadable; the page says the wording could not be shown."
+    },
+    {
+      "value": "road_rules on the evidence payload",
+      "read_at": "frontend-nextjs/lib/evidence-statement.ts (isEvidence)",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/evidence-statement.ts isEvidence",
+      "if_missing": "Left out; an older server answer still renders."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Someone edits a stored quote (for example 'must not cross' to 'may cross').",
+      "what_happens": "road_rules() returns unreadable naming the clause; the page says the wording could not be shown.",
+      "mitigated": "Mitigated: every quote must be found word for word in the saved text before it is served, and tests check the committed file.",
+      "how": "The word-for-word check in road_rules() and the committed-file test.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k altered_quote"
+    },
+    {
+      "scenario": "The saved text file is edited or replaced.",
+      "what_happens": "Its fingerprint no longer matches and road_rules() returns unreadable.",
+      "mitigated": "Mitigated: sha256 over the line-ending-normalised text, the same function the Housing SEPP facts use.",
+      "how": "test_changed_saved_text_no_longer_matches_its_fingerprint.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k fingerprint"
+    },
+    {
+      "scenario": "The Python image does not copy the two data files.",
+      "what_happens": "Production would report the road rules as unreadable.",
+      "mitigated": "Mitigated: Dockerfile.python copies both and a test requires the COPY lines.",
+      "how": "test_the_python_image_copies_every_file_the_area_check_reads.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -q -o addopts= -k image_copies"
+    },
+    {
+      "scenario": "The lot has no crossings-only line.",
+      "what_happens": "The road rules are not shown; they are only shown beside that line.",
+      "mitigated": "Mitigated: the page shows them only when a crossings-only note or distance is present.",
+      "how": "The condition in the page and its Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t crossings-only"
+    },
+    {
+      "scenario": "A facts record holds the reg 232 wording but is labelled reg 231(2), with the saved text and its fingerprint unchanged.",
+      "what_happens": "road_rules() returns unreadable: the quote is checked against the section for the regulation its clause names.",
+      "mitigated": "Mitigated: the saved text is split per regulation and each quote must be in its own regulation's section.",
+      "how": "test_a_quote_filed_under_the_wrong_regulation_is_unreadable.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k wrong_regulation"
+    },
+    {
+      "scenario": "The facts file is valid JSON of the wrong kind, such as [] or {\"facts\": [1]}.",
+      "what_happens": "road_rules() returns unreadable instead of raising, so the evidence endpoint does not return a server error.",
+      "mitigated": "Mitigated: the file shape is checked and AttributeError is caught.",
+      "how": "test_valid_json_of_the_wrong_kind_is_unreadable_not_a_server_error.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k wrong_kind"
+    },
+    {
+      "scenario": "The data sends a road rule with a null or blank quote.",
+      "what_happens": "isEvidence rejects it and the page shows the error line, not an empty legal quotation under a real-looking citation.",
+      "mitigated": "Mitigated: clause, quote and source_url must be non-empty text.",
+      "how": "The null-or-blank-quote Jest test fails when the check is removed.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t blank"
+    },
+    {
+      "scenario": "The reg 234(4) definition is labelled reg 234(1) (same regulation, wrong subrule).",
+      "what_happens": "road_rules() returns unreadable: the quote must be inside the subrule its clause names.",
+      "mitigated": "Mitigated: each regulation is split into numbered subrules and the quote is checked against the one named.",
+      "how": "test_a_quote_filed_under_the_wrong_subrule_of_the_right_regulation_is_unreadable.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k wrong_subrule"
+    },
+    {
+      "scenario": "The reg 232 page address is cited for reg 231(2).",
+      "what_happens": "road_rules() returns unreadable: the address must end in /s<regulation number>.html.",
+      "mitigated": "Mitigated: the source address is checked against the regulation named in the clause.",
+      "how": "test_a_source_address_for_another_regulation_is_unreadable.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k source_address"
+    },
+    {
+      "scenario": "The data sends an object where the page prints text (copied_on, instrument, heading or reason).",
+      "what_happens": "isEvidence rejects it and the page shows the error line instead of crashing while rendering.",
+      "mitigated": "Mitigated: those fields must be text, null or absent.",
+      "how": "The not-text Jest test fails when the check is removed.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t 'not text'"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After both the Python API and the front end deploy, open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 (28 Selwyn Street, Pymble): under the crossings-only line the four quotes, clauses and AustLII addresses should show. Also curl the evidence API and check road_rules.status is 'ok' (not 'unreadable', which would mean the image lacks the files)."
+  },
+  "residual_risk": "The saved text is the user's browser copy of three AustLII pages (copied 2026-11-20); AustLII and legislation.nsw.gov.au return HTTP 403 to automated downloads, so nothing can check the copy against the official source by machine. The page says it was copied from AustLII on that date. Re-check against the source when the sites allow it. The pages give no consolidation date."
+}

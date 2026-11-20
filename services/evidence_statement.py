@@ -11,6 +11,10 @@ row for every paragraph, which the printed page needs.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import re
+from pathlib import Path
 from typing import Any, Optional
 
 from services import lmr_area_decision as dec
@@ -149,12 +153,59 @@ def manual_checks(rows: list[dict]) -> list[dict]:
             for r in rows if r.get("result") not in _NO_HAND_CHECK]
 
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+ROAD_RULES_PATH = REPO_ROOT / "data" / "law" / "road_rules_2014_pedestrian_facts.json"
+
+
+def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> dict:
+    """The NSW Road Rules 2014 wording shown beside the crossings-only walk, word for word from the saved text.
+
+    Nothing is paraphrased here. The quotes are cut from data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt; this refuses
+    to serve any quote that is not found word for word in that file, or a file whose fingerprint has changed, and says
+    'unreadable' instead of showing something that may differ from the law. A quote must also sit inside the subrule its clause names
+    (for example 'reg 234(4)'), and its source address must be the page for that regulation, so wording or a citation for another
+    regulation or subrule cannot be shown under the wrong clause."""
+    try:
+        doc = json.loads(Path(facts_path).read_text(encoding="utf-8"))
+        stored = doc.get("facts") if isinstance(doc, dict) else None
+        if not isinstance(doc, dict) or not isinstance(stored, dict):
+            return {"status": "unreadable", "reason": "the road-rules file is not in the expected form"}
+        text = (Path(repo) / str(doc.get("text_file"))).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+        if hashlib.sha256(text.encode("utf-8")).hexdigest() != doc.get("text_sha256"):
+            return {"status": "unreadable", "reason": "the saved road-rules text does not match its fingerprint"}
+        # The saved text is one section per regulation, each opened by a '==== REG nnn ====' line.
+        sections = dict(re.findall(r"==== REG (\d+) ====\n(.*?)(?=\n==== REG |\Z)", text, re.S))
+        rules = []
+        for key, f in stored.items():
+            if not isinstance(f, dict):
+                return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
+            quote, clause, url = f.get("quote"), f.get("clause"), f.get("source_url")
+            if not (isinstance(quote, str) and quote and isinstance(clause, str) and isinstance(url, str)):
+                return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
+            reg = re.fullmatch(r"reg (\d+)\((\d+[A-Z]?)\)", clause)
+            if not reg:
+                return {"status": "unreadable", "reason": f"the clause '{clause}' is not in the form 'reg 234(1)'"}
+            # Subrules are the lines that open with a number in brackets, such as (1) or (3A); sub-paragraphs (a), (b) belong to the subrule above them.
+            subrules = {m.group(1): m.group(0) for m in re.finditer(r"^\((\d+[A-Z]?)\) .*?(?=^\(\d+[A-Z]?\) |\Z)", sections.get(reg.group(1), ""), re.M | re.S)}
+            if quote not in subrules.get(reg.group(2), ""):
+                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in that subrule of the saved text"}
+            if not url.endswith(f"/s{reg.group(1)}.html"):
+                return {"status": "unreadable", "reason": f"the source address for {clause} is not the page for regulation {reg.group(1)}"}
+            rules.append({"clause": clause, "heading": f.get("heading"), "quote": quote, "source_url": url})
+        if not rules:
+            return {"status": "unreadable", "reason": "no road rules are stored"}
+        return {"status": "ok", "instrument": doc.get("instrument"), "copied_on": doc.get("copied_on"), "note": doc.get("note"), "rules": rules}
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        return {"status": "unreadable", "reason": f"the road-rules file could not be read: {exc}"}
+
+
 def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts] = None) -> dict:
     """The evidence structure. `controls` and `files` are read by the caller; each carries its own 'status' so an unreadable
     source is shown as unreadable, never as empty."""
     facts = facts or dec.LawFacts.load()
     rows = exclusions(area, facts)
     return {
+        "road_rules": road_rules(),
         "law_version_date": area.get("law_version_date") or facts.version_date,
         "headline": area.get("headline"),
         "pathway": area.get("pathway"),
