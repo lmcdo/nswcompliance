@@ -48,8 +48,11 @@ export function isEvidence(x: unknown): x is Evidence {
   const src = (s: unknown) => !!s && typeof s === 'object' && ['ok', 'none', 'unreadable'].includes((s as { status?: string }).status ?? '');
   const rows = (a: unknown, keys: string[]) => Array.isArray(a) && a.every((e) => !!e && typeof e === 'object' && keys.every((k) => k in (e as object)));
   // New optional parts may be absent (an older server), but one that is present in the wrong shape is a failure, never a silently missing section.
+  // A legal quotation must be real text with its clause and source: a null or empty quote would print an empty quotation under a valid-looking citation.
+  const text = (v: unknown) => typeof v === 'string' && v.trim() !== '';
+  const roadRuleOk = (e: unknown) => !!e && typeof e === 'object' && text((e as { clause?: unknown }).clause) && text((e as { quote?: unknown }).quote) && text((e as { source_url?: unknown }).source_url);
   const roadRulesOk = r?.road_rules === undefined || (!!r.road_rules && typeof r.road_rules === 'object'
-    && (r.road_rules.status === 'unreadable' || (r.road_rules.status === 'ok' && rows(r.road_rules.rules, ['clause', 'quote', 'source_url']) && (r.road_rules.rules?.length ?? 0) > 0)));
+    && (r.road_rules.status === 'unreadable' || (r.road_rules.status === 'ok' && Array.isArray(r.road_rules.rules) && r.road_rules.rules.length > 0 && r.road_rules.rules.every(roadRuleOk))));
   const optionalParts = roadRulesOk && (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
     && (r?.summary === undefined || (!!r.summary && typeof r.summary === 'object' && typeof (r.summary as { line?: unknown }).line === 'string'));
   return !!r && typeof r === 'object' && optionalParts && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])

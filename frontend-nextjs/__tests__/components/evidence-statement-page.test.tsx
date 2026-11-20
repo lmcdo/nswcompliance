@@ -168,6 +168,17 @@ describe('evidence statement page', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   });
 
+  it('shows an error, not an empty legal quotation, when a road rule has a null or blank quote', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    for (const quote of [null, '', '   ']) {
+      mockFetch(payload({ road_rules: { ...ROAD_RULES, rules: [{ ...ROAD_RULES.rules[0], quote }] }, walk: { ...base.walk, ...WITH_CROSSINGS } }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

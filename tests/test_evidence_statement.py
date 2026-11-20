@@ -289,3 +289,29 @@ def test_missing_or_broken_road_rules_file_is_unreadable_not_a_crash(tmp_path):
 def test_build_carries_the_road_rules():
     out = es.build(d.decide(_lot(), FACTS), {"status": "none"}, {"status": "none"}, FACTS)
     assert out["road_rules"]["status"] == "ok" and len(out["road_rules"]["rules"]) == 4
+
+
+def test_a_quote_filed_under_the_wrong_regulation_is_unreadable(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_231_2"]["quote"] = doc["facts"]["reg_232_2"]["quote"]     # the reg 232 words, labelled reg 231(2); the text and its fingerprint are unchanged
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    out = es.road_rules(p)
+    assert out["status"] == "unreadable" and "reg 231(2)" in out["reason"]
+
+
+def test_a_clause_that_names_no_regulation_is_unreadable(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_231_2"]["clause"] = "subrule (2)"
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    assert es.road_rules(p)["status"] == "unreadable"
+
+
+def test_valid_json_of_the_wrong_kind_is_unreadable_not_a_server_error(tmp_path):
+    for body in ("[]", '{"facts": [1]}', '{"facts": {"a": 1}}', '"text"', "null", '{"facts": {"a": {"quote": 5}}}'):
+        p = tmp_path / "facts.json"
+        p.write_text(body, encoding="utf-8")
+        assert es.road_rules(p)["status"] == "unreadable", body

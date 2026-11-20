@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -161,24 +162,33 @@ def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> di
 
     Nothing is paraphrased here. The quotes are cut from data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt; this refuses
     to serve any quote that is not found word for word in that file, or a file whose fingerprint has changed, and says
-    'unreadable' instead of showing something that may differ from the law."""
+    'unreadable' instead of showing something that may differ from the law. A quote must also sit inside the section of the saved
+    text for the regulation its clause names, so wording from regulation 232 cannot be shown under regulation 231."""
     try:
         doc = json.loads(Path(facts_path).read_text(encoding="utf-8"))
+        stored = doc.get("facts") if isinstance(doc, dict) else None
+        if not isinstance(doc, dict) or not isinstance(stored, dict):
+            return {"status": "unreadable", "reason": "the road-rules file is not in the expected form"}
         text = (Path(repo) / str(doc.get("text_file"))).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
         if hashlib.sha256(text.encode("utf-8")).hexdigest() != doc.get("text_sha256"):
             return {"status": "unreadable", "reason": "the saved road-rules text does not match its fingerprint"}
+        # The saved text is one section per regulation, each opened by a '==== REG nnn ====' line.
+        sections = {part.split(" ====", 1)[0].strip(): part for part in text.split("==== REG ")[1:]}
         rules = []
-        for key, f in (doc.get("facts") or {}).items():
+        for key, f in stored.items():
+            if not isinstance(f, dict):
+                return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
             quote, clause, url = f.get("quote"), f.get("clause"), f.get("source_url")
             if not (isinstance(quote, str) and quote and isinstance(clause, str) and isinstance(url, str)):
                 return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
-            if quote not in text:
-                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in the saved text"}
+            reg = re.match(r"reg (\d+)", clause)
+            if not reg or quote not in sections.get(reg.group(1), ""):
+                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in that regulation of the saved text"}
             rules.append({"clause": clause, "heading": f.get("heading"), "quote": quote, "source_url": url})
         if not rules:
             return {"status": "unreadable", "reason": "no road rules are stored"}
         return {"status": "ok", "instrument": doc.get("instrument"), "copied_on": doc.get("copied_on"), "note": doc.get("note"), "rules": rules}
-    except (OSError, ValueError, TypeError) as exc:
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
         return {"status": "unreadable", "reason": f"the road-rules file could not be read: {exc}"}
 
 
