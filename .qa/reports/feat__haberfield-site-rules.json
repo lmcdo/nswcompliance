@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: data lists only, no code. Withholds 131 council rules that the councils' own words limit to a small area with no outline in our data: Ashfield E2 section 2.3 (14 rows, 140A Hawthorne Parade), City of Sydney Schedule 6 (103 rows, The Rocks), Woollahra E1 Table 3 (9 rows, listed centres) and E1.8.5 (5 rows, Double Bay Centre). Listed as may-apply by suburb. Applied live with owner approval and row-level backups; the same pattern as #1655.",
-  "commit_hash": "4f6b123c",
+  "commit_hash": "c67c596b",
   "files": [
     "data/chapter_scope/never_serve.json",
     "data/chapter_scope/not_covered_2026-10-15.json",
