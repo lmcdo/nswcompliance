@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Evidence page (planner-facing) now shows what the engine already computes: the crossings-only second walk line and its next-to-a-busy-road note, why the walk is a range (the margins), a count line over the 13 exclusion rows, a 'to check by hand' list built from the rows the tool did not clear, notes moved above the walk, a scope sentence under the council controls, the law date on the exclusions heading, and a footer saying the page is not a planning certificate and the planner or council decides. No query, no schema, no new regulatory figure: pure reshaping in services/evidence_statement.py plus page text. Every new field is optional on the page so an older server answer still renders.",
-  "commit_hash": "836c1d0a",
+  "commit_hash": "fc033e16",
   "files": [
     "services/evidence_statement.py",
     "frontend-nextjs/lib/evidence-statement.ts",
