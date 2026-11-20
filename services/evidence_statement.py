@@ -173,7 +173,7 @@ def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> di
         if hashlib.sha256(text.encode("utf-8")).hexdigest() != doc.get("text_sha256"):
             return {"status": "unreadable", "reason": "the saved road-rules text does not match its fingerprint"}
         # The saved text is one section per regulation, each opened by a '==== REG nnn ====' line.
-        sections = {part.partition(" ====")[0].strip(): part for part in text.split("==== REG ")[1:]}
+        sections = dict(re.findall(r"==== REG (\d+) ====\n(.*?)(?=\n==== REG |\Z)", text, re.S))
         rules = []
         for key, f in stored.items():
             if not isinstance(f, dict):
