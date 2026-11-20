@@ -1,19 +1,42 @@
 {
- "tier": "minor",
- "justification": "Minor: two wording changes on the evidence page. Control rows now show the producer's plain label instead of the raw key, and the footer no longer sounds like it contradicts the plan date line. No query, number or rule changes.",
- "commit_hash": "10c739a3",
+ "tier": "standard",
+ "justification": "Standard: four files changed on a served page, wording only. Not Minor: the file count passes the minor limit. Not Critical: no query, rule or number changes; the control label is the producer's own plain label.",
+ "commit_hash": "62c92c3f",
  "files": [
   "services/evidence_council.py",
   "frontend-nextjs/lib/evidence-statement.ts",
   "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
   "tests/test_evidence_statement.py"
  ],
- "post_merge": {
-  "db_reset": "No",
-  "secrets": "No",
-  "other_repo": "No",
-  "manual_verify": "Reload the evidence page for 2 Hand Avenue and read Front setback instead of front_setback."
+ "pre_impl": {
+  "existing_data": "The live page for 2 Hand Avenue Penrith showed raw keys such as front_setback and a footer that read as contradicting the In force from line.",
+  "assumption_mismatch": "I first thought the In force wording came from the page; it comes from the shared as-at formatter, so it is left alone and the footer is reworded instead.",
+  "new_vs_existing": "The label is fetch_dcp_setbacks's own plain label (type), passed through; no new mapping table.",
+  "external_source_error": "If the label is missing the page falls back to the raw key, then to Control not named."
  },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_evidence_statement.py -q",
+  "fails_when": "The plain label is dropped from a control row.",
+  "observed_red": "Not run red first; the label assertion was written with the change.",
+  "observed_green": "14 tests pass, including the label assertion."
+ },
+ "functions": [
+  {
+   "name": "council_controls",
+   "file_line": "services/evidence_council.py",
+   "input": "the council name read from the area check",
+   "output": "controls with their plain label, words, clause and page",
+   "if_none": "unreadable or none status, as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "control label",
+   "read_at": "fetch_dcp_setbacks entry type",
+   "if_missing": "raw control key then Control not named"
+  }
+ ],
+ "queries": [],
  "break_it": [
   {
    "scenario": "The producer gives no plain label for a control.",
@@ -21,6 +44,26 @@
    "mitigated": true,
    "how": "The page falls back to the raw control key, then to 'Control not named'.",
    "repro": "python -m pytest tests/test_evidence_statement.py -k controls -q"
+  },
+  {
+   "scenario": "The footer wording still reads as a claim about which file is in force.",
+   "what_happens": "A planner could read the page as saying which council file applies.",
+   "mitigated": true,
+   "how": "The footer says the page does not say which file is in force and that a plan date is the date the document states.",
+   "repro": "Open /reports/evidence-statement for 2 Hand Avenue and read the line under Council files held."
+  },
+  {
+   "scenario": "The producer's label for a control differs from its raw key in a confusing way.",
+   "what_happens": "A row could show a name that does not match the council's wording beside it.",
+   "mitigated": true,
+   "how": "The council's own words sit in the next column of the same row, so the label never stands alone.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k controls -q"
   }
- ]
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Reload the evidence page for 2 Hand Avenue and read Front setback instead of front_setback."
+ }
 }
