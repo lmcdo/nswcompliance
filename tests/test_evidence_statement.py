@@ -227,3 +227,65 @@ def test_control_without_checks_says_none():
     data = {"setbacks": [_entry(control_id=7)]}
     out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: [])
     assert out["controls"][0]["version_checks"] == {"status": "none", "versions": []}
+
+
+# --- road rules shown beside the crossings-only walk: word for word from the saved text, or unreadable ---
+
+def _road_rules_doc():
+    import json
+    return json.loads(es.ROAD_RULES_PATH.read_text(encoding="utf-8"))
+
+
+def test_road_rule_fingerprint_matches_the_repo_fingerprint_function_and_every_quote_is_word_for_word():
+    import sys
+    sys.path.insert(0, str(es.REPO_ROOT / "scripts"))
+    import extract_lmr_law_facts as law
+    doc = _road_rules_doc()
+    text = (es.REPO_ROOT / doc["text_file"]).read_text(encoding="utf-8")
+    assert doc["text_sha256"] == law.text_sha256(text)
+    assert doc["text_sha256"] == law.text_sha256(text.replace("\n", "\r\n"))     # a Windows checkout does not change it
+    for key, f in doc["facts"].items():
+        assert f["quote"] in law.normalise(text), key
+        assert f["source_url"].startswith("https://www5.austlii.edu.au/au/legis/nsw/consol_reg/rr2014104/s"), key
+
+
+def test_road_rules_load_with_clause_heading_quote_and_source():
+    out = es.road_rules()
+    assert out["status"] == "ok" and [r["clause"] for r in out["rules"]] == ["reg 231(2)", "reg 232(2)", "reg 234(1)", "reg 234(4)"]
+    r234 = {r["clause"]: r for r in out["rules"]}["reg 234(1)"]
+    assert r234["quote"].startswith("(1) A pedestrian must not cross a road") and "\n(e) " in r234["quote"]   # the whole subrule, with its exceptions
+    assert all(r["heading"] and r["source_url"] for r in out["rules"])
+
+
+def test_an_altered_quote_is_unreadable_never_shown(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_234_1"]["quote"] = doc["facts"]["reg_234_1"]["quote"].replace("must not cross", "may cross")
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    out = es.road_rules(p)
+    assert out["status"] == "unreadable" and "reg 234(1)" in out["reason"] and "rules" not in out
+
+
+def test_changed_saved_text_no_longer_matches_its_fingerprint(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    text = (es.REPO_ROOT / doc["text_file"]).read_text(encoding="utf-8").replace("must not start to cross", "may start to cross")
+    (tmp_path / "t.txt").write_text(text, encoding="utf-8")
+    doc["text_file"] = "t.txt"
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    out = es.road_rules(p, repo=tmp_path)
+    assert out["status"] == "unreadable" and "fingerprint" in out["reason"]
+
+
+def test_missing_or_broken_road_rules_file_is_unreadable_not_a_crash(tmp_path):
+    assert es.road_rules(tmp_path / "nope.json")["status"] == "unreadable"
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    assert es.road_rules(bad)["status"] == "unreadable"
+
+
+def test_build_carries_the_road_rules():
+    out = es.build(d.decide(_lot(), FACTS), {"status": "none"}, {"status": "none"}, FACTS)
+    assert out["road_rules"]["status"] == "ok" and len(out["road_rules"]["rules"]) == 4

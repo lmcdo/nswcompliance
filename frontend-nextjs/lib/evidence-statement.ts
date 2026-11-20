@@ -17,10 +17,14 @@ export interface EvidenceFile {
 export interface ManualCheck {
   clause: string | null; page: number | null; law_words: string | null; result_words: string | null; detail: string | null; not_seen?: string | null;
 }
+/** NSW Road Rules wording, word for word from the saved text (services/evidence_statement.py road_rules()). */
+export interface RoadRule { clause: string; heading: string | null; quote: string; source_url: string }
+export interface RoadRules { status: 'ok' | 'unreadable'; reason?: string; instrument?: string | null; copied_on?: string | null; note?: string | null; rules?: RoadRule[] }
 export interface Evidence {
   law_version_date: string | null; headline: string | null; lga: string | null; notes: string[];
   exclusions: EvidenceExclusion[];
   // Optional: the page (Vercel) and the data (Railway) deploy separately, so an older response without these must still render.
+  road_rules?: RoadRules;
   summary?: { total: number; counts: Record<string, number>; line: string };
   manual_checks?: ManualCheck[];
   walk: {
@@ -44,7 +48,9 @@ export function isEvidence(x: unknown): x is Evidence {
   const src = (s: unknown) => !!s && typeof s === 'object' && ['ok', 'none', 'unreadable'].includes((s as { status?: string }).status ?? '');
   const rows = (a: unknown, keys: string[]) => Array.isArray(a) && a.every((e) => !!e && typeof e === 'object' && keys.every((k) => k in (e as object)));
   // New optional parts may be absent (an older server), but one that is present in the wrong shape is a failure, never a silently missing section.
-  const optionalParts = (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
+  const roadRulesOk = r?.road_rules === undefined || (!!r.road_rules && typeof r.road_rules === 'object'
+    && (r.road_rules.status === 'unreadable' || (r.road_rules.status === 'ok' && rows(r.road_rules.rules, ['clause', 'quote', 'source_url']) && (r.road_rules.rules?.length ?? 0) > 0)));
+  const optionalParts = roadRulesOk && (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
     && (r?.summary === undefined || (!!r.summary && typeof r.summary === 'object' && typeof (r.summary as { line?: unknown }).line === 'string'));
   return !!r && typeof r === 'object' && optionalParts && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
     && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'

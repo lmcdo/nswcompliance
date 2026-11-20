@@ -122,6 +122,52 @@ describe('evidence statement page', () => {
     expect(screen.queryByText(/earliest file we hold/)).toBeNull();
   });
 
+  const ROAD_RULES = {
+    status: 'ok', instrument: 'Road Rules 2014 (NSW), regulations 231, 232 and 234', copied_on: '2026-11-20',
+    rules: [
+      { clause: 'reg 234(1)', heading: 'Crossing a road on or near a crossing for pedestrians', source_url: 'https://www5.austlii.edu.au/au/legis/nsw/consol_reg/rr2014104/s234.html',
+        quote: '(1) A pedestrian must not cross a road, or part of a road, within 20 metres of a crossing on the road, except at the crossing or another crossing, unless the pedestrian is--\n(a) crossing, or helping another pedestrian to cross' },
+      { clause: 'reg 234(4)', heading: 'Crossing a road on or near a crossing for pedestrians', source_url: 'https://www5.austlii.edu.au/au/legis/nsw/consol_reg/rr2014104/s234.html',
+        quote: '"crossing" means a children\'s crossing, marked foot crossing or pedestrian crossing.' },
+    ],
+  };
+  const WITH_CROSSINGS = { crossings_only_walk_m: 861, crossings_only_note: 'Crossing busy roads only at lights, the walk is about 861 m. Check the crossings on the ground.' };
+
+  it('shows the road rules word for word, with clause and source, beside the crossings-only line', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ road_rules: ROAD_RULES, walk: { ...base.walk, ...WITH_CROSSINGS } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/NSW road rules for pedestrians at lights and near crossings/)).toBeTruthy());
+    expect(screen.getByText(/A pedestrian must not cross a road, or part of a road, within 20 metres of a crossing on the road/)).toBeTruthy();
+    expect(screen.getByText(/"crossing" means a children's crossing, marked foot crossing or pedestrian crossing\./)).toBeTruthy();
+    expect(screen.getByText(/reg 234\(1\), Crossing a road on or near a crossing for pedestrians\. Source: https:\/\/www5\.austlii\.edu\.au\/au\/legis\/nsw\/consol_reg\/rr2014104\/s234\.html/)).toBeTruthy();
+    expect(screen.getByText(/This tool does not decide whether a walk is lawful/)).toBeTruthy();
+  });
+
+  it('does not show the road rules when there is no crossings-only line to read them against', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ road_rules: ROAD_RULES }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
+    expect(screen.queryByText(/NSW road rules for pedestrians/)).toBeNull();
+  });
+
+  it('says the road rules could not be shown when the data says unreadable, and never an empty box', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ road_rules: { status: 'unreadable', reason: 'the saved road-rules text does not match its fingerprint' }, walk: { ...base.walk, ...WITH_CROSSINGS } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/The road rules wording could not be shown: the saved road-rules text does not match its fingerprint/)).toBeTruthy());
+  });
+
+  it('shows an error when road_rules arrives in the wrong shape', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ road_rules: { status: 'ok', rules: 'not a list' } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

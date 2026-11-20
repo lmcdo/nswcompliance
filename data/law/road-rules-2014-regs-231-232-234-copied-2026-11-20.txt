@@ -1,0 +1,115 @@
+Road Rules 2014 (NSW), regulations 231, 232 and 234 only
+Source: https://www5.austlii.edu.au/au/legis/nsw/consol_reg/rr2014104/s231.html , .../s232.html , .../s234.html (AustLII, New South Wales Consolidated Regulations). Each page was copied from a browser by the user on 2026-11-20 and pasted as text. The page does not state the consolidation date.
+The text below is as pasted, from each page's heading line to the end of the regulation text. Left out: the AustLII navigation line above the heading and the AustLII footer line below. The word "graphic" is a placeholder for an image on the web page and is kept as pasted.
+Why saved: the crossings-only walk line crosses a busy road only at traffic lights, a zebra or a marked crossing. These are the road rules a planner reads against that line. They are shown for reference; this tool does not decide whether a walk is lawful.
+
+==== REG 231 ====
+ROAD RULES 2014 - REG 231
+Crossing a road at pedestrian lights
+231 Crossing a road at pedestrian lights
+
+(1) A pedestrian approaching or at an intersection, or another place on a road, with pedestrian lights and traffic lights must comply with this rule.
+: Maximum penalty--20 penalty units.
+Note :
+"Intersection" ,
+"pedestrian lights" and
+"traffic lights" are defined in the Dictionary.
+(2) If the pedestrian lights show a red pedestrian light and the pedestrian has not already started crossing the intersection or road, the pedestrian must not start to cross until the pedestrian lights change to green.
+Note 1 :
+"Green pedestrian light" and
+"red pedestrian light" are defined in the Dictionary.
+Note 2 : A traffic control device (including pedestrian lights) generally only applies to a person if the device faces the person--see Part 20, Division 3, especially rule 340.
+(3) If, while the pedestrian is crossing the road, the pedestrian lights change to flashing red or red, the pedestrian must not stay on the road for longer than necessary to cross safely to the nearer (in the direction of travel of the pedestrian) of the following--
+(a) a dividing strip, safety zone, or traffic island, forming part of the area set aside or used by pedestrians to cross the road at the intersection or place (the
+"safety area" ),
+(b) the nearest side of the road.
+Note :
+"Dividing strip" and
+"traffic island" are defined in the Dictionary, and
+"safety zone" is defined in rule 162.
+(4) If, under subrule (3), the pedestrian crosses to the safety area, the pedestrian must remain in the safety area until the pedestrian lights change to green.
+(5) However, if the pedestrian cannot operate the pedestrian lights from the safety area, the pedestrian may cross to the far side of the road when--
+(a) the traffic lights change to green or flashing yellow, or there is no red traffic light showing, and
+(b) it is safe to do so.
+Note :
+"Red traffic light" is defined in the Dictionary.
+(6) In this rule--
+
+"road" does not include a road related area, but includes any shoulder of the road.
+Note :
+"Road related area" is defined in rule 13, and
+"shoulder" is defined in rule 12.
+:
+graphic    graphic
+
+==== REG 232 ====
+ROAD RULES 2014 - REG 232
+Crossing a road at traffic lights
+232 Crossing a road at traffic lights
+
+(1) A pedestrian approaching or at an intersection, or another place on a road, with traffic lights, but without pedestrian lights, must comply with this rule.
+: Maximum penalty--20 penalty units.
+Note :
+"Intersection" ,
+"pedestrian lights" and
+"traffic lights" are defined in the Dictionary.
+(2) If the traffic lights show a red or yellow traffic light and the pedestrian has not already started crossing the intersection or road, the pedestrian must not start to cross until the traffic lights change to green or flashing yellow, or there is no red traffic light showing.
+Note :
+"Green traffic light" ,
+"red traffic light" and
+"yellow traffic light" are defined in the Dictionary.
+(3) If, while the pedestrian is crossing the road, the traffic lights change to yellow or red, the pedestrian must not stay on the road for longer than necessary to cross safely to the nearer (in the direction of travel of the pedestrian) of the following--
+(a) a dividing strip, safety zone, or traffic island, forming part of the area set aside or used by pedestrians to cross the road at the intersection or place (the
+"safety area" ),
+(b) the far side of the road.
+Note :
+"Dividing strip" and
+"traffic island" are defined in the Dictionary, and
+"safety zone" is defined in rule 162.
+(3A) Despite subrule (3), in the circumstances set out in that subrule the pedestrian may instead return to the side of the road, or to the safety area, that he or she has just left, but only if--
+(a) at the time the lights change, that side or safety area is closer to him or her than the side or safety area (whichever is the closer) that he or she was heading for at that time, and
+(b) he or she does not stay on the road for longer than is necessary to return to that side or safety area.
+(4) If, under subrule (3), the pedestrian crosses to the safety area, the pedestrian must remain in the safety area until the traffic lights change to green or flashing yellow, or there is no red traffic light showing.
+(5) In this rule--
+
+"road" does not include a road related area, but includes any shoulder of the road.
+Note :
+"Road related area" is defined in rule 13, and
+"shoulder" is defined in rule 12.
+
+==== REG 234 ====
+ROAD RULES 2014 - REG 234
+Crossing a road on or near a crossing for pedestrians
+234 Crossing a road on or near a crossing for pedestrians
+
+(1) A pedestrian must not cross a road, or part of a road, within 20 metres of a crossing on the road, except at the crossing or another crossing, unless the pedestrian is--
+(a) crossing, or helping another pedestrian to cross, an area of the road between tram tracks and the far left side of the road to get on, or after getting off, a tram or public bus, or
+(b) crossing to or from a safety zone, or
+(c) crossing at an intersection with traffic lights and a pedestrians may cross diagonally sign, or
+(d) crossing in a shared zone, or
+(e) crossing a road, or a part of a road, from which vehicles are excluded, either permanently or temporarily.
+: Maximum penalty--20 penalty units.
+Note :
+"Intersection" ,
+"public bus" ,
+"traffic lights" ,
+"tram" and
+"tram tracks" are defined in the Dictionary,
+"safety zone" is defined in rule 162, and
+"shared zone" is defined in rule 24.
+(2) A pedestrian must not stay on a crossing on a road for longer than necessary to cross the road safely.
+: Maximum penalty--20 penalty units.
+(3) Subrule (2) does not apply to a person who--
+(a) has been authorised to conduct a scheme under the Road Transport (General) Regulation 2021 , Part 2, Division 5 (Child safety), and
+(b) is on the crossing for the purpose of carrying out the scheme.
+Note 1 : Subrule (3) is not uniform with the corresponding subrule in rule 234 of the Australian Road Rules . However, the corresponding subrule in the Australian Road Rules allows another law of this jurisdiction to permit a person who is helping pedestrians cross a road at a crossing to stay on the crossing for longer than is necessary for road safety. Different rules may apply in other Australian jurisdictions.
+Note 2 : The Road Transport (General) Regulation 2021 , Part 2, Division 5 (Child safety) enables Transport for NSW to authorise persons to conduct schemes designed to assist children to cross roads with safety.
+(4) In this rule--
+
+"crossing" means a children's crossing, marked foot crossing or pedestrian crossing.
+Note :
+"Children's crossing" is defined in rule 80,
+"marked foot crossing" is defined in the Dictionary, and
+"pedestrian crossing" is defined in rule 81.
+:
+graphic

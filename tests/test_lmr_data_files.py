@@ -108,7 +108,8 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
     """Dockerfile.python copied only services/. The area check reads data/law and data/lmr_walk at REPO_ROOT (/app in the image), so
     without these COPY lines every deployed lot would come back with a "Why:" reason and no area."""
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
-    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/anef/sydney_anef_2045.json"):
+    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/anef/sydney_anef_2045.json",
+                   "data/law/road_rules_2014_pedestrian_facts.json", "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt"):
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
     assert (REPO / "data" / "anef" / "sydney_anef_2045.json").is_file()

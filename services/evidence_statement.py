@@ -11,6 +11,9 @@ row for every paragraph, which the printed page needs.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 from typing import Any, Optional
 
 from services import lmr_area_decision as dec
@@ -149,12 +152,43 @@ def manual_checks(rows: list[dict]) -> list[dict]:
             for r in rows if r.get("result") not in _NO_HAND_CHECK]
 
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+ROAD_RULES_PATH = REPO_ROOT / "data" / "law" / "road_rules_2014_pedestrian_facts.json"
+
+
+def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> dict:
+    """The NSW Road Rules 2014 wording shown beside the crossings-only walk, word for word from the saved text.
+
+    Nothing is paraphrased here. The quotes are cut from data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt; this refuses
+    to serve any quote that is not found word for word in that file, or a file whose fingerprint has changed, and says
+    'unreadable' instead of showing something that may differ from the law."""
+    try:
+        doc = json.loads(Path(facts_path).read_text(encoding="utf-8"))
+        text = (Path(repo) / str(doc.get("text_file"))).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+        if hashlib.sha256(text.encode("utf-8")).hexdigest() != doc.get("text_sha256"):
+            return {"status": "unreadable", "reason": "the saved road-rules text does not match its fingerprint"}
+        rules = []
+        for key, f in (doc.get("facts") or {}).items():
+            quote, clause, url = f.get("quote"), f.get("clause"), f.get("source_url")
+            if not (isinstance(quote, str) and quote and isinstance(clause, str) and isinstance(url, str)):
+                return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
+            if quote not in text:
+                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in the saved text"}
+            rules.append({"clause": clause, "heading": f.get("heading"), "quote": quote, "source_url": url})
+        if not rules:
+            return {"status": "unreadable", "reason": "no road rules are stored"}
+        return {"status": "ok", "instrument": doc.get("instrument"), "copied_on": doc.get("copied_on"), "note": doc.get("note"), "rules": rules}
+    except (OSError, ValueError, TypeError) as exc:
+        return {"status": "unreadable", "reason": f"the road-rules file could not be read: {exc}"}
+
+
 def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts] = None) -> dict:
     """The evidence structure. `controls` and `files` are read by the caller; each carries its own 'status' so an unreadable
     source is shown as unreadable, never as empty."""
     facts = facts or dec.LawFacts.load()
     rows = exclusions(area, facts)
     return {
+        "road_rules": road_rules(),
         "law_version_date": area.get("law_version_date") or facts.version_date,
         "headline": area.get("headline"),
         "pathway": area.get("pathway"),
