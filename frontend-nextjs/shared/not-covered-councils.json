@@ -83,6 +83,24 @@
       "reason_code": "DRAWING_NOT_MATCHED",
       "page": null,
       "count_hint": 103
+    },
+    {
+      "chapter_key": "section-3-general-provisions",
+      "title": "Sydney DCP 2012 section 3.16.12: signage precinct controls",
+      "reason": "Sydney DCP 2012 section 3.16 signage, page 107: 'Signage within a signage precinct, as shown on the Signage precincts map, is to be assessed against Section 3.16.12.' Section 3.16.12 holds the controls for named precincts (Millers Point, Wynyard, George Street, King Street Newtown, Pitt Street Mall and others). They were served to every City of Sydney house. The precincts have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes).",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
+      "count_hint": 81
+    }
+  ],
+  "hornsby": [
+    {
+      "chapter_key": "hornsby-dcp-2024-part3-residential",
+      "title": "Hornsby DCP 2024 Part 3.5: Pound Road, Hornsby Precinct controls",
+      "reason": "Hornsby DCP 2024 Part 3 section 3.5 (pages 84 to 99): each of these controls is headed or worded as applying to the Pound Road, Hornsby Precinct (for example 'Setback Encroachments (Pound Road, Hornsby Precinct)', page 90). They were served to every Hornsby house. The precinct has no outline in our data, so the rows are withheld and listed. Rows for the rest of the area ('excluding Pound Road') are untouched. Withheld 2026-11-20 (owner yes).",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
+      "count_hint": 28
     }
   ],
   "inner_west": [

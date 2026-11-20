@@ -1,0 +1,38 @@
+{
+  "tier": "minor",
+  "justification": "Minor: data lists plus one test count, no new code. Withholds 109 council rules that the councils' own words limit to named areas with no outline (City of Sydney signage precincts, Hornsby Pound Road precinct) and limits one Parramatta row to the R2 zone. Applied live with owner approval and row-level backups; same pattern as #1655, #1660 and #1662. Two Jest fixtures changed from hornsby to waverley, because Hornsby now has a not-covered entry.",
+  "commit_hash": "32806478",
+  "files": [
+    "data/chapter_scope/never_serve.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "data/chapter_scope/land_limits.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "frontend-nextjs/shared/not-covered-councils.json",
+    "tests/test_gate_rules_land.py",
+    "frontend-nextjs/__tests__/api/not-covered-meta.test.ts",
+    "frontend-nextjs/__tests__/components/compliance/DcpNotCoveredNotice.test.tsx"
+  ],
+  "break_it": [
+    {
+      "scenario": "A re-publish re-keys the withheld rows and serves them to every house again.",
+      "what_happens": "Every City of Sydney or Hornsby house sees controls for one named area again.",
+      "mitigated": true,
+      "how": "The rows are in never_serve.json with text fingerprints, which derive_precinct_keys, gate_rules and enrichment skip, and DQ-148 fails if one is served.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-148 prints count 0."
+    },
+    {
+      "scenario": "A general Hornsby rule that says excluding Pound Road is hidden as place-specific.",
+      "what_happens": "Every Hornsby house would lose a rule that applies to it.",
+      "mitigated": true,
+      "how": "Five matched rows that were general or about other localities were removed from the set before applying, and rows whose own wording says excluding are never selected.",
+      "repro": "The Hornsby set holds 28 rows, each headed or worded for the Pound Road precinct."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "The may-apply boxes are not yet checked in a browser."
+  }
+}
