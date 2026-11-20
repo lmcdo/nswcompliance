@@ -233,3 +233,15 @@ def test_stats_say_what_the_rule_did():
     b = sc.build_graph(cross_net(node14_tags=SIGNALS), IDENT, safe=True)
     assert b.stats["busy_roads"] == 1 and b.stats["allowed_crossing_nodes"] == 1
     assert b.stats["busy_nodes"] == 5 and b.rule == "safe-crossings-v2"
+
+
+def test_safe_build_lists_points_along_the_busy_road_and_the_ordinary_build_does_not():
+    """The engine says 'next to a busy road' from these points: about every 25 m, ends included, on the road line only."""
+    b = sc.build_graph(cross_net(), IDENT, safe=True)
+    pts = b.busy_pts
+    assert pts is not None and (-100.0, 0.0) in pts and (100.0, 0.0) in pts
+    assert all(y == 0.0 for _, y in pts)                                  # the footways at y=5 and y=-5 are not busy roads
+    xs = sorted(x for x, _ in pts)
+    assert max(b2 - a for a, b2 in zip(xs, xs[1:])) <= sc.BUSY_PT_STEP_M + 0.1
+    assert sc.build_graph(cross_net(), IDENT, safe=False).busy_pts is None
+    assert sc.build_graph(cross_net(road_tags={"highway": "residential"}), IDENT, safe=True).busy_pts == []

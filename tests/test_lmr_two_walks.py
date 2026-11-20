@@ -59,3 +59,14 @@ def test_a_bad_second_walk_value_is_ignored_rather_than_crashing():
     for bad in ("x", 5, True, {"m": "nine", "valid": True}, {"m": True, "valid": True}):
         a = ans(lot(walk_safe=bad))
         assert verdict(a) == verdict(ans(lot()))
+
+
+def test_crossings_only_note_says_so_when_the_lot_is_next_to_a_busy_road_and_stays_quiet_otherwise():
+    """True adds the warning; False and None (older file, no busy-road list) add nothing."""
+    from services.lmr_area_decision import _crossings_only
+    base = {"valid": True, "m": 900.0}
+    warn = "next to a busy road"
+    assert warn in _crossings_only({"walk_safe": {**base, "near_busy_road": True}}, 800.0)["crossings_only_note"]
+    assert warn not in _crossings_only({"walk_safe": {**base, "near_busy_road": False}}, 800.0)["crossings_only_note"]
+    assert warn not in _crossings_only({"walk_safe": base}, 800.0)["crossings_only_note"]
+    assert warn not in _crossings_only({"walk_safe": {**base, "near_busy_road": None}}, 800.0)["crossings_only_note"]

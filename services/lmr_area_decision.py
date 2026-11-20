@@ -458,7 +458,10 @@ def _crossings_only(m: dict, normal_m: Optional[float]) -> dict:
         if isinstance(normal_m, (int, float)) and not isinstance(normal_m, bool):
             diff = round(sm) - round(normal_m)
             note += f" ({diff:+d} m compared with the normal walk)" if diff else " (the same as the normal walk)"
-        out["crossings_only_note"] = note + ". Check the crossings on the ground."
+        note += ". Check the crossings on the ground."
+        if sw.get("near_busy_road") is True:   # True only: None (file has no busy-road list) says nothing either way
+            note += " The lot is next to a busy road, so this walk may start from the far side of it."
+        out["crossings_only_note"] = note
         return out
     return {"crossings_only_note": f"The crossings-only walk could not be measured: {sw.get('reason') or 'no reason recorded'}"}
 

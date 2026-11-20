@@ -223,3 +223,21 @@ def test_crossings_only_walk_works_on_a_safe_surface():
     s.walk_rule = "safe-crossings-v2"
     r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [s])
     assert r["valid"] is True and 404 <= r["m"] <= 415
+
+
+def test_packed_file_keeps_the_busy_road_points_and_near_busy_road_is_three_state(tmp_path):
+    """True next to a busy road, False away from one, None when the file has no list (an older file must not claim 'away')."""
+    doc = {"epsg": EPSG, "built": "2026-11-20", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "walk_rule": "safe-crossings-v2",
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)], "graph_nodes": 300,
+           "busy_pts": [[X0 + 100.0, Y0 + 20.0], [X0 + 125.0, Y0 + 20.0]]}
+    ws.write_npz(doc, tmp_path / "b.npz")
+    s = ws.load_surface(str(tmp_path / "b.npz"))
+    near = np.asarray(ring(X0 + 100, Y0))          # lot edge 20 m from a busy point
+    far = np.asarray(ring(X0 + 1000, Y0))
+    assert s.has_busy_list and len(s.busy_xy) == 2
+    assert s.near_busy_road(near) is True and s.near_busy_road(far) is False
+    ws.write_npz({**doc, "busy_pts": []}, tmp_path / "e.npz")
+    assert ws.load_surface(str(tmp_path / "e.npz")).near_busy_road(near) is False
+    ws.write_npz({k: v for k, v in doc.items() if k != "busy_pts"}, tmp_path / "o.npz")
+    assert ws.load_surface(str(tmp_path / "o.npz")).near_busy_road(near) is None

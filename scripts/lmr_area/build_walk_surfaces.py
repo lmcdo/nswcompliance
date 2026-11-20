@@ -312,6 +312,10 @@ doc = {"schema": 1, "built": date.today().isoformat(), "osm_extract": (j.get("os
        "walk_rule": build.rule, "walk_rule_stats": rule_stats, "anchors": anchors, "nodes": rows}
 if a.safe:
     doc["stranded"] = stranded   # only a safe build carries the list; an old-rule file must not claim "nothing is stranded"
+    bb = doc["bbox_m"]   # busy-road points inside the stored area only, so the file stays small
+    doc["busy_pts"] = sorted({(x, y) for x, y in (build.busy_pts or []) if bb[0] <= x <= bb[2] and bb[1] <= y <= bb[3]})
+    doc["busy_pts"] = [list(t) for t in doc["busy_pts"]]
+    print("busy-road points stored:", len(doc["busy_pts"]), flush=True)
 with gzip.open(OUTDIR / f"{a.name}.json.gz", "wt", encoding="utf-8") as fh:
     json.dump(doc, fh, separators=(",", ":"))
 (OUTDIR / f"{a.name}.lock").unlink(missing_ok=True)

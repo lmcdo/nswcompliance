@@ -36,6 +36,7 @@ from shapely.geometry import LineString
 from shapely.strtree import STRtree
 
 RULE_NAME = "safe-crossings-v2"
+BUSY_PT_STEP_M = 25.0   # spacing of the busy-road points the engine uses to say "this lot is next to a busy road"
 
 # Roads: ways a vehicle drives on. Everything else the query returns (footway, path, steps, cycleway, pedestrian, track...) is a path.
 ROAD_CLASSES = frozenset({
@@ -69,6 +70,7 @@ class GraphBuild:
     coords: dict[Any, tuple[float, float]]            # graph node id -> metric (x, y); includes the two side copies at busy-road nodes
     groups: dict[Any, list[Any]]                      # physical OSM node id -> every graph node id at that spot
     stats: dict[str, Any] = field(default_factory=dict)
+    busy_pts: list[tuple[float, float]] | None = None   # a point about every BUSY_PT_STEP_M along each busy road; None for the ordinary rule
     rule: str = "original"
     error: str | None = None
 
@@ -198,6 +200,17 @@ def build_graph(elements: Iterable[Any], to_m, safe: bool) -> GraphBuild:
                           error=f"{type(e).__name__}: {e}")
 
 
+def busy_points(lines: Iterable[LineString]) -> list[tuple[float, float]]:
+    """Points about every BUSY_PT_STEP_M along each busy road line, ends included, rounded to 0.1 m."""
+    out: list[tuple[float, float]] = []
+    for ln in lines:
+        n = max(1, math.ceil(ln.length / BUSY_PT_STEP_M))
+        for i in range(n + 1):
+            pt = ln.interpolate(ln.length * i / n)
+            out.append((round(pt.x, 1), round(pt.y, 1)))
+    return out
+
+
 def _crossing_way_allowed(way: dict[str, Any], node_tags: dict[int, dict[str, str]]) -> bool:
     if crossing_type_ok(way["tags"]):
         return True
@@ -303,7 +316,8 @@ def _safe_graph(nodes, node_tags, ways, stats) -> GraphBuild:
         if (n, 0) in coords:
             g.add_edge(reg(n, 0), reg(n, 1), w=0.0)
     stats["graph_nodes"] = g.number_of_nodes()
-    return GraphBuild(graph=g, coords={k: coords[k] for k in g.nodes}, groups=groups, stats=stats, rule=RULE_NAME)
+    return GraphBuild(graph=g, coords={k: coords[k] for k in g.nodes}, groups=groups, stats=stats, rule=RULE_NAME,
+                      busy_pts=busy_points(busy_lines))
 
 
 def physical_group(build: GraphBuild, node_id: Any) -> list[Any]:
