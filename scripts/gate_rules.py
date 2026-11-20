@@ -522,4 +522,9 @@ def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | Non
                     " WHERE id = %s",
                     [after for _, _, after in diff] + [row[0]])
         print(f"  gate {rule['name']:<29} rows={len(rows):<5} to-change={n}")
+    try:
+        from gate_rules_devtypes import apply_dev_type_limits
+    except ImportError:                           # imported as scripts.gate_rules
+        from scripts.gate_rules_devtypes import apply_dev_type_limits
+    changes += apply_dev_type_limits(cur, council, apply, only)  # project-type limits, re-applied with the gate rules
     return changes
