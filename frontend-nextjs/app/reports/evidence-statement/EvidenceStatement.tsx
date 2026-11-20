@@ -69,9 +69,9 @@ export default function EvidenceStatement() {
         </p>
       )}
       {w.heuristic && <p className="text-gray-600">{w.heuristic}</p>}
-      {w.crossings_only_note ? (
+      {w.crossings_only_note || w.crossings_only_walk_m != null ? (
         <p className="mt-2">
-          <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note} It does not change the result above.
+          <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.
         </p>
       ) : null}
 

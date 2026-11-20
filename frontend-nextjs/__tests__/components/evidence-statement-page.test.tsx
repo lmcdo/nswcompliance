@@ -62,6 +62,25 @@ describe('evidence statement page', () => {
     expect(screen.getByText(/Section 164 exclusions \(law version dated 2026-10-23\)/)).toBeTruthy();
   });
 
+  it('shows an error, not a page with a missing section, when an optional part arrives in the wrong shape', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ manual_checks: { clause: 's164(1)(i)' } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    mockFetch(payload({ summary: { total: 13, counts: {}, line: 42 } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(1));
+  });
+
+  it('still prints the crossings-only distance when its note is missing', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, crossings_only_walk_m: 861, crossings_only_note: null } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/the walk is about 861 m/)).toBeTruthy());
+    expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

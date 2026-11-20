@@ -43,7 +43,10 @@ export function isEvidence(x: unknown): x is Evidence {
   const r = x as Partial<Evidence> | null;
   const src = (s: unknown) => !!s && typeof s === 'object' && ['ok', 'none', 'unreadable'].includes((s as { status?: string }).status ?? '');
   const rows = (a: unknown, keys: string[]) => Array.isArray(a) && a.every((e) => !!e && typeof e === 'object' && keys.every((k) => k in (e as object)));
-  return !!r && typeof r === 'object' && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
+  // New optional parts may be absent (an older server), but one that is present in the wrong shape is a failure, never a silently missing section.
+  const optionalParts = (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
+    && (r?.summary === undefined || (!!r.summary && typeof r.summary === 'object' && typeof (r.summary as { line?: unknown }).line === 'string'));
+  return !!r && typeof r === 'object' && optionalParts && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
     && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'
     && src(r.council_controls) && src(r.council_files)
     && rows(r.council_controls?.controls, ['council_words', 'page']) && rows(r.council_files?.files, ['chapter', 'version', 'current']);
