@@ -40,7 +40,8 @@ export default function EvidenceStatement() {
   // The earliest "held from" among the files listed below (ISO dates sort as text). Read from the same list, and only when EVERY file
   // has a date: a file with no date could be older, so "we hold nothing earlier" could not be said.
   const heldDates = cf.status === 'ok' ? cf.files.map((f) => f.held_from?.slice(0, 10)) : [];
-  const earliestHeld = heldDates.length > 0 && heldDates.every((d) => !!d) ? (heldDates as string[]).slice().sort()[0] : null;
+  // A date that is not strictly YYYY-MM-DD would not sort correctly as text, so it counts as undated.
+  const earliestHeld = heldDates.length > 0 && heldDates.every((d) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? (heldDates as string[]).slice().sort()[0] : null;
   return (
     <main className="mx-auto max-w-4xl p-6 text-sm text-gray-900 evidence-statement">
       <style>{PRINT_CSS}</style>

@@ -103,6 +103,17 @@ describe('evidence statement page', () => {
     expect(screen.queryByText(/earliest file we hold/)).toBeNull();
   });
 
+  it('says nothing about when records begin when a date is not in YYYY-MM-DD form, because it would not sort correctly', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ council_files: { status: 'ok', files: [
+      { chapter: 'ch1', version: 'v1.1', held_from: '2026-2-28', replaced_on: null, current: false, council_file_date: null, council_file_date_note: null },
+      { chapter: 'ch1', version: 'v1.2', held_from: '2026-10-26T00:00:00Z', replaced_on: null, current: true, council_file_date: null, council_file_date_note: null },
+    ] } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
+    expect(screen.queryByText(/earliest file we hold/)).toBeNull();
+  });
+
   it('says nothing about when records begin when no file has a held-from date, or the files could not be read', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload({ council_files: { status: 'ok', files: [{ chapter: 'ch1', version: 'v1', held_from: null, replaced_on: null, current: true, council_file_date: null, council_file_date_note: null }] } }));
