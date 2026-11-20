@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Standard: changes which council rules a house is shown once applied (production data, all councils). New step plus data file; no new schema, no report wording. Every write is a single column on a listed row with a row-level backup and an undo. Not Minor: it hides and marks rules for every council.",
-  "commit_hash": "e009c7de",
+  "justification": "Standard: changes which council rules a house is shown once applied (production data, all councils). New step plus data file; no new schema, no report wording. Every write is a single column on a listed row with a row-level backup and an undo. Not Minor: it hides and marks rules for every council (683 rows applied 2026-11-20).",
+  "commit_hash": "50086fbb",
   "files": [
     "scripts/gate_rules_land.py",
     "scripts/gate_rules.py",
@@ -17,8 +17,8 @@
   },
   "falsifiable_check": {
     "command": "python scripts/derive_precinct_keys.py --only land_limits",
-    "fails_when": "Prints to-change greater than 0 after the apply, meaning a publish re-set a limit or a listed row was missed. It prints 1383 before the apply on production.",
-    "observed_red": "Before the apply the command prints gate land_limits to-change=1383 on production (700 layer, 517 marker, 166 zones), so the check detects unlimited rows. A mutation removing the keyed, heritage and withheld row guards failed 7 of the 17 unit tests."
+    "fails_when": "Prints to-change greater than 0 after the apply, meaning a publish re-set a limit or a listed row was missed. It printed 683 before the apply on production and 0 after.",
+    "observed_red": "Before the apply the command printed gate land_limits to-change=683 on production (517 marker, 166 zones), so the check detects unlimited rows. A mutation removing the keyed, heritage and withheld row guards failed 7 of the 17 unit tests. After the apply a rerun printed to-change=0 and DQ-144 fell from 7285 to 7144."
   },
   "functions": [
     {
@@ -63,9 +63,9 @@
     {
       "scenario": "A place-specific rule is hidden for a resident of that place.",
       "what_happens": "A house inside the named place loses a rule that applies to it.",
-      "mitigated": false,
-      "how": "Accepted under the 2026-10-15 ruling that unmapped small-area rules are hidden and listed as not covered; the per-council counts are in the PR.",
-      "repro": "Count of rows with kind precinct in data/chapter_scope/land_limits.json, 700 at writing."
+      "mitigated": true,
+      "how": "The 700 place-specific rows are NOT shipped: they are held in ~/.claude/plans/ce-land-limits-place-HELD-2026-11-20.json for an owner decision, and land_limits.json contains only the zone and heritage kinds.",
+      "repro": "python -c \"import json;print({e['kind'] for e in json.load(open('data/chapter_scope/land_limits.json'))['entries']})\" prints only zones and heritage."
     },
     {
       "scenario": "A general rule with an exception is hidden as place-specific.",
