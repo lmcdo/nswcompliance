@@ -1,0 +1,45 @@
+{
+  "tier": "Minor",
+  "justification": "Data files plus the plumbing that ships them. Adds the 15 packed crossings-only walk maps (data/lmr_walk_safe/*.npz) that PR 1661's code already reads; adds the COPY line so Dockerfile.python puts the folder in the image (without it the deployed engine never sees the files); adds a manifest tuple of the 15 names in pack_walk_surfaces.py; adds one test that the folder holds exactly those files and each loads with the safe rule and busy-road points. No query, no schema. With the files the engine shows one extra line beside the normal walk; the verdict never changes.",
+  "commit_hash": "7780cd7d",
+  "files": [
+    "data/lmr_walk_safe/*.npz",
+    "Dockerfile.python",
+    "scripts/lmr_area/pack_walk_surfaces.py",
+    "tests/test_lmr_data_files.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_two_walks.py tests/test_lmr_area_decision.py tests/test_lmr_walk_surface.py tests/test_lmr_safe_crossings.py tests/test_lmr_data_files.py tests/test_lmr_area_inputs.py tests/test_lmr_area_scripts.py -q -o addopts=",
+    "expected": "225 passed, 1 skipped, with the 15 files in place. Every file loads with walk_rule 'safe-crossings-v2' and a busy-road point list.",
+    "fails_when": "A file is missing, built with another rule name, or lacks the busy-road point list.",
+    "observed_red": "Run on the real files: removing data/lmr_walk_safe/pilot-penrith.npz makes test_the_crossings_only_walk_files_are_exactly_the_shipped_set_and_each_loads_with_the_safe_rule fail; deleting the lmr_walk_safe COPY line from Dockerfile.python makes test_the_python_image_copies_every_file_the_area_check_reads fail. Both restored afterwards. All 15 files load, busy_pts 3,443 to 27,271, largest file 1.16 MB against the 2 MB limit."
+  },
+  "pre_impl": "N/A — no code, no schema, no query. The files were built by scripts/lmr_area/build_walk_surfaces.py --safe from the Geofabrik PBF cut and packed by pack_walk_surfaces.py, after the orientation fix (commit 6d6deea9).",
+  "functions": "N/A — no function added. One module constant (SAFE_SHIPPED_FILES) in scripts/lmr_area/pack_walk_surfaces.py, read by the new test.",
+  "values": "200-lot area check (cached lots, seeds 20261120 and 20261121), run on these packed files: yes/no match 73/78 and 74/79, 0 opposite answers; router walk inside our range 64/64 and 55/63 (87%, under the 90% pass mark on the second set). Same numbers as the unpacked build. Old maps reproduce the saved 72/77 and 74/81.",
+  "queries": "N/A — no database query added or changed.",
+  "break_it": [
+    {
+      "scenario": "A safe file is built with an older rule name.",
+      "what_happens": "The loader refuses it (PR 1661) and the second line does not appear.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -q -o addopts=",
+      "mitigated": "Mitigated: the loader checks the rule name and refuses an older file, covered by a test in tests/test_lmr_walk_surface.py.",
+      "how": "The rule-name check in services/lmr_walk_surface.py walk_from_lot_safe."
+    },
+    {
+      "scenario": "The safe map is longer than the router's straight-across walk.",
+      "what_happens": "The range fails the 90% mark on one test set (55/63). The safe line never changes the verdict, so no answer changes.",
+      "repro": "area_check_test.py with LMR_SURF_DIR pointing at data/lmr_walk_safe, seed 20261121.",
+      "mitigated": "Partly: the range is not refitted, the safe line is shown beside the normal walk and never decides the verdict, and the PR states the 87% figure.",
+      "how": "Stated in the PR. Not refitted; the router sides with the old walk."
+    }
+  ],
+  "mutation_analysis": "Two mutations run by hand: a removed data file and a removed Docker COPY line each turn a test red (see falsifiable_check.observed_red).",
+  "residual_risk": "About 800 joins in the 12 areas could not be oriented (counted, not failed). A lot can match a footpath point across a busy road; only the near-busy-road note covers this. Northern Beaches, Penrith and Wollongong have no station entrance data. The 182-lot set cannot be reproduced.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Look up a lot near Pymble station in the area check and confirm a second, crossings-only line appears with a longer walk; confirm the verdict is unchanged."
+  }
+}

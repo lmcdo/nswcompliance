@@ -24,6 +24,15 @@ MAX_NODES_PER_FILE = 260_000   # about 1.5 MB packed; the repo limit is 2 MB per
 OVERLAP_M = 300.0              # engineering overlap between neighbouring strips (a lot is at most 600 m across; see MAX_LOT_EXTENT_M)
 NODE_MARGIN_M = 100.0          # nodes kept beyond a strip's covered box so the street in front of an edge lot is present
 
+# The packed crossings-only walk files committed under data/lmr_walk_safe/ (built with build_walk_surfaces.py --safe, packed with this script).
+# tests/test_lmr_data_files.py checks the folder holds exactly these, so a missing or extra file fails a test instead of silently dropping an area.
+SAFE_SHIPPED_FILES = (
+    "cb-bankstown.npz", "georges-river.npz", "kuringgai.npz", "woollahra.npz",
+    "inner-west-1of4.npz", "inner-west-2of4.npz", "inner-west-3of4.npz", "inner-west-4of4.npz",
+    "pilot-blacktown.npz", "pilot-hornsby.npz", "pilot-northern_beaches.npz", "pilot-parramatta.npz",
+    "pilot-penrith.npz", "pilot-waverley.npz", "pilot-wollongong.npz",
+)
+
 
 def strips(doc: dict) -> list[dict]:
     nodes = np.asarray(doc["nodes"], dtype=float).reshape(-1, 4)
