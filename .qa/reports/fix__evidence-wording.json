@@ -1,0 +1,26 @@
+{
+ "tier": "minor",
+ "justification": "Minor: two wording changes on the evidence page. Control rows now show the producer's plain label instead of the raw key, and the footer no longer sounds like it contradicts the plan date line. No query, number or rule changes.",
+ "commit_hash": "4155f6fe",
+ "files": [
+  "services/evidence_council.py",
+  "frontend-nextjs/lib/evidence-statement.ts",
+  "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+  "tests/test_evidence_statement.py"
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Reload the evidence page for 2 Hand Avenue and read Front setback instead of front_setback."
+ },
+ "break_it": [
+  {
+   "scenario": "The producer gives no plain label for a control.",
+   "what_happens": "The row would show a blank control name.",
+   "mitigated": true,
+   "how": "The page falls back to the raw control key, then to 'Control not named'.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k controls -q"
+  }
+ ]
+}

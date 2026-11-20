@@ -102,7 +102,7 @@ def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]]
             except Exception:  # noqa: BLE001
                 pass
     rows = [e for e in ((data or {}).get("setbacks") or []) if e.get("dev_type") == DEV_TYPE]
-    controls = [{"control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),
+    controls = [{"label": e.get("type"), "control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),
                  "unit": e.get("unit"), "requirement": e.get("requirement"), "condition": e.get("notes") or None,
                  "applicability": e.get("applicability"), "council_words": e.get("source_text"),
                  "clause": e.get("clause") or e.get("clause_unchecked") or None, "clause_shown": bool(e.get("clause_shown")),
