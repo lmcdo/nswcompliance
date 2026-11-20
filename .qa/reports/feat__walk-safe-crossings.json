@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Adds an opt-in builder mode (--safe) and a reason-text change. No committed walking file, no database and no served answer changes in this branch: the committed files in data/lmr_walk are old-rule and unchanged. Not Minor because the lookup and the packed file format change. Not Critical because nothing is served from a safe build until it is rebuilt and tested.",
-  "commit_hash": "2a0289a6",
+  "commit_hash": "516eb6c9",
   "falsifiable_check": {
     "command": "python -m pytest tests/test_lmr_safe_crossings.py tests/test_lmr_walk_surface.py -q -o addopts= (48 + walk-surface tests), plus a hand-run mutation check that breaks safe_crossings.py 16 ways",
     "observed_red": "Ran 16 deliberately broken copies of safe_crossings.py, one change each (for example: unmarked crossings accepted; only one side of a busy road walkable; side copies not marked). First run killed 14 of 16; two survived, so I added test_walking_along_the_other_side_of_a_busy_road_is_also_possible and test_an_along_the_road_path_keeps_its_own_group_and_does_not_join_either_side. Second run: 16 of 16 failed a test.",
@@ -120,8 +120,8 @@
       "scenario": "A station entrance snapped to a busy-road node is joined to both sides of that road (Sol review, build_walk_surfaces.py)",
       "what_happens": "If the entrance is really on one side, lots on the far side get a walk that skips the crossing. Deliberate for Pymble, where the station sits beside the highway; wrong for an entrance set back from a road.",
       "mitigated": false,
-      "how": "Measured 2026-11-20 on the 12 cut areas (scratchpad risks12.py): 0 of 435 station entrances snap to a busy-road node. Three areas (northern beaches, penrith, wollongong) have no entrance in lmr_station_entrances.json, so they are not measured. Not fixed; nothing to fix where it measures 0.",
-      "repro": "python risks12.py in the session scratchpad (builds each cut area, snaps every entrance, counts busy-road nodes)"
+      "how": "Measured 2026-11-20 on the 12 cut areas (throwaway session script, not kept in the repo): 0 of 435 station entrances snap to a busy-road node. Three areas (northern beaches, penrith, wollongong) have no entrance in lmr_station_entrances.json, so they are not measured. Not fixed; nothing to fix where it measures 0.",
+      "repro": "a throwaway session script, not kept in the repo (builds each cut area, snaps every entrance, counts busy-road nodes)"
     },
     {
       "scenario": "Side labels on a busy road are set per node from the first way that touches it, so adjoining ways drawn in opposite directions could connect opposite sides (Sol review, safe_crossings.py)",
