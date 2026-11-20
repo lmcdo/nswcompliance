@@ -162,8 +162,9 @@ def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> di
 
     Nothing is paraphrased here. The quotes are cut from data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt; this refuses
     to serve any quote that is not found word for word in that file, or a file whose fingerprint has changed, and says
-    'unreadable' instead of showing something that may differ from the law. A quote must also sit inside the section of the saved
-    text for the regulation its clause names, so wording from regulation 232 cannot be shown under regulation 231."""
+    'unreadable' instead of showing something that may differ from the law. A quote must also sit inside the subrule its clause names
+    (for example 'reg 234(4)'), and its source address must be the page for that regulation, so wording or a citation for another
+    regulation or subrule cannot be shown under the wrong clause."""
     try:
         doc = json.loads(Path(facts_path).read_text(encoding="utf-8"))
         stored = doc.get("facts") if isinstance(doc, dict) else None
@@ -181,9 +182,15 @@ def road_rules(facts_path: Path = ROAD_RULES_PATH, repo: Path = REPO_ROOT) -> di
             quote, clause, url = f.get("quote"), f.get("clause"), f.get("source_url")
             if not (isinstance(quote, str) and quote and isinstance(clause, str) and isinstance(url, str)):
                 return {"status": "unreadable", "reason": f"road rule {key} is incomplete"}
-            reg = re.match(r"reg (\d+)", clause)
-            if not reg or quote not in sections.get(reg.group(1), ""):
-                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in that regulation of the saved text"}
+            reg = re.fullmatch(r"reg (\d+)\((\d+[A-Z]?)\)", clause)
+            if not reg:
+                return {"status": "unreadable", "reason": f"the clause '{clause}' is not in the form 'reg 234(1)'"}
+            # Subrules are the lines that open with a number in brackets, such as (1) or (3A); sub-paragraphs (a), (b) belong to the subrule above them.
+            subrules = {m.group(1): m.group(0) for m in re.finditer(r"^\((\d+[A-Z]?)\) .*?(?=^\(\d+[A-Z]?\) |\Z)", sections.get(reg.group(1), ""), re.M | re.S)}
+            if quote not in subrules.get(reg.group(2), ""):
+                return {"status": "unreadable", "reason": f"the quote for {clause} is not found word for word in that subrule of the saved text"}
+            if not url.endswith(f"/s{reg.group(1)}.html"):
+                return {"status": "unreadable", "reason": f"the source address for {clause} is not the page for regulation {reg.group(1)}"}
             rules.append({"clause": clause, "heading": f.get("heading"), "quote": quote, "source_url": url})
         if not rules:
             return {"status": "unreadable", "reason": "no road rules are stored"}

@@ -179,6 +179,24 @@ describe('evidence statement page', () => {
     }
   });
 
+  it('shows an error, not a crashed page, when a road-rules display field is not text', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    const withCrossings = { ...base.walk, ...WITH_CROSSINGS };
+    const bad = [
+      { ...ROAD_RULES, copied_on: { day: 20 } },
+      { ...ROAD_RULES, instrument: ['x'] },
+      { ...ROAD_RULES, rules: [{ ...ROAD_RULES.rules[0], heading: { a: 1 } }] },
+      { status: 'unreadable', reason: { why: 'x' } },
+    ];
+    for (const rr of bad) {
+      mockFetch(payload({ road_rules: rr, walk: withCrossings }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

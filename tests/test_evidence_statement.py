@@ -315,3 +315,32 @@ def test_valid_json_of_the_wrong_kind_is_unreadable_not_a_server_error(tmp_path)
         p = tmp_path / "facts.json"
         p.write_text(body, encoding="utf-8")
         assert es.road_rules(p)["status"] == "unreadable", body
+
+
+def test_a_quote_filed_under_the_wrong_subrule_of_the_right_regulation_is_unreadable(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_234_4"]["clause"] = "reg 234(1)"       # the definition of 'crossing', labelled as subrule (1); both are in reg 234
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    out = es.road_rules(p)
+    assert out["status"] == "unreadable" and "subrule" in out["reason"]
+
+
+def test_a_source_address_for_another_regulation_is_unreadable(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_231_2"]["source_url"] = doc["facts"]["reg_232_2"]["source_url"]       # the reg 232 page cited for reg 231(2)
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    out = es.road_rules(p)
+    assert out["status"] == "unreadable" and "source address" in out["reason"] and "reg 231(2)" in out["reason"]
+
+
+def test_a_clause_without_its_subrule_is_unreadable(tmp_path):
+    import json
+    doc = _road_rules_doc()
+    doc["facts"]["reg_234_1"]["clause"] = "reg 234"
+    p = tmp_path / "facts.json"
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    assert es.road_rules(p)["status"] == "unreadable"
