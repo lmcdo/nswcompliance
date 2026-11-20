@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes which council rules a house is shown once applied (production data, all councils). New step plus data file; no new schema, no report wording. Every write is a single column on a listed row with a row-level backup and an undo. Not Minor: it hides and marks rules for every council (683 rows applied 2026-11-20).",
-  "commit_hash": "50086fbb",
+  "commit_hash": "dee7decb",
   "files": [
     "scripts/gate_rules_land.py",
     "scripts/gate_rules.py",
