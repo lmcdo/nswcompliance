@@ -1,0 +1,88 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes which council rules a house is shown, live in production. 100 area rules withheld (Parramatta late-night 64, Inner West named-lot LEP clauses 36) and 1,836 sign/commercial/industrial rules re-tagged from all project types to their own types through a new re-applied step. Not Critical: no new schema, no report or verdict wording, every write has a row-level backup and an undo. Not Minor: it changes served rules for every council.",
+  "commit_hash": "3128e4d8",
+  "files": [
+    "scripts/gate_rules_devtypes.py",
+    "scripts/gate_rules.py",
+    "scripts/hide_unmapped_area_rules.py",
+    "data/chapter_scope/dev_type_limits.json",
+    "data/chapter_scope/never_serve.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "tests/test_gate_rules_devtypes.py",
+    "tests/test_gate_rules_devtypes_real_db.py",
+    "tests/test_hide_unmapped_area_rules_real_db.py"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions rows read live before every write: 64 Parramatta rows in sections 10.0 to 10.4, 36 Inner West rows in clauses 6.16-6.19 and 6.24-6.26, and 1,836 rows tagged only ALL with source config_all. Existing never_serve, not_covered and gate_rules mechanisms were reused, not rebuilt.",
+    "assumption_mismatch": "Assumed one pipeline step could re-tag dev types. Wrong: gate_rules sets only listed gate columns and the council config re-applies ALL on every publish, so a plain database write would be undone. Fixed with a step called at the end of apply_gate_rules, matched by text fingerprint so new row ids keep the limit.",
+    "new_vs_existing": "New: gate_rules_devtypes.py and dev_type_limits.json. Extended: hide_unmapped_area_rules.py gained --name and a no_chapter flag. Reused: never_serve text fingerprints, derive_precinct_keys entry point, may-apply export."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only dev_type_limits",
+    "fails_when": "Prints to-change greater than 0 after the apply, meaning a publish re-set rows to all project types or a listed row was missed. It printed 1836 before the apply and 0 after it.",
+    "observed_red": "Before the apply the same command printed gate dev_type_limits to-change=1836 on production, so the check does detect untagged rows. After the apply a read-only rerun printed to-change=0, and the live for-property API returned the new signage tag for the three City of Sydney sign rules checked."
+  },
+  "functions": [
+    {
+      "name": "apply_dev_type_limits",
+      "file_line": "scripts/gate_rules_devtypes.py:40",
+      "input": "A database cursor, an optional council slug, an apply flag, and an optional set of rule names",
+      "output": "A list of (id, column, before, after, rule) changes for the backup, and updates only when apply is true",
+      "if_none": "A row with no tags or no text is skipped; an empty chapter_key is matched as NULL"
+    },
+    {
+      "name": "entries",
+      "file_line": "scripts/gate_rules_devtypes.py:31",
+      "input": "The data file data/chapter_scope/dev_type_limits.json read from disk",
+      "output": "A tuple of reviewed entries, raising if the file is missing or a fingerprint count is wrong",
+      "if_none": "A missing file raises instead of silently limiting nothing"
+    },
+    {
+      "name": "where_for",
+      "file_line": "scripts/hide_unmapped_area_rules.py:34",
+      "input": "One selector dict with council, chapter_key, optional ids and an optional no_chapter flag",
+      "output": "A SQL where clause and its parameters, never an open-ended match",
+      "if_none": "A selector with no council or chapter_key aborts the run"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Select current rows tagged exactly ALL with source config_all for one council and chapter, to narrow listed ones",
+      "file_line": "scripts/gate_rules_devtypes.py:40",
+      "where_clause": "is_current AND source_council AND source_chapter_key IS NOT DISTINCT FROM AND v2_dev_type_source = config_all",
+      "if_zero": "No rows change and the step prints to-change=0, which is the expected state after an apply"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A council re-publish resets the narrowed rows back to all project types.",
+      "what_happens": "Sign and shop rules reach every house again.",
+      "mitigated": true,
+      "how": "The step runs at the end of apply_gate_rules after every publish and matches by text fingerprint, so new row ids keep the limit.",
+      "repro": "python scripts/derive_precinct_keys.py --only dev_type_limits prints to-change=0 while the rows hold their limits."
+    },
+    {
+      "scenario": "A rule listed for narrowing was decided by the council config as declined, specific or text-derived.",
+      "what_happens": "A decision made from the council's own words would be overwritten by a model label.",
+      "mitigated": true,
+      "how": "Only rows tagged exactly ALL with source config_all change; config_declined, specific and never-serve rows are skipped.",
+      "repro": "tests/test_gate_rules_devtypes.py test_skips_anything_not_exactly_all passes, and fails when the check is removed (6 tests failed in the mutation run)."
+    },
+    {
+      "scenario": "The wrong rows are withheld because a mistyped name matches nothing.",
+      "what_happens": "The apply would silently hide no rules.",
+      "mitigated": true,
+      "how": "hide_unmapped_area_rules.py aborts unless --name matches exactly one entry.",
+      "repro": "python scripts/hide_unmapped_area_rules.py --name typo prints an ABORT line."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Rule list not yet checked in a browser for a user who has picked a project type; production data already verified by probes DQ-143 and DQ-148 at 0."
+  }
+}

@@ -35,7 +35,10 @@ def where_for(sel: dict) -> tuple[str, list]:
     """SQL for one selector: a whole chapter, or listed row ids within it. Never an open-ended match."""
     if not sel.get("council") or not sel.get("chapter_key"):
         raise SystemExit(f"[ABORT] selector without council/chapter: {sel}")
+    # "no_chapter": the rows have source_chapter_key NULL (LEP clauses); chapter_key is then only a label.
     sql, params = "source_council = %s AND source_chapter_key = %s", [sel["council"], sel["chapter_key"]]
+    if sel.get("no_chapter"):
+        sql = "source_council = %s AND (source_chapter_key = %s OR source_chapter_key IS NULL)"
     if sel.get("ids"):
         sql += " AND id = ANY(%s)"
         params.append(sel["ids"])
@@ -45,6 +48,7 @@ def where_for(sel: dict) -> tuple[str, list]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--name", help="only the selector with this \"name\" (leaves older entries out)")
     a = ap.parse_args()
     import psycopg2
 
@@ -52,8 +56,12 @@ def main() -> int:
     try:
         cur = conn.cursor()
         cur.execute("SET statement_timeout = 30000")
+        if a.name and sum(1 for x in selectors() if x.get("name") == a.name) != 1:
+            raise SystemExit(f"[ABORT] --name {a.name!r} must match exactly one entry in {LIST.name}")
         todo = []
         for sel in selectors():
+            if a.name and sel.get("name") != a.name:
+                continue
             w, p = where_for(sel)
             cur.execute("SELECT id, v2_dcp_layer, v2_precinct_id FROM regulatory_provisions "
                         "WHERE is_current AND v2_is_actionable "
