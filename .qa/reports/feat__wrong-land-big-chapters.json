@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes which council rules a house is shown, live in production. 100 area rules withheld (Parramatta late-night 64, Inner West named-lot LEP clauses 36) and 1,836 sign/commercial/industrial rules re-tagged from all project types to their own types through a new re-applied step. Not Critical: no new schema, no report or verdict wording, every write has a row-level backup and an undo. Not Minor: it changes served rules for every council.",
-  "commit_hash": "ebb62946",
+  "commit_hash": "e4d2b009",
   "files": [
     "scripts/gate_rules_devtypes.py",
     "scripts/gate_rules.py",
@@ -10,7 +10,9 @@
     "data/chapter_scope/never_serve.json",
     "data/chapter_scope/not_covered_2026-10-15.json",
     "data/chapter_scope/suburb_unconfirmed_areas.json",
-    "tests/test_gate_rules_devtypes.py"
+    "tests/test_gate_rules_devtypes.py",
+    "tests/test_gate_rules_devtypes_real_db.py",
+    "tests/test_hide_unmapped_area_rules_real_db.py"
   ],
   "pre_impl": {
     "existing_data": "regulatory_provisions rows read live before every write: 64 Parramatta rows in sections 10.0 to 10.4, 36 Inner West rows in clauses 6.16-6.19 and 6.24-6.26, and 1,836 rows tagged only ALL with source config_all. Existing never_serve, not_covered and gate_rules mechanisms were reused, not rebuilt.",
