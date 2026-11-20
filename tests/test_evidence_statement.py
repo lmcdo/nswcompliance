@@ -76,7 +76,7 @@ class _Conn:
 
 
 def _entry(**o):
-    e = {"semantic_type": "front_setback", "dev_type": "dwelling_house", "value_min": 4.5, "value_max": None, "unit": "m", "requirement": "4.5 m",  # noqa: regulatory-number -- test fixture
+    e = {"type": "Front setback", "semantic_type": "front_setback", "dev_type": "dwelling_house", "value_min": 4.5, "value_max": None, "unit": "m", "requirement": "4.5 m",  # noqa: regulatory-number -- test fixture
          "notes": "", "applicability": None, "source_text": "words", "clause": "", "clause_unchecked": "2.8", "clause_shown": False,
          "pdf_page": 32, "source_chapter_key": "ch", "dcp_version": "v1"}
     e.update(o)
@@ -109,7 +109,7 @@ def test_controls_keep_dwelling_house_only_with_words_clause_page_and_proof_flag
     out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data)
     assert out["status"] == "ok" and out["council"] == "penrith" and len(out["controls"]) == 1
     c = out["controls"][0]
-    assert c["council_words"] == "words" and c["page"] == 32 and c["clause"] == "2.8" and c["clause_shown"] is False
+    assert c["label"] == "Front setback" and c["council_words"] == "words" and c["page"] == 32 and c["clause"] == "2.8" and c["clause_shown"] is False
 
 
 def test_files_earlier_version_has_no_council_date():

@@ -5,7 +5,7 @@ export interface EvidenceExclusion {
   detail: string | null; source_checked: string; not_seen?: string | null;
 }
 export interface EvidenceControl {
-  control_type: string | null; requirement: string | null; council_words: string | null; clause: string | null; clause_shown: boolean; page: number | null;
+  label?: string | null; control_type: string | null; requirement: string | null; council_words: string | null; clause: string | null; clause_shown: boolean; page: number | null;
 }
 export interface EvidenceFile {
   chapter: string; version: string; held_from: string | null; replaced_on: string | null; current: boolean;

@@ -95,7 +95,7 @@ export default function EvidenceStatement() {
             <tbody>
               {cc.controls.map((c, i) => (
                 <tr key={i} className="align-top">
-                  <td className="border p-1">{c.control_type ?? 'Control not named'}<br />{c.requirement ?? 'No requirement text'}</td>
+                  <td className="border p-1">{c.label ?? c.control_type ?? 'Control not named'}<br />{c.requirement ?? 'No requirement text'}</td>
                   <td className="border p-1">{c.council_words ?? 'Council wording not held'}</td>
                   <td className="border p-1">
                     {c.clause ? `${c.clause}${c.clause_shown ? '' : ' (label not checked against the page)'}, ` : ''}page {c.page ?? 'not given'}
@@ -132,7 +132,7 @@ export default function EvidenceStatement() {
         </table>
       )}
       <p className="mt-2 text-gray-600">
-        These are the files held, not a statement of which file is in force. Whether each quote is on its cited page, for earlier versions, is not checked here.
+        These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Whether each quote is on its cited page, for earlier versions, is not checked here.
       </p>
 
       {data.notes.length > 0 && (
