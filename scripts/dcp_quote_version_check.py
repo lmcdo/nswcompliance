@@ -40,6 +40,14 @@ SELECT council, chapter_key, version_label, r2_key, captured_at::date
 FROM dcp_source_versions WHERE event = 'stored' AND (%(council)s::text IS NULL OR council = %(council)s)
 ORDER BY council, chapter_key, captured_at
 """
+# The file each active chapter is SERVED from, with its ledger row. The ledger files a PDF under the chapter named in its file name, which
+# can differ from the registry chapter (Blacktown Part C is served from a file named part-4-secondary-dwellings.pdf, 2026-11-20), so a
+# chapter's own list can miss the file its controls were read from.
+SERVED_SQL = """
+SELECT r.council, r.chapter_key, v.version_label, v.r2_key, v.captured_at::date
+FROM dcp_chapter_registry r JOIN dcp_source_versions v ON v.r2_key = r.r2_current_path AND v.event = 'stored' AND v.council = r.council
+WHERE r.is_active AND (%(council)s::text IS NULL OR r.council = %(council)s)
+"""
 
 
 def main() -> int:
@@ -64,6 +72,11 @@ def main() -> int:
         versions: dict[tuple[str, str], list[tuple]] = {}
         for council, chapter, label, key, day in cur.fetchall():
             versions.setdefault((council, chapter), []).append((label, key, day))
+        cur.execute(SERVED_SQL, {"council": a.council})
+        for council, chapter, label, key, day in cur.fetchall():
+            have = versions.setdefault((council, chapter), [])
+            if key not in {k for _, k, _ in have}:
+                have.append((label, key, day))
         out = _check(controls, versions)
         if not a.apply:
             print("dry run: nothing written")
