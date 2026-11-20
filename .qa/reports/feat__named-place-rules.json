@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: data lists plus one test count, no new code. Withholds 109 council rules that the councils' own words limit to named areas with no outline (City of Sydney signage precincts, Hornsby Pound Road precinct) and limits one Parramatta row to the R2 zone. Applied live with owner approval and row-level backups; same pattern as #1655, #1660 and #1662. Two Jest fixtures changed from hornsby to waverley, because Hornsby now has a not-covered entry.",
-  "commit_hash": "e790f679",
+  "commit_hash": "32806478",
   "files": [
     "data/chapter_scope/never_serve.json",
     "data/chapter_scope/not_covered_2026-10-15.json",
