@@ -7,6 +7,14 @@
       "reason_code": "WORDS_ONLY",
       "page": null,
       "count_hint": 1
+    },
+    {
+      "chapter_key": "chapter-e2-haberfield",
+      "title": "Ashfield E2 section 2.3: site-specific controls for 140A Hawthorne Parade, Haberfield",
+      "reason": "Ashfield (Comprehensive Inner West DCP 2016) Chapter E2 page 1: 'The controls for 2.3 140A Hawthorne Parade, Haberfield only apply to the land marked A' on Figure 1. Section 2.3 (pages 21-22, rows L278 and L281-L295) was keyed to the whole Haberfield precinct and served to every Haberfield house, including controls for 'subdivision lots 16 and 17' and 'lots 10 and 11'. The site-outline proof for 140A Hawthorne Parade passed its address and lot checks (22 lots, 15,097 m2) but failed the nearest-precinct fallback check (720 lots exposed), so the rows are withheld and listed. Withheld 2026-11-20 (owner yes).",
+      "reason_code": "DRAWING_NOT_MATCHED",
+      "page": null,
+      "count_hint": 14
     }
   ],
   "canterbury_bankstown": [

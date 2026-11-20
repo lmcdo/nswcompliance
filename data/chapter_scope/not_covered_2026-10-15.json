@@ -2095,6 +2095,32 @@
       "reason": "Inner West LEP 2022 clauses 6.16-6.19 and 6.24-6.26 each apply only to named lots (Lot/DP in the clause, PDF pages 76-85 of the current consolidation read 2026-11-20). Exact-lot keying failed the build_site_boundaries proof for all seven (lots missing from our cadastre table, address point outside the outline, nearest-precinct fallback would hand the rules to 2-72 neighbouring lots), so the rows are withheld and listed as 'may apply' by suburb. Withheld 2026-11-20 (owner yes).",
       "title": "Inner West LEP 2022 clauses 6.16-6.19 and 6.24-6.26: named-lot site clauses",
       "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "ashfield-e2-section-2-3-140a-hawthorne",
+      "council": "ashfield",
+      "chapter_key": "chapter-e2-haberfield",
+      "expect": 14,
+      "ids": [
+        163707,
+        163709,
+        163710,
+        163711,
+        163712,
+        163713,
+        163714,
+        163715,
+        163716,
+        163717,
+        163718,
+        163719,
+        163720,
+        163721
+      ],
+      "from_precinct": "Haberfield",
+      "reason": "Ashfield (Comprehensive Inner West DCP 2016) Chapter E2 page 1: 'The controls for 2.3 140A Hawthorne Parade, Haberfield only apply to the land marked A' on Figure 1. Section 2.3 (pages 21-22, rows L278 and L281-L295) was keyed to the whole Haberfield precinct and served to every Haberfield house, including controls for 'subdivision lots 16 and 17' and 'lots 10 and 11'. The site-outline proof for 140A Hawthorne Parade passed its address and lot checks (22 lots, 15,097 m2) but failed the nearest-precinct fallback check (720 lots exposed), so the rows are withheld and listed. Withheld 2026-11-20 (owner yes).",
+      "title": "Ashfield E2 section 2.3: site-specific controls for 140A Hawthorne Parade, Haberfield",
+      "reason_code": "DRAWING_NOT_MATCHED"
     }
   ],
   "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16",

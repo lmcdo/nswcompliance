@@ -430,6 +430,46 @@
     "17c36d90428da0c5",
     "a619e0578a7c52fb"
    ]
+  },
+  {
+   "name": "ashfield-e2-section-2-3-140a-hawthorne",
+   "council": "ashfield",
+   "chapter_key": "chapter-e2-haberfield",
+   "why": "Ashfield (Comprehensive Inner West DCP 2016) Chapter E2 page 1: 'The controls for 2.3 140A Hawthorne Parade, Haberfield only apply to the land marked A' on Figure 1. Section 2.3 (pages 21-22, rows L278 and L281-L295) was keyed to the whole Haberfield precinct and served to every Haberfield house, including controls for 'subdivision lots 16 and 17' and 'lots 10 and 11'. The site-outline proof for 140A Hawthorne Parade passed its address and lot checks (22 lots, 15,097 m2) but failed the nearest-precinct fallback check (720 lots exposed), so the rows are withheld and listed. Withheld 2026-11-20 (owner yes).",
+   "approved": "2026-11-20",
+   "expect": 14,
+   "ids": [
+    163707,
+    163709,
+    163710,
+    163711,
+    163712,
+    163713,
+    163714,
+    163715,
+    163716,
+    163717,
+    163718,
+    163719,
+    163720,
+    163721
+   ],
+   "text_sha256_16": [
+    "8248d43f0b431ee6",
+    "1e0e8d7c0b4c310f",
+    "ab9207f89b4278cd",
+    "b5ac98ffc5223437",
+    "96b18837fba5bb6e",
+    "6ef1b84853545f56",
+    "010fb6c129970668",
+    "e57493ece080ad86",
+    "f5c054f9e9c637e9",
+    "aa47708fd1e48182",
+    "d9201c17ce0c72da",
+    "1e876a032167a5fb",
+    "1712d69fdcdee75f",
+    "6dafd145315ce92b"
+   ]
   }
  ]
 }
