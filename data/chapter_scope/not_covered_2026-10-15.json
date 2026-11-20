@@ -2051,7 +2051,8 @@
     {
       "name": "inner-west-lep-named-lot-clauses",
       "council": "inner_west",
-      "chapter_key": "",
+      "chapter_key": "inner-west-lep-2022-clauses",
+      "no_chapter": true,
       "expect": 36,
       "ids": [
         8659,

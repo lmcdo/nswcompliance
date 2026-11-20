@@ -33,11 +33,12 @@ def selectors() -> list[dict]:
 
 def where_for(sel: dict) -> tuple[str, list]:
     """SQL for one selector: a whole chapter, or listed row ids within it. Never an open-ended match."""
-    if not sel.get("council") or sel.get("chapter_key") is None:  # "" = rows with no chapter (LEP clauses)
+    if not sel.get("council") or not sel.get("chapter_key"):
         raise SystemExit(f"[ABORT] selector without council/chapter: {sel}")
+    # "no_chapter": the rows have source_chapter_key NULL (LEP clauses); chapter_key is then only a label.
     sql, params = "source_council = %s AND source_chapter_key = %s", [sel["council"], sel["chapter_key"]]
-    if sel["chapter_key"] == "":
-        sql, params = "source_council = %s AND source_chapter_key IS NULL", [sel["council"]]
+    if sel.get("no_chapter"):
+        sql = "source_council = %s AND (source_chapter_key = %s OR source_chapter_key IS NULL)"
     if sel.get("ids"):
         sql += " AND id = ANY(%s)"
         params.append(sel["ids"])
