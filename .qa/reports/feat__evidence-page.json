@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds a printable page, one thin proxy route and a link, all reading the evidence endpoint merged in #1656. Not Minor: it is a new served page that prints law wording and results. Not Critical: it adds no regulatory number and no query, and every value shown is copied from the endpoint.",
- "commit_hash": "9ee187ed",
+ "commit_hash": "b575704a",
  "files": ["frontend-nextjs/app/api/housing-sepp/evidence/route.ts", "frontend-nextjs/app/reports/evidence-statement/page.tsx", "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx", "frontend-nextjs/lib/evidence-statement.ts", "frontend-nextjs/components/compliance/StateLevelControls.tsx", "frontend-nextjs/__tests__/api/evidence-proxy.test.ts", "frontend-nextjs/__tests__/lib/evidence-statement.test.ts", "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"],
  "pre_impl": {
   "existing_data": "GET /pipeline/housing-sepp/evidence (#1656) returns 13 exclusion rows, the walk range, 6 council controls and 4 council files for 2 Hand Avenue Penrith.",
