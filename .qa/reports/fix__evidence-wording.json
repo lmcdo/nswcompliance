@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Minor: two wording changes on the evidence page. Control rows now show the producer's plain label instead of the raw key, and the footer no longer sounds like it contradicts the plan date line. No query, number or rule changes.",
- "commit_hash": "4155f6fe",
+ "commit_hash": "10c739a3",
  "files": [
   "services/evidence_council.py",
   "frontend-nextjs/lib/evidence-statement.ts",
