@@ -527,4 +527,9 @@ def apply_gate_rules(cur, council: str | None, apply: bool, only: set[str] | Non
     except ImportError:                           # imported as scripts.gate_rules
         from scripts.gate_rules_devtypes import apply_dev_type_limits
     changes += apply_dev_type_limits(cur, council, apply, only)  # project-type limits, re-applied with the gate rules
+    try:
+        from gate_rules_land import apply_land_limits
+    except ImportError:                           # imported as scripts.gate_rules
+        from scripts.gate_rules_land import apply_land_limits
+    changes += apply_land_limits(cur, council, apply, only)  # land limits (zone / heritage / place), same re-apply
     return changes
