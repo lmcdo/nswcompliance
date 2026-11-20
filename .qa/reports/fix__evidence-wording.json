@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: four files changed on a served page, wording only. Not Minor: the file count passes the minor limit. Not Critical: no query, rule or number changes; the control label is the producer's own plain label.",
- "commit_hash": "62c92c3f",
+ "commit_hash": "091ad124",
  "files": [
   "services/evidence_council.py",
   "frontend-nextjs/lib/evidence-statement.ts",
