@@ -35,6 +35,60 @@ describe('evidence statement page', () => {
     expect(screen.getByText(/v1.1: These words were not found in this file/)).toBeTruthy();
     expect(screen.getByText(/v1.2: Same words on the cited page/)).toBeTruthy();
     expect(screen.getByText(/Could not be read: the file ledger did not answer/)).toBeTruthy();
+    // an older server answer has none of the newer parts: they are left out, never printed empty
+    expect(screen.queryByText(/To check by hand/)).toBeNull();
+    expect(screen.queryByText(/Crossings-only walk, for information/)).toBeNull();
+    expect(screen.queryByText(/The walk is a range because/)).toBeNull();
+  });
+
+  it('shows the count line, the range reason, the crossings-only walk, the by-hand list, the scope line and the footer', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({
+      summary: { total: 13, counts: { clear: 11, not_checked: 2 }, line: '13 paragraphs of section 164(1): 2 not checked by this tool; 11 no exclusion found.' },
+      manual_checks: [{ clause: 's164(1)(i)', page: 79, law_words: 'a gas pipeline,', result_words: 'Not checked by this tool', detail: null, not_seen: null }],
+      walk: { ...base.walk, margin_low_m: 25, margin_high_m: 75, entrance_unmapped_extra_m: 0, crossings_only_walk_m: 861, crossings_only_note: 'Crossing busy roads only at lights, the walk is about 861 m (+85 m compared with the normal walk). Check the crossings on the ground.' },
+    }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/13 paragraphs of section 164\(1\): 2 not checked by this tool; 11 no exclusion found/)).toBeTruthy());
+    expect(screen.getByText(/less 25 m to the measured walk plus 75 m/)).toBeTruthy();
+    expect(screen.getByText(/Crossings-only walk, for information/)).toBeTruthy();
+    expect(screen.getByText(/about 861 m \(\+85 m compared with the normal walk\)/)).toBeTruthy();
+    expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
+    expect(screen.getByText('To check by hand')).toBeTruthy();
+    expect(screen.getByText(/s164\(1\)\(i\) \(page 79\): a gas pipeline,/)).toBeTruthy();
+    expect(screen.getByText(/controls that apply only to part of a council area, are not shown here/)).toBeTruthy();
+    expect(screen.getByText(/It is not a planning certificate/)).toBeTruthy();
+    expect(screen.getByText(/Section 164 exclusions \(law version dated 2026-10-23\)/)).toBeTruthy();
+  });
+
+  it('shows an error, not a page with a missing section, when an optional part arrives in the wrong shape', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ manual_checks: { clause: 's164(1)(i)' } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    mockFetch(payload({ summary: { total: 13, counts: {}, line: 42 } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(1));
+  });
+
+  it('still prints the crossings-only distance when its note is missing', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, crossings_only_walk_m: 861, crossings_only_note: null } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/the walk is about 861 m/)).toBeTruthy());
+    expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
+  });
+
+  it('puts the notes before the walking range so a reader meets them first', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload());
+    const { container } = render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('A note')).toBeTruthy());
+    const text = container.textContent ?? '';
+    expect(text.indexOf('A note')).toBeGreaterThan(-1);
+    expect(text.indexOf('A note')).toBeLessThan(text.indexOf('Walking range'));
   });
 
   it('shows an error, not an empty statement, when the data is partial or the call fails', async () => {

@@ -91,26 +91,77 @@ def exclusions(area: dict, facts: dec.LawFacts) -> list[dict]:
 
 
 def walk(area: dict) -> dict:
-    """The walking range as the area check measured it. Missing parts stay None; nothing is filled in."""
+    """The walking range as the area check measured it. Missing parts stay None; nothing is filled in.
+
+    The margins say why the walk is a range. The crossings-only walk (and its next-to-a-busy-road note) sits beside the normal
+    walk; it never changes the answer. It is absent when an exclusion decided the answer before any walk was measured."""
     lmr = area.get("lmr") or {}
     f = lmr.get("figures") or {}
+
+    def fig(key: str) -> Any:
+        """From figures; the answer 'no' keeps only five figures there, so fall back to the same key on the result itself."""
+        return f.get(key) if f.get(key) is not None else lmr.get(key)
+
     return {"answer": lmr.get("answer"), "clause": lmr.get("clause"), "page": lmr.get("page"),
             "anchor": f.get("anchor"), "straight_m": f.get("straight_m"), "limit_m": f.get("limit_m"),
-            "walk_low_m": f.get("walk_low_m"), "walk_best_m": f.get("walk_best_m"), "walk_high_m": f.get("walk_high_m"),
+            "walk_low_m": f.get("walk_low_m"), "walk_best_m": fig("walk_best_m"), "walk_high_m": f.get("walk_high_m"),
+            "margin_low_m": fig("margin_low_m"), "margin_high_m": fig("margin_high_m"),
+            "entrance_unmapped_extra_m": fig("entrance_unmapped_extra_m"),
             "share_of_range_inside": lmr.get("share_of_range_inside"), "detail": lmr.get("detail"),
-            "heuristic": lmr.get("heuristic")}
+            "heuristic": lmr.get("heuristic"),
+            "crossings_only_walk_m": lmr.get("crossings_only_walk_m"), "crossings_only_note": lmr.get("crossings_only_note")}
+
+
+# Short forms of RESULT_WORDS for the one-line count at the top of the page. Order = how the line reads.
+SUMMARY_WORDS = (
+    ("excludes", "excluded"),
+    ("warn", "possible exclusion, not determined"),
+    ("unknown", "could not be determined"),
+    ("not_checked", "not checked by this tool"),
+    ("clear", "no exclusion found"),
+)
+
+
+def summary(rows: list[dict]) -> dict:
+    """A count of the exclusion rows by result, and the one line the page prints from it. An unrecognised result is counted
+    as 'unknown' so the counts always add up to the number of rows."""
+    known = {k for k, _ in SUMMARY_WORDS}
+    counts = {k: 0 for k, _ in SUMMARY_WORDS}
+    for r in rows:
+        res = r.get("result")
+        counts[res if res in known else "unknown"] += 1
+    parts = [f"{counts[k]} {words}" for k, words in SUMMARY_WORDS if counts[k]]
+    n = len(rows)
+    line = f"{n} paragraphs of section 164(1): " + "; ".join(parts) + "." if n and parts else ""
+    return {"total": n, "counts": counts, "line": line}
+
+
+# A paragraph needs no hand check when the tool found no exclusion or found an exclusion. Everything else, including a result word
+# this module does not know yet, needs a person, so the list matches the 'could not be determined' count in summary().
+_NO_HAND_CHECK = ("clear", "excludes")
+
+
+def manual_checks(rows: list[dict]) -> list[dict]:
+    """The paragraphs this tool did not clear, so a person has to look: could not be determined, possible exclusion,
+    not checked, or any result this module does not recognise. Taken from the rows, so the list cannot drift from the table."""
+    return [{"clause": r.get("clause"), "page": r.get("page"), "law_words": r.get("law_words"),
+             "result_words": r.get("result_words"), "detail": r.get("detail"), "not_seen": r.get("not_seen")}
+            for r in rows if r.get("result") not in _NO_HAND_CHECK]
 
 
 def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts] = None) -> dict:
     """The evidence structure. `controls` and `files` are read by the caller; each carries its own 'status' so an unreadable
     source is shown as unreadable, never as empty."""
     facts = facts or dec.LawFacts.load()
+    rows = exclusions(area, facts)
     return {
         "law_version_date": area.get("law_version_date") or facts.version_date,
         "headline": area.get("headline"),
         "pathway": area.get("pathway"),
         "lga": (area.get("measured") or {}).get("lga"),
-        "exclusions": exclusions(area, facts),
+        "exclusions": rows,
+        "summary": summary(rows),
+        "manual_checks": manual_checks(rows),
         "walk": walk(area),
         "notes": area.get("notes") or [],
         "council_controls": controls,

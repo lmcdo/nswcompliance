@@ -48,6 +48,14 @@ export default function EvidenceStatement() {
         Point {lat}, {lng}{data.lga ? ` (${data.lga})` : ''}.{address ? ` Reference typed in the link, not checked against the point: ${address}.` : ''} Law version dated {data.law_version_date ?? 'not given'}.
       </p>
       {data.headline && <p className="mt-2">{data.headline}</p>}
+      {data.summary?.line ? <p className="mt-2 font-semibold">{data.summary.line}</p> : null}
+
+      {data.notes.length > 0 && (
+        <>
+          <h2 className="mt-6 text-lg font-semibold">Notes on how to read this</h2>
+          <ul className="list-disc pl-5">{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </>
+      )}
 
       <h2 className="mt-6 text-lg font-semibold">Walking range</h2>
       <p>
@@ -55,9 +63,19 @@ export default function EvidenceStatement() {
           ? `Measured walk from ${w.anchor ?? 'the nearest anchor'}: ${w.walk_low_m} to ${w.walk_high_m} m. Limit in the law: ${w.limit_m ?? 'not given'} m${w.clause ? ` (${w.clause}, page ${w.page})` : ''}.`
           : `No walking range was measured. ${w.detail ?? ''}`}
       </p>
+      {w.walk_low_m != null && w.walk_high_m != null && w.margin_low_m != null && w.margin_high_m != null && (
+        <p className="text-gray-600">
+          {`The walk is a range because the measurement can be off: the range runs from the measured walk less ${w.margin_low_m} m to the measured walk plus ${w.margin_high_m} m${w.entrance_unmapped_extra_m ? `, plus up to ${w.entrance_unmapped_extra_m} m because the station entrance is not mapped` : ''}.`}
+        </p>
+      )}
       {w.heuristic && <p className="text-gray-600">{w.heuristic}</p>}
+      {w.crossings_only_note || w.crossings_only_walk_m != null ? (
+        <p className="mt-2">
+          <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.
+        </p>
+      ) : null}
 
-      <h2 className="mt-6 text-lg font-semibold">Section 164 exclusions</h2>
+      <h2 className="mt-6 text-lg font-semibold">Section 164 exclusions (law version dated {data.law_version_date ?? 'not given'})</h2>
       <table className="w-full border-collapse">
         <thead>
           <tr className="text-left">
@@ -80,7 +98,20 @@ export default function EvidenceStatement() {
         </tbody>
       </table>
 
+      {data.manual_checks && data.manual_checks.length > 0 && (
+        <>
+          <h2 className="mt-6 text-lg font-semibold">To check by hand</h2>
+          <p>This tool did not clear these paragraphs. Check the lot on the NSW Planning Portal Spatial Viewer or ask the council for a planning certificate.</p>
+          <ul className="list-disc pl-5">
+            {data.manual_checks.map((m, i) => (
+              <li key={i}>{m.clause ?? 'Paragraph not named'}{m.page != null ? ` (page ${m.page})` : ''}: {m.law_words ?? 'law wording not held'}. {m.result_words ?? ''}{m.not_seen ? ` Not seen: ${m.not_seen}.` : ''}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
       <h2 className="mt-6 text-lg font-semibold">Council controls (dwelling house)</h2>
+      <p className="text-gray-600">Controls for other kinds of development, and controls that apply only to part of a council area, are not shown here.</p>
       {cc.status !== 'ok' ? (
         <p>{cc.status === 'none' ? 'No current controls are held for this council.' : `Could not be read: ${cc.reason ?? 'no reason given'}.`}</p>
       ) : (
@@ -140,12 +171,9 @@ export default function EvidenceStatement() {
         These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Each version is checked against the page the current plan cites; an older file can be paginated differently, so "different page" does not mean the control is wrong.
       </p>
 
-      {data.notes.length > 0 && (
-        <>
-          <h2 className="mt-6 text-lg font-semibold">Notes</h2>
-          <ul className="list-disc pl-5">{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
-        </>
-      )}
+      <p className="mt-6 border-t pt-2 text-gray-600">
+        This page shows what this tool checked and what it did not. It is not a planning certificate and it does not decide whether a lot is inside or outside a housing area. The planner or the council decides.
+      </p>
     </main>
   );
 }

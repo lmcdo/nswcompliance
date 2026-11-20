@@ -13,10 +13,21 @@ export interface EvidenceFile {
   chapter: string; version: string; held_from: string | null; replaced_on: string | null; current: boolean;
   council_file_date: string | null; council_file_date_note: string | null;
 }
+/** A paragraph the tool did not clear, so a person has to look. Built from the exclusion rows in services/evidence_statement.py. */
+export interface ManualCheck {
+  clause: string | null; page: number | null; law_words: string | null; result_words: string | null; detail: string | null; not_seen?: string | null;
+}
 export interface Evidence {
   law_version_date: string | null; headline: string | null; lga: string | null; notes: string[];
   exclusions: EvidenceExclusion[];
-  walk: { clause: string | null; page: number | null; anchor: string | null; limit_m: number | null; walk_low_m: number | null; walk_high_m: number | null; detail: string | null; heuristic: string | null };
+  // Optional: the page (Vercel) and the data (Railway) deploy separately, so an older response without these must still render.
+  summary?: { total: number; counts: Record<string, number>; line: string };
+  manual_checks?: ManualCheck[];
+  walk: {
+    clause: string | null; page: number | null; anchor: string | null; limit_m: number | null; walk_low_m: number | null; walk_high_m: number | null; detail: string | null; heuristic: string | null;
+    margin_low_m?: number | null; margin_high_m?: number | null; entrance_unmapped_extra_m?: number | null;
+    crossings_only_walk_m?: number | null; crossings_only_note?: string | null;
+  };
   council_controls: { status: 'ok' | 'none' | 'unreadable'; reason?: string; as_at_line?: string | null; controls: EvidenceControl[] };
   council_files: { status: 'ok' | 'none' | 'unreadable'; reason?: string; files: EvidenceFile[] };
 }
@@ -32,7 +43,10 @@ export function isEvidence(x: unknown): x is Evidence {
   const r = x as Partial<Evidence> | null;
   const src = (s: unknown) => !!s && typeof s === 'object' && ['ok', 'none', 'unreadable'].includes((s as { status?: string }).status ?? '');
   const rows = (a: unknown, keys: string[]) => Array.isArray(a) && a.every((e) => !!e && typeof e === 'object' && keys.every((k) => k in (e as object)));
-  return !!r && typeof r === 'object' && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
+  // New optional parts may be absent (an older server), but one that is present in the wrong shape is a failure, never a silently missing section.
+  const optionalParts = (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
+    && (r?.summary === undefined || (!!r.summary && typeof r.summary === 'object' && typeof (r.summary as { line?: unknown }).line === 'string'));
+  return !!r && typeof r === 'object' && optionalParts && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
     && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'
     && src(r.council_controls) && src(r.council_files)
     && rows(r.council_controls?.controls, ['council_words', 'page']) && rows(r.council_files?.files, ['chapter', 'version', 'current']);

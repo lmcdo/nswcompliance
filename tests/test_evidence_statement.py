@@ -125,6 +125,78 @@ def test_walk_heuristic_is_not_invented_when_absent():
     assert es.walk({})["heuristic"] is None
 
 
+def _walked(walk_m, safe_m, **over):
+    """A lot with a measured normal walk and a crossings-only walk, run through the real decision code."""
+    return d.decide(_lot(walk={"m": walk_m, "valid": True, "anchor": "Test station", "entrance_id": "e1"},  # noqa: regulatory-number -- test fixture
+                         walk_safe={"m": safe_m, "valid": True, "near_busy_road": True}, **over), FACTS)  # noqa: regulatory-number -- test fixture
+
+
+def test_crossings_only_walk_and_its_busy_road_note_reach_the_page_data():
+    w = es.walk(_walked(600.0, 700.0))  # noqa: regulatory-number -- test fixture
+    assert w["crossings_only_walk_m"] == 700  # noqa: regulatory-number -- test fixture
+    assert "+100 m compared with the normal walk" in w["crossings_only_note"]
+    assert "next to a busy road" in w["crossings_only_note"]
+
+
+def test_crossings_only_walk_absent_stays_none_never_filled_from_the_normal_walk():
+    area = d.decide(_lot(walk={"m": 600.0, "valid": True, "anchor": "Test station", "entrance_id": "e1"}), FACTS)  # noqa: regulatory-number -- test fixture
+    w = es.walk(area)
+    assert w["crossings_only_walk_m"] is None and w["crossings_only_note"] is None
+    assert w["walk_low_m"] is not None   # the normal walk is still there
+
+
+def test_an_exclusion_decides_before_any_walk_so_no_walk_line_is_invented():
+    area = _walked(600.0, 700.0, bushfire={"point": True, "lot": True})  # noqa: regulatory-number -- test fixture
+    w = es.walk(area)
+    assert area["lmr"]["answer"] == "no"
+    assert w["walk_low_m"] is None and w["crossings_only_walk_m"] is None
+
+
+def test_margins_are_kept_when_the_answer_is_no_because_the_walk_is_too_long():
+    w = es.walk(_walked(1500.0, 1600.0))  # noqa: regulatory-number -- test fixture
+    assert w["answer"] == "no" and w["walk_low_m"] is not None
+    assert w["margin_low_m"] is not None and w["margin_high_m"] is not None   # why the walk is a range, even on a 'no'
+    assert w["crossings_only_walk_m"] == 1600  # noqa: regulatory-number -- test fixture
+
+
+def test_summary_counts_add_up_and_the_line_names_each_result():
+    rows = [{"result": "clear"}, {"result": "clear"}, {"result": "excludes"}, {"result": "not_checked"}, {"result": "something_new"}]
+    s = es.summary(rows)
+    assert s["total"] == 5 and sum(s["counts"].values()) == 5
+    assert s["counts"]["unknown"] == 1      # an unrecognised result is never counted as clear
+    assert "1 excluded" in s["line"] and "2 no exclusion found" in s["line"] and "1 not checked by this tool" in s["line"]
+
+
+def test_summary_of_no_rows_has_no_line():
+    assert es.summary([]) == {"total": 0, "counts": {k: 0 for k, _ in es.SUMMARY_WORDS}, "line": ""}
+
+
+def test_manual_checks_are_the_rows_that_were_not_cleared():
+    rows = es.exclusions(d.decide(_lot(), FACTS), FACTS)
+    manual = es.manual_checks(rows)
+    assert {m["clause"] for m in manual} >= {r["clause"] for r in rows if r["para"] in ("h", "i")}
+    assert all(m["law_words"] for m in manual)
+    assert not any(r["result"] == "clear" and r["clause"] in {m["clause"] for m in manual} for r in rows)
+
+
+def test_a_result_word_the_page_does_not_know_is_counted_unknown_and_also_listed_for_a_hand_check():
+    rows = [{"result": "clear", "clause": "s164(1)(a)"}, {"result": "needs_review", "clause": "s164(1)(b)"}, {"result": "excludes", "clause": "s164(1)(c)"}]
+    assert es.summary(rows)["counts"]["unknown"] == 1
+    assert [m["clause"] for m in es.manual_checks(rows)] == ["s164(1)(b)"]   # the count and the list agree
+
+
+def test_the_count_line_does_not_say_looked_at_and_not_checked_in_one_breath():
+    line = es.summary([{"result": "clear"}, {"result": "not_checked"}])["line"]
+    assert "looked at" not in line and "1 not checked by this tool" in line and "1 no exclusion found" in line
+
+
+def test_build_carries_the_summary_and_the_manual_checks():
+    out = es.build(_walked(600.0, 700.0), {"status": "none"}, {"status": "none"}, FACTS)  # noqa: regulatory-number -- test fixture
+    assert out["summary"]["total"] == 13 and out["summary"]["line"]
+    assert out["manual_checks"] == es.manual_checks(out["exclusions"])
+    assert out["walk"]["crossings_only_walk_m"] == 700  # noqa: regulatory-number -- test fixture
+
+
 def test_version_checks_are_shown_and_a_changed_quote_marks_them_stale():
     import hashlib
     sha = hashlib.sha256(b"words").hexdigest()
