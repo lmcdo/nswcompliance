@@ -1,0 +1,123 @@
+{
+ "tier": "standard",
+ "justification": "Standard: one new table (migration 127) filled with 126 rows by a script that backs up first, one read added to the evidence endpoint, and one new column on the evidence page. Not Minor: it writes to the production database and is a served surface. Not Critical: the table is new and holds only checks, nothing existing is changed or deleted, and every verdict comes from the matcher already used for the current files (dcp_quote_status.classify).",
+ "commit_hash": "7780cd7d",
+ "files": [
+  "migrations/127_dcp_quote_version_check.sql",
+  "scripts/dcp_quote_version_check.py",
+  "services/evidence_council.py",
+  "tests/test_evidence_statement.py",
+  "tests/test_dcp_quote_version_check.py",
+  "tests/test_dcp_quote_version_check_real_db.py",
+  "frontend-nextjs/lib/evidence-statement.ts",
+  "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+  "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+ ],
+ "pre_impl": {
+  "existing_data": "dcp_source_versions holds 803 stored files; 157 chapters have more than one version; Penrith has 4 stored versions in 2 chapters and 6 current dwelling house controls. The current files already carry quote_status from dcp_quote_status.py.",
+  "assumption_mismatch": "I expected the matcher to need a new copy. It does not: the script imports dcp_quote_status.classify so a verdict for an older file means the same as for the current one. A control's page number comes from its own current file, so an older file that repaginated gives wrong_page, which is not an error in the control.",
+  "new_vs_existing": "dcp_setback_controls.quote_status covers the current file only. The new table adds per-version verdicts; nothing in the existing table changes.",
+  "external_source_error": "A PDF that cannot be read gives no_source, never verbatim. If the table cannot be read the page says Could not be read, and a control with no rows says Not checked."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_evidence_statement.py tests/test_dcp_quote_version_check.py -q ; PYTEST_REAL_DB=1 DATABASE_URL=... python -m pytest tests/test_dcp_quote_version_check_real_db.py -o addopts= -m database",
+  "fails_when": "An older file that repaginated is called verbatim, a reworded file is called verbatim, an unreadable PDF passes, a check made on an older wording is shown as current, or an unreadable table is shown as no checks.",
+  "observed_red": "Not run red first; the verdict tests pin the matcher's outputs for each case and the real database test checks the written rows.",
+  "observed_green": "21 Python tests pass, 2 real database tests pass, 6 frontend tests pass. The fill wrote 126 rows: 104 verbatim, 16 wrong_page, 6 not_found, equal to the dry run."
+ },
+ "functions": [
+  {
+   "name": "_check",
+   "file_line": "scripts/dcp_quote_version_check.py",
+   "input": "the current dwelling house controls and the stored file versions of their chapters",
+   "output": "one verdict per control and file version, using the shared matcher",
+   "if_none": "a control with no stored version gets no row; a PDF that cannot be read gives no_source"
+  },
+  {
+   "name": "_write",
+   "file_line": "scripts/dcp_quote_version_check.py",
+   "input": "the checked verdicts and the council filter",
+   "output": "rows upserted into dcp_quote_version_check after a backup file",
+   "if_none": "no table or a control that changed while checking aborts with nothing written"
+  },
+  {
+   "name": "_version_checks",
+   "file_line": "services/evidence_council.py",
+   "input": "the control ids on the page and their current quotes",
+   "output": "the stored verdicts per control with a stale flag",
+   "if_none": "an unreadable table gives status unreadable; no rows gives status none"
+  }
+ ],
+ "values": [
+  {
+   "value": "verdict per control and file version",
+   "read_at": "dcp_quote_version_check, written by the script",
+   "if_missing": "shown as Not checked, never as verbatim"
+  },
+  {
+   "value": "stale flag",
+   "read_at": "hash of the control quote at check time against its hash now",
+   "if_missing": "a changed quote marks the verdict stale on the page"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Current dwelling house controls to check",
+   "file_line": "scripts/dcp_quote_version_check.py CONTROLS_SQL",
+   "where_clause": "WHERE is_current AND needs_review is not true AND dev_type = dwelling_house; dry run uses a read-only connection, 30 s limit"
+  },
+  {
+   "purpose": "Stored file versions to check against",
+   "file_line": "scripts/dcp_quote_version_check.py VERSIONS_SQL",
+   "where_clause": "WHERE event = stored; read-only unless --apply"
+  },
+  {
+   "purpose": "Read the stored verdicts for the controls on the page",
+   "file_line": "services/evidence_council.py _VERSION_CHECK_SQL",
+   "where_clause": "WHERE control_id = ANY(page controls); read-only connection, 8 s limit"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "An older file was repaginated, so the quote is on another page.",
+   "what_happens": "It would be called a failure of the control or, worse, a pass.",
+   "mitigated": true,
+   "how": "The matcher returns wrong_page, shown as Same words, on a different page of this file.",
+   "repro": "python -m pytest tests/test_dcp_quote_version_check.py -k repaginated -q"
+  },
+  {
+   "scenario": "An older file has different wording.",
+   "what_happens": "The old text could be shown as matching the current words.",
+   "mitigated": true,
+   "how": "The verdict is not_found and the page says these words were not found in this file; Penrith front setback v1.1 shows it.",
+   "repro": "python -m pytest tests/test_dcp_quote_version_check_real_db.py -o addopts= -m database"
+  },
+  {
+   "scenario": "A PDF cannot be read or has no text.",
+   "what_happens": "A pass would be recorded for a file nobody could read.",
+   "mitigated": true,
+   "how": "The verdict is no_source and the page says this file could not be read.",
+   "repro": "python -m pytest tests/test_dcp_quote_version_check.py -k unreadable -q"
+  },
+  {
+   "scenario": "A control's quote is edited after its check was stored.",
+   "what_happens": "The page would show an old verdict as if it matched the new words.",
+   "mitigated": true,
+   "how": "The stored quote hash no longer matches, the verdict is marked stale and the page says the check was made on an older wording.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -k stale -q"
+  },
+  {
+   "scenario": "The control is deleted or re-extracted while the script runs.",
+   "what_happens": "Verdicts could be written for a control that no longer exists.",
+   "mitigated": true,
+   "how": "The write aborts with nothing written if any checked control is no longer current, and the table cascades on delete.",
+   "repro": "python scripts/dcp_quote_version_check.py --all (dry run) then --apply"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Migration 127 and the fill were already applied on 2026-11-20 (126 rows). Open the evidence page for 2 Hand Avenue and read the new column: Front setback v1.1 should say these words were not found in this file."
+ }
+}

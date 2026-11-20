@@ -123,3 +123,27 @@ def test_files_earlier_version_has_no_council_date():
 
 def test_walk_heuristic_is_not_invented_when_absent():
     assert es.walk({})["heuristic"] is None
+
+
+def test_version_checks_are_shown_and_a_changed_quote_marks_them_stale():
+    import hashlib
+    sha = hashlib.sha256(b"words").hexdigest()
+    data = {"setbacks": [_entry(control_id=7)]}
+    rows = [(7, "v1.1", "wrong_page", sha, 7), (7, "v1.2", "verbatim", "oldhash", 7)]
+    out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: rows)
+    v = out["controls"][0]["version_checks"]
+    assert v["status"] == "ok" and [x["verdict"] for x in v["versions"]] == ["wrong_page", "verbatim"]
+    assert v["versions"][0]["stale"] is False and v["versions"][1]["stale"] is True
+    assert v["versions"][0]["result_words"].startswith("Same words, on a different page")
+
+
+def test_version_checks_unreadable_is_not_none():
+    data = {"setbacks": [_entry(control_id=7)]}
+    out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: None)
+    assert out["controls"][0]["version_checks"]["status"] == "unreadable"
+
+
+def test_control_without_checks_says_none():
+    data = {"setbacks": [_entry(control_id=7)]}
+    out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: [])
+    assert out["controls"][0]["version_checks"] == {"status": "none", "versions": []}

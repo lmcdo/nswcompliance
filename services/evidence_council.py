@@ -21,6 +21,16 @@ CONNECT_TIMEOUT_S = 3
 STATEMENT_TIMEOUT_MS = 8000   # fetch_dcp_setbacks runs several small reads
 DEV_TYPE = "dwelling_house"
 
+_VERSION_CHECK_SQL = (
+    "SELECT control_id, version_label, verdict, quote_sha256, pdf_page FROM dcp_quote_version_check "
+    "WHERE control_id = ANY(%s) ORDER BY control_id, version_label"
+)
+VERDICT_WORDS = {
+    "verbatim": "Same words on the cited page",
+    "wrong_page": "Same words, on a different page of this file",
+    "not_found": "These words were not found in this file",
+    "no_source": "This file could not be read",
+}
 _FILES_SQL = (
     "SELECT v.chapter_key, v.version_label, v.captured_at, v.superseded_at, r.url_last_modified, r.council_url "
     "FROM dcp_source_versions_dated v LEFT JOIN dcp_chapter_registry r ON r.council = v.council AND r.chapter_key = v.chapter_key AND r.is_active "
@@ -75,8 +85,30 @@ def _default_fetch(conn: Any, key: str) -> Optional[dict]:
     return fetch_dcp_setbacks(conn, key, raise_on_error=True)
 
 
+def _version_checks(ids: list[int], quotes: dict[int, Optional[str]], connect: Optional[Callable[[], Any]],
+                    rows_fn: Optional[Callable[[list[int]], Optional[list]]]) -> dict[int, dict]:
+    """Stored quote-on-page verdicts per control and file version (migration 127). A check made on an older wording of the quote is marked stale."""
+    import hashlib
+
+    if not ids:
+        return {}
+    rows = rows_fn(ids) if rows_fn else _run(_VERSION_CHECK_SQL, (ids,), connect)
+    if rows is None:
+        return {i: {"status": "unreadable", "versions": []} for i in ids}
+    out: dict[int, dict] = {i: {"status": "none", "versions": []} for i in ids}
+    for cid, label, verdict, sha, page in rows:
+        if cid not in out:
+            continue
+        now_sha = hashlib.sha256((quotes.get(cid) or "").encode("utf-8")).hexdigest()
+        out[cid]["status"] = "ok"
+        out[cid]["versions"].append({"version": label, "verdict": verdict, "result_words": VERDICT_WORDS.get(verdict, verdict),
+                                     "checked_page": page, "stale": sha != now_sha})
+    return out
+
+
 def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]] = None,
-                     fetch: Optional[Callable[[Any, str], Optional[dict]]] = None) -> dict:
+                     fetch: Optional[Callable[[Any, str], Optional[dict]]] = None,
+                     version_rows: Optional[Callable[[list[int]], Optional[list]]] = None) -> dict:
     """The council's own current dwelling house controls, with its words, clause and page, from the one guarded producer.
 
     status: ok (rows), none (the producer found no current rows), unreadable (council unknown or the database did not answer).
@@ -102,7 +134,11 @@ def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]]
             except Exception:  # noqa: BLE001
                 pass
     rows = [e for e in ((data or {}).get("setbacks") or []) if e.get("dev_type") == DEV_TYPE]
-    controls = [{"label": e.get("type"), "control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),
+    checks = _version_checks([e["control_id"] for e in rows if isinstance(e.get("control_id"), int)],  # noqa: bracket-access -- guarded by the isinstance test on the same line
+                             {e["control_id"]: e.get("source_text") for e in rows if isinstance(e.get("control_id"), int)},  # noqa: bracket-access -- same guard
+                             connect, version_rows)
+    controls = [{"control_id": e.get("control_id"), "version_checks": checks.get(e.get("control_id"), {"status": "none", "versions": []}),
+                 "label": e.get("type"), "control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),
                  "unit": e.get("unit"), "requirement": e.get("requirement"), "condition": e.get("notes") or None,
                  "applicability": e.get("applicability"), "council_words": e.get("source_text"),
                  "clause": e.get("clause") or e.get("clause_unchecked") or None, "clause_shown": bool(e.get("clause_shown")),
