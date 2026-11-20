@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Adds the exact wording of NSW Road Rules 2014 regs 231, 232 and 234 (pasted by the user from AustLII on 2026-11-20) as saved law data, and shows four quotes (231(2), 232(2), 234(1), 234(4)) on the evidence page beside the crossings-only walk line, with the clause, the source address and 'shown for reference; this tool does not decide whether a walk is lawful'. Nothing is paraphrased: each quote is cut word for word from the saved text, and the evidence data refuses to serve a quote that is not found word for word in that text, or a text whose fingerprint changed (status unreadable). Also copies the two data files into the Python image (Dockerfile.python) so production can read them. No query, no schema.",
-  "commit_hash": "bc2f4375",
+  "commit_hash": "fd18ee30",
   "files": [
     "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt",
     "data/law/road_rules_2014_pedestrian_facts.json",
