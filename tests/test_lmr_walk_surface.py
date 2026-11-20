@@ -2,6 +2,7 @@
 
 The surface is one straight street: node i is i*10 m from the anchor, walking distance i*10 m.
 """
+import numpy as np
 import pytest
 
 from services import lmr_walk_surface as ws
@@ -48,6 +49,77 @@ def test_walk_measured_from_the_nearest_part_of_the_lot():
     near = walk(ring(X0 + 400, Y0 + 10, w=300.0))  # a long lot: its nearest corner is at 400 m
     far_corner_only = walk(ring(X0 + 700, Y0 + 10))
     assert near["m"] < far_corner_only["m"]
+
+
+def _far_lot_reason(rule, stranded=None):
+    """A lot 300 m north of the only street: no stored walk point within 40 m of it."""
+    s = surface()
+    s.walk_rule = rule
+    if stranded is not None:
+        s.has_stranded_list = True
+        s.stranded_xy = np.asarray(stranded, dtype=float).reshape(-1, 2)
+    r = walk(ring(X0 + 400, Y0 + 300), surfaces=[s])
+    assert r["valid"] is False and r["m"] is None
+    return r["reason"]
+
+
+def test_safe_surface_with_footpath_but_no_route_says_so():
+    """Footpath points sit next to the lot but none reaches a station: the planner is told to look for a missing crossing."""
+    why = _far_lot_reason("safe-crossings-v2", stranded=[[X0 + 410, Y0 + 310]])
+    assert why.startswith("there is a footpath next to the lot, but the map has no route")
+    assert "no mapped footpath" not in why and "check the route on the ground" in why
+
+
+def test_safe_surface_with_no_footpath_near_the_lot_says_that():
+    why = _far_lot_reason("safe-crossings-v2", stranded=[[X0 + 2000, Y0 + 2000]])   # stranded footpath exists, but far away
+    assert why.startswith("there is no mapped footpath within 40 m") and "no route" not in why
+    assert _far_lot_reason("safe-crossings-v2", stranded=[]).startswith("there is no mapped footpath within 40 m")
+
+
+def test_packed_file_keeps_the_stranded_footpath_points(tmp_path):
+    doc = {"epsg": EPSG, "built": "2026-11-19", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "walk_rule": "safe-crossings-v2",
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)], "graph_nodes": 300,
+           "stranded": [[X0 + 410.0, Y0 + 310.0], [X0 + 425.5, Y0 + 310.0]]}
+    ws.write_npz(doc, tmp_path / "s.npz")
+    s = ws.load_surface(str(tmp_path / "s.npz"))
+    assert s.has_stranded_list and len(s.stranded_xy) == 2 and abs(s.stranded_xy[1][0] - (X0 + 425.5)) < 0.11
+    ws.write_npz({**doc, "stranded": []}, tmp_path / "e.npz")
+    e = ws.load_surface(str(tmp_path / "e.npz"))
+    assert e.has_stranded_list and len(e.stranded_xy) == 0
+    old = {k: v for k, v in doc.items() if k != "stranded"}
+    ws.write_npz(old, tmp_path / "o.npz")
+    assert ws.load_surface(str(tmp_path / "o.npz")).has_stranded_list is False
+
+
+def test_original_surface_blames_a_missing_footpath():
+    assert "no mapped footpath within 40 m of the lot" in _far_lot_reason("original")
+
+
+def test_safe_surface_without_the_list_names_both_causes_rather_than_guessing():
+    """An older safe file that has no stranded list cannot tell the two causes apart, so it says both."""
+    why = _far_lot_reason("safe-crossings-v2")
+    assert "no mapped footpath within 40 m" in why and ", or there is a footpath next to the lot" in why
+    assert "no route from it to a station within 2990 m" in why
+
+
+def test_reason_uses_the_declared_build_distance_not_the_farthest_stored_point():
+    """A safe build stored to 2000 m whose farthest reachable point is 850 m must say 2000, not 850."""
+    s = surface(n=86)   # farthest stored walk is 850 m
+    s2 = ws.Surface({"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": s.bbox_m, "anchors": s.anchors, "graph_nodes": 300,
+                     "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)][:86] + [[X0 + 5000, Y0, 850.0, 0]] * 120,
+                     "walk_rule": "safe-crossings-v2", "cutoff_m": 2000, "stranded": [[X0, Y0 + 300]]}, "t")
+    assert s2.cutoff_m == 2000.0 and "within 2000 m" in s2.no_walk_reason(np.array([[X0, Y0 + 300]]) )
+    assert surface().cutoff_m == 2990.0   # no declared value: falls back to the farthest stored point
+
+
+def test_surface_reads_its_rule_from_the_file(tmp_path):
+    doc = {"epsg": EPSG, "built": "2026-11-19", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "walk_rule": "safe-crossings-v2",
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)], "graph_nodes": 300}
+    ws.write_npz(doc, tmp_path / "s.npz")
+    assert ws.load_surface(str(tmp_path / "s.npz")).walk_rule == "safe-crossings-v2"
+    assert surface().walk_rule == "original"
 
 
 def test_no_surface_is_invalid_not_zero():
@@ -121,3 +193,51 @@ def test_minimum_over_surfaces_is_taken():
                        "nodes": [[X0 + i * 10.0, Y0, max(0.0, i * 10.0 - 300.0), 0] for i in range(300)], "graph_nodes": 300}, "b")
     r = walk(ring(X0 + 400, Y0 + 15), surfaces=[surface(), near], straight=200.0)
     assert r["anchor"] == "Anchor B" and r["m"] < 200 and r["optimistic_by_m"] == 150
+
+
+def test_crossings_only_walk_refuses_a_surface_built_without_the_safe_rule():
+    """An old-rule file in the safe folder must not be presented as a crossings-only walk."""
+    r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [surface()])
+    assert r["valid"] is False and r["m"] is None and "without the safe-crossing rule" in r["reason"]
+
+
+def test_crossings_only_walk_refuses_a_misspelt_or_unknown_rule_name():
+    """Only the exact safe rule name counts. A typo must not slip through as 'not original'."""
+    for bad in ("orginal", "safe-crossings-v1", "safe-crossings-v3", ""):
+        s = surface()
+        s.walk_rule = bad
+        r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [s])
+        assert r["valid"] is False and r["m"] is None, bad
+
+
+def test_the_safe_rule_name_matches_the_builder():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "lmr_area"))
+    import safe_crossings as sc
+    assert ws.SAFE_WALK_RULE == sc.RULE_NAME
+
+
+def test_crossings_only_walk_works_on_a_safe_surface():
+    s = surface()
+    s.walk_rule = "safe-crossings-v2"
+    r = ws.walk_from_lot_safe(ring(X0 + 400, Y0 + 15), EPSG, 300.0, False, [s])
+    assert r["valid"] is True and 404 <= r["m"] <= 415
+
+
+def test_packed_file_keeps_the_busy_road_points_and_near_busy_road_is_three_state(tmp_path):
+    """True next to a busy road, False away from one, None when the file has no list (an older file must not claim 'away')."""
+    doc = {"epsg": EPSG, "built": "2026-11-20", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "walk_rule": "safe-crossings-v2",
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(300)], "graph_nodes": 300,
+           "busy_pts": [[X0 + 100.0, Y0 + 20.0], [X0 + 125.0, Y0 + 20.0]]}
+    ws.write_npz(doc, tmp_path / "b.npz")
+    s = ws.load_surface(str(tmp_path / "b.npz"))
+    near = np.asarray(ring(X0 + 100, Y0))          # lot edge 20 m from a busy point
+    far = np.asarray(ring(X0 + 1000, Y0))
+    assert s.has_busy_list and len(s.busy_xy) == 2
+    assert s.near_busy_road(near) is True and s.near_busy_road(far) is False
+    ws.write_npz({**doc, "busy_pts": []}, tmp_path / "e.npz")
+    assert ws.load_surface(str(tmp_path / "e.npz")).near_busy_road(near) is False
+    ws.write_npz({k: v for k, v in doc.items() if k != "busy_pts"}, tmp_path / "o.npz")
+    assert ws.load_surface(str(tmp_path / "o.npz")).near_busy_road(near) is None

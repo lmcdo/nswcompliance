@@ -112,3 +112,18 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
     assert (REPO / "data" / "anef" / "sydney_anef_2045.json").is_file()
+
+
+def test_packing_trims_the_busy_road_points_to_each_strip_and_leaves_an_absent_list_absent():
+    import sys
+    import numpy as np
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    n = pk.MAX_NODES_PER_FILE + 10
+    nodes = np.column_stack([np.linspace(0, 20000, n), np.zeros(n), np.zeros(n), np.zeros(n)])
+    doc = {"bbox_m": [0.0, -10.0, 20000.0, 10.0], "nodes": nodes, "busy_pts": [[100.0, 0.0], [19900.0, 0.0]]}
+    parts = pk.strips(doc)
+    assert len(parts) >= 2
+    assert len(parts[0]["busy_pts"]) == 1 and parts[0]["busy_pts"][0][0] == 100.0      # the far point is not copied into strip 1
+    assert len(parts[-1]["busy_pts"]) == 1 and parts[-1]["busy_pts"][-1][0] == 19900.0
+    assert all("busy_pts" not in p for p in pk.strips({k: v for k, v in doc.items() if k != "busy_pts"}))

@@ -124,6 +124,11 @@ beautifulsoup4>=4.12
 # so the tests use the parser production uses rather than a substitute.
 lxml>=6.1.1
 
+# networkx: tests/test_lmr_safe_crossings.py builds small road networks to prove the safe-crossing
+# walking rule (scripts/lmr_area/safe_crossings.py). It was declared only in requirements.txt, which
+# CI does not install, so the tests would SKIP in CI and a skip is green. Pinned to match requirements.txt:87.
+networkx==3.6.1
+
 # pypdf: the OCR path now slices a chapter into page batches before posting it
 # (scripts/dcp_extract_changed.py:_ocr_pdf_slice), because one request for a
 # whole chapter could never return inside the 120s silence cap. Three test files

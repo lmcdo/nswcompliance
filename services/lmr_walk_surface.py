@@ -34,6 +34,8 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SURFACE_DIR = REPO_ROOT / "data" / "lmr_walk"
+# Optional second set, built with the safe-crossing rule (scripts/lmr_area/build_walk_surfaces.py --safe). Absent = no second walk shown.
+SAFE_SURFACE_DIR = REPO_ROOT / "data" / "lmr_walk_safe"
 
 # Engineering limits of the lookup, not planning figures.
 # With a point every ~15 m along every street (see the surface builder), a lot's frontage is within a few metres of a stored point.
@@ -46,6 +48,7 @@ ZERO_GUARD_M = 50.0  # noqa: regulatory-number -- the city2graph silent-zero gua
 SAMPLE_STEP_M = 10.0  # noqa: regulatory-number -- spacing of start points along the lot outline
 SNAP_SLACK_M = 10.0  # noqa: regulatory-number -- how much farther than its nearest node a start point may snap
 MAX_LOT_EXTENT_M = 600.0  # noqa: regulatory-number -- keeps the gap matrix small; larger lots answer cant_tell
+NEAR_BUSY_M = 30.0  # noqa: regulatory-number -- a lot this close to a busy road may snap to a footpath on its far side; busy-road points are ~25 m apart
 
 
 class Surface:
@@ -61,10 +64,54 @@ class Surface:
         self.dist = arr[:, 2]
         self.anchor_idx = arr[:, 3].astype(int)
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
+        # "original" = every way joins wherever two share a node; anything else (e.g. "safe-crossings-v2") crosses busy roads only at formal crossings
+        self.walk_rule: str = str(doc.get("walk_rule") or "original")
+        # The distance the build stored out to (declared), not the farthest point it happened to store; older files fall back to the latter.
+        declared = doc.get("cutoff_m")
+        self.cutoff_m: float = float(self.dist.max()) if len(self.dist) else 0.0
+        if declared is not None and isinstance(declared, (int, float)) and not isinstance(declared, bool) and declared > 0:
+            self.cutoff_m = float(declared)
+        # Footpath points with no route to any station within the cutoff (safe-crossing builds only). Empty for older files.
+        self.has_stranded_list: bool = doc.get("stranded") is not None
+        self.stranded_xy = np.asarray(doc.get("stranded") if doc.get("stranded") is not None else [], dtype=float).reshape(-1, 2)
+        # Points along busy roads, one about every 25 m (safe-crossing builds only). Lets the answer say a lot is next to a busy road.
+        self.has_busy_list: bool = doc.get("busy_pts") is not None
+        self.busy_xy = np.asarray(doc.get("busy_pts") if doc.get("busy_pts") is not None else [], dtype=float).reshape(-1, 2)
         # A station is only "built" when at least one of its entrances reaches a stored footpath node. The anchor list holds every
         # station name, including ones whose entrances sit outside the footpath download (46 to 52 of 83 names in the Inner West files).
         used = set(np.unique(self.anchor_idx).tolist())
         self.names_with_nodes = {a.get("name") for i, a in enumerate(self.anchors) if i in used}
+
+    def no_walk_reason(self, pts: Optional[np.ndarray] = None) -> str:
+        """Why a lot got no walking distance from this surface, in words a planner can act on.
+
+        `pts` are the lot's outline points. When the surface holds stranded footpath points (a safe-crossing build) the two causes are told
+        apart: footpath here but no safe route, or no footpath here. A surface without that list cannot tell, and says both."""
+        no_path = f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({self.name})"
+        if self.walk_rule == "original":
+            return no_path
+        route_gone = (f"there is a footpath next to the lot, but the map has no route from it to a station within {self.cutoff_m:.0f} m "
+                      "that crosses busy roads only at signals, zebra or marked crossings. A crossing may be missing from the map: check the route on the ground")
+        if pts is None or not self.has_stranded_list:   # cannot tell the two apart: say both
+            return f"{no_path}, or {route_gone[0].lower() + route_gone[1:]}"
+        if len(self.stranded_xy):
+            gap = np.hypot(pts[:, None, 0] - self.stranded_xy[None, :, 0], pts[:, None, 1] - self.stranded_xy[None, :, 1]).min()
+            if gap <= MAX_GAP_M:
+                return f"{route_gone} ({self.name})"
+        return no_path
+
+    def near_busy_road(self, pts: np.ndarray) -> Optional[bool]:
+        """True if the lot outline is within NEAR_BUSY_M of a busy road, False if not, None if this file has no busy-road list.
+        None is not False: an older file cannot say the lot is away from busy roads."""
+        if not self.has_busy_list:
+            return None
+        if not len(self.busy_xy):
+            return False
+        lo, hi = pts.min(axis=0) - NEAR_BUSY_M, pts.max(axis=0) + NEAR_BUSY_M
+        b = self.busy_xy[(self.busy_xy[:, 0] >= lo[0]) & (self.busy_xy[:, 0] <= hi[0]) & (self.busy_xy[:, 1] >= lo[1]) & (self.busy_xy[:, 1] <= hi[1])]
+        if not len(b):
+            return False
+        return bool(np.hypot(pts[:, None, 0] - b[None, :, 0], pts[:, None, 1] - b[None, :, 1]).min() <= NEAR_BUSY_M)
 
     def covers(self, minx: float, miny: float, maxx: float, maxy: float) -> bool:
         b = self.bbox_m
@@ -82,10 +129,16 @@ def write_npz(doc: dict, path: Path) -> None:
     ox, oy = float(np.floor(arr[:, 0].min())), float(np.floor(arr[:, 1].min()))
     order = np.lexsort((arr[:, 1], arr[:, 0]))
     arr = arr[order]
-    meta = {k: v for k, v in doc.items() if k != "nodes"}
+    meta = {k: v for k, v in doc.items() if k not in ("nodes", "stranded", "busy_pts")}
     meta["origin"] = [ox, oy]
+    # Written only when the build produced a list: a file without one must not claim "nothing is stranded".
+    st = np.asarray(doc["stranded"], dtype=float).reshape(-1, 2) if doc.get("stranded") is not None else None  # noqa: bracket-access -- guarded by the .get() on this line
+    extra = {} if st is None else {"sx": np.round((st[:, 0] - ox) * 10).astype(np.int32), "sy": np.round((st[:, 1] - oy) * 10).astype(np.int32)}
+    bp = np.asarray(doc["busy_pts"], dtype=float).reshape(-1, 2) if doc.get("busy_pts") is not None else None  # noqa: bracket-access -- guarded by the .get() on this line
+    if bp is not None:   # written only when the build produced a list, like the stranded list
+        extra.update(bx=np.round((bp[:, 0] - ox) * 10).astype(np.int32), by=np.round((bp[:, 1] - oy) * 10).astype(np.int32))
     np.savez_compressed(
-        path,
+        path, **extra,
         x=np.round((arr[:, 0] - ox) * 10).astype(np.int32), y=np.round((arr[:, 1] - oy) * 10).astype(np.int32),
         d=np.round(arr[:, 2] * 10).astype(np.uint16), a=arr[:, 3].astype(np.uint16),
         meta=np.array([json.dumps(meta)]))
@@ -95,6 +148,10 @@ def _doc_from_npz(path: str) -> dict:
     z = np.load(path, allow_pickle=False)
     meta = json.loads(str(z["meta"][0]))  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     ox, oy = meta.pop("origin")
+    if "sx" in z.files:   # older files have no stranded list
+        meta["stranded"] = np.column_stack([z["sx"] / 10.0 + ox, z["sy"] / 10.0 + oy]) if len(z["sx"]) else np.empty((0, 2))  # noqa: bracket-access -- "sx" is in z.files, checked on the line above
+    if "bx" in z.files:   # older files have no busy-road list
+        meta["busy_pts"] = np.column_stack([z["bx"] / 10.0 + ox, z["by"] / 10.0 + oy]) if len(z["bx"]) else np.empty((0, 2))  # noqa: bracket-access -- "bx" is in z.files, checked on the line above
     meta["nodes"] = np.column_stack([z["x"] / 10.0 + ox, z["y"] / 10.0 + oy, z["d"] / 10.0, z["a"].astype(float)])  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
     return meta
 
@@ -144,6 +201,18 @@ def sample_outline(coords_m: list[tuple[float, float]], step: float = SAMPLE_STE
     return np.asarray(pts, dtype=float)
 
 
+SAFE_WALK_RULE = "safe-crossings-v2"   # must equal scripts/lmr_area/safe_crossings.RULE_NAME; tests/test_lmr_walk_surface.py checks that
+
+
+def walk_from_lot_safe(ring_m, epsg, straight_m, touches_anchor, surfaces, required_anchors=None) -> dict:
+    """The crossings-only walk. Refuses any surface not built with the safe-crossing rule: an old-rule file in the safe folder would
+    otherwise be shown as a walk that crosses busy roads only at formal crossings."""
+    wrong = [s.name for s in surfaces if s.walk_rule != SAFE_WALK_RULE]   # an exact match: a typo or a future rule name is refused too
+    if wrong:
+        return _invalid(f"the crossings-only map folder holds a file built without the safe-crossing rule ({wrong[0]}), so it was not used")
+    return walk_from_lot(ring_m, epsg, straight_m, touches_anchor, surfaces, required_anchors=required_anchors)
+
+
 def _invalid(reason: str, **extra) -> dict:
     return {"m": None, "valid": False, "reason": reason, **extra}
 
@@ -187,7 +256,7 @@ def walk_from_lot(
         near = (np.abs(s.xy[:, 0] - (minx + maxx) / 2) <= (maxx - minx) / 2 + MAX_GAP_M) & \
                (np.abs(s.xy[:, 1] - (miny + maxy) / 2) <= (maxy - miny) / 2 + MAX_GAP_M)
         if not near.any():
-            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
+            notes.append(s.no_walk_reason(pts))
             continue
         nxy, nd, na = s.xy[near], s.dist[near], s.anchor_idx[near]
         gap = np.hypot(pts[:, None, 0] - nxy[None, :, 0], pts[:, None, 1] - nxy[None, :, 1])
@@ -199,7 +268,7 @@ def walk_from_lot(
         flat = int(np.argmin(total))
         i, j = divmod(flat, total.shape[1])
         if not np.isfinite(total[i, j]):
-            notes.append(f"there is no mapped footpath within {MAX_GAP_M:.0f} m of the lot ({s.name})")
+            notes.append(s.no_walk_reason(pts))
             continue
         cand = {"m": float(total[i, j]), "gap_m": float(gap[i, j]), "anchor_i": int(na[j]), "surface": s}
         if best is None or cand["m"] < best["m"]:  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
@@ -213,7 +282,8 @@ def walk_from_lot(
            # Set only for a station whose entrance is not mapped: the walk was measured to the station outline, so it can be
            # too short by up to the outline's length. The decision widens the range upward by this much.
            "optimistic_by_m": float(a.get("optimistic_by_m") or 0), "gap_m": round(best["gap_m"], 1),  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-           "surface": s.name, "built": s.built, "osm_extract": s.osm_extract}
+           "surface": s.name, "built": s.built, "osm_extract": s.osm_extract,
+           "near_busy_road": s.near_busy_road(pts)}   # True / False / None (None: this file has no busy-road list)
     if straight_m is not None and not touches_anchor and m < straight_m - STRAIGHT_SLACK_M:
         return {**out, "valid": False, "reason": f"walk ({m:.0f} m) is shorter than the straight line ({straight_m:.0f} m)"}
     if m <= 0 and straight_m is not None and straight_m > ZERO_GUARD_M:
