@@ -1,0 +1,27 @@
+{
+  "tier": "minor",
+  "justification": "Minor: data lists only, no code. Withholds 14 Ashfield E2 section 2.3 rows that the chapter's own page 1 limits to the land marked A (140A Hawthorne Parade) and lists them as may-apply for Haberfield. Applied live with owner approval and a row-level backup; the same pattern as #1655.",
+  "commit_hash": "170d65ef",
+  "files": [
+    "data/chapter_scope/never_serve.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "data/chapter_scope/suburb_unconfirmed_areas.json",
+    "frontend-nextjs/shared/may-apply-areas.json",
+    "frontend-nextjs/shared/not-covered-councils.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A re-publish re-keys the 14 rows to the Haberfield precinct and serves them again.",
+      "what_happens": "Every Haberfield house sees controls for one site again.",
+      "mitigated": true,
+      "how": "The rows are in never_serve.json with text fingerprints, which derive_precinct_keys, gate_rules and enrichment skip, and DQ-148 fails if one is served.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-148 prints count 0."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "The may-apply box for Haberfield is not yet checked in a browser."
+  }
+}
