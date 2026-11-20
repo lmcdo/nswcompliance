@@ -1,7 +1,7 @@
 {
   "tier": "Minor",
   "justification": "Data files plus the plumbing that ships them. Adds the 15 packed crossings-only walk maps (data/lmr_walk_safe/*.npz) that PR 1661's code already reads; adds the COPY line so Dockerfile.python puts the folder in the image (without it the deployed engine never sees the files); adds a manifest tuple of the 15 names in pack_walk_surfaces.py; adds one test that the folder holds exactly those files and each loads with the safe rule and busy-road points. No query, no schema. With the files the engine shows one extra line beside the normal walk; the verdict never changes.",
-  "commit_hash": "7780cd7d",
+  "commit_hash": "8d7ad146",
   "files": [
     "data/lmr_walk_safe/*.npz",
     "Dockerfile.python",
