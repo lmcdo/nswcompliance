@@ -13,10 +13,21 @@ export interface EvidenceFile {
   chapter: string; version: string; held_from: string | null; replaced_on: string | null; current: boolean;
   council_file_date: string | null; council_file_date_note: string | null;
 }
+/** A paragraph the tool did not clear, so a person has to look. Built from the exclusion rows in services/evidence_statement.py. */
+export interface ManualCheck {
+  clause: string | null; page: number | null; law_words: string | null; result_words: string | null; detail: string | null; not_seen?: string | null;
+}
 export interface Evidence {
   law_version_date: string | null; headline: string | null; lga: string | null; notes: string[];
   exclusions: EvidenceExclusion[];
-  walk: { clause: string | null; page: number | null; anchor: string | null; limit_m: number | null; walk_low_m: number | null; walk_high_m: number | null; detail: string | null; heuristic: string | null };
+  // Optional: the page (Vercel) and the data (Railway) deploy separately, so an older response without these must still render.
+  summary?: { total: number; counts: Record<string, number>; line: string };
+  manual_checks?: ManualCheck[];
+  walk: {
+    clause: string | null; page: number | null; anchor: string | null; limit_m: number | null; walk_low_m: number | null; walk_high_m: number | null; detail: string | null; heuristic: string | null;
+    margin_low_m?: number | null; margin_high_m?: number | null; entrance_unmapped_extra_m?: number | null;
+    crossings_only_walk_m?: number | null; crossings_only_note?: string | null;
+  };
   council_controls: { status: 'ok' | 'none' | 'unreadable'; reason?: string; as_at_line?: string | null; controls: EvidenceControl[] };
   council_files: { status: 'ok' | 'none' | 'unreadable'; reason?: string; files: EvidenceFile[] };
 }

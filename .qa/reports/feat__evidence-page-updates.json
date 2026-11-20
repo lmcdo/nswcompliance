@@ -1,0 +1,101 @@
+{
+  "tier": "Standard",
+  "justification": "Evidence page (planner-facing) now shows what the engine already computes: the crossings-only second walk line and its next-to-a-busy-road note, why the walk is a range (the margins), a count line over the 13 exclusion rows, a 'to check by hand' list built from the rows the tool did not clear, notes moved above the walk, a scope sentence under the council controls, the law date on the exclusions heading, and a footer saying the page is not a planning certificate and the planner or council decides. No query, no schema, no new regulatory figure: pure reshaping in services/evidence_statement.py plus page text. Every new field is optional on the page so an older server answer still renders.",
+  "commit_hash": "ad95931d",
+  "files": [
+    "services/evidence_statement.py",
+    "frontend-nextjs/lib/evidence-statement.ts",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "tests/test_evidence_statement.py",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_evidence_statement.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
+    "observed_red": "Three hand mutations each turned a Python test red, then were restored: walk() returning None for the crossings-only keys (3 tests fail), removing the margin fallback (test_margins_are_kept_when_the_answer_is_no_because_the_walk_is_too_long fails), and counting an unrecognised result as clear (test_summary_counts_add_up_and_the_line_names_each_result fails). Restored: 26 passed. Jest: 5 passed. tsc --noEmit: 0 errors. react-doctor on the 3 changed files: no issues.",
+    "fails_when": "walk() stops carrying the crossings-only fields or margins, the count line stops adding up to the row count, or the page prints a new part for an older answer that lacks it."
+  },
+  "pre_impl": {
+    "existing_data": "services/evidence_statement.build already returned exclusions, walk, notes, council controls and files; lmr_area_decision._crossings_only already puts crossings_only_walk_m and crossings_only_note on the area-check result (live, checked 2026-11-20).",
+    "assumption_mismatch": "The answer 'no' keeps only five figures in lmr.figures, so margins and walk_best_m are not there; walk() falls back to the same key on the result itself. When an exclusion decides the answer no walk is measured and none is shown.",
+    "new_vs_existing": "Only evidence_statement.py shaping and the page text change. The area check, the council controls query and the files query are untouched.",
+    "external_source_error": "None added: no new source, no network call. The existing 502 path in the proxy is unchanged.",
+    "frontend_type": "summary, manual_checks and the new walk fields are optional in lib/evidence-statement.ts and isEvidence does not require them, because the page (Vercel) and the data (Railway) deploy separately.",
+    "user_failure_mode": "A planner reading an older cached answer sees the page as before, with no empty headings. A planner reading a new answer for an excluded lot sees no walk line and the existing 'No walking range was measured' text, not a made-up one."
+  },
+  "functions": [
+    {
+      "name": "walk",
+      "file_line": "services/evidence_statement.py:93",
+      "input": "the area-check result dict as returned by decide (may be empty)",
+      "output": "walk block: range, margins, crossings-only walk and note",
+      "if_none": "Every missing part stays None; the crossings-only walk is never filled from the normal walk."
+    },
+    {
+      "name": "summary",
+      "file_line": "services/evidence_statement.py:125",
+      "input": "the list of exclusion rows built by exclusions()",
+      "output": "counts by result and the one-line summary",
+      "if_none": "No rows give total 0 and an empty line; an unrecognised result is counted as unknown so the counts always add up."
+    },
+    {
+      "name": "manual_checks",
+      "file_line": "services/evidence_statement.py:139",
+      "input": "the list of exclusion rows built by exclusions()",
+      "output": "the rows with result unknown, warn or not_checked",
+      "if_none": "No such rows give an empty list and the page prints no heading."
+    },
+    {
+      "name": "EvidenceStatement",
+      "file_line": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx:9",
+      "input": "lat and lng from the address bar",
+      "output": "the printable page with every new part shown only when present",
+      "if_none": "Each new part is rendered only when its data is present."
+    }
+  ],
+  "values": [
+    {
+      "value": "lmr.crossings_only_walk_m and lmr.crossings_only_note",
+      "read_at": "services/evidence_statement.py:93",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx (printed only when the note is present)",
+      "if_missing": "No crossings-only line is printed."
+    },
+    {
+      "value": "margin_low_m, margin_high_m, entrance_unmapped_extra_m",
+      "read_at": "services/evidence_statement.py:93",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx (printed only when both margins are present)",
+      "if_missing": "The range reason sentence is left out."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "The data server is older than the page and sends no summary, manual_checks or new walk fields.",
+      "what_happens": "The page renders as before; none of the new headings or sentences appear.",
+      "mitigated": "Mitigated: every new field is optional in the types and isEvidence does not require it.",
+      "how": "The first Jest test asserts the new parts are absent for an old-shape payload.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx"
+    },
+    {
+      "scenario": "An exclusion decides the answer, so no walk was measured.",
+      "what_happens": "walk_low_m and crossings_only_walk_m stay None; the page says no walking range was measured and shows no crossings-only line.",
+      "mitigated": "Mitigated: nothing is filled in.",
+      "how": "test_an_exclusion_decides_before_any_walk_so_no_walk_line_is_invented.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k exclusion_decides"
+    },
+    {
+      "scenario": "The area check adds a new result word the summary does not know.",
+      "what_happens": "It is counted as 'could not be determined', never as clear, and the counts still add up.",
+      "mitigated": "Mitigated: unrecognised results map to unknown.",
+      "how": "test_summary_counts_add_up_and_the_line_names_each_result fails when the mapping is changed to clear.",
+      "repro": "python -m pytest tests/test_evidence_statement.py -q -o addopts= -k summary_counts"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 (28 Selwyn Street, Pymble) once the Python API and the front end have both deployed: the crossings-only line, the count line, the by-hand list and the footer should show. Until the API deploys, the page renders without the new parts."
+  }
+}
