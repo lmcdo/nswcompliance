@@ -84,6 +84,7 @@ watchPatterns = [
     "scripts/gate_rules_roads.py",
     "scripts/gate_rules_areas.py",
     "scripts/gate_rules_devtypes.py",
+    "scripts/gate_rules_land.py",
     "scripts/dcp_area_link_guard.py",
     "data/cos_precinct_page_ranges.json",
     "scripts/verify_dcp_formatting.py",

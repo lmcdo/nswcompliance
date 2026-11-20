@@ -1,0 +1,91 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes which council rules a house is shown once applied (production data, all councils). New step plus data file; no new schema, no report wording. Every write is a single column on a listed row with a row-level backup and an undo. Not Minor: it hides and marks rules for every council (683 rows applied 2026-11-20).",
+  "commit_hash": "dee7decb",
+  "files": [
+    "scripts/gate_rules_land.py",
+    "scripts/gate_rules.py",
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py",
+    "tests/test_gate_rules_land_real_db.py",
+    "Dockerfile.monitors"
+  ],
+  "pre_impl": {
+    "existing_data": "regulatory_provisions rows and Haiku 'applies when' labels for 48,724 clauses. The route already reads v2_applicable_zones, v2_marker and v2_dcp_layer, so no column and no frontend change were needed. Reused: never_serve text fingerprints, the zone-validity check, derive_precinct_keys entry point.",
+    "assumption_mismatch": "Assumed the audit's saved rule text equals the stored text. It does not (heading stripped, lines rewrapped), so a replay by text hid almost nothing; the replay was redone from stored text. Also assumed the first filters were right: dropping rows labelled not-a-rule or with a heritage topic left out wrong rules, so the data was regenerated without those filters.",
+    "new_vs_existing": "New: gate_rules_land.py and land_limits.json. Extended: gate_rules.apply_gate_rules calls it. Same pattern as gate_rules_devtypes.py (merged #1655)."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only land_limits",
+    "fails_when": "Prints to-change greater than 0 after the apply, meaning a publish re-set a limit or a listed row was missed. It printed 683 before the apply on production and 0 after.",
+    "observed_red": "Before the apply the command printed gate land_limits to-change=683 on production (517 marker, 166 zones), so the check detects unlimited rows. A mutation removing the keyed, heritage and withheld row guards failed 7 of the 17 unit tests. After the apply a rerun printed to-change=0 and DQ-144 fell from 7285 to 7144."
+  },
+  "functions": [
+    {
+      "name": "apply_land_limits",
+      "file_line": "scripts/gate_rules_land.py:52",
+      "input": "A database cursor, an optional council slug, an apply flag, an optional set of rule names",
+      "output": "A list of (id, column, before, after, rule) changes for the backup; updates only when apply is true",
+      "if_none": "A row with no text or an unlisted fingerprint is skipped; a row that already has a value is left alone"
+    },
+    {
+      "name": "entries",
+      "file_line": "scripts/gate_rules_land.py:32",
+      "input": "The data file data/chapter_scope/land_limits.json read from disk",
+      "output": "A tuple of reviewed entries; raises if the file is missing, a kind is unknown or a fingerprint count is wrong",
+      "if_none": "A missing file raises instead of silently limiting nothing"
+    },
+    {
+      "name": "_zones_ok",
+      "file_line": "scripts/gate_rules_land.py:41",
+      "input": "A cursor, a council slug and a list of zone codes",
+      "output": "True only when every zone code is in that council's LEP land-use table",
+      "if_none": "A council with no LEP table returns False so the writer raises before any write"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Select the current rows of one council and chapter so listed ones can be limited",
+      "file_line": "scripts/gate_rules_land.py:52",
+      "where_clause": "is_current AND source_council AND source_chapter_key IS NOT DISTINCT FROM",
+      "if_zero": "No rows change and the step prints to-change=0, the expected state after an apply"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A publish re-sets a limited row to no limit.",
+      "what_happens": "The rule reaches every house again.",
+      "mitigated": true,
+      "how": "The step runs at the end of apply_gate_rules after every publish and matches by text fingerprint, so new row ids keep the limit.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits prints to-change=0 while limits hold."
+    },
+    {
+      "scenario": "A place-specific rule is hidden for a resident of that place.",
+      "what_happens": "A house inside the named place loses a rule that applies to it.",
+      "mitigated": true,
+      "how": "The 700 place-specific rows are NOT shipped: they are held in ~/.claude/plans/ce-land-limits-place-HELD-2026-11-20.json for an owner decision, and land_limits.json contains only the zone and heritage kinds.",
+      "repro": "python -c \"import json;print({e['kind'] for e in json.load(open('data/chapter_scope/land_limits.json'))['entries']})\" prints only zones and heritage."
+    },
+    {
+      "scenario": "A general rule with an exception is hidden as place-specific.",
+      "what_happens": "Every house loses a rule that applies to all of them.",
+      "mitigated": true,
+      "how": "Rows whose heading or first 300 characters say excluding, except, other than, outside or apart from are never hidden.",
+      "repro": "The generator skipped 65 such rows on 2026-11-20."
+    },
+    {
+      "scenario": "The query that selects the current rows of one council and chapter matches nothing because a chapter key is stored as NULL, not an empty string.",
+      "what_happens": "Listed rows are silently left unlimited and the step prints to-change=0 even though rows still need limits.",
+      "mitigated": true,
+      "how": "The query uses IS NOT DISTINCT FROM with an empty key mapped to NULL, and tests/test_gate_rules_land_real_db.py runs it against the real production schema.",
+      "repro": "PYTEST_REAL_DB=1 python -m pytest -m database -o addopts= tests/test_gate_rules_land_real_db.py passes, and the dry run found 1383 rows."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Owner decision needed on hiding place-specific rules from residents; rule list not checked in a browser."
+  }
+}

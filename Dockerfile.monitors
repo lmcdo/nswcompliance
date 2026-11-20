@@ -65,6 +65,7 @@ COPY scripts/gate_rules.py ./scripts/gate_rules.py
 COPY scripts/gate_rules_roads.py ./scripts/gate_rules_roads.py
 COPY scripts/gate_rules_areas.py ./scripts/gate_rules_areas.py
 COPY scripts/gate_rules_devtypes.py ./scripts/gate_rules_devtypes.py
+COPY scripts/gate_rules_land.py ./scripts/gate_rules_land.py
 # The area-link guard. Both DCP workers import it at MODULE level (#1285); without
 # this COPY dcp-extract and dcp-commit ImportError at start-up on every run.
 COPY scripts/dcp_area_link_guard.py ./scripts/dcp_area_link_guard.py
