@@ -1,0 +1,57 @@
+{
+  "tier": "Minor",
+  "justification": "One sentence on the evidence page saying when our records for the council begin, worked out in the page from the 'held from' dates of the council files it already lists. Page text only: no data, no query, no new field, no regulatory figure.",
+  "commit_hash": "46440b71",
+  "files": [
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
+    "expected": "11 passed. With every listed file dated in YYYY-MM-DD form, the page says the earliest file is held from 2026-02-28; with any file undated or oddly dated, it says nothing.",
+    "fails_when": "The page shows the latest date, or shows a line while any listed file has no held-from date, or when the files could not be read.",
+    "observed_red": "Two hand mutations each turned a test red and were restored: earliest-to-latest (the records-begin test fails) and 'some file has a date' instead of 'every file has a date' (the any-undated-file test fails). Restored: 10 passed. tsc --noEmit: 0 errors. Third hand mutation after the second cross-review: removing the strict YYYY-MM-DD check makes the odd-date test fail (1 failed, 10 passed); restored: 11 passed, tsc 0 errors."
+  },
+  "pre_impl": "N/A — page text only. No schema, no query, no data path. The dates come from the council_files list the page already prints.",
+  "functions": "N/A — no function added. One derived value (earliestHeld) inside the page component.",
+  "values": "N/A — no new value is stored or fetched. earliestHeld is the smallest held_from date in the list already on the page, and is left out when no file has one.",
+  "queries": "N/A — no database query added or changed.",
+  "break_it": [
+    {
+      "scenario": "A held-from date arrives as 2026-2-28 (not zero-padded) beside 2026-10-26T00:00:00Z.",
+      "what_happens": "As text '2026-10-26' would sort before '2026-2-28', so the page could name the wrong earliest date; it now treats the odd date as undated and prints nothing.",
+      "mitigated": "Mitigated: every date must match YYYY-MM-DD or no sentence is shown.",
+      "how": "Covered by the odd-date Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t YYYY"
+    },
+    {
+      "scenario": "One listed file has no held-from date and another has 2026-02-28.",
+      "what_happens": "No sentence is shown, because the undated file could be older than any date we could print.",
+      "mitigated": "Mitigated: earliestHeld is only set when every listed file has a date (found by the cross-review).",
+      "how": "Covered by the any-undated-file Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t ANY"
+    },
+    {
+      "scenario": "No file in the list has a held-from date.",
+      "what_happens": "The sentence is left out; nothing is guessed.",
+      "mitigated": "Mitigated: earliestHeld is null when no date exists and the sentence only renders for a value.",
+      "how": "Covered by the second new Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t records"
+    },
+    {
+      "scenario": "The council files could not be read.",
+      "what_happens": "The page already says 'Could not be read'; no records-begin sentence is shown.",
+      "mitigated": "Mitigated: earliestHeld is only computed when the files status is ok.",
+      "how": "The status check in the page component.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx"
+    }
+  ],
+  "mutation_analysis": "N/A at this tier. One hand mutation (earliest to latest) turns a test red; see falsifiable_check.observed_red.",
+  "residual_risk": "The date is when we stored our copy of each file, not when the council published it, and the sentence says 'held from' to match the table. It says nothing about files the council had before we started storing them.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 once the front end deploys and read the line under the council files table."
+  }
+}
