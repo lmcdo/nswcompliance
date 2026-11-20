@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: data lists only, no code. Withholds 14 Ashfield E2 section 2.3 rows that the chapter's own page 1 limits to the land marked A (140A Hawthorne Parade) and lists them as may-apply for Haberfield. Applied live with owner approval and a row-level backup; the same pattern as #1655.",
-  "commit_hash": "8d23a7a2",
+  "commit_hash": "7eca1281",
   "files": [
     "data/chapter_scope/never_serve.json",
     "data/chapter_scope/not_covered_2026-10-15.json",
