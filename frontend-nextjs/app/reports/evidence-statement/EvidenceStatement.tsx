@@ -89,7 +89,7 @@ export default function EvidenceStatement() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="text-left">
-                <th className="border p-1">Control</th><th className="border p-1">Council wording</th><th className="border p-1">Clause and page</th>
+                <th className="border p-1">Control</th><th className="border p-1">Council wording</th><th className="border p-1">Clause and page</th><th className="border p-1">Quote on the cited page, by file version</th>
               </tr>
             </thead>
             <tbody>
@@ -99,6 +99,11 @@ export default function EvidenceStatement() {
                   <td className="border p-1">{c.council_words ?? 'Council wording not held'}</td>
                   <td className="border p-1">
                     {c.clause ? `${c.clause}${c.clause_shown ? '' : ' (label not checked against the page)'}, ` : ''}page {c.page ?? 'not given'}
+                  </td>
+                  <td className="border p-1">
+                    {c.version_checks?.status === 'ok' ? c.version_checks.versions.map((v) => (
+                      <div key={v.version}>{v.version}: {v.result_words}{v.stale ? ' (check made on an older wording of this quote)' : ''}</div>
+                    )) : c.version_checks?.status === 'unreadable' ? 'Could not be read.' : 'Not checked.'}
                   </td>
                 </tr>
               ))}
@@ -132,7 +137,7 @@ export default function EvidenceStatement() {
         </table>
       )}
       <p className="mt-2 text-gray-600">
-        These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Whether each quote is on its cited page, for earlier versions, is not checked here.
+        These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Each version is checked against the page the current plan cites; an older file can be paginated differently, so "different page" does not mean the control is wrong.
       </p>
 
       {data.notes.length > 0 && (

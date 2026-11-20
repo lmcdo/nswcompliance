@@ -4,7 +4,9 @@ export interface EvidenceExclusion {
   para: string; clause: string; page: number; law_words: string; result: string; result_words: string;
   detail: string | null; source_checked: string; not_seen?: string | null;
 }
+export interface VersionCheck { version: string; verdict: string; result_words: string; checked_page: number | null; stale: boolean }
 export interface EvidenceControl {
+  version_checks?: { status: 'ok' | 'none' | 'unreadable'; versions: VersionCheck[] };
   label?: string | null; control_type: string | null; requirement: string | null; council_words: string | null; clause: string | null; clause_shown: boolean; page: number | null;
 }
 export interface EvidenceFile {
