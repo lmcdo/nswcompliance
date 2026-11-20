@@ -1,0 +1,43 @@
+{
+  "tier": "Minor",
+  "justification": "One sentence on the evidence page saying when our records for the council begin, worked out in the page from the 'held from' dates of the council files it already lists. Page text only: no data, no query, no new field, no regulatory figure.",
+  "commit_hash": "db93e2b5",
+  "files": [
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
+    "expected": "9 passed. With the three files listed in the test, the page says the earliest file is held from 2026-02-28.",
+    "fails_when": "The page shows the latest date instead of the earliest, shows a line when no file has a held-from date, or shows one when the files could not be read.",
+    "observed_red": "Changing the earliest-date rule to the latest (.sort().reverse()[0]) made the records-begin test fail (1 failed, 8 passed); restored: 9 passed. tsc --noEmit: 0 errors."
+  },
+  "pre_impl": "N/A — page text only. No schema, no query, no data path. The dates come from the council_files list the page already prints.",
+  "functions": "N/A — no function added. One derived value (earliestHeld) inside the page component.",
+  "values": "N/A — no new value is stored or fetched. earliestHeld is the smallest held_from date in the list already on the page, and is left out when no file has one.",
+  "queries": "N/A — no database query added or changed.",
+  "break_it": [
+    {
+      "scenario": "No file in the list has a held-from date.",
+      "what_happens": "The sentence is left out; nothing is guessed.",
+      "mitigated": "Mitigated: earliestHeld is null when no date exists and the sentence only renders for a value.",
+      "how": "Covered by the second new Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t records"
+    },
+    {
+      "scenario": "The council files could not be read.",
+      "what_happens": "The page already says 'Could not be read'; no records-begin sentence is shown.",
+      "mitigated": "Mitigated: earliestHeld is only computed when the files status is ok.",
+      "how": "The status check in the page component.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx"
+    }
+  ],
+  "mutation_analysis": "N/A at this tier. One hand mutation (earliest to latest) turns a test red; see falsifiable_check.observed_red.",
+  "residual_risk": "The date is when we stored our copy of each file, not when the council published it, and the sentence says 'held from' to match the table. It says nothing about files the council had before we started storing them.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 once the front end deploys and read the line under the council files table."
+  }
+}

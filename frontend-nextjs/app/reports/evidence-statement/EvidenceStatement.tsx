@@ -37,6 +37,10 @@ export default function EvidenceStatement() {
   const w = data.walk;
   const cc = data.council_controls;
   const cf = data.council_files;
+  // The earliest "held from" among the files listed below (ISO dates sort as text). Nothing is added: it is read from the same list.
+  const earliestHeld = cf.status === 'ok'
+    ? cf.files.map((f) => f.held_from?.slice(0, 10)).filter((d): d is string => !!d).sort()[0] ?? null
+    : null;
   return (
     <main className="mx-auto max-w-4xl p-6 text-sm text-gray-900 evidence-statement">
       <style>{PRINT_CSS}</style>
@@ -166,6 +170,9 @@ export default function EvidenceStatement() {
             ))}
           </tbody>
         </table>
+      )}
+      {earliestHeld && (
+        <p className="mt-2 text-gray-600">The earliest file we hold for this council is held from {earliestHeld}. We hold no earlier copy, so a version replaced before that date is not on this page.</p>
       )}
       <p className="mt-2 text-gray-600">
         These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Each version is checked against the page the current plan cites; an older file can be paginated differently, so "different page" does not mean the control is wrong.
