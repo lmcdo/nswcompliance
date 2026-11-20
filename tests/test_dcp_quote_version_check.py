@@ -24,3 +24,10 @@ def test_unreadable_or_empty_source_is_no_source_never_a_pass():
     assert q.classify(QUOTE, None, 1) == "no_source"
     assert q.classify(QUOTE, ["", ""], 1) == "no_source"
     assert q.classify("", ["text"], 1) == "no_source"
+
+
+def test_served_file_filed_under_another_chapter_is_added_to_the_chapter():
+    import dcp_quote_version_check as v
+
+    assert "r.r2_current_path" in v.SERVED_SQL and "r.chapter_key" in v.SERVED_SQL.split("FROM")[0]
+    assert "v.chapter_key" not in v.SERVED_SQL   # joined on the file, not on the ledger's chapter name

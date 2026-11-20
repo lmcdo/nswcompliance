@@ -24,7 +24,7 @@ DEV_TYPE = "dwelling_house"
 _VERSION_CHECK_SQL = (
     "SELECT v.control_id, s.version_label, v.verdict, v.quote_sha256, v.pdf_page FROM dcp_quote_version_check v "
     "JOIN dcp_setback_controls c ON c.id = v.control_id AND c.is_current AND c.lga = v.council AND c.source_chapter_key = v.chapter_key "
-    "JOIN dcp_source_versions s ON s.r2_key = v.r2_key AND s.event = 'stored' AND s.council = v.council AND s.chapter_key = v.chapter_key "
+    "JOIN dcp_source_versions s ON s.r2_key = v.r2_key AND s.event = 'stored' AND s.council = v.council "
     "WHERE v.control_id = ANY(%s) ORDER BY v.control_id, s.version_label"
 )
 VERDICT_WORDS = {
