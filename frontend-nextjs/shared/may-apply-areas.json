@@ -1,4 +1,41 @@
 {
+  "ashfield": {
+    "HABERFIELD": [
+      {
+        "area_id": "ashfield-e2-2-3-140a-hawthorne-parade",
+        "council": "ashfield",
+        "chapter_key": "chapter-e2-haberfield",
+        "title": "Ashfield Chapter E2 section 2.3: site-specific controls for 140A Hawthorne Parade, Haberfield",
+        "row_selector": {
+          "ids": [
+            163707,
+            163709,
+            163710,
+            163711,
+            163712,
+            163713,
+            163714,
+            163715,
+            163716,
+            163717,
+            163718,
+            163719,
+            163720,
+            163721
+          ]
+        },
+        "rows_withheld": 14,
+        "suburbs": [
+          "HABERFIELD"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "2.3 140A Hawthorne Parade, Haberfield only apply to the land marked 'A'.",
+        "applies_to_page": 1,
+        "evidence": "Chapter E2 page 1 limits section 2.3 (pages 21-22) to the land marked A on Figure 1, the 2001 subdivision at 140A Hawthorne Parade. Exact-lot proof passed address checks but failed the nearest-precinct fallback check, so it is shown in the may-apply box for Haberfield."
+      }
+    ]
+  },
   "canterbury_bankstown": {
     "BANKSTOWN": [
       {
@@ -1532,6 +1569,132 @@
       }
     ]
   },
+  "city_of_sydney": {
+    "THE ROCKS": [
+      {
+        "area_id": "city-of-sydney-schedule-6-the-rocks",
+        "council": "city_of_sydney",
+        "chapter_key": "schedules",
+        "title": "Sydney DCP 2012 Schedule 6: signage in The Rocks",
+        "row_selector": {
+          "ids": [
+            256198,
+            256200,
+            256201,
+            256202,
+            256204,
+            256206,
+            256209,
+            256210,
+            256212,
+            256213,
+            256214,
+            256216,
+            256218,
+            256219,
+            256220,
+            256222,
+            256223,
+            256224,
+            256225,
+            256226,
+            256227,
+            256231,
+            256232,
+            256233,
+            256234,
+            256239,
+            256241,
+            256242,
+            256249,
+            256250,
+            256252,
+            256253,
+            256254,
+            256257,
+            256260,
+            256262,
+            256263,
+            256265,
+            256266,
+            256267,
+            256271,
+            256273,
+            256277,
+            256278,
+            256279,
+            256280,
+            256281,
+            256283,
+            256285,
+            256288,
+            256289,
+            256291,
+            256292,
+            256294,
+            256296,
+            256297,
+            256298,
+            256300,
+            256301,
+            256303,
+            256304,
+            256305,
+            256306,
+            256310,
+            256312,
+            256313,
+            256314,
+            256315,
+            256319,
+            256321,
+            256322,
+            256323,
+            256324,
+            256328,
+            256329,
+            256330,
+            256331,
+            256332,
+            256333,
+            256334,
+            256338,
+            256339,
+            256340,
+            256341,
+            256342,
+            256345,
+            256347,
+            256348,
+            256349,
+            256352,
+            256353,
+            256523,
+            256560,
+            256692,
+            256694,
+            256695,
+            256699,
+            256701,
+            256703,
+            256715,
+            256720,
+            256726,
+            256736
+          ]
+        },
+        "rows_withheld": 103,
+        "suburbs": [
+          "THE ROCKS"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This schedule provides information to assist tenants, consultants and fabricators on high quality signage appropriate for The Rocks precinct.",
+        "applies_to_page": 20,
+        "evidence": "Sydney DCP 2012 Schedules, Schedule 6 (pages 20 to 37, opening page 20): 'This schedule provides information to assist tenants, consultants and fabricators on high quality signage appropriate for The Rocks precinct.' The whole schedule is for The Rocks and was served to every City of Sydney house. The Rocks has no outline in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ]
+  },
   "inner_west": {
     "ANNANDALE": [
       {
@@ -2950,6 +3113,289 @@
     ]
   },
   "woollahra": {
+    "BELLEVUE HILL": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "DOUBLE BAY": [
+      {
+        "area_id": "woollahra-e1-8-5-double-bay-centre-parking",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1.8.5: parking in the Double Bay Centre",
+        "row_selector": {
+          "ids": [
+            172671,
+            172673,
+            172675,
+            172678,
+            172680
+          ]
+        },
+        "rows_withheld": 5,
+        "suburbs": [
+          "DOUBLE BAY"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "This section applies to land within the Double Bay Centre as identified in Chapter D5 Double Bay Centre of this DCP.",
+        "applies_to_page": 26,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.8.5 (page 26): 'This section applies to land within the Double Bay Centre as identified in Chapter D5 Double Bay Centre of this DCP.' It was served to every Woollahra house. Chapter D5 has its own centre outline, but these rows are keyed to no precinct, so they are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      },
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "EDGECLIFF": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "PADDINGTON": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "ROSE BAY": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "VAUCLUSE": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
+    "WATSONS BAY": [
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
+      }
+    ],
     "WOOLLAHRA": [
       {
         "area_id": "woollahra-e1-8-6-edgecliff-block",
@@ -2971,6 +3417,41 @@
         "applies_to_quote": "For residential zoned land in the area bounded by Syd Einfeld Drive, Edgecliff Road (southern side), Adelaide Street (western side) and Vernon Street (both sides)",
         "applies_to_page": 26,
         "evidence": "E1.8.6 heading names Woollahra (p26; contents p5). Block may geocode as EDGECLIFF (Edgecliff Rd is a street name, not a suburb named by the plan) so not added."
+      },
+      {
+        "area_id": "woollahra-e1-table-3-centre-parking-multipliers",
+        "council": "woollahra",
+        "chapter_key": "chapter-e1-parking-access",
+        "title": "Woollahra E1 Table 3: parking multipliers for listed centres",
+        "row_selector": {
+          "ids": [
+            172612,
+            172616,
+            172617,
+            172618,
+            172619,
+            172620,
+            172621,
+            172622,
+            172623
+          ]
+        },
+        "rows_withheld": 9,
+        "suburbs": [
+          "WATSONS BAY",
+          "VAUCLUSE",
+          "ROSE BAY",
+          "BELLEVUE HILL",
+          "DOUBLE BAY",
+          "EDGECLIFF",
+          "WOOLLAHRA",
+          "PADDINGTON"
+        ],
+        "postcodes": [],
+        "reason_code": "DRAWING_NOT_MATCHED",
+        "applies_to_quote": "In some centres the base parking generation rate for non-residential uses is discounted to respond to the particular circumstances of areas in the municipality.",
+        "applies_to_page": 19,
+        "evidence": "Woollahra DCP 2015 Chapter E1, section E1.5.3 (page 19): 'In some centres the base parking generation rate for non-residential uses is discounted'; Table 3 (page 20) lists the centres. The table was served to every Woollahra house. The listed centres have no outlines in our data, so the rows are withheld and listed. Withheld 2026-11-20 (owner yes)."
       }
     ]
   }
