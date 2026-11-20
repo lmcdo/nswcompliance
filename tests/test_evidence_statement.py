@@ -179,6 +179,17 @@ def test_manual_checks_are_the_rows_that_were_not_cleared():
     assert not any(r["result"] == "clear" and r["clause"] in {m["clause"] for m in manual} for r in rows)
 
 
+def test_a_result_word_the_page_does_not_know_is_counted_unknown_and_also_listed_for_a_hand_check():
+    rows = [{"result": "clear", "clause": "s164(1)(a)"}, {"result": "needs_review", "clause": "s164(1)(b)"}, {"result": "excludes", "clause": "s164(1)(c)"}]
+    assert es.summary(rows)["counts"]["unknown"] == 1
+    assert [m["clause"] for m in es.manual_checks(rows)] == ["s164(1)(b)"]   # the count and the list agree
+
+
+def test_the_count_line_does_not_say_looked_at_and_not_checked_in_one_breath():
+    line = es.summary([{"result": "clear"}, {"result": "not_checked"}])["line"]
+    assert "looked at" not in line and "1 not checked by this tool" in line and "1 no exclusion found" in line
+
+
 def test_build_carries_the_summary_and_the_manual_checks():
     out = es.build(_walked(600.0, 700.0), {"status": "none"}, {"status": "none"}, FACTS)  # noqa: regulatory-number -- test fixture
     assert out["summary"]["total"] == 13 and out["summary"]["line"]

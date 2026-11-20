@@ -132,16 +132,21 @@ def summary(rows: list[dict]) -> dict:
         counts[res if res in known else "unknown"] += 1
     parts = [f"{counts[k]} {words}" for k, words in SUMMARY_WORDS if counts[k]]
     n = len(rows)
-    line = f"{n} paragraphs of section 164(1) looked at: " + "; ".join(parts) + "." if n and parts else ""
+    line = f"{n} paragraphs of section 164(1): " + "; ".join(parts) + "." if n and parts else ""
     return {"total": n, "counts": counts, "line": line}
+
+
+# A paragraph needs no hand check when the tool found no exclusion or found an exclusion. Everything else, including a result word
+# this module does not know yet, needs a person, so the list matches the 'could not be determined' count in summary().
+_NO_HAND_CHECK = ("clear", "excludes")
 
 
 def manual_checks(rows: list[dict]) -> list[dict]:
     """The paragraphs this tool did not clear, so a person has to look: could not be determined, possible exclusion,
-    or not checked. Taken from the rows, so the list cannot drift from the table."""
+    not checked, or any result this module does not recognise. Taken from the rows, so the list cannot drift from the table."""
     return [{"clause": r.get("clause"), "page": r.get("page"), "law_words": r.get("law_words"),
              "result_words": r.get("result_words"), "detail": r.get("detail"), "not_seen": r.get("not_seen")}
-            for r in rows if r.get("result") in ("unknown", "warn", "not_checked")]
+            for r in rows if r.get("result") not in _NO_HAND_CHECK]
 
 
 def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts] = None) -> dict:

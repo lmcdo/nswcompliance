@@ -45,12 +45,12 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     const base = payload();
     mockFetch(payload({
-      summary: { total: 13, counts: { clear: 11, not_checked: 2 }, line: '13 paragraphs of section 164(1) looked at: 2 not checked by this tool; 11 no exclusion found.' },
+      summary: { total: 13, counts: { clear: 11, not_checked: 2 }, line: '13 paragraphs of section 164(1): 2 not checked by this tool; 11 no exclusion found.' },
       manual_checks: [{ clause: 's164(1)(i)', page: 79, law_words: 'a gas pipeline,', result_words: 'Not checked by this tool', detail: null, not_seen: null }],
       walk: { ...base.walk, margin_low_m: 25, margin_high_m: 75, entrance_unmapped_extra_m: 0, crossings_only_walk_m: 861, crossings_only_note: 'Crossing busy roads only at lights, the walk is about 861 m (+85 m compared with the normal walk). Check the crossings on the ground.' },
     }));
     render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/13 paragraphs of section 164\(1\) looked at/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/13 paragraphs of section 164\(1\): 2 not checked by this tool; 11 no exclusion found/)).toBeTruthy());
     expect(screen.getByText(/less 25 m to the measured walk plus 75 m/)).toBeTruthy();
     expect(screen.getByText(/Crossings-only walk, for information/)).toBeTruthy();
     expect(screen.getByText(/about 861 m \(\+85 m compared with the normal walk\)/)).toBeTruthy();

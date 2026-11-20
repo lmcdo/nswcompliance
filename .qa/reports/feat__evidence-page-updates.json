@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Evidence page (planner-facing) now shows what the engine already computes: the crossings-only second walk line and its next-to-a-busy-road note, why the walk is a range (the margins), a count line over the 13 exclusion rows, a 'to check by hand' list built from the rows the tool did not clear, notes moved above the walk, a scope sentence under the council controls, the law date on the exclusions heading, and a footer saying the page is not a planning certificate and the planner or council decides. No query, no schema, no new regulatory figure: pure reshaping in services/evidence_statement.py plus page text. Every new field is optional on the page so an older server answer still renders.",
-  "commit_hash": "2eb5c6d2",
+  "commit_hash": "e286c287",
   "files": [
     "services/evidence_statement.py",
     "frontend-nextjs/lib/evidence-statement.ts",
@@ -11,7 +11,7 @@
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_evidence_statement.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
-    "observed_red": "Three hand mutations each turned a Python test red, then were restored: walk() returning None for the crossings-only keys (3 tests fail), removing the margin fallback (test_margins_are_kept_when_the_answer_is_no_because_the_walk_is_too_long fails), and counting an unrecognised result as clear (test_summary_counts_add_up_and_the_line_names_each_result fails). Restored: 26 passed. Jest: 5 passed. tsc --noEmit: 0 errors. react-doctor on the 3 changed files: no issues.",
+    "observed_red": "Three hand mutations each turned a Python test red, then were restored: walk() returning None for the crossings-only keys (3 tests fail), removing the margin fallback (test_margins_are_kept_when_the_answer_is_no_because_the_walk_is_too_long fails), and counting an unrecognised result as clear (test_summary_counts_add_up_and_the_line_names_each_result fails). Restored: 26 passed. Jest: 5 passed. tsc --noEmit: 0 errors. react-doctor on the 3 changed files: no issues. After the cross-review: a fourth hand mutation (back to the old 'unknown, warn, not_checked' rule in manual_checks) turns test_a_result_word_the_page_does_not_know_is_counted_unknown_and_also_listed_for_a_hand_check red; restored: 28 passed, Jest 5 passed.",
     "fails_when": "walk() stops carrying the crossings-only fields or margins, the count line stops adding up to the row count, or the page prints a new part for an older answer that lacks it."
   },
   "pre_impl": {
@@ -39,10 +39,10 @@
     },
     {
       "name": "manual_checks",
-      "file_line": "services/evidence_statement.py:139",
+      "file_line": "services/evidence_statement.py:144",
       "input": "the list of exclusion rows built by exclusions()",
       "output": "the rows with result unknown, warn or not_checked",
-      "if_none": "No such rows give an empty list and the page prints no heading."
+      "if_none": "No such rows give an empty list and the page prints no heading. A result word it does not know is listed, never skipped."
     },
     {
       "name": "EvidenceStatement",
