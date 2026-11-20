@@ -1,22 +1,29 @@
 {
   "tier": "Minor",
   "justification": "One sentence on the evidence page saying when our records for the council begin, worked out in the page from the 'held from' dates of the council files it already lists. Page text only: no data, no query, no new field, no regulatory figure.",
-  "commit_hash": "7a2d2267",
+  "commit_hash": "250e73e8",
   "files": [
     "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
     "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx",
-    "expected": "9 passed. With the three files listed in the test, the page says the earliest file is held from 2026-02-28.",
-    "fails_when": "The page shows the latest date instead of the earliest, shows a line when no file has a held-from date, or shows one when the files could not be read.",
-    "observed_red": "Changing the earliest-date rule to the latest (.sort().reverse()[0]) made the records-begin test fail (1 failed, 8 passed); restored: 9 passed. tsc --noEmit: 0 errors."
+    "expected": "10 passed. With every listed file dated, the page says the earliest file is held from 2026-02-28; with any file undated, it says nothing.",
+    "fails_when": "The page shows the latest date, or shows a line while any listed file has no held-from date, or when the files could not be read.",
+    "observed_red": "Two hand mutations each turned a test red and were restored: earliest-to-latest (the records-begin test fails) and 'some file has a date' instead of 'every file has a date' (the any-undated-file test fails). Restored: 10 passed. tsc --noEmit: 0 errors."
   },
   "pre_impl": "N/A — page text only. No schema, no query, no data path. The dates come from the council_files list the page already prints.",
   "functions": "N/A — no function added. One derived value (earliestHeld) inside the page component.",
   "values": "N/A — no new value is stored or fetched. earliestHeld is the smallest held_from date in the list already on the page, and is left out when no file has one.",
   "queries": "N/A — no database query added or changed.",
   "break_it": [
+    {
+      "scenario": "One listed file has no held-from date and another has 2026-02-28.",
+      "what_happens": "No sentence is shown, because the undated file could be older than any date we could print.",
+      "mitigated": "Mitigated: earliestHeld is only set when every listed file has a date (found by the cross-review).",
+      "how": "Covered by the any-undated-file Jest test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t ANY"
+    },
     {
       "scenario": "No file in the list has a held-from date.",
       "what_happens": "The sentence is left out; nothing is guessed.",

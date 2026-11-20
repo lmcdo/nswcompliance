@@ -37,10 +37,10 @@ export default function EvidenceStatement() {
   const w = data.walk;
   const cc = data.council_controls;
   const cf = data.council_files;
-  // The earliest "held from" among the files listed below (ISO dates sort as text). Nothing is added: it is read from the same list.
-  const earliestHeld = cf.status === 'ok'
-    ? cf.files.map((f) => f.held_from?.slice(0, 10)).filter((d): d is string => !!d).sort()[0] ?? null
-    : null;
+  // The earliest "held from" among the files listed below (ISO dates sort as text). Read from the same list, and only when EVERY file
+  // has a date: a file with no date could be older, so "we hold nothing earlier" could not be said.
+  const heldDates = cf.status === 'ok' ? cf.files.map((f) => f.held_from?.slice(0, 10)) : [];
+  const earliestHeld = heldDates.length > 0 && heldDates.every((d) => !!d) ? (heldDates as string[]).slice().sort()[0] : null;
   return (
     <main className="mx-auto max-w-4xl p-6 text-sm text-gray-900 evidence-statement">
       <style>{PRINT_CSS}</style>
