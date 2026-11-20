@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: the version check now also compares each control with the file its chapter is served from, and the page read no longer requires the ledger's chapter name to equal the control's. Not Minor: it re-writes rows in the production table dcp_quote_version_check and changes a served read. Not Critical: the table is the one added by migration 127, only checks are written, and no rule or council wording changes.",
- "commit_hash": "03f9d36a",
+ "commit_hash": "060c470f",
  "files": [
   "scripts/dcp_quote_version_check.py",
   "services/evidence_council.py",
