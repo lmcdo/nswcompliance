@@ -108,10 +108,28 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
     """Dockerfile.python copied only services/. The area check reads data/law and data/lmr_walk at REPO_ROOT (/app in the image), so
     without these COPY lines every deployed lot would come back with a "Why:" reason and no area."""
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
-    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/anef/sydney_anef_2045.json"):
+    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/anef/sydney_anef_2045.json"):
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
     assert (REPO / "data" / "anef" / "sydney_anef_2045.json").is_file()
+
+
+def test_the_crossings_only_walk_files_are_exactly_the_shipped_set_and_each_loads_with_the_safe_rule():
+    import sys
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    safe_dir = REPO / "data" / "lmr_walk_safe"
+    assert sorted(p.name for p in safe_dir.glob("*.npz")) == sorted(pk.SAFE_SHIPPED_FILES)
+    for f in sorted(safe_dir.glob("*.npz")):
+        assert f.stat().st_size < REPO_FILE_LIMIT, f.name
+        s = ws.load_surface(str(f))
+        assert s.walk_rule == ws.SAFE_WALK_RULE, f.name        # an old-rule file would show a longer walk that is not the crossings-only one
+        assert s.busy_xy is not None and len(s.busy_xy) > 0, f.name   # without the busy-road points the near-a-busy-road note cannot be said
+        assert s.graph_nodes >= ws.MIN_NODES and s.anchors, f.name
+    # same areas as the ordinary walk: one safe strip set per ordinary one, so no area silently loses its second line
+    ordinary = {p.name.split("-1of")[0].split("-2of")[0].split("-3of")[0].replace(".npz", "") for p in WALK_DIR.glob("*.npz")}
+    safe = {p.name.split("-1of")[0].split("-2of")[0].split("-3of")[0].split("-4of")[0].replace(".npz", "") for p in safe_dir.glob("*.npz")}
+    assert ordinary == safe
 
 
 def test_packing_trims_the_busy_road_points_to_each_strip_and_leaves_an_absent_list_absent():
