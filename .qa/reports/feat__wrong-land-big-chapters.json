@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes which council rules a house is shown, live in production. 100 area rules withheld (Parramatta late-night 64, Inner West named-lot LEP clauses 36) and 1,836 sign/commercial/industrial rules re-tagged from all project types to their own types through a new re-applied step. Not Critical: no new schema, no report or verdict wording, every write has a row-level backup and an undo. Not Minor: it changes served rules for every council.",
-  "commit_hash": "4f65d8c8",
+  "commit_hash": "ebb62946",
   "files": [
     "scripts/gate_rules_devtypes.py",
     "scripts/gate_rules.py",
