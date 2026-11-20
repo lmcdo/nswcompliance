@@ -8,9 +8,9 @@ const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none
 
 export default function EvidenceStatement() {
   const sp = useSearchParams();
-  const lat = sp.get('lat');
-  const lng = sp.get('lng');
-  const address = sp.get('address');
+  const lat = sp?.get('lat') ?? null;
+  const lng = sp?.get('lng') ?? null;
+  const address = sp?.get('address') ?? null;
   const [data, setData] = useState<Evidence | null>(null);
   const [error, setError] = useState<string | null>(null);
 
