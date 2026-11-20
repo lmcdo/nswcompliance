@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: one new table (migration 127) filled with 126 rows by a script that backs up first, one read added to the evidence endpoint, and one new column on the evidence page. Not Minor: it writes to the production database and is a served surface. Not Critical: the table is new and holds only checks, nothing existing is changed or deleted, and every verdict comes from the matcher already used for the current files (dcp_quote_status.classify).",
- "commit_hash": "4634a81c",
+ "commit_hash": "5f365854",
  "files": [
   "migrations/127_dcp_quote_version_check.sql",
   "scripts/dcp_quote_version_check.py",

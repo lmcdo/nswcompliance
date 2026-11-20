@@ -118,6 +118,7 @@ def _write(conn, out, council) -> int:
         cur.execute(
             "INSERT INTO dcp_quote_version_check (control_id, r2_key, council, chapter_key, version_label, pdf_page, verdict, quote_sha256) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (control_id, r2_key) DO UPDATE SET "
+            "council = EXCLUDED.council, chapter_key = EXCLUDED.chapter_key, version_label = EXCLUDED.version_label, "
             "verdict = EXCLUDED.verdict, pdf_page = EXCLUDED.pdf_page, quote_sha256 = EXCLUDED.quote_sha256, checked_at = now()",
             (cid, key, lga, chapter, label, page, verdict, sha))
     conn.commit()

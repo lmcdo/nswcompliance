@@ -22,8 +22,10 @@ STATEMENT_TIMEOUT_MS = 8000   # fetch_dcp_setbacks runs several small reads
 DEV_TYPE = "dwelling_house"
 
 _VERSION_CHECK_SQL = (
-    "SELECT control_id, version_label, verdict, quote_sha256, pdf_page FROM dcp_quote_version_check "
-    "WHERE control_id = ANY(%s) ORDER BY control_id, version_label"
+    "SELECT v.control_id, s.version_label, v.verdict, v.quote_sha256, v.pdf_page FROM dcp_quote_version_check v "
+    "JOIN dcp_setback_controls c ON c.id = v.control_id AND c.is_current AND c.lga = v.council AND c.source_chapter_key = v.chapter_key "
+    "JOIN dcp_source_versions s ON s.r2_key = v.r2_key AND s.event = 'stored' AND s.council = v.council AND s.chapter_key = v.chapter_key "
+    "WHERE v.control_id = ANY(%s) ORDER BY v.control_id, s.version_label"
 )
 VERDICT_WORDS = {
     "verbatim": "Same words on the cited page",
@@ -85,9 +87,9 @@ def _default_fetch(conn: Any, key: str) -> Optional[dict]:
     return fetch_dcp_setbacks(conn, key, raise_on_error=True)
 
 
-def _version_checks(ids: list[int], quotes: dict[int, Optional[str]], connect: Optional[Callable[[], Any]],
+def _version_checks(ids: list[int], quotes: dict[int, Optional[str]], pages: dict[int, Optional[int]], connect: Optional[Callable[[], Any]],
                     rows_fn: Optional[Callable[[list[int]], Optional[list]]]) -> dict[int, dict]:
-    """Stored quote-on-page verdicts per control and file version (migration 127). A check made on an older wording of the quote is marked stale."""
+    """Stored quote-on-page verdicts per control and file version (migration 127). A check made on an older wording of the quote, or for a different page than the control cites now, is marked stale."""
     import hashlib
 
     if not ids:
@@ -102,7 +104,7 @@ def _version_checks(ids: list[int], quotes: dict[int, Optional[str]], connect: O
         now_sha = hashlib.sha256((quotes.get(cid) or "").encode("utf-8")).hexdigest()
         out[cid]["status"] = "ok"
         out[cid]["versions"].append({"version": label, "verdict": verdict, "result_words": VERDICT_WORDS.get(verdict, verdict),
-                                     "checked_page": page, "stale": sha != now_sha})
+                                     "checked_page": page, "stale": sha != now_sha or page != pages.get(cid)})
     return out
 
 
@@ -136,6 +138,7 @@ def council_controls(lga: Optional[str], *, connect: Optional[Callable[[], Any]]
     rows = [e for e in ((data or {}).get("setbacks") or []) if e.get("dev_type") == DEV_TYPE]
     checks = _version_checks([e["control_id"] for e in rows if isinstance(e.get("control_id"), int)],  # noqa: bracket-access -- guarded by the isinstance test on the same line
                              {e["control_id"]: e.get("source_text") for e in rows if isinstance(e.get("control_id"), int)},  # noqa: bracket-access -- same guard
+                             {e["control_id"]: e.get("pdf_page") for e in rows if isinstance(e.get("control_id"), int)},  # noqa: bracket-access -- same guard
                              connect, version_rows)
     controls = [{"control_id": e.get("control_id"), "version_checks": checks.get(e.get("control_id"), {"status": "none", "versions": []}),
                  "label": e.get("type"), "control_type": e.get("semantic_type"), "dev_type": e.get("dev_type"), "value_min": e.get("value_min"), "value_max": e.get("value_max"),

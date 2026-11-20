@@ -129,12 +129,20 @@ def test_version_checks_are_shown_and_a_changed_quote_marks_them_stale():
     import hashlib
     sha = hashlib.sha256(b"words").hexdigest()
     data = {"setbacks": [_entry(control_id=7)]}
-    rows = [(7, "v1.1", "wrong_page", sha, 7), (7, "v1.2", "verbatim", "oldhash", 7)]
+    rows = [(7, "v1.1", "wrong_page", sha, 32), (7, "v1.2", "verbatim", "oldhash", 32)]
     out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: rows)
     v = out["controls"][0]["version_checks"]
     assert v["status"] == "ok" and [x["verdict"] for x in v["versions"]] == ["wrong_page", "verbatim"]
     assert v["versions"][0]["stale"] is False and v["versions"][1]["stale"] is True
     assert v["versions"][0]["result_words"].startswith("Same words, on a different page")
+
+
+def test_a_check_for_a_different_page_than_the_control_cites_now_is_stale():
+    import hashlib
+    sha = hashlib.sha256(b"words").hexdigest()
+    data = {"setbacks": [_entry(control_id=7, pdf_page=33)]}
+    out = ec.council_controls("PENRITH", connect=lambda: _Conn([]), fetch=lambda c, k: data, version_rows=lambda ids: [(7, "v1.2", "verbatim", sha, 32)])
+    assert out["controls"][0]["version_checks"]["versions"][0]["stale"] is True
 
 
 def test_version_checks_unreadable_is_not_none():
