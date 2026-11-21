@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { evidenceUrl, isEvidence, type Evidence } from '@/lib/evidence-statement';
+import RouteMapFigure from '@/components/reports/RouteMapFigure';
 
-const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } tr { break-inside: avoid; } }';
+const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } tr, figure, svg { break-inside: avoid; } svg { max-width: 100%; height: auto; } }';
 
 export default function EvidenceStatement() {
   const sp = useSearchParams();
@@ -79,6 +80,7 @@ export default function EvidenceStatement() {
           <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.
         </p>
       ) : null}
+      {data.route_map ? <RouteMapFigure routeMap={data.route_map} /> : null}
       {(w.crossings_only_note || w.crossings_only_walk_m != null) && data.road_rules ? (
         <section className="mt-2">
           <h3 className="font-semibold">NSW road rules for pedestrians at lights and near crossings</h3>

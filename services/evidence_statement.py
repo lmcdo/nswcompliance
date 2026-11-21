@@ -214,6 +214,7 @@ def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts]
         "summary": summary(rows),
         "manual_checks": manual_checks(rows),
         "walk": walk(area),
+        "route_map": area.get("route_map"),   # built by lmr_route_map when the evidence endpoint asked for it; None otherwise (never invented here)
         "notes": area.get("notes") or [],
         "council_controls": controls,
         "council_files": files,

@@ -230,10 +230,40 @@ for k, gap, ai in src:
 STORE_M = SAFE_STORE_M if a.safe else CUTOFF_M
 dist, paths = nx.single_source_dijkstra(G, "S", cutoff=STORE_M, weight="w")
 rows = []
+row_of = {}       # graph node -> its row, for the points stored at junctions and shape nodes
+real_keys = []    # the graph node behind each of those rows, in row order
+route_only = []   # 1 for a busy-road side copy, 0 for every other row
 for k, d in dist.items():
-    if k == "S" or sc.GraphBuild.is_line_copy(k):
-        continue   # a busy-road side copy shares its coordinates with the other side's copy: the lookup could take the wrong side's distance
+    if k == "S":
+        continue
+    # A busy-road side copy shares its coordinates with the other side's copy: the lookup could take the wrong side's distance. It is still
+    # stored, flagged route_only, because a shortest walk can run along the road line and a route cannot be followed through a point that is
+    # missing. The lot lookup never matches a route_only row (services/lmr_walk_surface.py), so no walk distance can come from one.
+    route_only.append(1 if sc.GraphBuild.is_line_copy(k) else 0)
+    row_of[k] = len(rows)
+    real_keys.append(k)
     rows.append([round(nodes[k][0], 1), round(nodes[k][1], 1), round(d, 1), best_ai[paths[k][1]][1]])
+
+
+# Route pointers: for each stored point, the row of the next stored point on its shortest walk to the station (-1 = the end of the walk,
+# the point the station link joins). A route is drawn by following them. Every pointer goes to a point with a strictly smaller walk
+# distance (an ancestor on the shortest-path tree), so a chain cannot loop. Every graph node on a walk is stored (busy-road side
+# copies as route_only rows), so a pointer goes to the very next point on the walk.
+def stored_before(k):
+    """Row of the nearest stored point strictly before graph node k on its shortest walk; -1 when there is none."""
+    for node in reversed(paths[k][1:-1]):
+        r = row_of.get(node)
+        if r is not None:
+            return r
+    return -1
+
+
+def stored_at_or_before(k):
+    r = row_of.get(k)
+    return r if r is not None else stored_before(k)
+
+
+parents = [stored_before(k) for k in real_keys]
 # Points along the streets, not only at junctions. A lot on a long street can be 70 m from the nearest junction; with junction points
 # only, the lookup let it jump sideways to a junction on another street (found on 2/87 Dunmore St, South Bexley: 485 m against a
 # real walk of about 850 m). Every edge gets a point about every STEP metres; its distance is the shorter way round: from either end.
@@ -258,12 +288,14 @@ for p, q2, dat in G.edges(data=True):
         s = L * i / n
         c = []
         if ia:
-            c.append((ia[0] + s, ia[1]))
+            c.append((ia[0] + s, ia[1], 0))   # 0 = the walk comes in from p
         if ib:
-            c.append((ib[0] + (L - s), ib[1]))
-        d, ai = min(c)
+            c.append((ib[0] + (L - s), ib[1], 1))   # 1 = the walk comes in from q2
+        d, ai, came_from = min(c)
         if d <= STORE_M:
             rows.append([round(xa + (xb - xa) * i / n, 1), round(ya + (yb - ya) * i / n, 1), round(d, 1), ai])
+            parents.append(stored_at_or_before((p, q2)[came_from]))   # a street point's route leaves by the end it came in from
+            route_only.append(0)
             extra += 1
 print("street points added between junctions:", extra, flush=True)
 # Footpath that exists but has NO walk to any station within STORE_M (a safe-crossing build: the street is cut off by a busy road with no
@@ -309,7 +341,10 @@ x0, y0 = to_m(W, S)
 x1, y1 = to_m(E, N)
 doc = {"schema": 1, "built": date.today().isoformat(), "osm_extract": (j.get("osm3s") or {}).get("timestamp_osm_base", ""), "epsg": epsg,
        "bbox_m": [x0 - 1000, y0 - 1000, x1 + 1000, y1 + 1000], "cutoff_m": STORE_M, "graph_nodes": G.number_of_nodes() - 1,
-       "walk_rule": build.rule, "walk_rule_stats": rule_stats, "anchors": anchors, "nodes": rows}
+       "walk_rule": build.rule, "walk_rule_stats": rule_stats, "anchors": anchors, "nodes": rows, "parents": parents}
+assert len(parents) == len(rows) == len(route_only), "one route pointer and one route_only flag per stored point"
+if any(route_only):   # only a safe-crossing build has side copies; an old-rule file carries no flag list
+    doc["route_only"] = route_only
 if a.safe:
     doc["stranded"] = stranded   # only a safe build carries the list; an old-rule file must not claim "nothing is stranded"
     bb = doc["bbox_m"]   # busy-road points inside the stored area only, so the file stays small
@@ -319,4 +354,4 @@ if a.safe:
 with gzip.open(OUTDIR / f"{a.name}.json.gz", "wt", encoding="utf-8") as fh:
     json.dump(doc, fh, separators=(",", ":"))
 (OUTDIR / f"{a.name}.lock").unlink(missing_ok=True)
-print(f"DONE {a.name}: stored {len(rows)} nodes within {STORE_M} m of an anchor; file {(OUTDIR / (a.name + '.json.gz')).stat().st_size // 1024} KB", flush=True)
+print(f"DONE {a.name}: stored {len(rows) - sum(route_only)} nodes within {STORE_M} m of an anchor (plus {sum(route_only)} route-only); file {(OUTDIR / (a.name + '.json.gz')).stat().st_size // 1024} KB", flush=True)

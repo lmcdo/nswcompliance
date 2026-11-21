@@ -108,7 +108,7 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
     """Dockerfile.python copied only services/. The area check reads data/law and data/lmr_walk at REPO_ROOT (/app in the image), so
     without these COPY lines every deployed lot would come back with a "Why:" reason and no area."""
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
-    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/anef/sydney_anef_2045.json",
+    for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/lmr_route_normal/", "data/anef/sydney_anef_2045.json",
                    "data/law/road_rules_2014_pedestrian_facts.json", "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt"):
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
@@ -146,3 +146,93 @@ def test_packing_trims_the_busy_road_points_to_each_strip_and_leaves_an_absent_l
     assert len(parts[0]["busy_pts"]) == 1 and parts[0]["busy_pts"][0][0] == 100.0      # the far point is not copied into strip 1
     assert len(parts[-1]["busy_pts"]) == 1 and parts[-1]["busy_pts"][-1][0] == 19900.0
     assert all("busy_pts" not in p for p in pk.strips({k: v for k, v in doc.items() if k != "busy_pts"}))
+
+
+def test_strips_keep_every_route_whole_inside_their_own_file(monkeypatch):
+    """A route can start in one strip and have its station in the next. Each strip must hold the whole chain, or its pointer would
+    point at a point that is not in the file."""
+    import sys
+    import numpy as np
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    monkeypatch.setattr(pk, "MAX_NODES_PER_FILE", 100)
+    n = 400
+    doc = {"epsg": 28356, "built": "x", "osm_extract": "t", "bbox_m": [0.0, -10.0, n * 10.0, 10.0], "anchors": [{"name": "A"}], "graph_nodes": n,
+           "nodes": [[i * 10.0, 0.0, i * 10.0, 0] for i in range(n)], "parents": [-1] + list(range(n - 1))}   # one street, the station at x = 0
+    parts = pk.strips(doc)
+    assert len(parts) >= 4
+    for part in parts:
+        xs = np.asarray(part["nodes"])[:, 0]
+        p = np.asarray(part["parents"])
+        assert len(p) == len(xs) and p.max() < len(xs) and p.min() >= -1
+        s = ws.Surface({**part, "nodes": part["nodes"], "parents": part["parents"]}, "strip")
+        far = int(np.argmax(xs))
+        rows = s.route_rows(far)
+        assert rows is not None and float(s.xy[rows[-1], 0]) == 0.0              # the last strip's far point still reaches the station
+        assert len(rows) == int(round(xs[far] / 10.0)) + 1                        # and the chain is the whole street, not cut short
+    assert len(parts[-1]["nodes"]) > len(parts[0]["nodes"]) - 1                  # the later strips carry the earlier points their routes pass through
+
+
+def test_strips_without_pointers_stay_without_pointers(monkeypatch):
+    import sys
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    monkeypatch.setattr(pk, "MAX_NODES_PER_FILE", 100)
+    n = 400
+    doc = {"epsg": 28356, "built": "x", "bbox_m": [0.0, -10.0, n * 10.0, 10.0], "anchors": [], "nodes": [[i * 10.0, 0.0, i * 10.0, 0] for i in range(n)]}
+    assert all("parents" not in part for part in pk.strips(doc))
+
+
+def test_strips_carry_the_route_only_flags_with_their_rows(monkeypatch):
+    import sys
+    import numpy as np
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    monkeypatch.setattr(pk, "MAX_NODES_PER_FILE", 100)
+    n = 400
+    flags = [1 if i % 7 == 0 else 0 for i in range(n)]
+    doc = {"epsg": 28356, "built": "x", "bbox_m": [0.0, -10.0, n * 10.0, 10.0], "anchors": [{"name": "A"}], "graph_nodes": n, "route_only": flags,
+           "nodes": [[i * 10.0, 0.0, i * 10.0, 0] for i in range(n)], "parents": [-1] + list(range(n - 1))}
+    for part in pk.strips(doc):
+        xs = np.asarray(part["nodes"])[:, 0]
+        assert [int(f) for f in part["route_only"]] == [1 if int(round(x / 10)) % 7 == 0 else 0 for x in xs]
+
+
+def test_every_crossings_only_file_carries_route_pointers_and_route_only_flags():
+    import sys
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    safe_dir = REPO / "data" / "lmr_walk_safe"
+    for f in sorted(safe_dir.glob("*.npz")):
+        s = ws.load_surface(str(f))
+        assert s.parent is not None, f.name                           # a file without pointers cannot give a route
+        assert s.route_only.any() and not s.route_only.all(), f.name   # busy-road side copies are stored, flagged, and never the only rows
+        assert (s.parent[~s.route_only] != np_arange_like(s)[~s.route_only]).all(), f.name
+
+
+def np_arange_like(s):
+    import numpy as np
+    return np.arange(len(s.parent))
+
+
+def test_the_route_normal_files_are_exactly_the_shipped_set_with_the_normal_rule_and_pointers():
+    import sys
+    sys.path.insert(0, str(REPO / "scripts" / "lmr_area"))
+    import pack_walk_surfaces as pk
+    route_dir = REPO / "data" / "lmr_route_normal"
+    assert sorted(p.name for p in route_dir.glob("*.npz")) == sorted(pk.ROUTE_NORMAL_SHIPPED_FILES)
+    for f in sorted(route_dir.glob("*.npz")):
+        assert f.stat().st_size < REPO_FILE_LIMIT, f.name
+        s = ws.load_surface(str(f))
+        assert s.walk_rule == "original", f.name                     # the normal rule, not the crossings-only one
+        assert s.parent is not None and not s.route_only.any(), f.name
+        assert s.graph_nodes >= ws.MIN_NODES and s.anchors, f.name
+    # the same areas as the files that decide the answer: no area silently has no normal route
+    def area(name):
+        return name.split("-1of")[0].split("-2of")[0].split("-3of")[0].split("-4of")[0].replace(".npz", "")
+    assert {area(p.name) for p in route_dir.glob("*.npz")} == {area(p.name) for p in WALK_DIR.glob("*.npz")}
+
+
+def test_the_files_that_decide_the_answer_still_have_no_route_pointers():
+    """The route set is separate on purpose: data/lmr_walk/ decides verdicts and was not rebuilt. If it gains pointers, the two sets must be reconsidered."""
+    for f in sorted(WALK_DIR.glob("*.npz")):
+        assert ws.load_surface(str(f)).parent is None, f.name

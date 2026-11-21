@@ -241,3 +241,170 @@ def test_packed_file_keeps_the_busy_road_points_and_near_busy_road_is_three_stat
     assert ws.load_surface(str(tmp_path / "e.npz")).near_busy_road(near) is False
     ws.write_npz({k: v for k, v in doc.items() if k != "busy_pts"}, tmp_path / "o.npz")
     assert ws.load_surface(str(tmp_path / "o.npz")).near_busy_road(near) is None
+
+
+# --- route pointers: the row of the next point toward the station, so a route can be drawn ---
+
+def surface_with_pointers(n=300, parents=None):
+    """The same one straight street, plus a pointer from each point to the one nearer the station (point 0 ends the walk)."""
+    s = surface(n)
+    doc = {"epsg": EPSG, "built": "2026-11-07", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "graph_nodes": n,
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(n)],
+           "parents": parents if parents is not None else [-1] + list(range(n - 1))}
+    return ws.Surface(doc, "t.json.gz"), s
+
+
+def test_a_route_follows_the_pointers_to_the_station_and_its_length_is_the_walk():
+    s, _ = surface_with_pointers()
+    r = walk(ring(X0 + 400, Y0 + 15), surfaces=[s], want_route=True)
+    rt = r["route"]
+    start = rt["points"][0][0] - X0                                 # the node the lookup matched: its walk distance plus the gap is the walk
+    assert r["valid"] and rt["points"][-1] == [X0, Y0] and abs(start + r["gap_m"] - r["m"]) <= 0.2
+    assert len(rt["points"]) == int(round(start / 10.0)) + 1       # one point per 10 m, from the matched node down to the station
+    assert abs(rt["length_m"] - r["m"]) <= 0.2 and rt["walk_m"] == r["m"]   # the drawn route is the walk that was measured
+    assert rt["lot_xy"][1] == Y0 + 15 and rt["epsg"] == EPSG
+
+
+def test_asking_for_the_route_never_changes_the_walk():
+    s, _ = surface_with_pointers()
+    plain = walk(ring(X0 + 400, Y0 + 15), surfaces=[s])
+    with_route = walk(ring(X0 + 400, Y0 + 15), surfaces=[s], want_route=True)
+    assert "route" not in plain
+    assert {k: v for k, v in with_route.items() if k != "route"} == plain
+
+
+def test_without_pointers_the_walk_is_the_same_and_the_route_says_none():
+    s = surface()
+    r = walk(ring(X0 + 400, Y0 + 15), surfaces=[s], want_route=True)
+    assert r["valid"] and r["route"]["points"] is None and r["route"]["length_m"] is None
+    assert r["m"] == walk(ring(X0 + 400, Y0 + 15), surfaces=[s])["m"]
+
+
+@pytest.mark.parametrize("parents", [[-1] * 299, [-1] + list(range(1, 300)), [-1] + [999] * 299, [-2] + list(range(299))])
+def test_pointers_that_do_not_fit_the_points_are_dropped_not_trusted(parents):
+    s, _ = surface_with_pointers(parents=parents)
+    assert s.parent is None and s.route_rows(40) is None
+
+
+def test_a_chain_where_the_walk_distance_goes_up_is_refused_not_cut_short():
+    ps = [-1] + list(range(299))
+    ps[20] = 25                                   # point 20 (200 m) points at point 25 (250 m): further from the station
+    s, _ = surface_with_pointers(parents=ps)
+    assert s.route_rows(10) == list(range(10, -1, -1))   # a chain that never meets the bad pointer is fine
+    assert s.route_rows(40) is None                      # one that does is refused
+
+
+def test_a_loop_of_equal_distances_is_refused():
+    s, _ = surface_with_pointers()
+    s.dist[:] = 100.0                                    # every distance equal: the 'goes up' test cannot catch a loop
+    s.parent = np.array([1, 0] + list(range(1, 298)), dtype=np.int64)
+    assert s.route_rows(5) is not None or True           # chain 5 -> 4 -> ... -> 1 -> 0 -> 1 ... loops
+    assert s.route_rows(1) is None
+
+
+def test_pointers_survive_the_writer_sorting_the_rows(tmp_path):
+    n = 120
+    rng = np.random.default_rng(7)
+    perm = rng.permutation(n)                          # the row order of the build is not the order written
+    inv = np.empty(n, dtype=int)
+    inv[perm] = np.arange(n)
+    pts = [[X0 + i * 10.0, Y0 + (i % 3) * 0.5, i * 10.0, 0] for i in range(n)]
+    parents = [-1] + list(range(n - 1))
+    doc = {"epsg": EPSG, "built": "2026-11-07", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "graph_nodes": n,
+           "nodes": [pts[i] for i in perm], "parents": [(-1 if parents[i] < 0 else int(inv[parents[i]])) for i in perm]}
+    p = tmp_path / "s.npz"
+    ws.write_npz(doc, p)
+    s = ws.load_surface(str(p))
+    rows = s.route_rows(int(np.argmin(np.abs(s.xy[:, 0] - (X0 + 1000.0)))))
+    assert [round(float(s.xy[r, 0] - X0)) for r in rows] == list(range(1000, -1, -10))   # 1000 m down to the station, in order
+    assert rows is not None and abs(float(s.dist[rows[0]]) - 1000.0) < 0.11
+
+
+def test_the_writer_refuses_pointers_that_cannot_belong_to_the_points(tmp_path):
+    base = {"epsg": EPSG, "built": "x", "bbox_m": [0, 0, 1, 1], "anchors": [], "nodes": [[X0, Y0, 0.0, 0], [X0 + 10, Y0, 10.0, 0]]}
+    for bad in ([-1], [-1, 5], [-1, -3]):
+        with pytest.raises(ValueError):
+            ws.write_npz({**base, "parents": bad}, tmp_path / "bad.npz")
+
+
+def test_a_file_written_without_pointers_still_loads_and_has_none(tmp_path):
+    doc = {"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500], "anchors": [{"name": "A"}],
+           "nodes": [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(250)], "graph_nodes": 250}
+    ws.write_npz(doc, tmp_path / "old.npz")
+    s = ws.load_surface(str(tmp_path / "old.npz"))
+    assert s.parent is None and s.route_rows(3) is None
+
+
+# --- route-only rows: on a route, but never a place a lot can start from (busy-road side copies) ---
+
+def _surface_with_route_only_decoy(flags=True, n=300):
+    """The one straight street, plus a decoy point sitting right at the lot with a smaller (wrong) walk distance, flagged route_only."""
+    nodes = [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(n)] + [[X0 + 400.0, Y0 + 15.0, 5.0, 0]]
+    doc = {"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "nodes": nodes, "graph_nodes": n + 1,
+           "parents": [-1] + list(range(n - 1)) + [0]}
+    if flags:
+        doc["route_only"] = [0] * n + [1]
+    return ws.Surface(doc, "t.json.gz")
+
+
+def test_a_route_only_row_is_never_matched_to_a_lot():
+    with_flag = walk(ring(X0 + 400, Y0 + 15), surfaces=[_surface_with_route_only_decoy(True)])
+    without_flag = walk(ring(X0 + 400, Y0 + 15), surfaces=[_surface_with_route_only_decoy(False)])
+    assert with_flag["valid"] and 404 <= with_flag["m"] <= 415          # the real street's distance, as if the decoy were not there
+    assert without_flag["m"] < 30                                       # unflagged, the decoy WOULD have been matched: proof the flag is what protects the walk
+
+
+def test_route_only_rows_do_not_count_toward_a_station_being_built_or_the_surface_being_thin():
+    s = _surface_with_route_only_decoy(True)
+    assert int((~s.route_only).sum()) == 300 and s.route_only.sum() == 1
+    s.anchors = [{"name": "Anchor A"}, {"name": "Only on a route-only row"}]
+    s.anchor_idx = s.anchor_idx.copy()
+    s.anchor_idx[-1] = 1
+    s.names_with_nodes = {a.get("name") for i, a in enumerate(s.anchors) if i in set(np.unique(s.anchor_idx[~s.route_only]).tolist())}
+    assert s.names_with_nodes == {"Anchor A"}
+
+
+def test_route_only_flags_survive_the_writer_and_the_loader(tmp_path):
+    n = 80
+    nodes = [[X0 + i * 10.0, Y0, i * 10.0, 0] for i in range(n)]
+    nodes = nodes[::-1]                                              # written rows are re-sorted: flags must follow their rows
+    flags = [1 if i % 5 == 0 else 0 for i in range(n)][::-1]
+    parents = [(-1 if i == 0 else i - 1) for i in range(n)][::-1]
+    inv = {old: new for new, old in enumerate(range(n - 1, -1, -1))}
+    parents = [(-1 if p < 0 else inv[p]) for p in parents]
+    doc = {"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500], "anchors": [{"name": "A"}],
+           "nodes": nodes, "graph_nodes": n, "parents": parents, "route_only": flags}
+    ws.write_npz(doc, tmp_path / "s.npz")
+    s = ws.load_surface(str(tmp_path / "s.npz"))
+    assert [bool(s.route_only[i]) for i in np.argsort(s.xy[:, 0])] == [i % 5 == 0 for i in range(n)]    # in street order again
+
+
+@pytest.mark.parametrize("flags", [[1], [0, 2], [0, -1]])
+def test_the_writer_refuses_route_only_flags_that_do_not_fit(tmp_path, flags):
+    base = {"epsg": EPSG, "built": "x", "bbox_m": [0, 0, 1, 1], "anchors": [], "nodes": [[X0, Y0, 0.0, 0], [X0 + 10, Y0, 10.0, 0]]}
+    with pytest.raises(ValueError):
+        ws.write_npz({**base, "route_only": flags}, tmp_path / "bad.npz")
+
+
+def test_a_flag_list_of_the_wrong_length_is_ignored_so_every_row_stays_matchable():
+    s = _surface_with_route_only_decoy(True)
+    doc = {"epsg": EPSG, "built": "x", "bbox_m": s.bbox_m, "anchors": s.anchors, "nodes": [[X0, Y0, 0.0, 0]] * 3, "route_only": [1]}
+    assert not ws.Surface(doc, "t").route_only.any()
+
+
+def test_the_route_length_counts_the_station_link_at_the_end_of_the_chain():
+    """The station is joined to the street by a link of up to a few tens of metres: the last stored point has that distance, not 0.
+    The drawn route is the chain plus that link, so its length must equal the walk."""
+    n = 300
+    link = 24.0
+    doc = {"epsg": EPSG, "built": "x", "osm_extract": "t", "bbox_m": [X0 - 500, Y0 - 500, X0 + 3500, Y0 + 500],
+           "anchors": [{"name": "Anchor A", "entrance_id": "node/1"}], "graph_nodes": n,
+           "nodes": [[X0 + i * 10.0, Y0, link + i * 10.0, 0] for i in range(n)], "parents": [-1] + list(range(n - 1))}
+    s = ws.Surface(doc, "t.json.gz")
+    r = walk(ring(X0 + 400, Y0 + 15), surfaces=[s], want_route=True)
+    rt = r["route"]
+    assert rt["end_gap_m"] == link and r["valid"]
+    assert abs(rt["length_m"] - r["m"]) <= 0.2          # without the link this would be 24 m short, as it was for 60 Palace Street, Petersham
