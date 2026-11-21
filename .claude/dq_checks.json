@@ -1847,6 +1847,16 @@
    "red_when": "a served council rule reads a line twice in a row. Reads 172 on 2026-10-17 (93 of them Campbelltown rows carrying the PDF's invisible white copy; plan data/campbelltown_visible_text_plan_2026-10-17.json); 79 once that plan is applied.",
    "note": "Plain repeated-line count, not the visible-page test (too heavy for a probe); it over-counts real repeated table cells (48 rows outside Campbelltown, e.g. Woollahra 240L/100m2 of floor area/day), so it is a ceiling, not a zero. Applied 2026-10-17: 94 Campbelltown rows rebuilt from the visible text and page-proven (scripts/apply_visible_text_repair.py); measured 79 = ceiling, so declared fixed as a ratchet. Lower the ceiling as rows are repaired; never raise it."
   },
+  "DQ-153": {
+   "declared": "fixed",
+   "check": [
+    "python",
+    "scripts/lmr_area/check_map_copy.py"
+   ],
+   "passes_when": "exit 0 - every saved state map layer under data/law/maps proves against the manifest (hash and feature count) and the copy was read less than 30 days ago.",
+   "red_when": "the copy is 30 days old or more (the reader stops using it at 45), is dated in the future, or any layer fails its hash or feature count (exit 1). Goes red on its own as time passes: that is the reminder to refresh.",
+   "note": "Added 2026-11-21 with the wiring of six layers into the area check (#1672). This check is offline on purpose (no network, no database) so a slow state server cannot turn the ledger red. Agreement with the live maps is checked at each refresh by `python scripts/lmr_area/check_map_copy.py --compare 50` (2026-11-21: 50 lots x 6 layers, 600 comparisons, 0 differences) and on 200 lots before the wiring (1,400 layer answers and 200 whole answers, 0 differences). Refresh: `python scripts/lmr_area/download_map_layers.py --apply`, then the compare, then a pull request."
+  },
   "DQ-152": {
    "declared": "fixed",
    "check": [

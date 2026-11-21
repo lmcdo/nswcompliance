@@ -1,0 +1,99 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a new check script and a new data-quality row. Not Minor: it adds a ledger row that will turn the ledger red by itself after 30 days. Not Critical: it only reads (the age check is offline; the compare reads the lot table with a read-only connection and the live state maps) and changes no served answer.",
+ "commit_hash": "684de1b5",
+ "files": [
+  "scripts/lmr_area/check_map_copy.py",
+  "tests/test_check_map_copy.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md",
+  "tests/test_check_map_copy_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "data/law/maps holds 8 layer files read on 2026-11-18 with hash and count in the manifest. The reader stops using the copy after 45 days. Six layers are read from it first since #1672.",
+  "assumption_mismatch": "I first planned a scheduled job that downloads and commits the refresh. The project's pattern is the data-quality ledger, which a daily external alarm already runs, so the refresh is a reminder row plus a documented three-step refresh, not a new scheduler.",
+  "new_vs_existing": "download_map_layers.py already makes the copy; services/lmr_map_copy.py already enforces 45 days. This adds the missing alarm 15 days earlier and the sampled agreement check, as one script.",
+  "external_source_error": "The age check uses no network. The compare treats a live no-answer as no answer, never as a difference, and a copy no-answer fails it.",
+  "frontend_type": "Not applicable: no page or frontend type changes.",
+  "user_failure_mode": "A planner is served a stale copy. The reader already stops using it at 45 days and the answer names the copy date; this row turns red at 30 days so the copy is refreshed before that."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_check_map_copy.py -q ; python scripts/lmr_area/check_map_copy.py ; python scripts/lmr_area/check_map_copy.py --compare 50",
+  "fails_when": "The copy is 30 days old or more, dated in the future, or any layer fails its hash or count; with --compare, a difference the reader would not send to the live map.",
+  "observed_red": "Four deliberate breaks of the check (age ignored, integrity ignored, future date accepted, off by one on the reminder day) each failed a test.",
+  "observed_green": "6 tests pass. The age check passes on the real copy (3 days old, 8 of 8 layers prove). The compare on 50 random lots x 6 layers found 600 agreements and 0 differences. The ledger run shows DQ-153 passing; its one red row, DQ-113, is not from this change. Two real-layer tests (database sample of 8 lots with closed outlines; a 6-lot real compare against the live maps) pass with both real flags on, not skipped."
+ },
+ "functions": [
+  {
+   "name": "age_and_integrity",
+   "file_line": "scripts/lmr_area/check_map_copy.py",
+   "input": "today's date and the folder holding the saved maps",
+   "output": "whether the copy is fresh and every layer proves, with one line per problem",
+   "if_none": "a missing or unreadable manifest returns not ok with the reason, never ok"
+  },
+  {
+   "name": "compare",
+   "file_line": "scripts/lmr_area/check_map_copy.py",
+   "input": "the number of random lots to sample and a seed",
+   "output": "agreement counts and any difference the reader would not send to the live map",
+   "if_none": "too few lots sampled or a copy no-answer returns not ok; a live no-answer is counted but not a difference"
+  }
+ ],
+ "values": [
+  {
+   "value": "reminder age",
+   "read_at": "WARN_DAYS in scripts/lmr_area/check_map_copy.py, 30 days, 15 days before the reader's 45",
+   "if_missing": "not applicable"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Random lots with their outlines for the compare",
+   "file_line": "scripts/lmr_area/check_map_copy.py _sample_lots",
+   "where_clause": "TABLESAMPLE of lot_search_index with a fixed seed, LIMIT 3 x the number wanted; read-only connection, 30 s limit; used only with --compare"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Nobody refreshes the copy for 30 days.",
+   "what_happens": "The reader would stop using it at 45 days and fall back to the live map silently.",
+   "mitigated": true,
+   "how": "The ledger row goes red at 30 days, 15 days earlier, and the freshness alarm already runs the ledger every day.",
+   "repro": "python -m pytest tests/test_check_map_copy.py -k reminder_day -q"
+  },
+  {
+   "scenario": "A layer file is damaged or edited.",
+   "what_happens": "A wrong map would answer or the layer would silently stop.",
+   "mitigated": true,
+   "how": "The check fails on any layer whose hash or feature count does not match the manifest and names the layer.",
+   "repro": "python -m pytest tests/test_check_map_copy.py -k hash -q"
+  },
+  {
+   "scenario": "The manifest date is wrong or in the future.",
+   "what_happens": "A copy would look fresher than it is.",
+   "mitigated": true,
+   "how": "A future date is red.",
+   "repro": "python -m pytest tests/test_check_map_copy.py -k future -q"
+  },
+  {
+   "scenario": "The state service changes a map after the copy was read.",
+   "what_happens": "A lot could be cleared by the copy while the live map flags it.",
+   "mitigated": true,
+   "how": "The 50-lot compare at each refresh fails on any difference the reader would not send to the live map.",
+   "repro": "python scripts/lmr_area/check_map_copy.py --compare 50"
+  },
+  {
+   "scenario": "The random lots with their outlines for the compare are too few or are all in one area.",
+   "what_happens": "The compare would pass because it looked at too little to see a difference.",
+   "mitigated": true,
+   "how": "The compare fails when fewer lots than asked for come back, and the sample is a table-wide random sample with a recorded seed so a run can be repeated.",
+   "repro": "python scripts/lmr_area/check_map_copy.py --compare 50"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_check.py shows DQ-153 passing; it turns red by itself when the copy reaches 30 days (2026-12-18)."
+ }
+}
