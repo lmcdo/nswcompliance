@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Draws the walk to the station as a map on the evidence page, once for the normal rule and once for the crossings-only rule. The walking files gain route pointers (each point remembers the next point toward the station) so a route can be followed; busy-road side copies are stored as flagged route-only rows so a route can run along a road line; strips are closed under pointers so no route runs off the edge of a file. The 15 crossings-only files are rebuilt with pointers (every distance unchanged: 200 lots, identical walk and answer), and a separate normal-rule set (data/lmr_route_normal/) is added ONLY for drawing the normal route, because the files that decide the answer are not rebuilt. A route is drawn only when it is the walk the page shows (crossings-only within 2 m; normal to the same station within 15 m); otherwise the page says why. Only the evidence endpoint asks for the route: the public area check is unchanged. No query, no schema.",
-  "commit_hash": "ccf5df72",
+  "commit_hash": "f4e1b4c6",
   "files": [
     "scripts/lmr_area/build_walk_surfaces.py",
     "scripts/lmr_area/pack_walk_surfaces.py",
