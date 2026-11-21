@@ -129,10 +129,11 @@ def housing_sepp_area_check(lat: float, lng: float) -> dict:
 
 def _run_area_check(lat: float, lng: float, **extra) -> dict:
     """The area check with its live lookups. `extra` is passed on untouched: only the evidence endpoint asks for the route map, so the
-    public area-check answer is exactly what it was."""
+    public area-check answer is exactly what it was. Six state map layers are read from our own saved copy first (services/lmr_map_copy.py)."""
+    from services import lmr_map_copy
     from services.lmr_area_inputs import area_check
     from services.lmr_area_lga import bushfire_from_snapshot, lga_best_guess, lga_from_snapshot, lot_outline_from_snapshot
-    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot, **extra)
+    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot, copy_fn=lmr_map_copy.check, **extra)
 
 
 @router.get("/housing-sepp/evidence")

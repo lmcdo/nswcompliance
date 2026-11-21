@@ -206,7 +206,34 @@ def _heritage(rings: Optional[list]) -> dict:
     return out
 
 
-def _layer(key: str, lat: float, lng: float, rings: Optional[list], **limits: Any) -> dict:
+# prior-art-checked: reuse not viable as a function: this wraps this module's own _layer for the layers services/lmr_map_copy.py holds; the copy is injected by the
+# caller (copy_fn) like the council and bush fire copies, so tests and other callers are unchanged. Side by side on 200 lots (7 layers, point and lot outline, 2026-11-21):
+# 2800 comparisons, 0 differences from the live service.
+COPY_LAYERS = ("tod_map", "accelerated", "exclusion", "georges_catchment", "hn_catchment", "coastal_vuln")
+
+
+def _copy_answer(key: str, lat: float, lng: float, rings: Optional[list], copy_fn: Optional[Any]) -> Optional[dict]:
+    """The layer answer from our own copy, or None to ask the live map. A copy answer is used only when it is proven and fresh (copy_fn gives None otherwise),
+    when the point and the lot outline are not near a layer edge (the copy and the live map can differ by a few metres there) and, if a lot outline was
+    given, when the copy could test it. Any doubt asks the live map, exactly as before."""
+    if copy_fn is None or key not in COPY_LAYERS:
+        return None
+    try:
+        got = copy_fn(key, lat, lng, rings)
+    except Exception as exc:  # noqa: BLE001 -- a failing copy asks the live map, never answers
+        logger.warning("lmr inputs: map copy failed for %s: %s", key, exc)
+        return None
+    if not isinstance(got, dict) or got.get("near_edge") is not False or not isinstance(got.get("point"), bool):
+        return None
+    if rings and not isinstance(got.get("lot"), bool):
+        return None
+    return {"point": got.get("point"), "lot": got.get("lot") if rings else None, "copy_as_of": got.get("as_of")}
+
+
+def _layer(key: str, lat: float, lng: float, rings: Optional[list], copy_fn: Optional[Any] = None, **limits: Any) -> dict:
+    own = _copy_answer(key, lat, lng, rings, copy_fn)
+    if own is not None:
+        return own
     pt = _hit(LAYERS[key], _point_params(lat, lng, out_fields="OBJECTID"), **limits)
     lot = _hit(LAYERS[key], _poly_params(rings, out_fields="OBJECTID"), **limits) if rings else None
     return {"point": pt, "lot": lot}
@@ -343,13 +370,13 @@ def _flood_answer(lga: Optional[str], rings: Optional[list], flood_fn: Any) -> O
 # prior-art-checked: reuse not viable because the hits are pip internals and a blog page; this only adds one optional argument to this
 # module's own fetch_layers (the council fallback, supplied by the caller) and changes no layer, source or query.
 def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
-                 bushfire_fn: Optional[Any] = None) -> dict:
+                 bushfire_fn: Optional[Any] = None, copy_fn: Optional[Any] = None) -> dict:
     """The map-service measurements for one lot (TOD, accelerated TOD, exclusion map, bush fire, heritage, council). Network only,
     except the optional `lga_fallback(lat, lng) -> (council, as_of) | None`, which the caller supplies (it owns any database connection)."""
     from concurrent.futures import ThreadPoolExecutor
 
     with ThreadPoolExecutor(max_workers=10) as ex:
-        futs = {k: ex.submit(_layer, k, lat, lng, rings) for k in (
+        futs = {k: ex.submit(_layer, k, lat, lng, rings, copy_fn) for k in (
             "tod_map", "accelerated", "exclusion",
             "georges_catchment", "hn_catchment", "coastal_vuln", "coastal_wetlands", "littoral")}
         f_her = ex.submit(_heritage, rings)
@@ -357,6 +384,9 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
         f_lga = ex.submit(_lga_resolved, lat, lng, lga_fallback, lga_guess)
         f_noise = ex.submit(_noise_bands, lat, lng, rings)
         out: dict[str, Any] = {k: f.result() for k, f in futs.items()}
+        copied = {k: v.get("copy_as_of") for k, v in out.items() if isinstance(v, dict) and v.get("copy_as_of")}
+        if copied:
+            out["map_copy"] = copied  # noqa: bracket-access -- assignment into our own dict
         out["airport_noise"] = f_noise.result()
         out["heritage"] = f_her.result()
         out["bushfire"], bf_source = f_bf.result()  # noqa: bracket-access -- assignment into our own dict
@@ -372,7 +402,7 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
            walk_surfaces: Optional[list] = None, safe_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
-           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None,
+           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None, copy_fn: Optional[Any] = None,
            want_route: bool = False, route_surfaces: Optional[list] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
@@ -400,7 +430,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
-    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn)
+    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn, copy_fn)
     m["lot_outline"] = bool(rings) and len(rings) >= 4
     if lot_source:
         m["lot_source"] = lot_source  # noqa: bracket-access -- assignment into our own dict   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)

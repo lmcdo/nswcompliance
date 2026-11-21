@@ -1,0 +1,99 @@
+{
+ "tier": "critical",
+ "justification": "Critical: this changes where the served area-check answer for six state map layers comes from, and a wrong copy could clear a lot the live map flags. Mitigations: the copy is used only when it is proven (hash, count), fresh (45 days) and the point and lot are not near an edge; any doubt asks the live map exactly as before; side by side on 200 lots the final answers did not differ.",
+ "commit_hash": "71d1491f",
+ "files": [
+  "services/lmr_area_inputs.py",
+  "services/lmr_area_decision.py",
+  "services/housing_sepp_gates_api.py",
+  "tests/test_lmr_map_copy_wiring.py"
+ ],
+ "pre_impl": {
+  "existing_data": "The area check asked the live state service for 6 layers per lot (TOD sites, accelerated TOD, exclusion map, two catchments, coastal vulnerability). The reader services/lmr_map_copy.py (#1670) holds our copy, read on 2026-11-18, hash and count checked against the manifest.",
+  "assumption_mismatch": "I expected a speed gain. Median area-check time on 200 lots was 2.17 s live only and 2.07 s with the copy, because other layers dominate; the value is that a stalled state map no longer turns these six rules into can't tell. The 200-lot sample has few hits: coastal vulnerability and airport noise had none, which is why 320 edge points were also tested on 2026-11-20.",
+  "new_vs_existing": "_layer gains an injected copy_fn, the same pattern as the council and bush fire copies; the rules in lmr_area_decision.py are unchanged. Airport noise and heritage stay live: the reader's own review found they need more work first.",
+  "external_source_error": "A copy that is missing, corrupt, too old, near an edge, half-answered or that raises gives None and the live map is asked as before.",
+  "frontend_type": "Not applicable: the page that shows this answer is unchanged. It receives the same fields plus one extra note line, and reads the note list as text, so the TypeScript types are not affected.",
+  "user_failure_mode": "A planner sees a state map rule answered from a copy that is out of date and cleared. The copy is limited to 45 days, near edges go live, and the note names the copy date so the reader can see it."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_map_copy_wiring.py tests/test_lmr_map_copy.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q",
+  "fails_when": "A near-edge or half answer from the copy is used instead of asking live, a layer the copy does not hold is answered from it, a failing copy answers, or the note about copy dates is missing.",
+  "observed_red": "Four deliberate breaks of the wiring (accept near edge, ignore an untested lot outline, copy for any layer, do not catch a failing copy) each failed at least one test.",
+  "observed_green": "142 tests pass. Side by side on 200 lots: 1400 layer answers and then the whole decide() result with and without the copy, 0 differences; 6 layers per lot came from the copy."
+ },
+ "functions": [
+  {
+   "name": "_copy_answer",
+   "file_line": "services/lmr_area_inputs.py",
+   "input": "a layer key, a point, a lot outline and the injected copy function",
+   "output": "a layer answer with the copy date, or None to ask the live map",
+   "if_none": "no copy function, a failure, a near-edge or half answer, or a layer the copy does not hold gives None and the live map is asked"
+  },
+  {
+   "name": "_layer",
+   "file_line": "services/lmr_area_inputs.py",
+   "input": "a layer key, a point, a lot outline and an optional copy function",
+   "output": "point and lot answers for the layer, from the copy when it can be trusted, else the live map",
+   "if_none": "unchanged: None means the layer did not answer"
+  },
+  {
+   "name": "decide",
+   "file_line": "services/lmr_area_decision.py",
+   "input": "the measurements including which layers came from the copy",
+   "output": "the same answer as before plus a note naming the copied layers and their date",
+   "if_none": "when no layer came from the copy no note is added and the answer is unchanged"
+  }
+ ],
+ "values": [
+  {
+   "value": "which layers came from our copy and their read date",
+   "read_at": "copy_as_of on each layer answer, collected into map_copy, shown in the answer notes",
+   "if_missing": "no note is shown and nothing is claimed"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "The copy says clear but the live map now says hit.",
+   "what_happens": "A lot would be cleared wrongly although the live map flags it.",
+   "mitigated": true,
+   "how": "The copy is limited to 45 days, near-edge points and lots go live, and the answer names the copy date; 2800 layer comparisons and 200 whole answers showed no difference.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py tests/test_lmr_map_copy_wiring.py -q"
+  },
+  {
+   "scenario": "The lot outline is missing or unusable, so only the address point can be tested.",
+   "what_happens": "A point-only answer could hide a lot that overlaps a layer.",
+   "mitigated": true,
+   "how": "If an outline was given and the copy could not test it, the live map is asked.",
+   "repro": "python -m pytest tests/test_lmr_map_copy_wiring.py -k outline -q"
+  },
+  {
+   "scenario": "The copy function raises or returns something unexpected.",
+   "what_happens": "The check could crash or answer from garbage.",
+   "mitigated": true,
+   "how": "Any failure or non-dict answer asks the live map.",
+   "repro": "python -m pytest tests/test_lmr_map_copy_wiring.py -k failure -q"
+  },
+  {
+   "scenario": "A layer the copy does not hold is asked for.",
+   "what_happens": "A wrong layer could be answered from the copy.",
+   "mitigated": true,
+   "how": "Only the six listed layers are eligible; bush fire, heritage, airport noise and coastal wetlands always go live.",
+   "repro": "python -m pytest tests/test_lmr_map_copy_wiring.py -k not_hold -q"
+  },
+  {
+   "scenario": "A reader cannot tell the answer came from a copy.",
+   "what_happens": "A date-old answer would read to the planner as a live one.",
+   "mitigated": true,
+   "how": "The answer notes name the number of copied maps and their read date.",
+   "repro": "python -m pytest tests/test_lmr_map_copy_wiring.py -k note -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "GET /pipeline/housing-sepp/area-check for 2 Hand Avenue Penrith: the notes name 6 maps read from our own copy and the pathway is unchanged. Re-run the 200-lot comparison monthly (step 3)."
+ }
+}
