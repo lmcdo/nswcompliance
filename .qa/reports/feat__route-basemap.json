@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "The route map on the evidence page now sits on a real street map: the NSW Spatial Services Base Map tiles (roads with names, lot lines, house numbers, parks, stations), drawn as images under our routes in the same SVG. The routes and the tiles use the same Web Mercator projection so a line cannot drift off its street. A tile that fails to load is not drawn, so the plain background and the busy-road dots remain; when a tile has loaded the dots are hidden and the basemap is credited under the map. No new dependency, no data change, no server change except one sentence in a note string. The tile source is one object (BASEMAP) so it can be swapped.",
-  "commit_hash": "c9cb8e55",
+  "commit_hash": "b3b94dd8",
   "files": [
     "frontend-nextjs/lib/route-map-geometry.ts",
     "frontend-nextjs/components/reports/RouteMapFigure.tsx",
