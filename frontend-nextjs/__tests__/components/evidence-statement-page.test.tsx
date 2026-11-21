@@ -2,7 +2,7 @@
  * The evidence page prints every source with its own state: an unreadable source says so, it is never shown as empty or clear.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 let params = 'lat=-33.75&lng=150.70';
 jest.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(params) }));
@@ -234,7 +234,7 @@ describe('evidence statement page', () => {
     expect(screen.getByText(ROUTE_MAP.attribution)).toBeTruthy();
     expect(screen.getByText(ROUTE_MAP.note)).toBeTruthy();
     // the normal route is dashed, the crossings-only route is a solid line
-    const lines = Array.from(container.querySelectorAll('polyline'));
+    const lines = Array.from(container.querySelectorAll('polyline')).filter((l) => l.getAttribute('stroke') !== '#ffffff');
     expect(lines).toHaveLength(2);
     expect(lines.filter((l) => l.getAttribute('stroke-dasharray'))).toHaveLength(1);
     expect(lines.filter((l) => !l.getAttribute('stroke-dasharray'))).toHaveLength(1);
@@ -261,8 +261,9 @@ describe('evidence statement page', () => {
     expect(await screen.findByRole('img')).toBeTruthy();
     expect(legendOf(container)).toContain(note);
     expect(legendOf(container)).toContain('963 m');
-    expect(container.querySelectorAll('polyline')).toHaveLength(1);
-    expect(container.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBeNull();
+    const routes = Array.from(container.querySelectorAll('polyline')).filter((l) => l.getAttribute('stroke') !== '#ffffff');
+    expect(routes).toHaveLength(1);
+    expect(routes[0].getAttribute('stroke-dasharray')).toBeNull();
   });
 
   it('shows the note when there is no crossings-only route, and draws the normal line only', async () => {
@@ -273,8 +274,9 @@ describe('evidence statement page', () => {
     expect(await screen.findByRole('img')).toBeTruthy();
     expect(legendOf(container)).toContain(note);
     expect(legendOf(container)).toContain('878 m');
-    expect(container.querySelectorAll('polyline')).toHaveLength(1);
-    expect(container.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBeTruthy();
+    const routes = Array.from(container.querySelectorAll('polyline'));
+    expect(routes).toHaveLength(1);                       // no crossings-only route, so no white outline either
+    expect(routes[0].getAttribute('stroke-dasharray')).toBeTruthy();
   });
 
   it('says why the route map is not drawn, in words and with no picture, when the data says unavailable', async () => {
@@ -422,6 +424,39 @@ describe('evidence statement page', () => {
       await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
       unmount();
     }
+  });
+
+  it('draws street-map tiles under the routes, and names the basemap once a tile has loaded', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap());
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const tiles = Array.from(container.querySelectorAll('svg image'));
+    expect(tiles.length).toBeGreaterThan(0);
+    expect(tiles.length).toBeLessThanOrEqual(25);
+    for (const t of tiles) expect(t.getAttribute('href')).toMatch(/^https:\/\/maps\.six\.nsw\.gov\.au\/arcgis\/rest\/services\/public\/NSW_Base_Map\/MapServer\/tile\/\d+\/\d+\/\d+$/);
+    // tiles come before the routes in the picture, so the routes are on top
+    const svg = container.querySelector('svg') as SVGElement;
+    const order = Array.from(svg.children);
+    expect(order.indexOf(tiles[0])).toBeLessThan(order.findIndex((c) => c.tagName.toLowerCase() === 'polyline'));
+    expect(legendOf(container)).not.toContain('State of New South Wales');      // not named until a tile has actually drawn
+    fireEvent.load(tiles[0]);
+    await waitFor(() => expect(legendOf(container)).toContain('State of New South Wales (Spatial Services'));
+    expect(legendOf(container)).not.toContain('Orange dots');                    // the street map already shows the roads
+    expect(container.querySelectorAll('svg circle[r="3"]')).toHaveLength(0);       // and the dots themselves are gone, not only their legend line
+  });
+
+  it('falls back to the plain map, with the dots, when every tile fails to load', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap());
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(container.querySelectorAll('svg circle[r="3"]').length).toBeGreaterThan(0);   // the busy-road dots
+    for (const t of Array.from(container.querySelectorAll('svg image'))) fireEvent.error(t);
+    await waitFor(() => expect(container.querySelectorAll('svg image')).toHaveLength(0));
+    expect(legendOf(container)).not.toContain('State of New South Wales');
+    expect(legendOf(container)).toContain('Orange dots: busy roads');
+    expect(container.querySelectorAll('polyline').length).toBeGreaterThan(0);     // the routes are still drawn
   });
 
   it('puts the notes before the walking range so a reader meets them first', async () => {
