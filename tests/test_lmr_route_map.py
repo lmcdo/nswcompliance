@@ -320,3 +320,28 @@ def test_the_note_says_where_each_line_comes_from_and_does_not_claim_one_source_
     assert "same saved footpath data as the walking distances" not in note
     out = rm.build(_m(careful=_route(), careful_walk=_walk()), _stations())
     assert out["note"] == note
+
+
+# --- a line that stops short of the station says by how much ---
+
+def test_the_station_link_is_drawn_when_the_entrance_is_where_the_link_says_and_nothing_is_reported_missing():
+    out = rm.build(_m(careful=_route(end_gap=3.0), careful_walk=_walk()), _stations(dx=2.0))
+    assert out["careful"]["end_link_not_drawn_m"] == 0.0
+
+
+def test_a_link_that_cannot_be_drawn_is_reported_with_its_length():
+    # the entrance is 60 m from the last stored point but the walk says the link is only 20 m: it is not drawn, and 20 m of the walk is unexplained
+    out = rm.build(_m(careful=_route(end_gap=20.0), careful_walk=_walk()), _stations(dx=60.0))
+    assert out["careful"]["end_link_not_drawn_m"] == 20.0
+    # and the line really does stop at its last stored point
+    assert out["careful"]["points"][-1] == [round(v, 6) for v in _ll(E0 + 200, N0 + 200)]
+
+
+def test_an_unknown_entrance_with_a_real_link_is_reported_not_silently_shortened():
+    out = rm.build(_m(careful=_route(end_gap=35.0, entrance_id="node/999"), careful_walk=_walk()), {"stations": []})
+    assert out["careful"]["entrance"] is None and out["careful"]["end_link_not_drawn_m"] == 35.0
+
+
+def test_a_zero_length_link_reports_nothing_missing_even_with_no_entrance():
+    out = rm.build(_m(careful=_route(end_gap=0.0, entrance_id="town centre edge"), careful_walk=_walk()), _stations())
+    assert out["careful"]["end_link_not_drawn_m"] == 0.0

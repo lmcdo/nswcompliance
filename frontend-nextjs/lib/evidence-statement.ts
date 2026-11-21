@@ -27,6 +27,7 @@ export interface RouteEntrance { lat: number; lon: number; name: string | null; 
 export interface RouteLine {
   length_m: number; walk_m: number; points: LatLon[]; entrance: RouteEntrance | null; destination: RouteDestination;
   busy_road_points: LatLon[]; osm_extract: string | null;
+  end_link_not_drawn_m?: number | null;   // metres of the walk, at the end, that the line does not show
 }
 export interface RouteMap {
   status: 'ok' | 'unavailable'; reason?: string | null;
@@ -72,7 +73,8 @@ function routeLineOk(l: unknown): boolean {
     && Array.isArray(x.busy_road_points) && x.busy_road_points.every(isLatLon)
     && destinationOk(x.destination)
     && (e === null || e === undefined || (typeof e === 'object' && finite(e.lat) && finite(e.lon) && optString(e.name)))
-    && optString(x.osm_extract);
+    && optString(x.osm_extract)
+    && (x.end_link_not_drawn_m === undefined || x.end_link_not_drawn_m === null || (finite(x.end_link_not_drawn_m) && x.end_link_not_drawn_m >= 0));
 }
 
 /** A route map that is present must be well formed: a malformed one shows the error line, never a missing or half-drawn map. */

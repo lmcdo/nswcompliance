@@ -23,6 +23,10 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
   const differ = routeMap.destinations_differ === true && !!careful && !!normal;
   const destCareful = destinationLabel(careful?.destination ?? routeMap.destination);
   const destNormal = destinationLabel(normal?.destination ?? routeMap.destination);
+  // A line that stops short of the station says by how much, so it is never shorter than its distance without a reason.
+  const missing = (l: typeof careful, name: string) => (l && (l.end_link_not_drawn_m ?? 0) > 0
+    ? `The last ${Math.round(l.end_link_not_drawn_m ?? 0)} m of the ${name} walk, from the end of its line to the destination, are not drawn.` : null);
+  const notDrawn = [missing(normal, 'normal'), missing(careful, 'crossings-only')].filter((t): t is string => !!t);
   const normalM = normal ? Math.round(normal.walk_m) : null;
   const carefulM = careful ? Math.round(careful.walk_m) : null;
   const diff = normalM !== null && carefulM !== null ? carefulM - normalM : null;
@@ -67,6 +71,7 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
           <li>{carefulM !== null ? <><strong>Crossings-only route</strong> (green line): {carefulM} m{diffText}{differ ? `, ending at ${destCareful}` : ''}.</> : (routeMap.careful_note ?? 'The crossings-only route is not drawn.')}</li>
           <li>{differ ? 'Black dot: where the walks start on the lot. Purple squares: where each walk ends. Orange dots: busy roads.' : `Black dot: where the walk starts on the lot. Purple square: the end of the walk, ${dest}. Orange dots: busy roads.`}</li>
         </ul>
+        {notDrawn.map((t) => <p key={t} className="mt-1">{t}</p>)}
         {routeMap.note && <p className="mt-1 text-gray-600">{routeMap.note}</p>}
         {routeMap.attribution && <p className="text-gray-600">{routeMap.attribution}</p>}
       </figcaption>

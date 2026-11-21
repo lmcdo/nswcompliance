@@ -377,6 +377,33 @@ describe('evidence statement page', () => {
     }
   });
 
+  it('says how much of the walk the line does not show when its last link cannot be drawn', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 35.4 }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).toContain('The last 35 m of the crossings-only walk, from the end of its line to the destination, are not drawn.');
+    expect(legendOf(container)).not.toContain('of the normal walk');
+  });
+
+  it('says nothing about a missing link when none is missing', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 0 }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).not.toContain('are not drawn');
+  });
+
+  it('shows an error when the not-drawn length is negative or not a number', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    for (const bad of [-5, 'ten', NaN]) {
+      mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: bad }) }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

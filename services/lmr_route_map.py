@@ -21,6 +21,7 @@ from pyproj import Transformer
 
 CAREFUL_AGREE_M = 2.0   # noqa: regulatory-number -- engineering tolerance: the careful route and walk come from one file, so only rounding can differ
 NORMAL_AGREE_M = 15.0   # noqa: regulatory-number -- engineering tolerance: how far the drawing map's normal walk may differ from the measured one
+MIN_LINK_M = 1.0   # noqa: regulatory-number -- engineering tolerance: a station link shorter than this is rounding, not a missing stretch
 ATTRIBUTION = "Footpath and road data: OpenStreetMap contributors (Open Database Licence)."
 NOTE = ("Lines join mapped footpath points, so they are approximate. Crossing types and road names are not shown. "
         "The crossings-only line is drawn from the same saved footpath data as its walking distance. The normal line is drawn from a separate copy "
@@ -75,19 +76,25 @@ def _draw(route: Optional[dict], walk: Optional[dict], tol: float, what: str, st
         pts_m = [tuple(route.get("lot_xy") or [])] + [tuple(p) for p in route.get("points") or []]
         ent = _entrance(stations, route.get("entrance_id"), route.get("anchor"))
         entrance_out = None
+        end_gap = float(route.get("end_gap_m") or 0.0)
+        link_drawn = False
         if ent is not None:
             elon, elat = float(ent.get("lon")), float(ent.get("lat"))
             ex, ey = to_m.transform(elon, elat)
             last = pts_m[-1]
             # the last stored point is joined to the entrance by the station link; draw it only when the entrance is where the link says
-            if math.hypot(ex - last[0], ey - last[1]) <= float(route.get("end_gap_m") or 0.0) + 5.0:
+            if math.hypot(ex - last[0], ey - last[1]) <= end_gap + 5.0:
                 pts_m.append((ex, ey))
+                link_drawn = True
             entrance_out = {"lat": round(elat, 6), "lon": round(elon, 6), "name": ent.get("name"), "exact": ent.get("exact")}
         ll = [to_ll.transform(x, y) for x, y in pts_m]
         busy = [to_ll.transform(x, y) for x, y in (route.get("busy_pts") or [])]
         return {"length_m": round(rlen, 1), "walk_m": round(wlen, 1),
                 "points": [[round(lat, 6), round(lon, 6)] for lon, lat in ll], "entrance": entrance_out, "destination": _destination(route),
-                "busy_road_points": [[round(lat, 6), round(lon, 6)] for lon, lat in busy], "osm_extract": route.get("osm_extract") or None}, None
+                "busy_road_points": [[round(lat, 6), round(lon, 6)] for lon, lat in busy], "osm_extract": route.get("osm_extract") or None,
+                # The walk's last stretch joins the end of the line to the station. When that link cannot be drawn (the entrance is not on the list, or is not
+                # where the link says), say how long it is, so a line shorter than the distance beside it is never unexplained.
+                "end_link_not_drawn_m": 0.0 if link_drawn or end_gap < MIN_LINK_M else round(end_gap, 1)}, None
     except Exception as exc:  # noqa: BLE001 -- a map that cannot be built is a reason on the page, never an error or a wrong line
         return None, f"No {what} route is drawn: it could not be built ({type(exc).__name__})."
 
