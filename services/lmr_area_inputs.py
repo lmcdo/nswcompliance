@@ -434,7 +434,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
-    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn, copy_fn)
+    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn, **({"copy_fn": copy_fn} if copy_fn is not None else {}))
     m["lot_outline"] = bool(rings) and len(rings) >= 4
     if lot_source:
         m["lot_source"] = lot_source  # noqa: bracket-access -- assignment into our own dict   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)

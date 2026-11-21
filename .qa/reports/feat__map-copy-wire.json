@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: this changes where the served area-check answer for six state map layers comes from, and a wrong copy could clear a lot the live map flags. Mitigations: the copy is used only when it is proven (hash, count), fresh (45 days) and the point and lot are not near an edge; any doubt asks the live map exactly as before; side by side on 200 lots the final answers did not differ.",
- "commit_hash": "903f4984",
+ "commit_hash": "98968731",
  "files": [
   "services/lmr_area_inputs.py",
   "services/lmr_area_decision.py",
@@ -20,7 +20,7 @@
   "command": "python -m pytest tests/test_lmr_map_copy_wiring.py tests/test_lmr_map_copy.py tests/test_lmr_area_inputs.py tests/test_lmr_area_decision.py -q",
   "fails_when": "A near-edge or half answer from the copy is used instead of asking live, a layer the copy does not hold is answered from it, a failing copy answers, or the note about copy dates is missing.",
   "observed_red": "Four deliberate breaks of the wiring (accept near edge, ignore an untested lot outline, copy for any layer, do not catch a failing copy) each failed at least one test.",
-  "observed_green": "149 tests pass. Side by side on 200 lots: 1400 layer answers and then the whole decide() result with and without the copy, 0 differences; 6 layers per lot came from the copy. The real endpoint for 2 Hand Avenue Penrith returns its note naming the copied maps."
+  "observed_green": "886 related tests pass (lmr, evidence, map copy, housing), including the older tests that replace fetch_layers. Side by side on 200 lots: 1400 layer answers and then the whole decide() result with and without the copy, 0 differences; 6 layers per lot came from the copy. The real endpoint for 2 Hand Avenue Penrith returns its note naming the copied maps. A saved layers result replayed by a test script is not age-checked; it only comes from scripts, and its note still names the copy date."
  },
  "functions": [
   {
