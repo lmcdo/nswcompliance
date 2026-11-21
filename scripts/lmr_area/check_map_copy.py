@@ -28,6 +28,7 @@ sys.path.insert(0, str(REPO))
 from services import lmr_area_inputs as inp  # noqa: E402
 from services import lmr_map_copy as mc  # noqa: E402
 
+MIN_LIVE_ANSWERED = 0.9   # noqa: regulatory-number -- share of live answers needed for the compare to mean anything, not a planning figure
 WARN_DAYS = 30   # noqa: regulatory-number -- refresh reminder: red 15 days before the reader's 45-day limit, not a planning figure
 COMPARED = tuple(inp.COPY_LAYERS)
 
@@ -69,13 +70,18 @@ def _sample_lots(n: int, seed: int) -> list[dict]:
     try:
         cur = conn.cursor()
         cur.execute("SELECT ST_Y(ST_Centroid(geom)), ST_X(ST_Centroid(geom)), ST_AsGeoJSON(geom) FROM lot_search_index "
-                    "TABLESAMPLE SYSTEM (0.01) REPEATABLE (%s) LIMIT %s", (seed, n * 3))
+                    "TABLESAMPLE SYSTEM (0.01) REPEATABLE (%s) WHERE geom IS NOT NULL LIMIT %s", (seed, n * 3))
         rows = cur.fetchall()
     finally:
         conn.close()
     out = []
     for lat, lng, gj in rows:
-        g = json.loads(gj)
+        try:
+            g = json.loads(gj)
+        except (TypeError, ValueError):   # a null or malformed geometry is skipped; too few lots then fails the compare visibly
+            continue
+        if not isinstance(g, dict):
+            continue
         coords = g["coordinates"][0] if g.get("type") == "Polygon" else (g["coordinates"][0][0] if g.get("type") == "MultiPolygon" else None)  # noqa: bracket-access -- shape just checked
         if coords:
             out.append({"lat": lat, "lng": lng, "rings": [[x, y] for x, y in coords]})
@@ -115,9 +121,13 @@ def compare(n: int, seed: int) -> tuple[bool, list[str]]:
                 edge += 1
             else:
                 bad.append(f"RED: {key} {part} copy={cv} live={lv} at {lot['lat']:.6f},{lot['lng']:.6f}")
+    asked = agree + edge + live_none + len(bad)
+    answered_share = (asked - live_none) / asked if asked else 0.0
     lines = [f"{len(lots)} lots x {len(COMPARED)} layers: {agree} agree, {edge} differ near an edge (sent to live), "
              f"{live_none} live no answer, {copy_none} copy no answer, {len(bad)} unflagged differences"] + bad[:20]
-    return not bad and copy_none == 0, lines
+    if answered_share < MIN_LIVE_ANSWERED:
+        lines.append(f"RED: the live state maps answered only {answered_share:.0%} of the questions (need {MIN_LIVE_ANSWERED:.0%}); this compare proves nothing. Run it again later.")
+    return not bad and copy_none == 0 and answered_share >= MIN_LIVE_ANSWERED, lines
 
 
 def main() -> int:

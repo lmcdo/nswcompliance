@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new check script and a new data-quality row. Not Minor: it adds a ledger row that will turn the ledger red by itself after 30 days. Not Critical: it only reads (the age check is offline; the compare reads the lot table with a read-only connection and the live state maps) and changes no served answer.",
- "commit_hash": "684de1b5",
+ "commit_hash": "cdc83e39",
  "files": [
   "scripts/lmr_area/check_map_copy.py",
   "tests/test_check_map_copy.py",
@@ -20,8 +20,8 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_check_map_copy.py -q ; python scripts/lmr_area/check_map_copy.py ; python scripts/lmr_area/check_map_copy.py --compare 50",
   "fails_when": "The copy is 30 days old or more, dated in the future, or any layer fails its hash or count; with --compare, a difference the reader would not send to the live map.",
-  "observed_red": "Four deliberate breaks of the check (age ignored, integrity ignored, future date accepted, off by one on the reminder day) each failed a test.",
-  "observed_green": "6 tests pass. The age check passes on the real copy (3 days old, 8 of 8 layers prove). The compare on 50 random lots x 6 layers found 600 agreements and 0 differences. The ledger run shows DQ-153 passing; its one red row, DQ-113, is not from this change. Two real-layer tests (database sample of 8 lots with closed outlines; a 6-lot real compare against the live maps) pass with both real flags on, not skipped."
+  "observed_red": "Five deliberate breaks of the check (age ignored, integrity ignored, future date accepted, off by one on the reminder day, a compare that passes when the live maps answer nothing) each failed a test.",
+  "observed_green": "10 tests pass plus 2 real-layer tests with both real flags on. The age check passes on the real copy (3 days old, 8 of 8 layers prove). Compares on 50 and then 20 random lots x 6 layers: 600 and 240 agreements, 0 differences. The ledger shows DQ-153 passing."
  },
  "functions": [
   {
@@ -88,6 +88,13 @@
    "mitigated": true,
    "how": "The compare fails when fewer lots than asked for come back, and the sample is a table-wide random sample with a recorded seed so a run can be repeated.",
    "repro": "python scripts/lmr_area/check_map_copy.py --compare 50"
+  },
+  {
+   "scenario": "The live state maps time out for most of the sampled questions during a compare.",
+   "what_happens": "The compare would pass having compared almost nothing.",
+   "mitigated": true,
+   "how": "The compare fails unless the live maps answered at least 90 percent of the questions, and says so.",
+   "repro": "python -m pytest tests/test_check_map_copy.py -k answer_nothing -q"
   }
  ],
  "post_merge": {

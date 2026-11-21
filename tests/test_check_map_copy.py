@@ -56,3 +56,37 @@ def test_a_missing_or_future_manifest_goes_red(tmp_path):
 def test_the_real_committed_copy_passes_on_the_day_it_was_read():
     read_on = date.fromisoformat(json.loads((mc.MAPS_DIR / "manifest.json").read_text())["read_on"])
     assert cm.age_and_integrity(read_on)[0] is True
+
+
+def _lots(n):
+    sq = [[151.0, -33.0], [151.001, -33.0], [151.001, -32.999], [151.0, -32.999], [151.0, -33.0]]
+    return [{"lat": -32.9995, "lng": 151.0005, "rings": sq} for _ in range(n)]
+
+
+def test_a_compare_where_the_live_maps_answer_nothing_fails_it_does_not_pass(monkeypatch):
+    monkeypatch.setattr(cm, "_sample_lots", lambda n, seed: _lots(n))
+    monkeypatch.setattr(cm.inp, "_layer", lambda *a, **k: {"point": None, "lot": None})
+    monkeypatch.setattr(cm.mc, "check", lambda *a, **k: {"point": False, "lot": False, "as_of": "2026-11-18", "near_edge": False})
+    ok, lines = cm.compare(5, 1)
+    assert ok is False and any("answered only 0%" in ln for ln in lines)
+
+
+def test_a_compare_where_everything_agrees_passes(monkeypatch):
+    monkeypatch.setattr(cm, "_sample_lots", lambda n, seed: _lots(n))
+    monkeypatch.setattr(cm.inp, "_layer", lambda *a, **k: {"point": False, "lot": False})
+    monkeypatch.setattr(cm.mc, "check", lambda *a, **k: {"point": False, "lot": False, "as_of": "2026-11-18", "near_edge": False})
+    assert cm.compare(5, 1)[0] is True
+
+
+def test_a_difference_the_reader_would_not_send_to_live_fails_but_an_edge_difference_does_not(monkeypatch):
+    monkeypatch.setattr(cm, "_sample_lots", lambda n, seed: _lots(n))
+    monkeypatch.setattr(cm.inp, "_layer", lambda *a, **k: {"point": True, "lot": True})
+    monkeypatch.setattr(cm.mc, "check", lambda *a, **k: {"point": False, "lot": False, "as_of": "x", "near_edge": False})
+    assert cm.compare(5, 1)[0] is False
+    monkeypatch.setattr(cm.mc, "check", lambda *a, **k: {"point": False, "lot": False, "as_of": "x", "near_edge": True})
+    assert cm.compare(5, 1)[0] is True
+
+
+def test_too_few_sampled_lots_fails(monkeypatch):
+    monkeypatch.setattr(cm, "_sample_lots", lambda n, seed: _lots(2))
+    assert cm.compare(5, 1)[0] is False
