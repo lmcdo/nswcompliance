@@ -42,6 +42,32 @@ def test_no_answer_a_failure_or_a_half_answer_asks_the_live_map(live, fn):
     assert "copy_as_of" not in out and len(live) == 2
 
 
+@pytest.mark.parametrize("as_of", [None, "", "yesterday", 20261118, "2026-11-18T00:00"])
+def test_a_copy_answer_without_a_readable_date_asks_the_live_map(live, as_of):
+    out = inp._layer("tod_map", -33.0, 151.0, RING, lambda *a: {"point": False, "lot": False, "near_edge": False, "as_of": as_of})
+    assert "copy_as_of" not in out and len(live) == 2
+
+
+def test_the_endpoint_hands_the_copy_to_the_area_check(monkeypatch):
+    from services import housing_sepp_gates_api as api
+    seen = {}
+
+    def fake_area_check(lat, lng, **kw):
+        seen.update(kw)
+        return {}
+    monkeypatch.setattr(inp, "area_check", fake_area_check)
+    api.housing_sepp_area_check(-33.75, 150.70)
+    assert callable(seen.get("copy_fn"))
+
+
+def test_the_area_check_passes_the_copy_down_to_the_layers(monkeypatch):
+    got = {}
+    monkeypatch.setattr(inp, "fetch_layers", lambda lat, lng, rings, lga_fallback=None, lga_guess=None, bushfire_fn=None, copy_fn=None: got.update(copy_fn=copy_fn) or {})
+    marker = object()
+    inp.area_check(-33.75, 150.70, copy_fn=marker)
+    assert got.get("copy_fn") is marker
+
+
 def test_a_copy_that_could_not_test_the_lot_outline_asks_the_live_map(live):
     out = inp._layer("tod_map", -33.0, 151.0, RING, lambda *a: {"point": False, "lot": None, "as_of": "x", "near_edge": False})
     assert "copy_as_of" not in out and len(live) == 2

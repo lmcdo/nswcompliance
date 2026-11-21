@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -226,6 +227,9 @@ def _copy_answer(key: str, lat: float, lng: float, rings: Optional[list], copy_f
     if not isinstance(got, dict) or got.get("near_edge") is not False or not isinstance(got.get("point"), bool):
         return None
     if rings and not isinstance(got.get("lot"), bool):
+        return None
+    as_of = got.get("as_of")
+    if not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of):   # an answer with no date could not be disclosed, so it is not used
         return None
     return {"point": got.get("point"), "lot": got.get("lot") if rings else None, "copy_as_of": got.get("as_of")}
 
