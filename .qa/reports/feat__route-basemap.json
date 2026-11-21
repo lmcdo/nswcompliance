@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
-  "justification": "The route map on the evidence page now sits on a real street map: the NSW Spatial Services Base Map tiles (roads with names, lot lines, house numbers, parks, stations), drawn as images under our routes in the same SVG. The routes and the tiles use the same Web Mercator projection so a line cannot drift off its street. A tile that fails to load is not drawn, so the plain background and the busy-road dots remain; when a tile has loaded the dots are hidden and the basemap is credited under the map. No new dependency, no data change, no server change except one sentence in a note string. The tile source is one object (BASEMAP) so it can be swapped.",
-  "commit_hash": "97913947",
+  "justification": "The route map on the evidence page now sits on a real street map: the NSW Spatial Services Base Map tiles (roads with names, lot lines, house numbers, parks, stations), drawn as images under our routes in the same SVG. The routes and the tiles use the same Web Mercator projection so a line cannot drift off its street. A tile that fails to load is not drawn, so the plain background remains; the orange dots stay on top of the map because they mark the roads this tool treats as busy, which a street map cannot show; once a tile has loaded the basemap is credited under the map. No new dependency, no data change, no server change except one sentence in a note string. The tile source is one object (BASEMAP) so it can be swapped.",
+  "commit_hash": "b33f8825",
   "files": [
     "frontend-nextjs/lib/route-map-geometry.ts",
     "frontend-nextjs/components/reports/RouteMapFigure.tsx",
@@ -12,8 +12,8 @@
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/lib/route-map-geometry.test.ts __tests__/components/evidence-statement-page.test.tsx ; npx tsc --noEmit -p . ; python -m pytest tests/test_lmr_route_map.py -q -o addopts=",
     "expected": "Jest 61 passed; tsc 0 errors; Python 43 passed.",
-    "fails_when": "A tile is requested with row and column swapped, drawn over the routes, kept after it failed, credited before it loaded, placed from the wrong corner or at the wrong zoom; the routes use a different projection from the tiles; the dots stay after the map loads; or the scale bar is not in ground metres.",
-    "observed_red": "Twelve hand breakages each turned a test red and were restored: tile row and column swapped, tiles never drawn, a failed tile staying drawn, the basemap credited before any tile loaded, dots kept after the map loads (first missed, then a test on the dots themselves was added and it went red), north not up, padding in ground metres, one zoom too high, scale bar in Mercator metres, tiles placed from the wrong corner, and counting another lot's loaded tiles (found by the cross-review). Real render: headless Chrome with live tiles for 28 Selwyn Street (Pymble) and 60 Palace Street (Petersham): the routes follow the real streets and the road names, lot lines and station are readable. Typed-figure check 0 unlisted; wording check none."
+    "fails_when": "A tile is requested with row and column swapped, drawn over the routes, kept after it failed, credited before it loaded, placed from the wrong corner or at the wrong zoom; the routes use a different projection from the tiles; the dots are lost; or the scale bar is not in ground metres.",
+    "observed_red": "Twelve hand breakages each turned a test red and were restored: tile row and column swapped, tiles never drawn, a failed tile staying drawn, the basemap credited before any tile loaded, dots wrongly kept or lost (first missed, then a test on the dots themselves was added and it went red), north not up, padding in ground metres, one zoom too high, scale bar in Mercator metres, tiles placed from the wrong corner, and counting another lot's loaded tiles (found by the cross-review). Real render: headless Chrome with live tiles for 28 Selwyn Street (Pymble) and 60 Palace Street (Petersham): the routes follow the real streets and the road names, lot lines and station are readable. Typed-figure check 0 unlisted; wording check none."
   },
   "pre_impl": {
     "existing_data": "The route map was an inline SVG with a plain background and orange busy-road dots (PR 1671). The repo already loads NSW SIX tiles for aerial imagery (AerialTile.tsx) through maplibre; this does not use maplibre.",
@@ -100,10 +100,10 @@
       "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t carry"
     },
     {
-      "scenario": "The street map shows roads, so the orange dots would be clutter.",
-      "what_happens": "The dots and their legend text are hidden once a tile has loaded.",
-      "mitigated": "Mitigated: the dots follow the loaded state.",
-      "how": "The tile Jest test checks no dot remains and the legend does not mention them.",
+      "scenario": "The street map shows roads but not which of them this tool treats as busy.",
+      "what_happens": "The orange dots stay on top of the map, with a white outline, and the legend says what they mean.",
+      "mitigated": "Mitigated: the dots are always drawn (a review point recommended this).",
+      "how": "The tile Jest test checks the dots and their legend are present with the map loaded.",
       "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t tiles"
     }
   ],

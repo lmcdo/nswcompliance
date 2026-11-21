@@ -20,8 +20,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
     return <p className="mt-2 text-gray-600">{`The route map is not drawn: ${routeMap.reason ?? 'no route could be drawn for this lot.'}`}</p>;
   }
 
-  const dotsNote = tilesLoaded ? '' : ' Orange dots mark busy roads.';   // the dots are drawn only when no street map has loaded
-  const dotsLegend = tilesLoaded ? '' : ' Orange dots: busy roads.';
+  const dotsNote = ' Orange dots mark the roads this tool treats as busy.';
+  const dotsLegend = ' Orange dots: roads this tool treats as busy.';
   const normal = routeMap.normal ?? null;
   const careful = routeMap.careful ?? null;
   const dest = destinationLabel(routeMap.destination ?? careful?.destination ?? normal?.destination);   // a route's own destination if the top level has none
@@ -58,8 +58,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
             onLoad={() => setLoaded((p) => (p[t.key] === true ? p : { ...p, [t.key]: true }))}
             onError={() => setLoaded((p) => ({ ...p, [t.key]: false }))} />
         ))}
-        {/* the busy-road dots are the fallback when no street map has loaded: the street map already shows the roads */}
-        {!tilesLoaded ? drawn.busy.map((b, i) => <circle key={i} cx={b.x} cy={b.y} r={3} fill={COLOURS.busy} />) : null}
+        {/* the dots mark the roads this tool treats as busy: the street map shows the roads but not that, so they stay on top of it */}
+        {drawn.busy.map((b, i) => <circle key={i} cx={b.x} cy={b.y} r={4} fill={COLOURS.busy} stroke="#ffffff" strokeWidth={1.5} />)}
         {/* the crossings-only route is drawn wider and first, the normal route thinner and dashed on top: where they share a path both show */}
         {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke="#ffffff" strokeWidth={15} strokeLinejoin="round" strokeLinecap="round" /> : null}
         {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke={COLOURS.careful} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" /> : null}

@@ -442,8 +442,8 @@ describe('evidence statement page', () => {
     expect(legendOf(container)).not.toContain('State of New South Wales');      // not named until a tile has actually drawn
     fireEvent.load(tiles[0]);
     await waitFor(() => expect(legendOf(container)).toContain('State of New South Wales (Spatial Services'));
-    expect(legendOf(container)).not.toContain('Orange dots');                    // the street map already shows the roads
-    expect(container.querySelectorAll('svg circle[r="3"]')).toHaveLength(0);       // and the dots themselves are gone, not only their legend line
+    expect(legendOf(container)).toContain('Orange dots: roads this tool treats as busy');   // the street map cannot show which roads are busy under our rule
+    expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);        // so the dots stay on top of it
   });
 
   it('falls back to the plain map, with the dots, when every tile fails to load', async () => {
@@ -451,11 +451,11 @@ describe('evidence statement page', () => {
     mockFetch(withRouteMap());
     const { container } = render(<EvidenceStatement />);
     expect(await screen.findByRole('img')).toBeTruthy();
-    expect(container.querySelectorAll('svg circle[r="3"]').length).toBeGreaterThan(0);   // the busy-road dots
+    expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);   // the busy-road dots
     for (const t of Array.from(container.querySelectorAll('svg image'))) fireEvent.error(t);
     await waitFor(() => expect(container.querySelectorAll('svg image')).toHaveLength(0));
     expect(legendOf(container)).not.toContain('State of New South Wales');
-    expect(legendOf(container)).toContain('Orange dots: busy roads');
+    expect(legendOf(container)).toContain('Orange dots: roads this tool treats as busy');
     expect(container.querySelectorAll('polyline').length).toBeGreaterThan(0);     // the routes are still drawn
   });
 
@@ -469,7 +469,7 @@ describe('evidence statement page', () => {
     await waitFor(() => expect(legendOf(container)).toContain('State of New South Wales'));
     rerender(<RouteMapFigure routeMap={other} />);                       // another lot, nothing loaded yet
     expect(legendOf(container)).not.toContain('State of New South Wales');
-    expect(container.querySelectorAll('svg circle[r="3"]').length).toBeGreaterThan(0);   // the dots are back until a tile of THIS map loads
+    expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);   // this lot's own dots are drawn
   });
 
   it('puts the notes before the walking range so a reader meets them first', async () => {
