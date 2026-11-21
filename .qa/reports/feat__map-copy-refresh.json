@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new check script and a new data-quality row. Not Minor: it adds a ledger row that will turn the ledger red by itself after 30 days. Not Critical: it only reads (the age check is offline; the compare reads the lot table with a read-only connection and the live state maps) and changes no served answer.",
- "commit_hash": "81087db8",
+ "commit_hash": "684de1b5",
  "files": [
   "scripts/lmr_area/check_map_copy.py",
   "tests/test_check_map_copy.py",
