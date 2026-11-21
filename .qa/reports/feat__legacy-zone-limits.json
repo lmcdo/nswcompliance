@@ -1,0 +1,31 @@
+{
+  "tier": "minor",
+  "justification": "Minor: one data file (land_limits.json, 56 more fingerprints) and one test count, no new code. Applies zone limits for rows the council's own words limit to named zones: 22 whose labelled codes are old (B1, B2, B4, IN2, translated to E1, MU1, E4 with the repo's taxonomy) and 34 place rows that also name zones. Applied live with owner approval and a row-level backup, the same pattern as #1660.",
+  "commit_hash": "278d0053",
+  "files": [
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py"
+  ],
+  "break_it": [
+    {
+      "scenario": "A rule written for old business zones is limited to the wrong current zone, so a house the rule applies to stops seeing it.",
+      "what_happens": "A house in the right zone loses a rule that applies to it.",
+      "mitigated": true,
+      "how": "Old codes are translated only through legacyToCurrentAliases (the repo's own table), and the translated zones must exist in the council's LEP land-use table or the entry is skipped; 14 sampled rows each named their zones in their own words.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits prints to-change=0 and the backup lists the 56 previous values."
+    },
+    {
+      "scenario": "A publish resets the limited rows to no zone limit.",
+      "what_happens": "The rules reach every house again.",
+      "mitigated": true,
+      "how": "The step runs at the end of apply_gate_rules after every publish and matches by text fingerprint, so new row ids keep the limit.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits prints to-change=0 while limits hold."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "The rule list is not yet checked in a browser for a house in an E1 or R4 zone."
+  }
+}
