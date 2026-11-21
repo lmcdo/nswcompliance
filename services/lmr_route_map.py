@@ -61,7 +61,8 @@ def _draw(route: Optional[dict], walk: Optional[dict], tol: float, what: str, st
     """(line, None) when this route may be drawn, else (None, plain reason). `walk` is the walk the page shows for the same rule."""
     if not isinstance(walk, dict) or walk.get("valid") is not True or not _num(walk.get("m")):
         return None, f"No {what} route is drawn: the {what} walk was not measured for this lot."
-    if not isinstance(route, dict) or not route.get("points") or not _num(route.get("length_m")):
+    if (not isinstance(route, dict) or not route.get("points") or not _num(route.get("length_m"))
+            or not _num(route.get("end_gap_m")) or float(route.get("end_gap_m")) < 0):   # the link length decides whether the line is complete
         return None, f"No {what} route is drawn: the footpath map for this area holds no route information."
     if route.get("anchor") != walk.get("anchor") or route.get("entrance_id") != walk.get("entrance_id"):
         return None, f"No {what} route is drawn: the map used for drawing leads to a different station or entrance from the measured walk."
@@ -76,7 +77,7 @@ def _draw(route: Optional[dict], walk: Optional[dict], tol: float, what: str, st
         pts_m = [tuple(route.get("lot_xy") or [])] + [tuple(p) for p in route.get("points") or []]
         ent = _entrance(stations, route.get("entrance_id"), route.get("anchor"))
         entrance_out = None
-        end_gap = float(route.get("end_gap_m") or 0.0)
+        end_gap = float(route.get("end_gap_m"))
         link_drawn = False
         if ent is not None:
             elon, elat = float(ent.get("lon")), float(ent.get("lat"))

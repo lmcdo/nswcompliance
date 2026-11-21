@@ -367,3 +367,11 @@ def test_an_entrance_much_nearer_than_the_link_says_is_not_used_to_draw_a_shorte
     out = rm.build(_m(careful=_route(end_gap=30.0), careful_walk=_walk()), _stations(dx=2.0))
     assert out["careful"]["end_link_not_drawn_m"] == 30.0
     assert out["careful"]["points"][-1] == [round(v, 6) for v in _ll(E0 + 200, N0 + 200)]
+
+
+@pytest.mark.parametrize("end_gap", [None, -1.0, "20", float("nan")])
+def test_a_route_without_a_usable_link_length_is_not_drawn_rather_than_shown_as_complete(end_gap):
+    route = _route()
+    route["end_gap_m"] = end_gap
+    out = rm.build(_m(careful=route, careful_walk=_walk()), _stations())
+    assert out["status"] == "unavailable" and "holds no route information" in out["reason"]
