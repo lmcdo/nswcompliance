@@ -23,7 +23,8 @@ CAREFUL_AGREE_M = 2.0   # noqa: regulatory-number -- engineering tolerance: the 
 NORMAL_AGREE_M = 15.0   # noqa: regulatory-number -- engineering tolerance: how far the drawing map's normal walk may differ from the measured one
 ATTRIBUTION = "Footpath and road data: OpenStreetMap contributors (Open Database Licence)."
 NOTE = ("Lines join mapped footpath points, so they are approximate. Crossing types and road names are not shown. "
-        "The map is drawn from the same saved footpath data as the walking distances.")
+        "The crossings-only line is drawn from the same saved footpath data as its walking distance. The normal line is drawn from a separate copy "
+        f"of the footpath data and is shown only when it leads to the same station and agrees with the measured walk to within {NORMAL_AGREE_M:.0f} m.")
 
 
 def _num(v: Any) -> bool:
@@ -105,6 +106,8 @@ def build(m: dict, stations: Optional[dict] = None) -> dict:
     drawn = careful or normal or {}
     entrance = (careful or {}).get("entrance") or (normal or {}).get("entrance")
     start = (drawn.get("points") or [[None, None]])[0]
-    return {"status": "ok", "lot": {"lat": start[0], "lon": start[1]}, "entrance": entrance, "destination": drawn.get("destination"),
+    # The two walks can end at different places (the nearest station can differ between the rules): the page must then name and mark both ends.
+    differ = bool(careful and normal and careful.get("destination") != normal.get("destination"))
+    return {"status": "ok", "lot": {"lat": start[0], "lon": start[1]}, "entrance": entrance, "destination": drawn.get("destination"), "destinations_differ": differ,
             "careful": careful, "careful_note": careful_note, "normal": normal, "normal_note": normal_note,
             "attribution": ATTRIBUTION, "note": NOTE}

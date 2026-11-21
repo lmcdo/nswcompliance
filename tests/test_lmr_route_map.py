@@ -291,3 +291,32 @@ def test_the_destination_of_the_page_is_the_careful_routes_when_both_are_drawn()
     out = rm.build(_m(careful=_route(entrance_id="node/1"), normal=_route(entrance_id="town centre edge"),
                       careful_walk=_walk(), normal_walk=_walk()), _stations())
     assert out["destination"]["kind"] == "entrance" and out["normal"]["destination"]["kind"] == "town_centre_edge"
+
+
+# --- the two walks can end at different places; the note says where each line comes from ---
+
+def test_destinations_differ_when_the_two_walks_end_at_different_places():
+    out = rm.build(_m(careful=_route(anchor=ANCHOR), normal=_route(anchor="Other station"),
+                      careful_walk=_walk(anchor=ANCHOR), normal_walk=_walk(anchor="Other station")), _stations())
+    assert out["status"] == "ok" and out["careful"] and out["normal"]
+    assert out["destinations_differ"] is True
+    assert out["careful"]["destination"]["name"] == ANCHOR and out["normal"]["destination"]["name"] == "Other station"
+
+
+def test_destinations_do_not_differ_when_both_walks_end_at_the_same_place():
+    out = rm.build(_m(careful=_route(), normal=_route(), careful_walk=_walk(), normal_walk=_walk()), _stations())
+    assert out["destinations_differ"] is False
+
+
+def test_with_one_route_drawn_the_destinations_do_not_differ():
+    out = rm.build(_m(careful=_route(), careful_walk=_walk()), _stations())
+    assert out["status"] == "ok" and out["destinations_differ"] is False
+
+
+def test_the_note_says_where_each_line_comes_from_and_does_not_claim_one_source_for_both():
+    note = rm.NOTE
+    assert "crossings-only line is drawn from the same saved footpath data as its walking distance" in note
+    assert "normal line is drawn from a separate copy" in note and f"{rm.NORMAL_AGREE_M:.0f} m" in note
+    assert "same saved footpath data as the walking distances" not in note
+    out = rm.build(_m(careful=_route(), careful_walk=_walk()), _stations())
+    assert out["note"] == note

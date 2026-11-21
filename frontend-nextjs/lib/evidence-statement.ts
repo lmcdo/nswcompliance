@@ -30,7 +30,7 @@ export interface RouteLine {
 }
 export interface RouteMap {
   status: 'ok' | 'unavailable'; reason?: string | null;
-  lot?: { lat: number; lon: number }; entrance?: RouteEntrance | null; destination?: RouteDestination;
+  lot?: { lat: number; lon: number }; entrance?: RouteEntrance | null; destination?: RouteDestination; destinations_differ?: boolean;
   careful?: RouteLine | null; careful_note?: string | null; normal?: RouteLine | null; normal_note?: string | null;
   attribution?: string | null; note?: string | null;
 }
@@ -61,14 +61,16 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
 const isLatLon = (p: unknown): p is LatLon => Array.isArray(p) && p.length === 2 && finite(p[0]) && finite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180;
 const optString = (v: unknown) => v === undefined || v === null || typeof v === 'string';   // printed as text, so an object here would crash the page
 
+const destinationOk = (d: unknown): boolean => !!d && typeof d === 'object'
+  && ['entrance', 'station_outline', 'town_centre_edge'].includes((d as Partial<RouteDestination>).kind as string) && optString((d as Partial<RouteDestination>).name);
+
 function routeLineOk(l: unknown): boolean {
   if (!l || typeof l !== 'object') return false;
   const x = l as Partial<RouteLine>;
-  const d = x.destination as Partial<RouteDestination> | undefined;
   const e = x.entrance as Partial<RouteEntrance> | null | undefined;
   return finite(x.length_m) && finite(x.walk_m) && Array.isArray(x.points) && x.points.length >= 2 && x.points.every(isLatLon)
     && Array.isArray(x.busy_road_points) && x.busy_road_points.every(isLatLon)
-    && !!d && typeof d === 'object' && ['entrance', 'station_outline', 'town_centre_edge'].includes(d.kind as string) && optString(d.name)
+    && destinationOk(x.destination)
     && (e === null || e === undefined || (typeof e === 'object' && finite(e.lat) && finite(e.lon) && optString(e.name)))
     && optString(x.osm_extract);
 }
@@ -79,6 +81,8 @@ export function routeMapOk(rm: unknown): boolean {
   if (typeof rm !== 'object') return false;
   const m = rm as Partial<RouteMap>;
   if (!optString(m.reason) || !optString(m.careful_note) || !optString(m.normal_note) || !optString(m.attribution) || !optString(m.note)) return false;
+  if (m.destination !== undefined && m.destination !== null && !destinationOk(m.destination)) return false;   // the figure prefers this one, so it is checked too
+  if (m.destinations_differ !== undefined && typeof m.destinations_differ !== 'boolean') return false;
   if (m.status === 'unavailable') return true;
   if (m.status !== 'ok') return false;
   const drawn = [m.careful, m.normal].filter((l) => l !== null && l !== undefined);

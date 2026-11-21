@@ -73,11 +73,17 @@ class Surface:
         self.parent = p if (p is not None and len(p) == len(arr)
                             and (len(p) == 0 or (p.min() >= -1 and p.max() < len(arr) and not bool(np.any(p == np.arange(len(p))))))) else None   # a point pointing at itself is no route
         # Rows that are on a route but are NOT places a lot can start from (busy-road side copies share their coordinates with the other side's
-        # copy, so matching one could take the wrong side's distance). The lot lookup ignores them. Older files have none; a flag list that does
-        # not fit the points is ignored, which makes every row matchable exactly as before.
+        # copy, so matching one could take the wrong side's distance). The lot lookup ignores them. Older files have none (all rows matchable, as
+        # before). A flag list that is PRESENT but does not fit is refused: ignoring it would make the side copies matchable and could give a lot a
+        # plausible but wrong distance, so the file is rejected visibly instead.
         raw_ro = doc.get("route_only")
-        ro = np.asarray(raw_ro, dtype=np.int64).reshape(-1) if raw_ro is not None else None
-        self.route_only = (ro == 1) if ro is not None and len(ro) == len(arr) else np.zeros(len(arr), dtype=bool)
+        if raw_ro is None:
+            self.route_only = np.zeros(len(arr), dtype=bool)
+        else:
+            ro = np.asarray(raw_ro, dtype=np.int64).reshape(-1)
+            if len(ro) != len(arr) or (len(ro) and (ro.min() < 0 or ro.max() > 1)):
+                raise ValueError(f"route_only flags do not fit the points of {name or 'this surface'}: the file is not used")
+            self.route_only = ro == 1
         self.graph_nodes: int = int(doc.get("graph_nodes", len(arr)))
         # "original" = every way joins wherever two share a node; anything else (e.g. "safe-crossings-v2") crosses busy roads only at formal crossings
         self.walk_rule: str = str(doc.get("walk_rule") or "original")

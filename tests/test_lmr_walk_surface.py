@@ -389,10 +389,17 @@ def test_the_writer_refuses_route_only_flags_that_do_not_fit(tmp_path, flags):
         ws.write_npz({**base, "route_only": flags}, tmp_path / "bad.npz")
 
 
-def test_a_flag_list_of_the_wrong_length_is_ignored_so_every_row_stays_matchable():
+@pytest.mark.parametrize("flags", [[1], [0, 1, 0, 1], [0, 2, 0], [0, -1, 0]])
+def test_a_present_flag_list_that_does_not_fit_the_points_rejects_the_file_instead_of_making_every_row_matchable(flags):
     s = _surface_with_route_only_decoy(True)
-    doc = {"epsg": EPSG, "built": "x", "bbox_m": s.bbox_m, "anchors": s.anchors, "nodes": [[X0, Y0, 0.0, 0]] * 3, "route_only": [1]}
-    assert not ws.Surface(doc, "t").route_only.any()
+    doc = {"epsg": EPSG, "built": "x", "bbox_m": s.bbox_m, "anchors": s.anchors, "nodes": [[X0, Y0, 0.0, 0]] * 3, "route_only": flags}
+    with pytest.raises(ValueError):
+        ws.Surface(doc, "t")
+
+
+def test_a_surface_without_any_flag_list_keeps_every_row_matchable_as_before():
+    s = ws.Surface({"epsg": EPSG, "built": "x", "bbox_m": [0, 0, 1, 1], "anchors": [], "nodes": [[X0, Y0, 0.0, 0]] * 3}, "t")
+    assert not s.route_only.any()
 
 
 def test_the_route_length_counts_the_station_link_at_the_end_of_the_chain():

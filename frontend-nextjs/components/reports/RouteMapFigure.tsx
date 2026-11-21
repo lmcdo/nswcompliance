@@ -19,6 +19,10 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
   const normal = routeMap.normal ?? null;
   const careful = routeMap.careful ?? null;
   const dest = destinationLabel(routeMap.destination ?? careful?.destination ?? normal?.destination);   // a route's own destination if the top level has none
+  // The nearest station can differ between the two rules: then each end is named and marked, never one end for both.
+  const differ = routeMap.destinations_differ === true && !!careful && !!normal;
+  const destCareful = destinationLabel(careful?.destination ?? routeMap.destination);
+  const destNormal = destinationLabel(normal?.destination ?? routeMap.destination);
   const normalM = normal ? Math.round(normal.walk_m) : null;
   const carefulM = careful ? Math.round(careful.walk_m) : null;
   const diff = normalM !== null && carefulM !== null ? carefulM - normalM : null;
@@ -26,7 +30,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
   const description = [
     normalM !== null ? `The normal route is ${normalM} m.` : 'The normal route is not drawn.',
     carefulM !== null ? `The crossings-only route is ${carefulM} m${diffText}.` : 'The crossings-only route is not drawn.',
-    `Both start at the lot and end at ${dest}. Orange dots mark busy roads.`,
+    differ ? `Both start at the lot. The normal route ends at ${destNormal}; the crossings-only route ends at ${destCareful}. Orange dots mark busy roads.`
+      : `Both start at the lot and end at ${dest}. Orange dots mark busy roads.`,
   ].join(' ');
   const s = drawn.size;
   const halo = { stroke: '#ffffff', strokeWidth: 4, paintOrder: 'stroke' as const };
@@ -34,7 +39,7 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
   return (
     <figure className="mt-3 break-inside-avoid">
       <svg viewBox={`0 0 ${s} ${s}`} role="img" aria-labelledby={`${uid}-t ${uid}-d`} className="w-full max-w-xl border" style={{ height: 'auto' }}>
-        <title id={`${uid}-t`}>Map of the walk from the lot to {dest}</title>
+        <title id={`${uid}-t`}>{differ ? `Map of the walks from the lot to ${destNormal} (normal route) and ${destCareful} (crossings-only route)` : `Map of the walk from the lot to ${dest}`}</title>
         <desc id={`${uid}-d`}>{description}</desc>
         <rect width={s} height={s} fill={COLOURS.background} />
         {drawn.busy.map((b, i) => <circle key={i} cx={b.x} cy={b.y} r={3} fill={COLOURS.busy} />)}
@@ -44,7 +49,13 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
         <circle cx={drawn.lot.x} cy={drawn.lot.y} r={9} fill={COLOURS.lot} />
         <text x={drawn.lot.x + 14} y={drawn.lot.y - 10} fontSize={22} fill={COLOURS.lot} {...halo}>Lot</text>
         <rect x={drawn.destination.x - 9} y={drawn.destination.y - 9} width={18} height={18} fill={COLOURS.destination} />
-        <text x={drawn.destination.x + 14} y={drawn.destination.y - 12} fontSize={22} fill={COLOURS.destination} {...halo}>End</text>
+        <text x={drawn.destination.x + 14} y={drawn.destination.y - 12} fontSize={22} fill={COLOURS.destination} {...halo}>{differ ? 'End (crossings-only)' : 'End'}</text>
+        {differ && drawn.normal ? (
+          <>
+            <rect x={drawn.normal.end.x - 9} y={drawn.normal.end.y - 9} width={18} height={18} fill={COLOURS.destination} />
+            <text x={drawn.normal.end.x + 14} y={drawn.normal.end.y + 28} fontSize={22} fill={COLOURS.destination} {...halo}>End (normal)</text>
+          </>
+        ) : null}
         <g transform={`translate(24 ${s - 30})`}>
           <line x1={0} y1={0} x2={drawn.scaleBar.px} y2={0} stroke={COLOURS.lot} strokeWidth={4} />
           <text x={drawn.scaleBar.px + 10} y={7} fontSize={20} fill={COLOURS.lot} {...halo}>{`${drawn.scaleBar.m} m`}</text>
@@ -52,9 +63,9 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
       </svg>
       <figcaption className="mt-1">
         <ul className="list-disc pl-5">
-          <li>{normalM !== null ? <><strong>Normal route</strong> (blue dashed line): {normalM} m.</> : (routeMap.normal_note ?? 'The normal route is not drawn.')}</li>
-          <li>{carefulM !== null ? <><strong>Crossings-only route</strong> (green line): {carefulM} m{diffText}.</> : (routeMap.careful_note ?? 'The crossings-only route is not drawn.')}</li>
-          <li>Black dot: where the walk starts on the lot. Purple square: the end of the walk, {dest}. Orange dots: busy roads.</li>
+          <li>{normalM !== null ? <><strong>Normal route</strong> (blue dashed line): {normalM} m{differ ? `, ending at ${destNormal}` : ''}.</> : (routeMap.normal_note ?? 'The normal route is not drawn.')}</li>
+          <li>{carefulM !== null ? <><strong>Crossings-only route</strong> (green line): {carefulM} m{diffText}{differ ? `, ending at ${destCareful}` : ''}.</> : (routeMap.careful_note ?? 'The crossings-only route is not drawn.')}</li>
+          <li>{differ ? 'Black dot: where the walks start on the lot. Purple squares: where each walk ends. Orange dots: busy roads.' : `Black dot: where the walk starts on the lot. Purple square: the end of the walk, ${dest}. Orange dots: busy roads.`}</li>
         </ul>
         {routeMap.note && <p className="mt-1 text-gray-600">{routeMap.note}</p>}
         {routeMap.attribution && <p className="text-gray-600">{routeMap.attribution}</p>}

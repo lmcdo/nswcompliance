@@ -332,6 +332,51 @@ describe('evidence statement page', () => {
     expect(container.querySelector('svg title')?.textContent).not.toContain('the destination');
   });
 
+  it('names and marks both ends when the two walks end at different places', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const other = { name: 'Petersham station', kind: 'entrance' };
+    mockFetch(withRouteMap({ destinations_differ: true, normal: routeLine(877.7, NORMAL_POINTS, { destination: other }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const title = container.querySelector('svg title')?.textContent ?? '';
+    expect(title).toContain('Petersham station');
+    expect(title).toContain('Turramurra station and town centre');
+    expect(title).toContain('(normal route)');
+    const text = container.querySelector('svg')?.textContent ?? '';
+    expect(text).toContain('End (normal)');
+    expect(text).toContain('End (crossings-only)');
+    const legend = legendOf(container);
+    expect(legend).toContain('ending at Petersham station (station entrance)');
+    expect(legend).toContain('ending at the edge of Turramurra station and town centre');
+  });
+
+  it('marks a single end when both walks end at the same place', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ destinations_differ: false }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const text = container.querySelector('svg')?.textContent ?? '';
+    expect(text).toContain('End');
+    expect(text).not.toContain('End (normal)');
+    expect(legendOf(container)).not.toContain('ending at');
+  });
+
+  it('shows an error when the top-level destination or the differ flag is malformed', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const bad = [
+      { destination: { name: 'Turramurra', kind: 'bogus' } },
+      { destination: { name: { x: 1 }, kind: 'entrance' } },
+      { destination: 'Turramurra' },
+      { destinations_differ: 'yes' },
+    ];
+    for (const over of bad) {
+      mockFetch(withRouteMap(over));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());
