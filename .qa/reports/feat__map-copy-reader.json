@@ -1,0 +1,128 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a new module that decides yes, no or no answer for state map layers the area check will use. Not Minor: it is law-adjacent logic with a staleness rule. Not Critical: nothing calls it yet, so no served answer changes in this pull request; wiring it in is the next pull request, behind a side-by-side comparison.",
+ "commit_hash": "0c4306b4",
+ "files": [
+  "services/lmr_map_copy.py",
+  "tests/test_lmr_map_copy.py"
+ ],
+ "pre_impl": {
+  "existing_data": "data/law/maps holds 8 layer files and manifest.json (read_on 2026-11-18) with sha256 and feature counts. TOD Sites has 9,597 polygons, 1 of them zero area. Read on 2026-11-20: all 8 layers load and index in 2.2 seconds.",
+  "assumption_mismatch": "I expected live to stall today. Over 800 live calls the slowest was 0.74 s and the median 0.11 to 0.18 s, so the value of the copy is protection in a bad hour, not a faster average. The one copy-versus-live difference in 800 points was a point exactly on a polygon edge, made by my edge sampler.",
+  "new_vs_existing": "lmr_area_inputs._layer asks the live service per lot and the database copy covers other layers; nothing read data/law/maps. This reader returns the same point and lot answer shape plus as_of and near_edge, so the rules do not change.",
+  "external_source_error": "Not applicable: this module makes no network call. A missing, corrupt, wrong-count, empty or out-of-date file gives None, which the caller treats as ask the live map."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_lmr_map_copy.py -q",
+  "fails_when": "A copy that fails its hash or feature count answers, an old copy answers, an empty layer is read as clear, a lot overlapping an edge is read as clear, or a point near an edge is not flagged.",
+  "observed_red": "Ten deliberate breaks of the module (age check, hash check, count check, lot overlap, edge flag, empty layer, flat-degree tolerance, future date, lot-edge flag, empty ring) each failed at least one test.",
+  "observed_green": "17 tests pass, including one on the 8 real committed layer files."
+ },
+ "functions": [
+  {
+   "name": "MapCopy.check",
+   "file_line": "services/lmr_map_copy.py",
+   "input": "a layer key, a point and an optional lot outline",
+   "output": "point hit, lot overlap, copy date and near-edge flag",
+   "if_none": "no proven fresh copy gives None, never a clear; no lot outline gives lot None"
+  },
+  {
+   "name": "MapCopy._load",
+   "file_line": "services/lmr_map_copy.py",
+   "input": "the manifest name of one saved layer",
+   "output": "the polygons with their attributes after hash and count checks",
+   "if_none": "missing, corrupt or wrong-count files give None and a log line"
+  },
+  {
+   "name": "MapCopy.noise_bands",
+   "file_line": "services/lmr_map_copy.py",
+   "input": "a point and optional lot outline",
+   "output": "the airport noise bands touched, in the shape the live reader returns",
+   "if_none": "None means ask the live map; an empty list means the copy says none touched"
+  }
+ ],
+ "values": [
+  {
+   "value": "copy age limit",
+   "read_at": "MAX_AGE_DAYS in services/lmr_map_copy.py, owner approved 45 days on 2026-11-20",
+   "if_missing": "a copy with no readable read_on date is no answer"
+  },
+  {
+   "value": "edge distance",
+   "read_at": "EDGE_M in services/lmr_map_copy.py, an engineering tolerance",
+   "if_missing": "not applicable"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "The saved file is altered or truncated.",
+   "what_happens": "A wrong polygon set could clear a lot that is on the map.",
+   "mitigated": true,
+   "how": "The sha256 and the feature count must match the manifest, otherwise the layer is no answer.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k cannot_be_proven -q"
+  },
+  {
+   "scenario": "The copy is older than 45 days.",
+   "what_happens": "A new TOD site could be missing and the lot read as clear.",
+   "mitigated": true,
+   "how": "An older copy is no answer, so the caller asks the live map; the limit day itself is accepted.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k older_than -q"
+  },
+  {
+   "scenario": "The point is within a few metres of a polygon edge.",
+   "what_happens": "The copy and the live map can differ by a few metres at an edge.",
+   "mitigated": true,
+   "how": "The answer carries near_edge true so the caller confirms on the live map.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k near_edge -q"
+  },
+  {
+   "scenario": "The lot straddles a polygon edge with its point outside.",
+   "what_happens": "The lot would be read as clear.",
+   "mitigated": true,
+   "how": "The lot overlap is tested separately and returned as lot true.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k straddling -q"
+  },
+  {
+   "scenario": "The layer file is empty or holds only zero-area shapes.",
+   "what_happens": "An empty layer would read as clear everywhere.",
+   "mitigated": true,
+   "how": "An empty layer is no answer; zero-area polygons are counted and skipped, and the count must still match the manifest.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k empty_layer -q"
+  },
+  {
+   "scenario": "The lot's own edge is within a few metres of a layer edge while the address point is far away.",
+   "what_happens": "The lot would be read as clear without asking the live map.",
+   "mitigated": true,
+   "how": "near_edge is also set from the lot outline's distance to the layer edge.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k lot_edge_close -q"
+  },
+  {
+   "scenario": "The point is a few metres east of a layer edge.",
+   "what_happens": "A degree of longitude is shorter than a degree of latitude, so a flat tolerance would miss it.",
+   "mitigated": true,
+   "how": "The tolerance is widened by the cosine of the latitude.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k east_west -q"
+  },
+  {
+   "scenario": "The manifest read_on date is in the future.",
+   "what_happens": "A negative age would keep a copy fresh long after it should expire.",
+   "mitigated": true,
+   "how": "A read_on date after today is no answer.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k future -q"
+  },
+  {
+   "scenario": "The lot ring is degenerate (all points the same).",
+   "what_happens": "Repairing it gives an empty shape and the noise search returns no bands.",
+   "mitigated": true,
+   "how": "An empty repaired outline is not used; the point is searched instead.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k degenerate -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Nothing calls this module yet. The next pull request wires it into the area check behind a side-by-side comparison on the 182 and 200 test lots."
+ }
+}
