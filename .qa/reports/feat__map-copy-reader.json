@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new module that decides yes, no or no answer for state map layers the area check will use. Not Minor: it is law-adjacent logic with a staleness rule. Not Critical: nothing calls it yet, so no served answer changes in this pull request; wiring it in is the next pull request, behind a side-by-side comparison.",
- "commit_hash": "b39f012d",
+ "commit_hash": "5e00d623",
  "files": [
   "services/lmr_map_copy.py",
   "tests/test_lmr_map_copy.py"
@@ -15,8 +15,8 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_lmr_map_copy.py -q",
   "fails_when": "A copy that fails its hash or feature count answers, an old copy answers, an empty layer is read as clear, a lot overlapping an edge is read as clear, or a point near an edge is not flagged.",
-  "observed_red": "Six deliberate breaks of the module (age check off, hash check off, count check off, lot never overlaps, edge flag off, empty layer allowed) each failed at least one test.",
-  "observed_green": "13 tests pass, including one on the 8 real committed layer files."
+  "observed_red": "Ten deliberate breaks of the module (age check, hash check, count check, lot overlap, edge flag, empty layer, flat-degree tolerance, future date, lot-edge flag, empty ring) each failed at least one test.",
+  "observed_green": "17 tests pass, including one on the 8 real committed layer files."
  },
  "functions": [
   {
@@ -89,6 +89,34 @@
    "mitigated": true,
    "how": "An empty layer is no answer; zero-area polygons are counted and skipped, and the count must still match the manifest.",
    "repro": "python -m pytest tests/test_lmr_map_copy.py -k empty_layer -q"
+  },
+  {
+   "scenario": "The lot's own edge is within a few metres of a layer edge while the address point is far away.",
+   "what_happens": "The lot would be read as clear without asking the live map.",
+   "mitigated": true,
+   "how": "near_edge is also set from the lot outline's distance to the layer edge.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k lot_edge_close -q"
+  },
+  {
+   "scenario": "The point is a few metres east of a layer edge.",
+   "what_happens": "A degree of longitude is shorter than a degree of latitude, so a flat tolerance would miss it.",
+   "mitigated": true,
+   "how": "The tolerance is widened by the cosine of the latitude.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k east_west -q"
+  },
+  {
+   "scenario": "The manifest read_on date is in the future.",
+   "what_happens": "A negative age would keep a copy fresh long after it should expire.",
+   "mitigated": true,
+   "how": "A read_on date after today is no answer.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k future -q"
+  },
+  {
+   "scenario": "The lot ring is degenerate (all points the same).",
+   "what_happens": "Repairing it gives an empty shape and the noise search returns no bands.",
+   "mitigated": true,
+   "how": "An empty repaired outline is not used; the point is searched instead.",
+   "repro": "python -m pytest tests/test_lmr_map_copy.py -k degenerate -q"
   }
  ],
  "post_merge": {

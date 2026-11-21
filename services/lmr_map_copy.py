@@ -21,6 +21,7 @@ import gzip
 import hashlib
 import json
 import logging
+import math
 import threading
 from datetime import date, datetime
 from pathlib import Path
@@ -32,6 +33,12 @@ MAPS_DIR = Path(__file__).resolve().parent.parent / "data" / "law" / "maps"
 MAX_AGE_DAYS = 45      # noqa: regulatory-number -- owner-approved staleness limit for our own copy, not a planning figure
 EDGE_M = 5.0           # noqa: regulatory-number -- engineering tolerance for "close enough to an edge to ask the live map", not a planning figure
 _DEG_PER_M = 1.0 / 111000.0
+
+
+def _edge_deg(lat: float) -> float:
+    """EDGE_M as degrees. A degree of longitude is shorter than a degree of latitude away from the equator, so the longitude figure (the larger
+    number of degrees) is used for both: it flags a little more, never less."""
+    return EDGE_M * _DEG_PER_M / max(math.cos(math.radians(lat)), 0.1)
 
 # The area check's layer key -> the file name in the manifest.
 COPY_KEYS = {
@@ -116,7 +123,12 @@ class MapCopy:
             if name not in self._layers:
                 self._layers[name] = self._load(name)
             lay = self._layers[name]
-        if lay is None or (today - lay.as_of).days > MAX_AGE_DAYS:
+        if lay is None:
+            return None
+        if lay.as_of > today:   # a read_on date in the future is a typo or a clock fault; it must not keep a copy fresh
+            logger.warning("map copy: %s read_on %s is in the future", name, lay.as_of)
+            return None
+        if (today - lay.as_of).days > MAX_AGE_DAYS:
             return None
         return lay
 
@@ -132,9 +144,10 @@ class MapCopy:
         if lay is None:
             return None
         pt = Point(lng, lat)
-        near = pt.buffer(EDGE_M * _DEG_PER_M)
+        tol = _edge_deg(lat)
+        near = pt.buffer(tol)
         point_hit = any(lay.geoms[i].intersects(pt) for i in lay.tree.query(pt))
-        near_edge = any(lay.geoms[i].boundary.distance(pt) <= EDGE_M * _DEG_PER_M for i in lay.tree.query(near))
+        near_edge = any(lay.geoms[i].boundary.distance(pt) <= tol for i in lay.tree.query(near))
         lot_hit: Optional[bool] = None
         if rings and len(rings) >= 4:
             try:
@@ -142,6 +155,8 @@ class MapCopy:
                 poly = poly if poly.is_valid else poly.buffer(0)
                 if not poly.is_empty:
                     lot_hit = any(lay.geoms[i].intersects(poly) for i in lay.tree.query(poly))
+                    # a lot whose edge is within the tolerance of a layer edge can differ from the live map too, even when the point is far away
+                    near_edge = near_edge or any(lay.geoms[i].boundary.distance(poly) <= tol for i in lay.tree.query(poly.buffer(tol)))
             except Exception as exc:  # noqa: BLE001 -- an unusable outline gives no lot answer, never a clear
                 logger.warning("map copy: lot outline unusable: %s", exc)
         return {"point": point_hit, "lot": lot_hit, "as_of": lay.as_of.isoformat(), "near_edge": near_edge}
@@ -157,7 +172,9 @@ class MapCopy:
         if rings and len(rings) >= 4:
             try:
                 p = Polygon(rings)
-                target = p if p.is_valid else p.buffer(0)
+                p = p if p.is_valid else p.buffer(0)
+                if not p.is_empty:   # a degenerate ring repairs to nothing; searching with nothing would read as no band
+                    target = p
             except Exception:  # noqa: BLE001 -- fall back to the point
                 target = Point(lng, lat)
         return [{"code": lay.props[i].get("ANEF_CODE"), "name": lay.props[i].get("LAY_NAME")}

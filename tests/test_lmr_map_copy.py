@@ -99,6 +99,30 @@ def test_noise_bands_return_the_bands_the_lot_touches(tmp_path):
     assert mc.MapCopy(tmp_path / "nowhere").noise_bands(-32.995, 151.005, today=TODAY) is None
 
 
+def test_a_lot_edge_close_to_a_layer_edge_is_flagged_even_when_the_point_is_far(tmp_path):
+    c = _copy(tmp_path)
+    ring = [[151.0100 + 2 / 111000, -32.9950], [151.0110, -32.9950], [151.0110, -32.9940], [151.0100 + 2 / 111000, -32.9940], [151.0100 + 2 / 111000, -32.9950]]
+    out = c.check("tod_map", -32.9945, 151.0300, rings=ring, today=TODAY)    # point 2 km away; the lot starts 2 m outside the layer
+    assert out["point"] is False and out["lot"] is False and out["near_edge"] is True
+
+
+def test_the_edge_tolerance_is_in_metres_east_west_too(tmp_path):
+    c = _copy(tmp_path)
+    four_m_east = 4.8 / (111000 * 0.8387)          # about 4.8 m of longitude at latitude -33: inside 5 m, but outside 5 m read as flat latitude degrees
+    assert c.check("tod_map", -32.995, 151.0100 + four_m_east, today=TODAY)["near_edge"] is True
+
+
+def test_a_degenerate_lot_ring_falls_back_to_the_point_for_noise(tmp_path):
+    c = mc.MapCopy(_write(tmp_path, [_feat(ANEF_CODE="25 - 30", LAY_NAME="Air Noise Exposure Forecast")], name="airport_noise"))
+    bad = [[151.005, -32.995]] * 5
+    assert c.noise_bands(-32.995, 151.005, rings=bad, today=TODAY) == [{"code": "25 - 30", "name": "Air Noise Exposure Forecast"}]
+
+
+def test_a_read_on_date_in_the_future_is_no_answer(tmp_path):
+    c = _copy(tmp_path, read_on="2027-11-18")
+    assert c.check("tod_map", -32.995, 151.005, today=TODAY) is None
+
+
 def test_the_real_saved_files_load_and_match_the_manifest():
     """The committed files: every layer loads, the Georges River shape contains a known inside point, and each layer's hash and count hold."""
     c = mc.MapCopy()
