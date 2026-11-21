@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: one data file (land_limits.json, 56 more fingerprints) and one test count, no new code. Applies zone limits for rows the council's own words limit to named zones: 22 whose labelled codes are old (B1, B2, B4, IN2, translated to E1, MU1, E4 with the repo's taxonomy) and 34 place rows that also name zones. Applied live with owner approval and a row-level backup, the same pattern as #1660.",
-  "commit_hash": "278d0053",
+  "commit_hash": "fe2efda3",
   "files": [
     "data/chapter_scope/land_limits.json",
     "tests/test_gate_rules_land.py"
