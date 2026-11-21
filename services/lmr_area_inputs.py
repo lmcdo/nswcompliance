@@ -372,8 +372,12 @@ def fetch_layers(lat: float, lng: float, rings: Optional[list], lga_fallback: Op
 def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Optional[dict] = None,
            walk_surfaces: Optional[list] = None, safe_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
-           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None) -> dict:
+           bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None,
+           want_route: bool = False, route_surfaces: Optional[list] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
+
+    `want_route` (the evidence page only) also keeps the route each walk followed: a "route" entry on the crossings-only walk (from its own
+    files), and a "route_normal" entry from the separate normal set built for drawing (data/lmr_route_normal/). It changes no distance and no answer.
 
     `flood_fn` (optional) is called with the lot outline as WKT (or None) ONLY when the lot is in one of the 23 councils s164(1)(g) names,
     and returns the existing flood answer (services/flood_planning.flood_planning_status): a dict with "value" True / False / None.
@@ -464,10 +468,19 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     try:   # the second walk must never break the first: any failure here is a reason string, not an exception
         safe_list = safe_surfaces if safe_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.SAFE_SURFACE_DIR)]
         if safe_list:
-            m["walk_safe"] = walk_mod.walk_from_lot_safe(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors)  # noqa: bracket-access -- set above in this function
+            m["walk_safe"] = walk_mod.walk_from_lot_safe(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors,  # noqa: bracket-access -- set above in this function
+                                                         want_route=want_route)
     except Exception as exc:  # noqa: BLE001
         logger.warning("crossings-only walk failed: %s", exc)
         m["walk_safe"] = {"m": None, "valid": False, "reason": f"the crossings-only map could not be read ({type(exc).__name__})"}
+    if want_route:
+        try:   # the normal route is drawn from its own set; a failure here is a missing route, never a change to the walk or the answer
+            rl = route_surfaces if route_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.ROUTE_SURFACE_DIR)]
+            if rl:
+                m["route_normal"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, rl, required_anchors=near_anchors, want_route=True)  # noqa: bracket-access -- set above in this function
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("normal route failed: %s", exc)
+            m["route_normal"] = {"m": None, "valid": False, "reason": f"the route map could not be read ({type(exc).__name__})"}
     return m
 
 
@@ -480,4 +493,11 @@ def area_check(lat: float, lng: float, **kw) -> dict:
         return dec._failed(f"a map or lookup did not respond, or returned something unexpected ({type(exc).__name__})")
     r = dec.decide(m)
     r["measured"] = {**(r.get("measured") or {}), "lot_outline": m.get("lot_outline"), "distance_note": m.get("distance_note")}
+    if kw.get("want_route"):
+        try:   # the route map is extra: whatever happens here, the answer above is already complete
+            from services import lmr_route_map
+            r["route_map"] = lmr_route_map.build(m, kw.get("stations") if kw.get("stations") is not None else load_stations())
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("route map failed: %s", exc)
+            r["route_map"] = {"status": "unavailable", "reason": f"the route map could not be built ({type(exc).__name__})"}
     return r

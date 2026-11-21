@@ -197,6 +197,233 @@ describe('evidence statement page', () => {
     }
   });
 
+  const ROUTE_DEST = { name: 'Turramurra station and town centre', kind: 'town_centre_edge' };
+  const routeLine = (walk_m: number, points: unknown, over: Record<string, unknown> = {}) => ({
+    length_m: walk_m, walk_m, points, entrance: null, destination: ROUTE_DEST,
+    busy_road_points: [[-33.7362, 151.1371], [-33.7358, 151.1378]], osm_extract: '2026-11-19T22:29:33Z', ...over,
+  });
+  const CAREFUL_POINTS = [[-33.7400, 151.1300], [-33.7380, 151.1340], [-33.7355, 151.1385]];
+  const NORMAL_POINTS = [[-33.7400, 151.1300], [-33.7385, 151.1330], [-33.7355, 151.1385]];
+  const ROUTE_MAP = {
+    status: 'ok', reason: null,
+    destination: ROUTE_DEST,   // the figure names the destination from the top level of the route map, not from a line
+    careful: routeLine(962.8, CAREFUL_POINTS),
+    normal: routeLine(877.7, NORMAL_POINTS),
+    attribution: 'Map data from OpenStreetMap contributors (ODbL), extract of 2026-11-19',
+    note: 'The lines follow mapped footpaths and roads and may differ from the walk on the ground.',
+  };
+  const withRouteMap = (over: Record<string, unknown> = {}) => payload({ route_map: { ...ROUTE_MAP, ...over } });
+  const legendOf = (c: HTMLElement) => c.querySelector('figcaption')?.textContent ?? '';
+
+  it('draws the route map as a labelled picture with both distances, the difference, the attribution and the note', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap());
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(container.querySelector('svg title')?.textContent).toContain('Turramurra station and town centre');
+    const desc = container.querySelector('svg desc')?.textContent ?? '';
+    expect(desc).toContain('878');
+    expect(desc).toContain('963');
+    expect(desc).toContain('+85');
+    const legend = legendOf(container);
+    expect(legend).toContain('Normal route');
+    expect(legend).toContain('Crossings-only route');
+    expect(legend).toContain('878 m');
+    expect(legend).toContain('963 m');
+    expect(legend).toContain('(+85 m compared with the normal route)');
+    expect(screen.getByText(ROUTE_MAP.attribution)).toBeTruthy();
+    expect(screen.getByText(ROUTE_MAP.note)).toBeTruthy();
+    // the normal route is dashed, the crossings-only route is a solid line
+    const lines = Array.from(container.querySelectorAll('polyline'));
+    expect(lines).toHaveLength(2);
+    expect(lines.filter((l) => l.getAttribute('stroke-dasharray'))).toHaveLength(1);
+    expect(lines.filter((l) => !l.getAttribute('stroke-dasharray'))).toHaveLength(1);
+  });
+
+  it('draws no route map, and says nothing about one, when the server sent none or null', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    for (const body of [payload(), payload({ route_map: null })]) {
+      mockFetch(body);
+      const { container, unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
+      expect(screen.queryByRole('img')).toBeNull();
+      expect(container.querySelector('svg')).toBeNull();
+      expect(container.textContent ?? '').not.toMatch(/route map/i);
+      unmount();
+    }
+  });
+
+  it('shows the note, and draws one line only, when there is no normal route', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const note = 'No normal route is drawn: the normal walk is measured to a different point than the one shown.';
+    mockFetch(withRouteMap({ normal: null, normal_note: note }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).toContain(note);
+    expect(legendOf(container)).toContain('963 m');
+    expect(container.querySelectorAll('polyline')).toHaveLength(1);
+    expect(container.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBeNull();
+  });
+
+  it('shows the note when there is no crossings-only route, and draws the normal line only', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const note = 'No crossings-only route is drawn: no route avoids crossing busy roads away from lights.';
+    mockFetch(withRouteMap({ careful: null, careful_note: note }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).toContain(note);
+    expect(legendOf(container)).toContain('878 m');
+    expect(container.querySelectorAll('polyline')).toHaveLength(1);
+    expect(container.querySelector('polyline')?.getAttribute('stroke-dasharray')).toBeTruthy();
+  });
+
+  it('says why the route map is not drawn, in words and with no picture, when the data says unavailable', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ route_map: { status: 'unavailable', reason: 'the street map for this area could not be read' } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText(/The route map is not drawn: the street map for this area could not be read/)).toBeTruthy());
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('shows an error, not a missing or half-drawn map, when the route map arrives in the wrong shape', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const bad: Record<string, unknown>[] = [
+      { careful: routeLine(962.8, 'not a list') },
+      { careful: routeLine(962.8, [[null, 151.1300], [-33.7380, 151.1340], [-33.7355, 151.1385]]) },
+      { careful: routeLine(962.8, [[-33.7400, 151.1300]]) },
+      { careful: null, normal: null },
+      { careful: routeLine(962.8, CAREFUL_POINTS, { destination: { name: 'Turramurra', kind: 'bogus' } }) },
+      { reason: { why: 'x' } },
+      { careful: routeLine(962.8, [[200, 151.1300], [-33.7380, 151.1340], [-33.7355, 151.1385]]) },
+    ];
+    for (const over of bad) {
+      mockFetch(withRouteMap(over));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      expect(screen.queryByRole('img')).toBeNull();
+      unmount();
+    }
+  });
+
+  it('shows each route distance as its walk_m rounded, never its length_m', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({
+      normal: routeLine(877.7, NORMAL_POINTS, { length_m: 880.1 }),
+      careful: routeLine(962.8, CAREFUL_POINTS, { length_m: 965.4 }),
+    }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const legend = legendOf(container);
+    const desc = container.querySelector('svg desc')?.textContent ?? '';
+    for (const text of [legend, desc]) {
+      expect(text).toContain('878');
+      expect(text).toContain('963');
+      expect(text).not.toContain('880');
+      expect(text).not.toContain('965');
+    }
+  });
+
+  it('names the destination from the route when the top level of the route map has none, never the generic label', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ destination: undefined }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(container.querySelector('svg title')?.textContent).toContain('Turramurra station and town centre');
+    expect(container.querySelector('svg title')?.textContent).not.toContain('the destination');
+  });
+
+  it('names and marks both ends when the two walks end at different places', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const other = { name: 'Petersham station', kind: 'entrance' };
+    mockFetch(withRouteMap({ destinations_differ: true, normal: routeLine(877.7, NORMAL_POINTS, { destination: other }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const title = container.querySelector('svg title')?.textContent ?? '';
+    expect(title).toContain('Petersham station');
+    expect(title).toContain('Turramurra station and town centre');
+    expect(title).toContain('(normal route)');
+    const text = container.querySelector('svg')?.textContent ?? '';
+    expect(text).toContain('End (normal)');
+    expect(text).toContain('End (crossings-only)');
+    const legend = legendOf(container);
+    expect(legend).toContain('ending at Petersham station (station entrance)');
+    expect(legend).toContain('ending at the edge of Turramurra station and town centre');
+  });
+
+  it('marks a single end when both walks end at the same place', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ destinations_differ: false }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const text = container.querySelector('svg')?.textContent ?? '';
+    expect(text).toContain('End');
+    expect(text).not.toContain('End (normal)');
+    expect(legendOf(container)).not.toContain('ending at');
+  });
+
+  it('shows an error when the top-level destination or the differ flag is malformed', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const bad = [
+      { destination: { name: 'Turramurra', kind: 'bogus' } },
+      { destination: { name: { x: 1 }, kind: 'entrance' } },
+      { destination: 'Turramurra' },
+      { destinations_differ: 'yes' },
+    ];
+    for (const over of bad) {
+      mockFetch(withRouteMap(over));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
+  it('says how much of the walk the line does not show when its last link cannot be drawn', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 35.4 }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).toContain('The last 35 m of the crossings-only walk, from the end of its line to the destination, are not drawn.');
+    expect(legendOf(container)).not.toContain('of the normal walk');
+  });
+
+  it('says nothing about a missing link when none is missing', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 0 }) }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    expect(legendOf(container)).not.toContain('are not drawn');
+  });
+
+  it('shows an error when the not-drawn length is negative or not a number', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    for (const bad of [-5, 'ten', NaN]) {
+      mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: bad }) }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
+  it('describes a single drawn route as one walk, not as both', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ normal: null, normal_note: 'No normal route is drawn: test.' }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const desc = container.querySelector('svg desc')?.textContent ?? '';
+    expect(desc).toContain('The walk starts at the lot and ends at');
+    expect(desc).not.toContain('Both start');
+  });
+
+  it('shows an error when a route length is negative', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    for (const over of [{ length_m: -1 }, { walk_m: -1 }]) {
+      mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, over) }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

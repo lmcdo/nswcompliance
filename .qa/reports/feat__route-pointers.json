@@ -1,0 +1,216 @@
+{
+  "tier": "Standard",
+  "justification": "Draws the walk to the station as a map on the evidence page, once for the normal rule and once for the crossings-only rule. The walking files gain route pointers (each point remembers the next point toward the station) so a route can be followed; busy-road side copies are stored as flagged route-only rows so a route can run along a road line; strips are closed under pointers so no route runs off the edge of a file. The 15 crossings-only files are rebuilt with pointers (every distance unchanged: 200 lots, identical walk and answer), and a separate normal-rule set (data/lmr_route_normal/) is added ONLY for drawing the normal route, because the files that decide the answer are not rebuilt. A route is drawn only when it is the walk the page shows (crossings-only within 2 m; normal to the same station within 15 m); otherwise the page says why. Only the evidence endpoint asks for the route: the public area check is unchanged. No query, no schema.",
+  "commit_hash": "a182a14d",
+  "files": [
+    "scripts/lmr_area/build_walk_surfaces.py",
+    "scripts/lmr_area/pack_walk_surfaces.py",
+    "scripts/lmr_area/check_route_pointers.py",
+    "services/lmr_walk_surface.py",
+    "services/lmr_route_map.py",
+    "services/lmr_area_inputs.py",
+    "services/housing_sepp_gates_api.py",
+    "services/evidence_statement.py",
+    "Dockerfile.python",
+    "data/lmr_walk_safe/*.npz",
+    "data/lmr_route_normal/*.npz",
+    "tests/test_lmr_walk_surface.py",
+    "tests/test_lmr_data_files.py",
+    "tests/test_lmr_route_map.py",
+    "frontend-nextjs/lib/evidence-statement.ts",
+    "frontend-nextjs/lib/route-map-geometry.ts",
+    "frontend-nextjs/components/reports/RouteMapFigure.tsx",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/__tests__/lib/route-map-geometry.test.ts",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_route_map.py tests/test_evidence_statement.py tests/test_lmr_data_files.py tests/test_lmr_walk_surface.py tests/test_lmr_area_inputs.py tests/test_housing_sepp_area_check_api.py tests/test_lmr_area_lga.py tests/test_lmr_two_walks.py tests/test_lmr_safe_crossings.py tests/test_lmr_area_decision.py tests/test_lmr_area_scripts.py -q -o addopts= ; python scripts/lmr_area/check_route_pointers.py data/lmr_walk_safe data/lmr_route_normal ; cd frontend-nextjs && npx jest __tests__/lib/route-map-geometry.test.ts __tests__/components/evidence-statement-page.test.tsx",
+    "expected": "Python 417 passed and 1 skipped; the pointer check prints '15 of 15 files pass' and '14 of 14 files pass' (0 loops, 100% of points within 1 m of the stored distance); Jest 50 passed, tsc 0 errors.",
+    "fails_when": "A pointer chain loops or its length differs from the stored distance by more than 15 m; the lot lookup matches a route-only row; a strip holds a pointer to a point it does not contain; a route is drawn whose length is not the walk shown; or a malformed route map reaches the page.",
+    "observed_red": "Deliberate hand breakages, each turned a test red and was restored. Python: the lookup matching route-only rows; strips not closed under pointers; the route length without the station link; the writer not renumbering pointers after its sort; the loader accepting a pointer to itself; the route map module with a 50 m crossings-only tolerance, a 500 m normal tolerance, no same-station check, the station link always drawn, every destination called an entrance, and the town-centre guard removed. Jest: north flipped, no cap on busy-road points, the legend showing the drawn length instead of the walk, the guard accepting any points, no per-route destination fallback, and the guard accepting an 'ok' map with no route (one more change, removing the not-ok branch of the component, changes nothing because the drawing data is already empty then). After the cross-review, five more breakages each went red: a present but malformed route-only list being ignored again (the file is now rejected), the top-level destination not validated, the differ flag not validated, always one end marker, the server never saying the two ends differ, and the old one-source note wording; then four more for the missing-link report: never reporting it, always reporting it, the page not saying it, and the guard accepting a negative length; then five more: the normal route matched by station name only, the one-sided link tolerance, the differ flag ignoring entrances, the guard accepting a negative route length, the image description always saying both routes, and a route with no usable link length still being drawn. Real data: 24 of 24 rebuilt files and 29 of 29 packed strips pass the pointer check; the 200-lot answer test on the new crossings-only files gives the same walk and the same answer for all 200 lots; on the 200 lots the crossings-only route is within 1 m of the walk for 199 of 199 and the normal route set is within 15 m of the committed normal walk for 180 of 180."
+  },
+  "pre_impl": {
+    "existing_data": "Walking files hold per point x, y, distance and anchor only. The committed normal files (data/lmr_walk/) decide answers and are not rebuilt or changed. The crossings-only files are replaced by a rebuild with the same builder and map cut, plus pointers and flagged route-only rows.",
+    "assumption_mismatch": "A first normal build for drawing used an older station list and disagreed with the committed walk on about one lot in ten. Rebuilt with the app's own station list (data/law/lmr_station_entrances.json), the two agree within 15 m for 180 of 180 lots that have a normal walk.",
+    "new_vs_existing": "New: pointer array and route-only flag in the file format (optional, older files load as before), a route option on the lot lookup (off by default), the route map module, the evidence route_map key, and the page figure. Unchanged: every distance, every answer, the public area-check response.",
+    "external_source_error": "None at run time: no network call is added. A file without pointers, a route that does not match its walk, or a map that cannot be built gives a plain reason on the page, never a wrong line or a changed answer.",
+    "frontend_type": "route_map is optional on the page (Vercel and Railway deploy separately); a present map that is malformed fails the type guard and shows the error line.",
+    "user_failure_mode": "A planner never sees a route whose length disagrees with the walk beside it. Where a route cannot be drawn the page says so in words."
+  },
+  "functions": [
+    {
+      "name": "route_rows",
+      "file_line": "services/lmr_walk_surface.py:106",
+      "input": "the row of a stored point on a loaded walking surface",
+      "output": "the rows along its shortest walk to the station link, in order",
+      "if_none": "No pointers, a pointer going further from the station, or a loop all give None: an honest no-route, never a cut-short route."
+    },
+    {
+      "name": "write_npz",
+      "file_line": "services/lmr_walk_surface.py:164",
+      "input": "a surface document with nodes, optional pointers and route-only flags",
+      "output": "a packed binary file with pointers renumbered after the rows are sorted",
+      "if_none": "Pointers or flags that do not fit the rows raise ValueError; a document without them writes a file without them, as before."
+    },
+    {
+      "name": "walk_from_lot",
+      "file_line": "services/lmr_walk_surface.py:288",
+      "input": "a lot outline in metres, the surfaces, and an optional want_route flag",
+      "output": "the walking distance as before, and with the flag the route points, length and station link length",
+      "if_none": "Without the flag nothing changes; with it a file without pointers gives route points None."
+    },
+    {
+      "name": "close_under_pointers",
+      "file_line": "scripts/lmr_area/pack_walk_surfaces.py:46",
+      "input": "the mask of rows kept in one strip and the pointer array",
+      "output": "the mask widened to every row a kept row's route passes through",
+      "if_none": "A strip with no pointers is not touched; pointers to rows outside the kept set are always pulled in."
+    },
+    {
+      "name": "check_file",
+      "file_line": "scripts/lmr_area/check_route_pointers.py:66",
+      "input": "the path of a packed or built walking surface file",
+      "output": "loops, the share of points within 1 m of their stored distance, and the worst gap",
+      "if_none": "A file without usable pointers fails with a reason instead of passing."
+    },
+    {
+      "name": "build",
+      "file_line": "services/lmr_route_map.py:104",
+      "input": "an area-check measurement gathered with want_route and the station list",
+      "output": "a status, the lot, the destination and the careful and normal lines or a plain reason for each",
+      "if_none": "Anything missing, mismatched or unbuildable gives status unavailable or a note, never an exception or a drawn line."
+    },
+    {
+      "name": "area_check",
+      "file_line": "services/lmr_area_inputs.py:487",
+      "input": "a latitude and longitude, with want_route only from the evidence endpoint",
+      "output": "the decision as before, plus route_map when asked",
+      "if_none": "A route map failure leaves the decision untouched and sets route_map to unavailable."
+    },
+    {
+      "name": "projectRouteMap",
+      "file_line": "frontend-nextjs/lib/route-map-geometry.ts:25",
+      "input": "a route map with latitude and longitude lines",
+      "output": "image coordinates for both lines, busy-road dots, the lot, the end and a scale bar",
+      "if_none": "No line with two points gives null."
+    },
+    {
+      "name": "RouteMapFigure",
+      "file_line": "frontend-nextjs/components/reports/RouteMapFigure.tsx:11",
+      "input": "a route map from the evidence data",
+      "output": "an image with a text title and description, plus a legend carrying every number",
+      "if_none": "A map that is not ok shows the reason as text and no image."
+    }
+  ],
+  "values": [
+    {
+      "value": "route pointers and route-only flags in a walking file",
+      "read_at": "services/lmr_walk_surface.py:71",
+      "nullable": "yes",
+      "guard_at": "services/lmr_walk_surface.py Surface.__init__ (length, range and self-pointer checks)",
+      "if_missing": "The surface has no route; every lookup works exactly as before."
+    },
+    {
+      "value": "route_map on the evidence payload",
+      "read_at": "frontend-nextjs/lib/evidence-statement.ts (isEvidence)",
+      "nullable": "yes",
+      "guard_at": "frontend-nextjs/lib/evidence-statement.ts routeMapOk",
+      "if_missing": "Left out; an older server answer still renders."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A walking file has no route pointers (an older file, or one never rebuilt).",
+      "what_happens": "It loads as before, the walk and answer are unchanged, and no route is drawn for it.",
+      "mitigated": "Mitigated: the pointer array is optional and every route is None without it.",
+      "how": "test_without_pointers_the_walk_is_the_same_and_the_route_says_none and test_the_files_that_decide_the_answer_still_have_no_route_pointers.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py tests/test_lmr_data_files.py -q -o addopts= -k without_pointers"
+    },
+    {
+      "scenario": "A busy-road side copy sits closer to a lot than the real footpath and carries a smaller, wrong distance.",
+      "what_happens": "The lookup ignores route-only rows, so the walk is the real street's distance.",
+      "mitigated": "Mitigated: route-only rows are excluded from the lookup window and from the station count.",
+      "how": "test_a_route_only_row_is_never_matched_to_a_lot.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -q -o addopts= -k route_only"
+    },
+    {
+      "scenario": "A route's chain loops, points further from the station, or points at itself.",
+      "what_happens": "The surface drops the pointers or route_rows returns None: no route, never a wandering one.",
+      "mitigated": "Mitigated: pointer range, self-pointer and distance-never-rises checks.",
+      "how": "the pointer tests in test_lmr_walk_surface.py and the verifier script.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -q -o addopts= -k pointers"
+    },
+    {
+      "scenario": "A route starts in one strip and its station is in the next.",
+      "what_happens": "Every strip holds the whole chain of every route that starts in it.",
+      "mitigated": "Mitigated: strips are closed under pointers and renumbered; 29 of 29 packed strips pass the pointer check.",
+      "how": "test_strips_keep_every_route_whole_inside_their_own_file.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -q -o addopts= -k strips_keep_every_route"
+    },
+    {
+      "scenario": "The route's length does not equal the walk shown (a different map, a different station, or a missing station link).",
+      "what_happens": "No route is drawn for that rule and the page says why.",
+      "mitigated": "Mitigated: crossings-only within 2 m of its own walk; normal to the same station and within 15 m; the station link is counted in the length.",
+      "how": "the tolerance, same-station and link tests in test_lmr_route_map.py and test_lmr_walk_surface.py.",
+      "repro": "python -m pytest tests/test_lmr_route_map.py -q -o addopts="
+    },
+    {
+      "scenario": "The public area check is called as before.",
+      "what_happens": "It gets exactly the response it got, with no route and no new argument.",
+      "mitigated": "Mitigated: only the evidence endpoint passes want_route.",
+      "how": "The endpoint tests in tests/test_lmr_route_map.py and tests/test_housing_sepp_area_check_api.py.",
+      "repro": "python -m pytest tests/test_housing_sepp_area_check_api.py tests/test_lmr_route_map.py -q -o addopts= -k endpoint"
+    },
+    {
+      "scenario": "The data sends a malformed route map (a string for points, a NaN, a one-point line, an unknown destination kind, an object for a text field).",
+      "what_happens": "The type guard rejects it and the page shows the error line.",
+      "mitigated": "Mitigated: routeMapOk checks every field the page prints or draws.",
+      "how": "The malformed-map Jest test loops over seven bad shapes.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx -t malformed"
+    },
+    {
+      "scenario": "A walking file has a route-only flag list that is present but does not fit its points (truncated or not 0 or 1).",
+      "what_happens": "The file is rejected with an error and the crossings-only walk reports that its map could not be read; no side copy ever becomes matchable.",
+      "mitigated": "Mitigated: Surface raises ValueError instead of treating every row as matchable; a file with no flag list keeps every row matchable as before.",
+      "how": "test_a_present_flag_list_that_does_not_fit_the_points_rejects_the_file_instead_of_making_every_row_matchable.",
+      "repro": "python -m pytest tests/test_lmr_walk_surface.py -q -o addopts= -k flag_list"
+    },
+    {
+      "scenario": "The crossings-only walk and the normal walk end at different stations.",
+      "what_happens": "The server sets destinations_differ and the page names and marks each end separately, with each route's destination in the legend and the image description.",
+      "mitigated": "Mitigated: the figure never marks one end for both routes when they differ.",
+      "how": "test_destinations_differ_when_the_two_walks_end_at_different_places and the two-ends Jest test.",
+      "repro": "python -m pytest tests/test_lmr_route_map.py -q -o addopts= -k destinations"
+    },
+    {
+      "scenario": "The last link to the station cannot be drawn (the entrance is not on the list, or is not where the link says).",
+      "what_happens": "The line is shorter than the distance beside it, so the route data reports how many metres at the end are not drawn and the page says so.",
+      "mitigated": "Mitigated: end_link_not_drawn_m is returned for each line and shown in the legend; zero when the link is drawn or is rounding-sized.",
+      "how": "The four end-link tests in tests/test_lmr_route_map.py and the two legend tests in the page test file.",
+      "repro": "python -m pytest tests/test_lmr_route_map.py -q -o addopts= -k link"
+    },
+    {
+      "scenario": "The normal walk and the drawing map end at different entrances of the same station.",
+      "what_happens": "The normal route is not drawn and the page says it leads to a different station or entrance; if the two walks end at different entrances the page marks both ends.",
+      "mitigated": "Mitigated: routes are matched on entrance id as well as station name (180 of 180 lots with a normal walk agree on both).",
+      "how": "The entrance and differ tests in tests/test_lmr_route_map.py.",
+      "repro": "python -m pytest tests/test_lmr_route_map.py -q -o addopts= -k entrance"
+    },
+    {
+      "scenario": "The Python image does not copy the new normal route folder.",
+      "what_happens": "The evidence page would draw only the crossings-only route.",
+      "mitigated": "Mitigated: Dockerfile.python copies it and a test requires the COPY line.",
+      "how": "test_the_python_image_copies_every_file_the_area_check_reads.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py -q -o addopts= -k image_copies"
+    }
+  ],
+  "residual_risk": "1) Memory: loading the committed normal, crossings-only and route sets together is about 212 MB of surface data (was about 120 MB); the route set loads only for the evidence endpoint. Watch memory after deploy; a follow-up can load only the files that cover the lot. 2) Crossing types and road names are not in the saved data, so the map shows no numbered crossings. 3) The normal route set is a separate build; if the committed normal files are rebuilt, rebuild it too and rerun the pointer check. 4) Lines join mapped footpath points, so they are approximate; the page says so.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Python API and the front end both deploy, open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 (28 Selwyn Street, Pymble): the map should show a blue dashed normal route of 878 m and a green crossings-only route of 963 m ending at the edge of the Turramurra town centre. Also watch the Python service memory for a day."
+  }
+}
