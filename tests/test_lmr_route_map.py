@@ -57,8 +57,8 @@ def _stations(dx=2.0, dy=0.0, with_station_point=True):
     return {"stations": [st]}
 
 
-def _walk(m=500.0, anchor=ANCHOR, valid=True):
-    return {"valid": valid, "m": m, "anchor": anchor}
+def _walk(m=500.0, anchor=ANCHOR, valid=True, entrance_id="node/1"):
+    return {"valid": valid, "m": m, "anchor": anchor, "entrance_id": entrance_id}   # the real walk record carries the entrance it ended at
 
 
 def _m(careful=None, normal=None, careful_walk=None, normal_walk=None, normal_valid=True):
@@ -158,12 +158,12 @@ def test_entrance_just_inside_end_gap_plus_5m_is_appended():
 
 
 def test_unknown_entrance_id_falls_back_to_the_station_point_and_is_marked_not_exact():
-    out = rm.build(_m(careful=_route(entrance_id="node/999"), careful_walk=_walk()), _stations())
+    out = rm.build(_m(careful=_route(entrance_id="node/999"), careful_walk=_walk(entrance_id="node/999")), _stations())
     assert out["careful"]["entrance"]["exact"] is False and out["careful"]["entrance"]["name"] == ANCHOR
 
 
 def test_entrance_is_none_when_nothing_matches():
-    out = rm.build(_m(careful=_route(entrance_id="node/999"), careful_walk=_walk()), _stations(with_station_point=False))
+    out = rm.build(_m(careful=_route(entrance_id="node/999"), careful_walk=_walk(entrance_id="node/999")), _stations(with_station_point=False))
     assert out["careful"]["entrance"] is None and out["entrance"] is None and len(out["careful"]["points"]) == 3
     out2 = rm.build(_m(careful=_route(), careful_walk=_walk()), None)
     assert out2["careful"]["entrance"] is None
@@ -276,20 +276,20 @@ def test_evidence_carries_the_route_map_and_none_when_the_area_has_none():
 @pytest.mark.parametrize("entrance_id,kind", [("node/1", "entrance"), ("town centre edge", "town_centre_edge"),
                                               ("station outline (entrance not mapped)", "station_outline")])
 def test_the_destination_says_what_the_walk_ends_at(entrance_id, kind):
-    out = rm.build(_m(careful=_route(entrance_id=entrance_id), careful_walk=_walk()), _stations())
+    out = rm.build(_m(careful=_route(entrance_id=entrance_id), careful_walk=_walk(entrance_id=entrance_id)), _stations())
     assert out["status"] == "ok"
     assert out["destination"] == {"name": ANCHOR, "kind": kind} and out["careful"]["destination"] == {"name": ANCHOR, "kind": kind}
 
 
 def test_a_town_centre_edge_has_no_entrance_but_the_route_still_ends_at_its_last_point():
-    out = rm.build(_m(careful=_route(entrance_id="town centre edge", end_gap=0.0), careful_walk=_walk()), _stations())
+    out = rm.build(_m(careful=_route(entrance_id="town centre edge", end_gap=0.0), careful_walk=_walk(entrance_id="town centre edge")), _stations())
     assert out["careful"]["entrance"] is None
     assert out["careful"]["points"][-1] == [round(v, 6) for v in _ll(E0 + 200, N0 + 200)]      # not extended to anywhere else (the module rounds to 6 places)
 
 
 def test_the_destination_of_the_page_is_the_careful_routes_when_both_are_drawn():
     out = rm.build(_m(careful=_route(entrance_id="node/1"), normal=_route(entrance_id="town centre edge"),
-                      careful_walk=_walk(), normal_walk=_walk()), _stations())
+                      careful_walk=_walk(), normal_walk=_walk(entrance_id="town centre edge")), _stations())
     assert out["destination"]["kind"] == "entrance" and out["normal"]["destination"]["kind"] == "town_centre_edge"
 
 
@@ -338,10 +338,32 @@ def test_a_link_that_cannot_be_drawn_is_reported_with_its_length():
 
 
 def test_an_unknown_entrance_with_a_real_link_is_reported_not_silently_shortened():
-    out = rm.build(_m(careful=_route(end_gap=35.0, entrance_id="node/999"), careful_walk=_walk()), {"stations": []})
+    out = rm.build(_m(careful=_route(end_gap=35.0, entrance_id="node/999"), careful_walk=_walk(entrance_id="node/999")), {"stations": []})
     assert out["careful"]["entrance"] is None and out["careful"]["end_link_not_drawn_m"] == 35.0
 
 
 def test_a_zero_length_link_reports_nothing_missing_even_with_no_entrance():
-    out = rm.build(_m(careful=_route(end_gap=0.0, entrance_id="town centre edge"), careful_walk=_walk()), _stations())
+    out = rm.build(_m(careful=_route(end_gap=0.0, entrance_id="town centre edge"), careful_walk=_walk(entrance_id="town centre edge")), _stations())
     assert out["careful"]["end_link_not_drawn_m"] == 0.0
+
+
+# --- the same ENTRANCE, not only the same station name; a link counts as drawn only if its length matches ---
+
+def test_a_normal_route_to_a_different_entrance_of_the_same_station_is_not_drawn():
+    out = rm.build(_m(careful=_route(), normal=_route(entrance_id="node/2"), careful_walk=_walk(), normal_walk=_walk(entrance_id="node/1")), _stations())
+    assert out["normal"] is None and "different station or entrance" in out["normal_note"]
+    assert out["status"] == "ok" and out["careful"]          # the crossings-only route is unaffected
+
+
+def test_two_walks_to_different_entrances_of_one_station_are_different_ends():
+    out = rm.build(_m(careful=_route(entrance_id="node/1"), normal=_route(entrance_id="node/2"),
+                      careful_walk=_walk(entrance_id="node/1"), normal_walk=_walk(entrance_id="node/2")), _stations())
+    assert out["careful"] and out["normal"] and out["destinations_differ"] is True
+    assert out["careful"]["destination"] == out["normal"]["destination"]     # same name and kind: only the entrance id tells them apart
+
+
+def test_an_entrance_much_nearer_than_the_link_says_is_not_used_to_draw_a_shorter_link():
+    # the walk counts a 30 m link, but this entrance is 2 m from the last stored point: drawing 2 m would show a walk 28 m short
+    out = rm.build(_m(careful=_route(end_gap=30.0), careful_walk=_walk()), _stations(dx=2.0))
+    assert out["careful"]["end_link_not_drawn_m"] == 30.0
+    assert out["careful"]["points"][-1] == [round(v, 6) for v in _ll(E0 + 200, N0 + 200)]

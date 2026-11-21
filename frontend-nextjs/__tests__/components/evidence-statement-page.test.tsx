@@ -404,6 +404,26 @@ describe('evidence statement page', () => {
     }
   });
 
+  it('describes a single drawn route as one walk, not as both', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(withRouteMap({ normal: null, normal_note: 'No normal route is drawn: test.' }));
+    const { container } = render(<EvidenceStatement />);
+    expect(await screen.findByRole('img')).toBeTruthy();
+    const desc = container.querySelector('svg desc')?.textContent ?? '';
+    expect(desc).toContain('The walk starts at the lot and ends at');
+    expect(desc).not.toContain('Both start');
+  });
+
+  it('shows an error when a route length is negative', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    for (const over of [{ length_m: -1 }, { walk_m: -1 }]) {
+      mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, over) }));
+      const { unmount } = render(<EvidenceStatement />);
+      await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+      unmount();
+    }
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());

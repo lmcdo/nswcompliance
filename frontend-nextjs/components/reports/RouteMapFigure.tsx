@@ -35,7 +35,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
     normalM !== null ? `The normal route is ${normalM} m.` : 'The normal route is not drawn.',
     carefulM !== null ? `The crossings-only route is ${carefulM} m${diffText}.` : 'The crossings-only route is not drawn.',
     differ ? `Both start at the lot. The normal route ends at ${destNormal}; the crossings-only route ends at ${destCareful}. Orange dots mark busy roads.`
-      : `Both start at the lot and end at ${dest}. Orange dots mark busy roads.`,
+      : normal && careful ? `Both start at the lot and end at ${dest}. Orange dots mark busy roads.`
+        : `The walk starts at the lot and ends at ${dest}. Orange dots mark busy roads.`,
   ].join(' ');
   const s = drawn.size;
   const halo = { stroke: '#ffffff', strokeWidth: 4, paintOrder: 'stroke' as const };

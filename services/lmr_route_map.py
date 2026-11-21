@@ -63,8 +63,8 @@ def _draw(route: Optional[dict], walk: Optional[dict], tol: float, what: str, st
         return None, f"No {what} route is drawn: the {what} walk was not measured for this lot."
     if not isinstance(route, dict) or not route.get("points") or not _num(route.get("length_m")):
         return None, f"No {what} route is drawn: the footpath map for this area holds no route information."
-    if route.get("anchor") != walk.get("anchor"):
-        return None, f"No {what} route is drawn: the map used for drawing leads to a different station from the measured walk."
+    if route.get("anchor") != walk.get("anchor") or route.get("entrance_id") != walk.get("entrance_id"):
+        return None, f"No {what} route is drawn: the map used for drawing leads to a different station or entrance from the measured walk."
     rlen, wlen = float(route.get("length_m")), float(walk.get("m"))   # both were checked to be numbers above
     if abs(rlen - wlen) > tol:
         return None, (f"No {what} route is drawn: the map used for drawing gives a walk of {rlen:.0f} m for this lot, and the "
@@ -82,8 +82,9 @@ def _draw(route: Optional[dict], walk: Optional[dict], tol: float, what: str, st
             elon, elat = float(ent.get("lon")), float(ent.get("lat"))
             ex, ey = to_m.transform(elon, elat)
             last = pts_m[-1]
-            # the last stored point is joined to the entrance by the station link; draw it only when the entrance is where the link says
-            if math.hypot(ex - last[0], ey - last[1]) <= end_gap + 5.0:
+            # the last stored point is joined to the entrance by the station link; draw it only when the entrance is as far away as the link says
+            # (too near would draw a shorter link than the walk counts, too far would draw a longer one)
+            if abs(math.hypot(ex - last[0], ey - last[1]) - end_gap) <= 5.0:
                 pts_m.append((ex, ey))
                 link_drawn = True
             entrance_out = {"lat": round(elat, 6), "lon": round(elon, 6), "name": ent.get("name"), "exact": ent.get("exact")}
@@ -114,7 +115,8 @@ def build(m: dict, stations: Optional[dict] = None) -> dict:
     entrance = (careful or {}).get("entrance") or (normal or {}).get("entrance")
     start = (drawn.get("points") or [[None, None]])[0]
     # The two walks can end at different places (the nearest station can differ between the rules): the page must then name and mark both ends.
-    differ = bool(careful and normal and careful.get("destination") != normal.get("destination"))
+    c_raw, n_raw = (careful_walk or {}).get("route") or {}, (normal_out or {}).get("route") or {}
+    differ = bool(careful and normal and (careful.get("destination") != normal.get("destination") or c_raw.get("entrance_id") != n_raw.get("entrance_id")))
     return {"status": "ok", "lot": {"lat": start[0], "lon": start[1]}, "entrance": entrance, "destination": drawn.get("destination"), "destinations_differ": differ,
             "careful": careful, "careful_note": careful_note, "normal": normal, "normal_note": normal_note,
             "attribution": ATTRIBUTION, "note": NOTE}

@@ -69,7 +69,7 @@ function routeLineOk(l: unknown): boolean {
   if (!l || typeof l !== 'object') return false;
   const x = l as Partial<RouteLine>;
   const e = x.entrance as Partial<RouteEntrance> | null | undefined;
-  return finite(x.length_m) && finite(x.walk_m) && Array.isArray(x.points) && x.points.length >= 2 && x.points.every(isLatLon)
+  return finite(x.length_m) && x.length_m >= 0 && finite(x.walk_m) && x.walk_m >= 0 && Array.isArray(x.points) && x.points.length >= 2 && x.points.every(isLatLon)
     && Array.isArray(x.busy_road_points) && x.busy_road_points.every(isLatLon)
     && destinationOk(x.destination)
     && (e === null || e === undefined || (typeof e === 'object' && finite(e.lat) && finite(e.lon) && optString(e.name)))
