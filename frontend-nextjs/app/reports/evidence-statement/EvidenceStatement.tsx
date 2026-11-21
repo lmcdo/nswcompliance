@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { evidenceUrl, isEvidence, type Evidence } from '@/lib/evidence-statement';
 import RouteMapFigure from '@/components/reports/RouteMapFigure';
 
-const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } tr, figure, svg { break-inside: avoid; } svg { max-width: 100%; height: auto; } }';
+const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } tr, figure, svg { break-inside: avoid; } }';
 
 export default function EvidenceStatement() {
   const sp = useSearchParams();
