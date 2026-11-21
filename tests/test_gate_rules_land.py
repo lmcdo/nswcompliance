@@ -111,7 +111,7 @@ def test_the_real_file_is_consistent():
     es = g.entries()                                   # raises on a malformed or miscounted entry
     assert len(es) > 100
     assert {e["kind"] for e in es} == {"zones", "heritage"}   # place-specific rows are held for an owner decision
-    assert sum(e["expect"] for e in es) == 683
+    assert sum(e["expect"] for e in es) == 739
     assert all(set(e["zones"]) for e in es if e["kind"] == "zones")
 
 
