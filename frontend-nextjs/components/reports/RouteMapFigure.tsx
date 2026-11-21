@@ -39,8 +39,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
         <rect width={s} height={s} fill={COLOURS.background} />
         {drawn.busy.map((b, i) => <circle key={i} cx={b.x} cy={b.y} r={3} fill={COLOURS.busy} />)}
         {/* the crossings-only route is drawn wider and first, the normal route thinner and dashed on top: where they share a path both show */}
-        {drawn.careful && <polyline points={drawn.careful.points} fill="none" stroke={COLOURS.careful} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />}
-        {drawn.normal && <polyline points={drawn.normal.points} fill="none" stroke={COLOURS.normal} strokeWidth={4} strokeDasharray="12 8" strokeLinejoin="round" strokeLinecap="butt" />}
+        {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke={COLOURS.careful} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" /> : null}
+        {drawn.normal ? <polyline points={drawn.normal.points} fill="none" stroke={COLOURS.normal} strokeWidth={4} strokeDasharray="12 8" strokeLinejoin="round" strokeLinecap="butt" /> : null}
         <circle cx={drawn.lot.x} cy={drawn.lot.y} r={9} fill={COLOURS.lot} />
         <text x={drawn.lot.x + 14} y={drawn.lot.y - 10} fontSize={22} fill={COLOURS.lot} {...halo}>Lot</text>
         <rect x={drawn.destination.x - 9} y={drawn.destination.y - 9} width={18} height={18} fill={COLOURS.destination} />
