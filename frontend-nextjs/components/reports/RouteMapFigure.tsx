@@ -14,7 +14,7 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
   const drawn = useMemo(() => (routeMap.status === 'ok' ? projectRouteMap(routeMap) : null), [routeMap]);
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});   // tile key -> true when it drew, false when it failed
   const shown = (key: string) => loaded[key] !== false;
-  const tilesLoaded = Object.values(loaded).filter(Boolean).length > 0;
+  const tilesLoaded = !!drawn && drawn.tiles.some((t) => loaded[t.key] === true);   // only the tiles under THIS map count, never a previous lot's
 
   if (routeMap.status !== 'ok' || !drawn) {
     return <p className="mt-2 text-gray-600">{`The route map is not drawn: ${routeMap.reason ?? 'no route could be drawn for this lot.'}`}</p>;

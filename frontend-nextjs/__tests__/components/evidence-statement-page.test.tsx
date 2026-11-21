@@ -459,6 +459,19 @@ describe('evidence statement page', () => {
     expect(container.querySelectorAll('polyline').length).toBeGreaterThan(0);     // the routes are still drawn
   });
 
+  it('does not carry the loaded tiles of one lot over to the next lot', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const { default: RouteMapFigure } = require('@/components/reports/RouteMapFigure');
+    const first = ROUTE_MAP as never;
+    const other = { ...ROUTE_MAP, careful: routeLine(962.8, [[-33.9000, 151.2000], [-33.8990, 151.2010], [-33.8980, 151.2030]], { busy_road_points: [[-33.8995, 151.2008], [-33.8993, 151.2012]] }), normal: null } as never;
+    const { container, rerender } = render(<RouteMapFigure routeMap={first} />);
+    fireEvent.load(container.querySelector('svg image') as Element);
+    await waitFor(() => expect(legendOf(container)).toContain('State of New South Wales'));
+    rerender(<RouteMapFigure routeMap={other} />);                       // another lot, nothing loaded yet
+    expect(legendOf(container)).not.toContain('State of New South Wales');
+    expect(container.querySelectorAll('svg circle[r="3"]').length).toBeGreaterThan(0);   // the dots are back until a tile of THIS map loads
+  });
+
   it('puts the notes before the walking range so a reader meets them first', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload());
