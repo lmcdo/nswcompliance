@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new module that decides yes, no or no answer for state map layers the area check will use. Not Minor: it is law-adjacent logic with a staleness rule. Not Critical: nothing calls it yet, so no served answer changes in this pull request; wiring it in is the next pull request, behind a side-by-side comparison.",
- "commit_hash": "5e00d623",
+ "commit_hash": "0c4306b4",
  "files": [
   "services/lmr_map_copy.py",
   "tests/test_lmr_map_copy.py"
