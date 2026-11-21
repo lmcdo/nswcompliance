@@ -1,7 +1,7 @@
 {
  "tier": "critical",
  "justification": "Critical: this changes where the served area-check answer for six state map layers comes from, and a wrong copy could clear a lot the live map flags. Mitigations: the copy is used only when it is proven (hash, count), fresh (45 days) and the point and lot are not near an edge; any doubt asks the live map exactly as before; side by side on 200 lots the final answers did not differ.",
- "commit_hash": "2a11af53",
+ "commit_hash": "5aac7be4",
  "files": [
   "services/lmr_area_inputs.py",
   "services/lmr_area_decision.py",
