@@ -56,6 +56,8 @@ def database_url() -> Optional[str]:
 
 
 def round_coords(x: Any) -> Any:
+    if x is None:
+        return None
     if isinstance(x, (int, float)) and not isinstance(x, bool):
         return round(float(x), 6)
     return [round_coords(v) for v in x] if isinstance(x, list) else x
@@ -134,7 +136,7 @@ def main(argv: list[str]) -> int:
     if apply:
         mf = OUT_DIR / "manifest.json"
         manifest = json.loads(mf.read_text(encoding="utf-8"))
-        manifest["layers"] = {**manifest.get("layers", {}), **new_layers}   # every other layer and the file-wide read_on stay exactly as they were
+        manifest["layers"] = {**(manifest.get("layers") or {}), **new_layers}   # every other layer and the file-wide read_on stay exactly as they were
         for nm, g in pending:
             (OUT_DIR / nm).write_bytes(g)
         mf.write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")

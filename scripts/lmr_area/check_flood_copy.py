@@ -32,6 +32,13 @@ def main(argv: list[str]) -> int:
     import psycopg2
 
     conn = psycopg2.connect(database_url(), connect_timeout=15)
+    try:
+        return _run(conn, n, rnd)
+    finally:
+        conn.close()   # released on every path, including a failure part way through
+
+
+def _run(conn, n: int, rnd) -> int:
     conn.set_session(readonly=True, autocommit=True)
     cur = conn.cursor()
     cur.execute("SET statement_timeout = 25000")

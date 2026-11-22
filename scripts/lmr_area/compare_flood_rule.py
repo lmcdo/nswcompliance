@@ -71,14 +71,14 @@ def main(argv: list[str]) -> int:
             old, new = rule_f(m_old, facts), rule_f(m_new, facts)
             o = old.get("outcome") if old else "no rule"
             nw = new.get("outcome") if new else "no rule"
-            state = (new or {}).get("figures", {}).get("flood_state")
+            state = ((new or {}).get("figures") or {}).get("flood_state")
             key = (gname, f"{o} -> {nw}" + (f" ({state})" if state else ""))
             trans[key] += 1
             examples.setdefault(key, (round(lat, 5), round(lng, 5)))
             if nw == "clear" and state != "outside" and o != "clear":
                 bad.append((gname, lat, lng, o, nw, state))
             if nw == "clear" and state == "outside":
-                f = (new or {}).get("figures", {})
+                f = (new or {}).get("figures") or {}
                 if f.get("inside") or (f.get("edge_m") is not None and f.get("edge_m") <= dec.FLOOD_EDGE_M):
                     bad.append((gname, lat, lng, "clear while inside/near", nw, f))
     total = sum(trans.values())
