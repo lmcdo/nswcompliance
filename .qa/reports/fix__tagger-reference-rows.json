@@ -1,0 +1,76 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a change to the applicability tagger that decides which development types a served rule applies to. Not Minor: it changes how a class of rows is labelled and stops zone codes being read from reference headings. Not Critical: nothing is written by this change, it only widens an unlabelled fallthrough to an explicit ALL for rows that state no control, and the retag dry run on Waverley's real rows predicts 0 served rows narrowed.",
+ "commit_hash": "b3f1ae6d",
+ "files": [
+  "enrichment/extractors/applicability_tagger.py",
+  "tests/test_applicability_reference_rows.py"
+ ],
+ "pre_impl": {
+  "existing_data": "After Waverley's plan was republished on 2026-11-23, 498 served Waverley rules fell to v2_dev_type_source no_config (DQ-33 reads 498). 450 of them are annexure, definition and abbreviation rows (279 and 171), on pages 150 to 190 and 410 to 490, with Part code unknown because they sit outside Parts A to E.",
+  "assumption_mismatch": "I expected a missing Part to be the fault. These rows belong to no Part. A test also showed a second fault: the tagger read the chapter code in Annexure B3-2 as the B3 business zone through its text-extraction step.",
+  "new_vs_existing": "The tagger already has config_all, an explicit universality assertion, and the part fallback of 2026-10-15; nothing detected reference rows. The new rule reads only the row's own heading.",
+  "external_source_error": "Not applicable: a pure function with no network or database call.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A definition or annexure list is shown as undecided, or a chapter code is read as a zone. A reference heading now records ALL as a decision, and its text is never read for zones."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_applicability_reference_rows.py tests/test_applicability_part_fallback.py tests/test_applicability_provenance.py -q",
+  "fails_when": "A reference heading falls to no_config, a normal rule is caught as a reference row, or an annexure code is read as a zone.",
+  "observed_red": "Two deliberate breaks (reference detection off, zone text read for reference rows) each failed a test, and the first draft of the test found the Annexure B3-2 zone bug before the fix.",
+  "observed_green": "73 related tagger tests pass. The retag dry run on Waverley (11,350 rows) predicts served no_config rows falling from 498 to 38 and 0 served rows narrowed; nothing is written."
+ },
+ "functions": [
+  {
+   "name": "is_reference_row",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "the text of one provision row",
+   "output": "true only when the row's own heading marks an annexure, appendix, definition, abbreviation or glossary entry",
+   "if_none": "an empty or missing text is not a reference row"
+  },
+  {
+   "name": "tag_with_provenance",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "the row text, document id and optional part and page",
+   "output": "zones, development types and the source of each, now config_all for a reference row with no council config match",
+   "if_none": "a row that is not a reference row keeps its earlier source, including no_config"
+  }
+ ],
+ "values": [
+  {
+   "value": "development type and zone source of a reference row",
+   "read_at": "the row's own heading line",
+   "if_missing": "the row keeps its earlier no_config source"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A normal rule mentions a definition or annexure in its body.",
+   "what_happens": "A real control would be labelled as reference material and could apply to the wrong types.",
+   "mitigated": true,
+   "how": "Only a heading that starts with the reference word is read, never the body.",
+   "repro": "python -m pytest tests/test_applicability_reference_rows.py -k only_mentions -q"
+  },
+  {
+   "scenario": "An annexure heading carries a code that looks like a zone, such as B3.",
+   "what_happens": "The annexure would be tagged to the B3 business zone.",
+   "mitigated": true,
+   "how": "Zone text extraction is skipped for reference rows, so the zone stays ALL.",
+   "repro": "python -m pytest tests/test_applicability_reference_rows.py -k zone -q"
+  },
+  {
+   "scenario": "A row with a real Part also has an annexure heading.",
+   "what_happens": "The council's Part answer could be overridden.",
+   "mitigated": true,
+   "how": "The new rule applies only where no council config matched; a row with a Part keeps the config's answer.",
+   "repro": "python -m pytest tests/test_applicability_reference_rows.py -k real_part -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/retag_applicability_slug_docids.py --councils waverley (dry run) then --apply with the printed expected count after the owner's yes; python scripts/dq_probe_live.py --id DQ-33 then reads about 38."
+ }
+}
