@@ -110,7 +110,7 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
     for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/lmr_route_normal/", "data/anef/sydney_anef_2045.json",
                    "data/law/road_rules_2014_pedestrian_facts.json", "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt",
-                   "data/law/maps/manifest.json", "data/law/maps/hn_pmf.geojson.gz", "data/law/maps/hn_500aep.geojson.gz", "data/law/maps/hn_100aep.geojson.gz",
+                   "data/law/maps/manifest.json", "data/law/maps/hn_pmf*.geojson.gz", "data/law/maps/hn_500aep*.geojson.gz", "data/law/maps/hn_100aep*.geojson.gz",
                    "data/law/pipeline_route_coverage.json"):
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
@@ -240,3 +240,22 @@ def test_the_files_that_decide_the_answer_still_have_no_route_pointers():
     """The route set is separate on purpose: data/lmr_walk/ decides verdicts and was not rebuilt. If it gains pointers, the two sets must be reconsidered."""
     for f in sorted(WALK_DIR.glob("*.npz")):
         assert ws.load_surface(str(f)).parent is None, f.name
+
+
+def test_every_file_the_manifest_lists_for_the_flood_layers_is_copied_into_the_image_and_no_other_saved_map_is():
+    """The flood check needs every file of its three layers (a re-export may split a layer into parts); the other saved maps stay out on purpose (PR 1672's six-layer path is off in production)."""
+    import fnmatch
+    import json
+
+    docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
+    sources = [line.split()[1] for line in docker.splitlines() if line.startswith("COPY data/law/maps/")]
+    assert sources, "no COPY line for data/law/maps"
+    man = json.loads((REPO / "data" / "law" / "maps" / "manifest.json").read_text(encoding="utf-8"))
+    shipped = {f["file"] for name, meta in man["layers"].items() if name.startswith("hn_") and name != "hn_catchment" for f in meta["files"]}
+    assert shipped, "the manifest lists no flood file"
+    for name in shipped:
+        assert any(fnmatch.fnmatch("data/law/maps/" + name, pat) for pat in sources), name
+    others = {f["file"] for name, meta in man["layers"].items() if name not in ("hn_pmf", "hn_500aep", "hn_100aep") for f in meta["files"]}
+    for name in others:
+        assert not any(fnmatch.fnmatch("data/law/maps/" + name, pat) for pat in sources if not pat.endswith("manifest.json")), f"{name} is copied by accident"
+    assert any(pat.endswith("manifest.json") for pat in sources)
