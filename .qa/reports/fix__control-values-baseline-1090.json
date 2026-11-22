@@ -1,7 +1,7 @@
 {
   "tier": "Minor",
   "justification": "One accepted-row entry added to scripts/control_source_values_baseline.json, data only: no code, no query, no database write. Marrickville control row 1090 (maximum site coverage, 40 to 60 percent) stores a six-tier table as a range but its saved quote is the last table cell, so the CI check cannot find the 60 in it and blocks every pull request that triggers the live-data checks. The range is right per page 16 of the council chapter, which holds the whole table; only the quote is short. The baseline already accepts 34 such rows, keyed to a digest of value, unit, quote and currency, so any change to row 1090 makes it a finding again.",
-  "commit_hash": "585e18eb",
+  "commit_hash": "d51628f7",
   "files": [
     "scripts/control_source_values_baseline.json"
   ],
