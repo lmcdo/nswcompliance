@@ -1769,7 +1769,7 @@
    "kind": "outreach_claim",
    "claim": "In an independent check of the rules shown at random addresses, read by a person against the council's plan, fewer than 2 in 100 had a serious error: a rule for another property or area, words that are not the council's, or a page that does not hold them (95% confidence). The check is repeated at least every 30 days; the method and every rule read are published.",
    "source": "~/.claude/plans/ce-outreach-claims-reword-DRAFT-2026-10-16.md",
-   "declared": "true",
+   "declared": "false",
    "check": [
     "python",
     "scripts/audit_rate_check.py"
@@ -1777,7 +1777,7 @@
    "blocks_outreach": true,
    "passes_when": "exit 0 - pooled address-audit runs read within 30 days cover >= 500 rules at >= 50 addresses and the one-sided 95% upper bound of serious errors (unsure counted as serious) is below 2.0 per 100",
    "red_when": "the declared state and the check disagree in either direction",
-   "note": "Reworded 2026-10-16 (user-approved draft): the old wording ('every rule ... gated to that part', DQ-143 = 0) could not be reached under the 2026-10-02 shipping line. DQ-143 stays as an internal ratchet. First pass: runs 6-8, 830 rules, 83 addresses, 6 serious + 3 unsure, upper bound 1.89."
+   "note": "NOT HOLDING (declared false 2026-11-22). The fresh 300-address audit (run 2026-11-22-n300, 1,435 rules, AI labels, no person checked) measured 2.4 serious errors per 100 (95% range 1.8 to 3.4) after a stronger-model recheck, above the under-2 bar, and the check finds no audit run within 30 days. Returns to true when a run shows the top of the range under 2.0. Reworded 2026-10-16 (user-approved draft): the old wording ('every rule ... gated to that part', DQ-143 = 0) could not be reached under the 2026-10-02 shipping line. DQ-143 stays as an internal ratchet. First pass: runs 6-8, 830 rules, 83 addresses, 6 serious + 3 unsure, upper bound 1.89."
   },
   "OC-19": {
    "kind": "outreach_claim",
@@ -1910,7 +1910,8 @@
     "kind": "outreach_claim",
     "claim": "For an address in the five measured areas (Inner West, Georges River, Canterbury-Bankstown, Ku-ring-gai, Woollahra), the housing reform area card gives its Chapter 5 or Chapter 6 answer with the clause, the page and the law date, and in an independent test on at least 100 lots against OpenStreetMap's Valhalla walking router it matched the router's yes or no at 90% or better with no opposite answer. Outside those areas, and for flood extent, pipelines and airports other than Sydney, it says it did not check.",
     "source": "owner yes 2026-11-08; ~/.claude/plans/ce-NEXT-PROMPT-2026-11-08-after-lmr-and-anef-live.md",
-    "declared": "true",
+    "declared": "false",
+   "note": "NOT HOLDING (declared false 2026-11-22). Two reasons: (1) the recorded accuracy run is tied to the walking data as of 2026-11-08 and 7 pilot walking files were added 2026-11-17 (#1645); (2) a fresh 100-lot run on current data (seed 20261122) did not pass: 1 wrong yes in 82 yes/no answers (28 Mandolong Road, Mosman: our walk 440 m, router about 1,003 m), bar is 0. Note: ce-walk-wrong-yes-mosman-NOTE-2026-11-22.md. Returns to true when a fresh run passes and is recorded.",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -1940,7 +1941,8 @@
     "kind": "outreach_claim",
     "claim": "Every brief row with no candidate shows the 'not found, open the plan' text, and no row ever shows a figure we did not extract. Where a table's numbers are missing from the data, the row points to the page and states no number.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-3",
-    "declared": "true",
+    "declared": "false",
+   "note": "NOT HOLDING (declared false 2026-11-22). 102 of 8,664 brief rows point at a stale, non-actionable or other-council clause (bar 0), after rules were hidden by the wrong-land work on 2026-11-20 and 2026-11-21. Returns to true when the check reads 0.",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -2015,7 +2017,8 @@
     "kind": "outreach_claim",
     "claim": "For the councils the plan brief is served for (a house in zone R2), a script has read the council's own section heading above every clause the brief can show: none under a heading for another building type or a specific site is still shown, every core topic keeps a clause except one declared gap (Ku-ring-gai landscaping has no rows, listed in known_empty_topics), and top-5 recall on the proven rules after the skip is at least 80% for every named council and 90% overall. At least 5 councils. This is a script read, not an owner read.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-8",
-    "declared": "true",
+    "declared": "false",
+   "note": "NOT HOLDING (declared false 2026-11-22). The heading check has 39 proven cells (needs 40) and no proven cases to measure recall for Waverley, whose rules are all held pending its new file (see OC-1). Returns to true when Waverley is published and the check passes.",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -2030,7 +2033,7 @@
     "kind": "outreach_claim",
     "claim": "Across all rule types combined, for a house in zone R2 in the 10 named councils and after the skipped clauses, the plan brief shows the council's own proven clause among its top 5 clauses in at least 90% of tested cases, overall and on the held-out councils that are named (Hornsby, Wollongong). The sample is small (47 cases, 20 on the hold-out); the lower 95% bounds are printed. Recall is not tested for each rule type separately.",
     "source": "~/.claude/plans/ce-outreach-RESCOPE-project-brief-2026-11-08.md#OB-1",
-    "declared": "true",
+    "declared": "false",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",
@@ -2039,7 +2042,7 @@
     "blocks_outreach": true,
     "passes_when": "exit 0 - top-5 recall >= 90% overall AND on the hold-out, recomputed from project_brief_rows against the proven rules (scripts/plan_brief_checks.py)",
     "red_when": "the declared state and the check disagree in either direction",
-    "note": "OB-1. Recomputed 2026-11-08 from the live table: 156/166 = 94% overall (lower 95% bound 89%), hold-out 47/50 = 94% (bound 84%). 6 weak gold cells dropped and listed in plan_brief_checks.WEAK_GOLD. Zone group used is each project type's normal one; the any-zone fallback is weaker (92% / 85%) and the serving code must prefer the zone-specific brief."
+    "note": "NOT HOLDING (declared false 2026-11-22). The recall check now has only 39 gold cells (17 hold-out), too few to mean anything; the proven clauses it scores shrank as rules were hidden or held on 2026-11-20 to 2026-11-22 (wrong-land work; Waverley held, see OC-1). Returns to true when the check has enough gold cells and passes. OB-1. Recomputed 2026-11-08 from the live table: 156/166 = 94% overall (lower 95% bound 89%), hold-out 47/50 = 94% (bound 84%). 6 weak gold cells dropped and listed in plan_brief_checks.WEAK_GOLD. Zone group used is each project type's normal one; the any-zone fallback is weaker (92% / 85%) and the serving code must prefer the zone-specific brief."
   }
  }
 }
