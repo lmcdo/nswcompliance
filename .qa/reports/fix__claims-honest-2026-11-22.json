@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: it changes one published number and the declared state of six outreach claim rows. Not Minor: published figures and claim states are involved. Not Critical: no served answer, query or rule changes, the outreach is private pilot only, every flipped row is one whose own check was measured failing, and no check was loosened.",
- "commit_hash": "d5b075b5",
+ "commit_hash": "8c751654",
  "files": [
   ".claude/dq_checks.json",
   "frontend-nextjs/lib/coverage.ts",
