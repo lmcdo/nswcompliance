@@ -1,0 +1,49 @@
+{
+  "tier": "Minor",
+  "justification": "One accepted-row entry added to scripts/control_source_values_baseline.json, data only: no code, no query, no database write. Marrickville control row 1090 (maximum site coverage, 40 to 60 percent) stores a six-tier table as a range but its saved quote is the last table cell, so the CI check cannot find the 60 in it and blocks every pull request that triggers the live-data checks. The range is right per page 16 of the council chapter, which holds the whole table; only the quote is short. The baseline already accepts 34 such rows, keyed to a digest of value, unit, quote and currency, so any change to row 1090 makes it a finding again.",
+  "commit_hash": "d51628f7",
+  "files": [
+    "scripts/control_source_values_baseline.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/validate_control_source_values.py",
+    "expected": "Exit 0 and the baseline block reads accepted rows 35, NEW and current BLOCKING: 0, NEW but superseded advisory: 2 (rows 696 and 683, unchanged).",
+    "fails_when": "Row 1090 changes its value, unit or quote, or becomes superseded then current again: its digest no longer matches and it is a new blocking finding.",
+    "observed_red": "Before the entry the same command printed NEW and current BLOCKING: 1 (row 1090) on the live database, and the pull request gate failed on that step. After it, BLOCKING: 0 and exit 0; 116 related tests pass."
+  },
+  "pre_impl": "N/A - a baseline entry only. The row, its quote, its range and its page were read live this session: row 1090 is current, quote_status verbatim, pdf_page 16, value 40 to 60, and page 16 of the live chapter PDF holds all six tiers.",
+  "functions": "N/A - no code changed.",
+  "values": "N/A - one id and its digest, produced by the check's own fingerprint function on the live row, not typed by hand.",
+  "queries": "N/A - no database query added or changed. The check reads the table read-only.",
+  "break_it": [
+    {
+      "scenario": "Row 1090's quote, value or unit is edited later to a different unsupported value.",
+      "what_happens": "The accepted digest no longer matches, so the row is a new blocking finding instead of staying accepted.",
+      "mitigated": "Mitigated: the baseline stores a digest of the value, unit, quote and currency, not just the id.",
+      "how": "The fingerprint covers exactly the inputs the check reads.",
+      "repro": "python scripts/validate_control_source_values.py"
+    },
+    {
+      "scenario": "The row is superseded and a different row replaces it.",
+      "what_happens": "The new row is judged on its own quote and blocks if unsupported.",
+      "mitigated": "Mitigated: only the accepted digest passes, and is_current is part of the digest.",
+      "how": "A current row with another digest is a new finding.",
+      "repro": "python scripts/validate_control_source_values.py"
+    },
+    {
+      "scenario": "Accepting the row hides that a six-tier table is stored as a 40 to 60 range with a one-cell quote.",
+      "what_happens": "The weakness stays while the check is green.",
+      "mitigated": "Not mitigated here, and said so: the proper quote fix goes through the review route and is a separate job.",
+      "how": "Recorded in this report and the pull request.",
+      "repro": "Read the row: its condition holds the whole table, its source_text is one cell."
+    }
+  ],
+  "mutation_analysis": "N/A at this tier: a data entry in a baseline file has no logic to mutate. The equivalent discipline: the check was run before and after on the live database and went from 1 blocking row to 0 with the two advisory rows unchanged.",
+  "residual_risk": "1) The row's saved quote is still the one cell; the whole-table quote needs the sanctioned review route, because the script that holds this row's values is being made report-only by an open pull request (1579). 2) The baseline file now has 35 accepted rows; it is shrink-only by design and this adds one. 3) Superseded rows 696 and 683 changed since the baseline and are reported as advisory; they were left alone.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Re-run the failing pull request's gate (the step 'Validate control values against their own source text') and expect it to pass."
+  }
+}
