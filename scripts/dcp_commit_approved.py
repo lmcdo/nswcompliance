@@ -462,6 +462,13 @@ def main() -> int:
         help="Commit only these named chapters (repeatable). Without it, every fully-approved chapter.",
     )
     parser.add_argument(
+        "--skip-fleet-sweep", action="store_true",
+        help=("Do not run the fleet-wide unchecked council-words sweep at the end of this commit. That sweep re-proves every rule "
+              "in EVERY council that has no quote verdict, with a 55-minute limit; it is a nightly job that rides on every commit. "
+              "A one-council commit has already stored its own words per chapter (run_council_quote), so it can skip the sweep and "
+              "leave it to the nightly run."),
+    )
+    parser.add_argument(
         "--allow-area-link-loss", action="append", default=[], metavar="COUNCIL/CHAPTER",
         help="Let ONE named chapter publish although fewer of its rules would keep their precinct/marker/zone link.",
     )
@@ -494,7 +501,7 @@ def main() -> int:
         conn.close()
         # the nightly sweep still runs: a PDF change nulls verdicts without any commit
         import os
-        if not dry_run and not os.environ.get("PYTEST_CURRENT_TEST"):
+        if not dry_run and not os.environ.get("PYTEST_CURRENT_TEST") and not args.skip_fleet_sweep:
             return 1 if run_unchecked_council_quote_sweep() else 0
         return 0
 
@@ -814,7 +821,9 @@ def main() -> int:
     # on a day with nothing to commit (a PDF change nulls verdicts without a commit). Skipped under
     # pytest: it writes to the real database. A failure is reported, never hides commit results.
     sweep_rc = 0
-    if not dry_run and not under_test:
+    if args.skip_fleet_sweep and not dry_run and not under_test:
+        print("  fleet-wide unchecked council-words sweep skipped (--skip-fleet-sweep); the nightly run does it")
+    elif not dry_run and not under_test:
         sweep_rc = run_unchecked_council_quote_sweep()
         if sweep_rc:
             send = _precinct_alert_sender()
