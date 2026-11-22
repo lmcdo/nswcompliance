@@ -1,0 +1,43 @@
+{
+  "tier": "minor",
+  "justification": "Minor: data and test count only, no code. 94 Campbelltown (78) and Hornsby (16) DCP rules limited to the zones the council's headings name; applied live with owner go and a row backup; same step as #1679.",
+  "commit_hash": "282fc5dc",
+  "files": [
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only land_limits --council campbelltown",
+    "fails_when": "Prints to-change greater than 0 after the apply.",
+    "observed_red": "Before the apply it printed to-change=78 (Campbelltown) and 16 (Hornsby); after, 0 for both."
+  },
+  "break_it": [
+    {
+      "scenario": "A reader's zone is wrong and a rule is hidden from a zone it applies to.",
+      "what_happens": "Houses in that zone lose a rule.",
+      "mitigated": true,
+      "how": "Only rows with a verbatim quote re-found in the council text and real zone codes were used: 149 of 398 zone calls passed. Replay on judged rules: 6 wrong rules hidden, 1 right-judged rule hidden (heading reads Zone R3, house R2).",
+      "repro": "Quotes are in the scratch file zone_confirmed2.json."
+    },
+    {
+      "scenario": "A publish re-sets the narrowed rows.",
+      "what_happens": "Rules reach all zones again.",
+      "mitigated": true,
+      "how": "The step runs after every publish and matches by text fingerprint.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits --council hornsby prints to-change=0."
+    },
+    {
+      "scenario": "Hornsby R3/R4 limits hide a rule that also has a height-area limit.",
+      "what_happens": "Only R2 houses lose it; R3/R4 houses still see it.",
+      "mitigated": false,
+      "how": "Accepted: the height-area limit is not expressible here.",
+      "repro": "Rows are listed in land_limits.json under hornsby."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "An R2 Campbelltown house no longer shows Zone R3 rules; not checked in a browser."
+  }
+}
