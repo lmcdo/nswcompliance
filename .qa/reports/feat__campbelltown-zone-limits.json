@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Standard: changes which council rules a house is shown (production data, 129 Campbelltown rows applied 2026-11-22). One small code change: a zones entry may now narrow a row's zones, never widen. Row-level backup and undo.",
-  "commit_hash": "042b3775",
+  "commit_hash": "6e1b3a6d",
   "files": [
     "scripts/gate_rules_land.py",
     "data/chapter_scope/land_limits.json",
