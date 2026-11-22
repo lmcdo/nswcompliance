@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds an opt-in flag to the commit script and commits a decision script that records review verdicts. Not Minor: the decision script writes verdicts to the production review queue when run with --apply. Not Critical: nothing runs in this change, the flag only skips a fleet-wide nightly sweep, both default to the old behaviour, and the decision script is dry-run by default, backs up before writing and changes only status and reviewer fields on pending rows.",
- "commit_hash": "ee376cae",
+ "commit_hash": "270f7433",
  "files": [
   "scripts/dcp_commit_approved.py",
   "tests/test_dcp_commit_approved_council_quote.py",
@@ -20,8 +20,8 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_dcp_commit_approved_council_quote.py tests/test_dcp_decide_by_page_cells.py -q",
   "fails_when": "The flag stops gating either fleet sweep call, or the per-chapter council words step is placed behind the flag, or the decision script approves a row with a cell not on its page or skips a rule worded with should or is required.",
-  "observed_red": "Two deliberate breaks of the flag (ignored at the end of a commit, ignored on an idle night) each failed a test.",
-  "observed_green": "32 related tests pass. A dry run of the decision script on Waverley's real queue returned approve 4,482 and skip 3,532 and wrote nothing. One real-layer test samples 300 real pending Waverley rows against the real PDF and checks every approved row has all its cells on its page (passes with the real flags on, not skipped)."
+  "observed_red": "Four deliberate breaks (flag ignored at the end of a commit, flag ignored on an idle night, plain substring matching, short cells dropped) each failed a test.",
+  "observed_green": "17 related tests pass plus 1 real-layer test on 300 real Waverley rows. After the cross-review fixes (whole-word matching, short cells kept, truthful stored reason) the dry run on the real queue reads approve 4,480 and skip 3,534 (was 4,482 and 3,532) and writes nothing."
  },
  "functions": [
   {
@@ -88,6 +88,20 @@
    "mitigated": true,
    "how": "It writes only on pending rows of the named chapters, after a CSV backup of every row, and the rollback restores them to pending.",
    "repro": "python scripts/dcp_decide_by_page_cells.py --chapters waverley/waverley-dcp-2022"
+  },
+  {
+   "scenario": "A table value is a smaller number printed inside a bigger one on the page, for example 5 metres against 15 metres.",
+   "what_happens": "The wrong value would be approved as the council's words.",
+   "mitigated": true,
+   "how": "A cell counts as printed only as whole words; 5 metres is not found inside 15 metres.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -k inside_a_different -q"
+  },
+  {
+   "scenario": "A short table cell such as 3 m or No differs from the page.",
+   "what_happens": "The difference would be ignored and the row approved.",
+   "mitigated": true,
+   "how": "Every cell holding a letter or digit is checked, however short.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -k short_cell -q"
   }
  ],
  "post_merge": {

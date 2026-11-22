@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dcp_approve_proven import CHAPTER_ROWS_SQL  # noqa: E402
 
 REVIEWER = "auto:page_cells"
-REASON_OK = "every cell of this requirement is printed on its stated PDF page (dcp_decide_by_page_cells)"
+REASON_OK = "every cell of this requirement is printed on its stated PDF page or the page either side (dcp_decide_by_page_cells)"
 REASON_SKIP = "not a requirement, a removal, or a cell not on its stated page; left out (dcp_decide_by_page_cells)"
 
 _SUP = str.maketrans({"²": "2", "³": "3"})
@@ -55,10 +55,17 @@ def norm(s: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (s or "").translate(_SUP).lower()).strip()
 
 
+def printed(piece: str, page_text: str) -> bool:
+    """True when the normalised piece is printed on the page as whole words: '5 metres' is NOT found inside '15 metres'."""
+    p = norm(piece)
+    return bool(p) and f" {p} " in f" {page_text} "
+
+
 def cells(text: str | None) -> list[str]:
     """The pieces a requirement row is made of: its body (heading line dropped) split on table bars and lines."""
     body = re.sub(r"^#[^\n]*\n+", "", text or "")
-    return [c.strip() for c in re.split(r"\||\n", body) if len(c.strip()) > 3]
+    # keep EVERY cell that holds a letter or digit, however short: a 3 m / 6 m difference lives in a short cell
+    return [c.strip() for c in re.split(r"\||\n", body) if re.search(r"[A-Za-z0-9]", c)]
 
 
 def decide(change_type: str, text: str | None, page_text: str) -> str:
@@ -70,12 +77,12 @@ def decide(change_type: str, text: str | None, page_text: str) -> str:
     body = norm(re.sub(r"^#[^\n]*\n+", "", text))
     if not body:
         return "skip"
-    if body in page_text:  # the whole body is printed, in order, on its page
+    if printed(body, page_text):  # the whole body is printed, in order, as whole words, on its page
         return "approve"
     if "|" not in text:  # prose must match whole; only table rows may match cell by cell
         return "skip"
     parts = cells(text)
-    return "approve" if parts and all(norm(p) in page_text for p in parts) else "skip"
+    return "approve" if parts and all(printed(p, page_text) for p in parts) else "skip"
 
 
 def is_lead_in(text: str | None) -> bool:

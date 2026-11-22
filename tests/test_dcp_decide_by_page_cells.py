@@ -4,6 +4,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 
+import dcp_decide_by_page_cells as d  # noqa: E402
 from dcp_decide_by_page_cells import cells, decide, norm  # noqa: E402
 
 PAGE = norm("7.2.6 Bicycle Parking Office Employee 0.5 spaces per 100m2 GFA Visitor 1.25 space per 2000m2 GFA")
@@ -34,4 +35,20 @@ def test_a_colour_table_is_skipped_even_though_it_is_on_the_page():
 
 
 def test_cells_drop_the_heading_line():
-    assert cells("# 7.2.6 Bicycle Parking\nA | Bcde") == ["Bcde"]
+    assert cells("# 7.2.6 Bicycle Parking\nA | Bcde") == ["A", "Bcde"]   # the heading goes; short cells stay (a 3 m / 6 m difference lives in one)
+
+
+def test_a_value_is_not_found_inside_a_different_value():
+    page = d.norm("Height | 15 metres")
+    assert d.decide("added", "# H" + chr(10) + "Height | 5 metres", page) == "skip"
+    assert d.decide("added", "# H" + chr(10) + "Height | 15 metres", page) == "approve"
+
+
+def test_a_short_cell_that_differs_is_not_dropped():
+    page = d.norm("Setback | 6 m")
+    assert d.decide("added", "# S" + chr(10) + "Setback | 3 m", page) == "skip"
+    assert d.decide("added", "# S" + chr(10) + "Setback | 6 m", page) == "approve"
+
+
+def test_the_stored_reason_says_the_page_window_not_the_stated_page_only():
+    assert "page either side" in d.REASON_OK
