@@ -116,7 +116,7 @@ def test_f_decide_has_no_flood_note_or_measured_entry_when_the_study_did_not_dec
     assert not [n for n in outside["notes"] if "Hawkesbury-Nepean River Flood Study" in n] and "flood_study" in outside["measured"]
 
 
-@pytest.mark.parametrize("metres,words", [(0, "0 m"), (60, "60 m"), (99.6, "100 m"), (999.4, "999 m"), (1000, "1.0 km"), (9855.7, "9.9 km"), (23916, "23.9 km")])
+@pytest.mark.parametrize("metres,words", [(0, "0 m"), (60, "60 m"), (99.6, "99.6 m"), (100.4, "100.4 m"), (999.4, "999.4 m"), (1000, "1.0 km"), (9855.7, "9.9 km"), (23916, "23.9 km")])
 def test_distance_words_use_metres_under_a_kilometre_and_kilometres_above(metres, words):
     assert d._distance_words(metres) == words
 

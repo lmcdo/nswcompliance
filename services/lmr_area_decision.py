@@ -184,8 +184,8 @@ def layer_state(layer: Any) -> str:
 
 
 def _distance_words(metres: float) -> str:
-    """A distance for a sentence: whole metres under a kilometre, otherwise kilometres to one decimal ('9.9 km')."""
-    return f"{metres / 1000:.1f} km" if metres >= 1000 else f"{round(metres)} m"
+    """A distance for a sentence: metres to one decimal under a kilometre (so 100.4 m is never shown as '100 m' beside a 100 m margin), otherwise kilometres to one decimal ('9.9 km')."""
+    return f"{metres / 1000:.1f} km" if metres >= 1000 else f"{metres:.1f}".rstrip("0").rstrip(".") + " m"
 
 
 def _rule(code: str, clause: dict, outcome: str, detail: str, **figures: Any) -> dict:
