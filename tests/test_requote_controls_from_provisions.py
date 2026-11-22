@@ -1,6 +1,7 @@
 """A control's quote is replaced only by the council's own words from a CURRENT rule, holding the control's number, never shared across values."""
 import os
 import sys
+from decimal import Decimal
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
 
@@ -175,3 +176,23 @@ def test_release_commits_when_nothing_changed(tmp_path, monkeypatch):
     (tmp_path / "data" / "db_rollback_backups").mkdir(parents=True)
     conn = _FakeConn(_FakeCur("chapter_pdf_changed"))
     assert r._release(conn, _Args) == 0 and conn.committed and not conn.rolled
+
+
+def test_a_long_decimal_value_is_not_rounded_into_a_different_number():
+    c = ctl(vmin=Decimal("12.345678"))
+    assert r.numbers_of(c) == {"12.345678"}
+    assert r.prove("Maximum 12.3457 metres.", "Maximum 12.3457 metres.", c)[0] is False
+    assert r.prove("Maximum 12.345678 metres.", "Maximum 12.345678 metres.", c)[0] is True
+
+
+def test_six_and_six_point_zero_are_the_same_number_but_six_and_sixty_are_not():
+    assert r.canon(6) == r.canon("6.0") == r.canon(Decimal("6.00")) == "6"
+    assert r.canon(60) == "60"
+    assert r.prove("A minimum 6.0m rear setback applies.", "A minimum 6.0m rear setback applies.", ctl(vmin=Decimal("6")))[0] is True
+
+
+def test_the_ambiguity_key_treats_6_and_6_point_0_as_one_value():
+    q = "Maximum 0 0.4 0.7 1.2"
+    a = {"quote": q, "ctl": ctl(1, vmin=Decimal("6"))}
+    b = {"quote": q, "ctl": ctl(2, vmin=Decimal("6.0"))}
+    assert r.ambiguous({1: a, 2: b}) == set()

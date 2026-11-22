@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new script that, when run with --apply, edits the quote, page and link of numeric controls in the production controls table, and can release held rows. Not Minor: it writes to production and decides what a planner is shown as the council's words. Not Critical: dry run is the default, nothing runs in this change, every write is backed up first and guarded on the values read at planning time, migration 120 still wipes the proof on the edit so nothing is served until the existing word for word check passes, and release only frees holds the quote check itself wrote.",
- "commit_hash": "481eb617",
+ "commit_hash": "35897913",
  "files": [
   "scripts/requote_controls_from_provisions.py",
   "tests/test_requote_controls_from_provisions.py",
@@ -19,7 +19,7 @@
   "command": "python -m pytest tests/test_requote_controls_from_provisions.py -q ; python scripts/requote_controls_from_provisions.py --council waverley --answers ANSWERS.json",
   "fails_when": "A quote that is not in the rule, lacks the control's number, is an objective, or is shared across values is planned; a reader's none is overruled; or release frees a hold a person wrote.",
   "observed_red": "Eleven deliberate breaks (number check off, substring check off, objective allowed, ambiguity ignored, reader none overruled, release any hold, no margin, chapter check off, label strip off, prefix match for holds, other controls ignored, release reason guard off) each failed at least one test.",
-  "observed_green": "19 tests pass and 1 real-layer test passes. A dry run on Waverley plans 27 controls (0 by program, 27 by reader) and leaves 15 ambiguous table cells, 10 whose quote lacks the number and 7 with no match; nothing is written."
+  "observed_green": "22 tests pass and 1 real-layer test passes. A dry run on Waverley plans 27 controls (0 by program, 27 by reader) and leaves 16 ambiguous table cells, 9 whose quote lacks the number and 7 with no match; nothing is written. Numbers are compared as exact decimals, so 12.345678 is never accepted as 12.3457."
  },
  "functions": [
   {
@@ -126,6 +126,13 @@
    "mitigated": true,
    "how": "Clause labels are stripped before the objective test.",
    "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k labelled_objective -q"
+  },
+  {
+   "scenario": "A control value has more than six significant digits and the rule shows a rounded neighbour.",
+   "what_happens": "A different number would be accepted as the council's.",
+   "mitigated": true,
+   "how": "Values and quote numbers are compared as exact decimals with trailing zeros removed, with no rounding.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k long_decimal -q"
   }
  ],
  "post_merge": {

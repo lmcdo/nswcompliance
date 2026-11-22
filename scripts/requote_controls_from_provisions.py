@@ -40,6 +40,7 @@ import os
 import re
 import sys
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Optional
 
@@ -58,8 +59,18 @@ def ws(s: Optional[str]) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
 
 
+def canon(v: Any) -> str:
+    """One canonical text for a number, with no loss of precision: 6.0 and 6 are '6'; 12.345678 stays '12.345678' (never rounded to 12.3457)."""
+    d = Decimal(str(v)).normalize()
+    return format(d, "f")
+
+
 def numbers_of(ctl: dict) -> set[str]:
-    return {("%g" % float(v)) for v in (ctl.get("value_min"), ctl.get("value_max")) if v is not None}
+    return {canon(v) for v in (ctl.get("value_min"), ctl.get("value_max")) if v is not None}
+
+
+def quote_numbers(q: str) -> set[str]:
+    return {canon(m) for m in _NUM.findall(q)}
 
 
 def units(text: str) -> list[str]:
@@ -92,9 +103,13 @@ def prove(quote: Optional[str], provision_text: Optional[str], ctl: dict) -> tup
     if OBJECTIVE.match(q) or OBJECTIVE.match(bare):
         return False, "an objective, not a control"
     want = numbers_of(ctl)
-    if want and not want <= set(_NUM.findall(q)):
+    if want and not want <= quote_numbers(q):
         return False, "the quote does not hold the control's number"
     return True, "proven"
+
+
+def canon_or_none(v: Any) -> Optional[str]:
+    return None if v is None else canon(v)
 
 
 def ambiguous(planned: dict[int, dict]) -> set[int]:
@@ -104,7 +119,7 @@ def ambiguous(planned: dict[int, dict]) -> set[int]:
         by_q[p["quote"]].append(cid)
     out: set[int] = set()
     for q, ids in by_q.items():
-        vals = {(planned[i]["ctl"].get("value_min"), planned[i]["ctl"].get("value_max")) for i in ids}
+        vals = {(canon_or_none(planned[i]["ctl"].get("value_min")), canon_or_none(planned[i]["ctl"].get("value_max"))) for i in ids}
         if len(vals) > 1:
             out.update(ids)
     return out
@@ -135,7 +150,7 @@ class Index:
         q = set(_tok((ctl.get("source_text") or "") + " " + (ctl.get("condition") or "") + " " + str(ctl.get("control_type") or "").replace("_", " ")))
         q |= numbers_of(ctl)
         want = numbers_of(ctl)
-        scored = [(self.score(q, s), pid, page, u) for pid, page, u, s in self.rows if want <= set(_NUM.findall(u))]
+        scored = [(self.score(q, s), pid, page, u) for pid, page, u, s in self.rows if want <= quote_numbers(u)]
         scored.sort(key=lambda x: -x[0])
         return scored[:k]
 
@@ -191,8 +206,8 @@ def plan(ctls: list[dict], provs: list[dict], answers: dict[int, dict], others: 
         held[ws(o.get("source_text"))].append(o)
     for cid in list(planned):
         q = planned[cid]["quote"]
-        mine = (planned[cid]["ctl"].get("value_min"), planned[cid]["ctl"].get("value_max"))
-        if any(o["id"] != cid and (o.get("value_min"), o.get("value_max")) != mine for o in held.get(q, [])):
+        mine = (canon_or_none(planned[cid]["ctl"].get("value_min")), canon_or_none(planned[cid]["ctl"].get("value_max")))
+        if any(o["id"] != cid and (canon_or_none(o.get("value_min")), canon_or_none(o.get("value_max"))) != mine for o in held.get(q, [])):
             rejected[cid] = "ambiguous: another current control with a different value already holds this quote"
             planned.pop(cid)
     return planned, rejected
@@ -286,8 +301,10 @@ def _requote(conn, a) -> int:
     for cid, p in planned.items():
         c = by_id[cid]
         cur.execute("UPDATE dcp_setback_controls SET source_text = %s, pdf_page = %s, provision_id = %s WHERE id = %s AND is_current "
-                    "AND source_text IS NOT DISTINCT FROM %s AND pdf_page IS NOT DISTINCT FROM %s AND provision_id IS NOT DISTINCT FROM %s",
-                    (p["quote"], p["page"], p["provision_id"], cid, c["source_text"], c["pdf_page"], c["provision_id"]))
+                    "AND source_text IS NOT DISTINCT FROM %s AND pdf_page IS NOT DISTINCT FROM %s AND provision_id IS NOT DISTINCT FROM %s "
+                    "AND value_min IS NOT DISTINCT FROM %s AND value_max IS NOT DISTINCT FROM %s AND source_chapter_key IS NOT DISTINCT FROM %s AND lga = %s",
+                    (p["quote"], p["page"], p["provision_id"], cid, c["source_text"], c["pdf_page"], c["provision_id"],
+                     c["value_min"], c["value_max"], c["source_chapter_key"], a.council))
         n += cur.rowcount
     if n != len(planned):
         conn.rollback()
