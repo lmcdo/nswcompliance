@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds an opt-in flag to the commit script and commits a decision script that records review verdicts. Not Minor: the decision script writes verdicts to the production review queue when run with --apply. Not Critical: nothing runs in this change, the flag only skips a fleet-wide nightly sweep, both default to the old behaviour, and the decision script is dry-run by default, backs up before writing and changes only status and reviewer fields on pending rows.",
- "commit_hash": "282fc5dc",
+ "commit_hash": "904afbe3",
  "files": [
   "scripts/dcp_commit_approved.py",
   "tests/test_dcp_commit_approved_council_quote.py",
