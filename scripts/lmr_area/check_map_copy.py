@@ -53,11 +53,33 @@ def age_and_integrity(today: date | None = None, maps_dir: Path = mc.MAPS_DIR) -
     else:
         lines.append(f"copy read {read_on}, {age} days old (reader limit {mc.MAX_AGE_DAYS}, reminder at {WARN_DAYS})")
     reader = mc.MapCopy(maps_dir)
+    layers_meta = manifest.get("layers") if isinstance(manifest.get("layers"), dict) else {}
     for key, name in mc.COPY_KEYS.items():
-        # today=read_on makes the age test pass so this isolates the hash and count proof
-        if reader.layer(name, today=read_on) is None:
+        meta = layers_meta.get(name) if isinstance(layers_meta.get(name), dict) else {}
+        # A layer may carry its own read date and age limit (the 2024 flood study copy: a dated study, not a monthly-changing legal map). It is then judged by its own values,
+        # with the reminder the same 15 days before ITS limit; every other layer keeps the file-wide date and the reader's 45-day limit, exactly as before.
+        own_on = None
+        if meta.get("read_on"):
+            try:
+                own_on = datetime.strptime(str(meta.get("read_on")), "%Y-%m-%d").date()
+            except ValueError:
+                ok = False
+                lines.append(f"RED: layer {name} ({key}) has an unreadable read_on date")
+                continue
+        layer_on = own_on or read_on
+        # today=layer_on makes the age test pass so this isolates the hash and count proof
+        if reader.layer(name, today=layer_on) is None:
             ok = False
             lines.append(f"RED: layer {name} ({key}) fails its hash or feature count")
+        if own_on is not None:
+            limit = meta.get("max_age_days") if isinstance(meta.get("max_age_days"), int) and not isinstance(meta.get("max_age_days"), bool) and meta.get("max_age_days") > 0 else mc.MAX_AGE_DAYS
+            own_age = (today - own_on).days
+            if own_age < 0:
+                ok = False
+                lines.append(f"RED: layer {name} ({key}) read_on {own_on} is in the future")
+            elif own_age >= limit - (mc.MAX_AGE_DAYS - WARN_DAYS):
+                ok = False
+                lines.append(f"RED: layer {name} ({key}) is {own_age} days old (read {own_on}); the reader stops using it at {limit} days. Refresh now.")
     if ok:
         lines.append(f"all {len(mc.COPY_KEYS)} layers load, hash and count match the manifest")
     return ok, lines

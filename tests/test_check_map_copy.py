@@ -16,19 +16,20 @@ TODAY = date(2026, 11, 21)
 SQUARE = {"type": "Polygon", "coordinates": [[[151.0, -33.0], [151.01, -33.0], [151.01, -32.99], [151.0, -32.99], [151.0, -33.0]]]}
 
 
-def _maps(tmp: Path, read_on: str, bad_layer: str | None = None) -> Path:
+def _maps(tmp: Path, read_on: str, bad_layer: str | None = None, own: dict | None = None) -> Path:
+    """`own` gives chosen layers their own manifest fields (read_on, max_age_days), as the flood-study layers have."""
     layers = {}
     for name in mc.COPY_KEYS.values():
         raw = gzip.compress(json.dumps({"features": [{"type": "Feature", "geometry": SQUARE, "properties": {}}]}).encode())
         (tmp / f"{name}.geojson.gz").write_bytes(raw)
-        layers[name] = {"features": 1, "files": [{"file": f"{name}.geojson.gz", "sha256": "0" * 64 if name == bad_layer else hashlib.sha256(raw).hexdigest()}]}
+        layers[name] = {"features": 1, "files": [{"file": f"{name}.geojson.gz", "sha256": "0" * 64 if name == bad_layer else hashlib.sha256(raw).hexdigest()},], **((own or {}).get(name) or {})}
     (tmp / "manifest.json").write_text(json.dumps({"read_on": read_on, "layers": layers}))
     return tmp
 
 
 def test_a_fresh_intact_copy_passes(tmp_path):
     ok, lines = cm.age_and_integrity(TODAY, _maps(tmp_path, (TODAY - timedelta(days=3)).isoformat()))
-    assert ok and any("all 8 layers load" in ln for ln in lines)
+    assert ok and any(f"all {len(mc.COPY_KEYS)} layers load" in ln for ln in lines)
 
 
 def test_the_reminder_day_goes_red_and_the_day_before_does_not(tmp_path):
@@ -54,8 +55,56 @@ def test_a_missing_or_future_manifest_goes_red(tmp_path):
 
 
 def test_the_real_committed_copy_passes_on_the_day_it_was_read():
-    read_on = date.fromisoformat(json.loads((mc.MAPS_DIR / "manifest.json").read_text())["read_on"])
+    man = json.loads((mc.MAPS_DIR / "manifest.json").read_text())
+    # the newest read date in the file: the flood-study layers carry their own, later, read_on
+    read_on = max(date.fromisoformat(man["read_on"]), *[date.fromisoformat(v["read_on"]) for v in man["layers"].values() if v.get("read_on")])
     assert cm.age_and_integrity(read_on)[0] is True
+
+
+# ---- layers that carry their own read date and age limit (the 2024 flood-study copy) are judged by those, the rest by the file-wide date and 45 days
+FLOOD = ("hn_pmf", "hn_500aep", "hn_100aep")
+
+
+def _own(read_on: date, max_age=400, names=FLOOD) -> dict:
+    return {n: {"read_on": read_on.isoformat(), **({"max_age_days": max_age} if max_age is not None else {})} for n in names}
+
+
+def test_a_layer_with_its_own_date_and_a_400_day_limit_is_fine_at_100_days_though_the_file_date_is_recent(tmp_path):
+    m = _maps(tmp_path, (TODAY - timedelta(days=3)).isoformat(), own=_own(TODAY - timedelta(days=100)))
+    ok, lines = cm.age_and_integrity(TODAY, m)
+    assert ok is True, lines
+
+
+def test_a_layer_with_its_own_limit_goes_red_15_days_before_that_limit_and_not_the_day_before(tmp_path):
+    reminder = 400 - (mc.MAX_AGE_DAYS - cm.WARN_DAYS)
+    (tmp_path / "a").mkdir()
+    day_before = _maps(tmp_path / "a", (TODAY - timedelta(days=3)).isoformat(), own=_own(TODAY - timedelta(days=reminder - 1)))
+    assert cm.age_and_integrity(TODAY, day_before)[0] is True
+    (tmp_path / "b").mkdir()
+    on_the_day = _maps(tmp_path / "b", (TODAY - timedelta(days=3)).isoformat(), own=_own(TODAY - timedelta(days=reminder)))
+    ok, lines = cm.age_and_integrity(TODAY, on_the_day)
+    assert ok is False and any("hn_pmf" in ln and "stops using it at 400" in ln for ln in lines)
+
+
+def test_a_layer_with_no_limit_of_its_own_uses_the_readers_45_days(tmp_path):
+    m = _maps(tmp_path, (TODAY - timedelta(days=3)).isoformat(), own=_own(TODAY - timedelta(days=cm.WARN_DAYS), max_age=None))
+    ok, lines = cm.age_and_integrity(TODAY, m)
+    assert ok is False and any("stops using it at 45" in ln for ln in lines)
+
+
+def test_a_layer_dated_in_the_future_or_with_an_unreadable_date_goes_red(tmp_path):
+    ok, lines = cm.age_and_integrity(TODAY, _maps(tmp_path, TODAY.isoformat(), own=_own(TODAY + timedelta(days=2))))
+    assert ok is False and any("hn_pmf" in ln and "future" in ln for ln in lines)
+    (tmp_path / "x").mkdir()
+    m = _maps(tmp_path / "x", TODAY.isoformat(), own={"hn_pmf": {"read_on": "last tuesday"}})
+    ok, lines = cm.age_and_integrity(TODAY, m)
+    assert ok is False and any("hn_pmf" in ln and "unreadable read_on" in ln for ln in lines)
+
+
+def test_a_flood_layer_that_fails_its_hash_goes_red_even_with_its_own_date(tmp_path):
+    m = _maps(tmp_path, TODAY.isoformat(), bad_layer="hn_pmf", own=_own(TODAY - timedelta(days=5)))
+    ok, lines = cm.age_and_integrity(TODAY, m)
+    assert ok is False and any("hn_pmf" in ln and "hash or feature count" in ln for ln in lines)
 
 
 def _lots(n):
