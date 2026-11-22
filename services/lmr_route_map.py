@@ -23,7 +23,7 @@ CAREFUL_AGREE_M = 2.0   # noqa: regulatory-number -- engineering tolerance: the 
 NORMAL_AGREE_M = 15.0   # noqa: regulatory-number -- engineering tolerance: how far the drawing map's normal walk may differ from the measured one
 MIN_LINK_M = 1.0   # noqa: regulatory-number -- engineering tolerance: a station link shorter than this is rounding, not a missing stretch
 ATTRIBUTION = "Footpath and road data: OpenStreetMap contributors (Open Database Licence)."
-NOTE = ("Lines join mapped footpath points, so they are approximate. Crossing types and road names are not shown. "
+NOTE = ("Lines join mapped footpath points, so they are approximate. Crossing types are not shown; road names are on the street map underneath when it loads. "
         "The crossings-only line is drawn from the same saved footpath data as its walking distance. The normal line is drawn from a separate copy "
         f"of the footpath data and is shown only when it leads to the same station and agrees with the measured walk to within {NORMAL_AGREE_M:.0f} m.")
 

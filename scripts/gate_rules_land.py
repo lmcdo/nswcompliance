@@ -13,7 +13,8 @@ Data: data/chapter_scope/land_limits.json -- entries of (council, chapter_key, k
   kind "precinct"  sets v2_dcp_layer = 'precinct' with no precinct key: the rule is for a named place/street/site that has no
                    outline in our data, so it is shown to no house (same end state as hide_unmapped_area_rules.py)
 A row is matched by council + chapter + never_serve.text_key(provision_text), so a re-extraction that mints new ids keeps the
-limit. Only a row with no value yet is changed; never-serve rows, heritage-marked rows and rows with a precinct key are skipped.
+limit. A zones entry fills an empty or ALL row, or NARROWS a row whose zones are a strict superset of the entry's (never widens);
+the other kinds change only a row with no value yet; never-serve rows, heritage-marked rows and rows with a precinct key are skipped.
 """
 from __future__ import annotations
 
@@ -71,7 +72,7 @@ def apply_land_limits(cur, council: str | None, apply: bool, only: set[str] | No
                 continue
             if e["kind"] == "heritage" and marker is None:
                 col, before, after = "v2_marker", marker, "heritage"
-            elif e["kind"] == "zones" and (not zones or "ALL" in zones):
+            elif e["kind"] == "zones" and (not zones or "ALL" in zones or set(e["zones"]) < set(zones)):
                 if not zones_checked:
                     if not _zones_ok(cur, e["council"], e["zones"]):
                         raise ValueError(f"{RULE_NAME}: zones {e['zones']} are not in {e['council']}'s LEP land-use table")

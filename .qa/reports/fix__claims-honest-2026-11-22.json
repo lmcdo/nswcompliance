@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Standard: it changes one published number and the declared state of six outreach claim rows. Not Minor: published figures and claim states are involved. Not Critical: no served answer, query or rule changes, the outreach is private pilot only, every flipped row is one whose own check was measured failing, and no check was loosened.",
+ "commit_hash": "8c751654",
+ "files": [
+  ".claude/dq_checks.json",
+  "frontend-nextjs/lib/coverage.ts",
+  "tests/test_no_hardcoded_council_counts.py",
+  "tests/test_outreach_claim_checks_oc22.py"
+ ],
+ "pre_impl": {
+  "existing_data": "The published council count was 22; the database query behind it reads 21 because Waverley's 59 number rules are all held (43 not word for word on a 10 November check, 9 unchecked). Six claim rows failed their own checks on the live database on 2026-11-21 and 2026-11-22: OC-1, OC-18, OC-22, OC-24, OC-29 and OC-30.",
+  "assumption_mismatch": "I first thought another chat's wrong-land changes moved the council count. Their rollback id lists matched no row in the controls table, so it was not them; the cause is Waverley's held rules, planned on 2026-11-11 and not yet published.",
+  "new_vs_existing": "The ledger already has a declared false state for a claim known not to hold; none was used yet. The number change uses the existing coverage.ts source that the site and the verifier read.",
+  "external_source_error": "Not applicable: no network or database call is added.",
+  "frontend_type": "Not applicable: the number is a plain value in coverage.ts, rendered everywhere it is shown.",
+  "user_failure_mode": "A public claim stays declared true while its data no longer supports it. Each row now says not holding, with the measured reason, and goes red again when its check passes so it is flipped back."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils ; python scripts/dq_check.py --outreach",
+  "fails_when": "The published council count differs from the database count, or a claim's declared state disagrees with its check in either direction.",
+  "observed_red": "Before this change the outreach check read contradicted for OC-1, OC-18, OC-22, OC-24, OC-29 and OC-30 on the live database.",
+  "observed_green": "After: the council count reads 21 published and 21 live (OK), and the full outreach check reads 21 of 30 claims pass, 5 not yet, 4 not verified here, 0 contradicted. The 4 not verified here need packages only CI has. Two guard tests that pinned the old state were updated: the council count pin 22 to 21, and the OC-22 test now requires a record only when the claim is declared true, because the ledger already catches the other direction. 820 related tests pass."
+ },
+ "functions": [
+  {
+   "name": "dcpNumericCouncils",
+   "file_line": "frontend-nextjs/lib/coverage.ts",
+   "input": "the published figure and its display text",
+   "output": "the number of councils with numeric controls shown across the site",
+   "if_none": "not applicable: a plain constant checked against the database count by the verifier"
+  },
+  {
+   "name": "declared state of OC-18 OC-22 OC-24 OC-29 OC-30",
+   "file_line": ".claude/dq_checks.json",
+   "input": "each claim row's check result measured on 2026-11-22",
+   "output": "declared false with a dated note giving the measured reason and what makes it true again",
+   "if_none": "a row whose check passes again while declared false goes red, which prompts flipping it back"
+  }
+ ],
+ "values": [
+  {
+   "value": "published council count",
+   "read_at": "frontend-nextjs/lib/coverage.ts, checked by scripts/verify_coverage_stats.py against the database",
+   "if_missing": "the verifier fails and names the drift"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "The Waverley rules are published later and the count returns to 22.",
+   "what_happens": "The published 21 would then understate coverage and the verifier would flag drift.",
+   "mitigated": true,
+   "how": "The verifier compares the published number with the live count on every run and the comment names why it is 21.",
+   "repro": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils"
+  },
+  {
+   "scenario": "A claim row declared false starts passing again.",
+   "what_happens": "A true claim would stay marked as not holding.",
+   "mitigated": true,
+   "how": "The ledger enforces both directions, so a row declared false whose check passes reads contradicted.",
+   "repro": "python scripts/dq_check.py --outreach"
+  },
+  {
+   "scenario": "A claim is marked not holding only to get the checks to pass.",
+   "what_happens": "The ledger would hide a problem.",
+   "mitigated": true,
+   "how": "Each flipped row's own check was run and read failing, and the note records the measured number and what clears it; no check was edited.",
+   "repro": "python scripts/outreach_claim_checks.py OC-24"
+  },
+  {
+   "scenario": "The wording of a flipped row's note drifts from the truth.",
+   "what_happens": "A reader would be misled about why a claim is not holding.",
+   "mitigated": true,
+   "how": "Each note names its measured number and date, so it can be re-measured and corrected.",
+   "repro": "python scripts/audit_rate_check.py"
+  },
+  {
+   "scenario": "The OC-22 guard test no longer fails when a record exists but the claim is declared false.",
+   "what_happens": "A claim could stay declared false after a good run is recorded.",
+   "mitigated": true,
+   "how": "The ledger reads a row declared false whose check passes as contradicted, so the forgotten flip back to true is caught there.",
+   "repro": "python scripts/dq_check.py --outreach"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_check.py --outreach reads 0 contradicted in CI. Re-flip each row to true as its cause is repaired: OC-1 and OC-29 and OC-30 after Waverley is published, OC-22 after a passing accuracy run, OC-24 when the stale brief rows read 0, OC-18 when an audit shows the top of the range under 2.0."
+ }
+}

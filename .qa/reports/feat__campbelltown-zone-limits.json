@@ -1,0 +1,81 @@
+{
+  "tier": "standard",
+  "justification": "Standard: changes which council rules a house is shown (production data, 129 Campbelltown rows applied 2026-11-22). One small code change: a zones entry may now narrow a row's zones, never widen. Row-level backup and undo.",
+  "commit_hash": "6e1b3a6d",
+  "files": [
+    "scripts/gate_rules_land.py",
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py"
+  ],
+  "pre_impl": {
+    "existing_data": "Campbelltown rows already carried a wide zone list (R2-R5, or R4/E2/MU1 for Part 4) from chapter config, so the fill-empty-only step could not apply the limits. Reused: land_limits fingerprints, never_serve.text_key, the zone-validity check.",
+    "assumption_mismatch": "Assumed rows had no zones yet. They held a wider list, so the step now narrows a strict superset. The council's legacy B3/B4 were recorded as current E2/MU1 using the alias table.",
+    "new_vs_existing": "Extended gate_rules_land.apply_land_limits; no new script."
+  },
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only land_limits --council campbelltown",
+    "fails_when": "Prints to-change greater than 0 after the apply: a publish re-set a limit or a listed row was missed.",
+    "observed_red": "Before the apply it printed to-change=129 on production; after the apply the 129 rows read R3 (66), R2/R3/R5 (24), E2/MU1 (16), R2 (12), R2/R3 (11)."
+  },
+  "functions": [
+    {
+      "name": "apply_land_limits",
+      "file_line": "scripts/gate_rules_land.py:52",
+      "input": "A database cursor, an optional council slug, an apply flag, an optional set of rule names",
+      "output": "A list of (id, column, before, after, rule) changes for the backup; updates only when apply is true",
+      "if_none": "A row with no text or an unlisted fingerprint is skipped; a zones entry fills an empty or ALL row or narrows a strict superset, and never widens"
+    },
+    {
+      "name": "entries",
+      "file_line": "scripts/gate_rules_land.py:32",
+      "input": "The data file data/chapter_scope/land_limits.json read from disk",
+      "output": "A tuple of reviewed entries; raises if the file is missing, a kind is unknown or a fingerprint count is wrong",
+      "if_none": "A missing file raises instead of silently limiting nothing"
+    },
+    {
+      "name": "_zones_ok",
+      "file_line": "scripts/gate_rules_land.py:41",
+      "input": "A cursor, a council slug and a list of zone codes",
+      "output": "True only when every zone code is in that council's LEP land-use table",
+      "if_none": "A council with no LEP table returns False so the writer raises before any write"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Select the current rows of one council and chapter so listed ones can be limited",
+      "file_line": "scripts/gate_rules_land.py:52",
+      "where_clause": "is_current AND source_council AND source_chapter_key IS NOT DISTINCT FROM",
+      "if_zero": "No rows change and the step prints to-change=0, the expected state after an apply"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A publish re-sets the narrowed rows to the wide list.",
+      "what_happens": "The rules reach R4 and R5 houses again.",
+      "mitigated": true,
+      "how": "The step runs after every publish and matches by text fingerprint, so new ids keep the limit.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits --council campbelltown prints to-change=0 while limits hold."
+    },
+    {
+      "scenario": "A reader's zone list is wrong and a rule is hidden from a zone it applies to.",
+      "what_happens": "Houses in that zone lose a rule.",
+      "mitigated": true,
+      "how": "Only rows where a reader gave a verbatim quote that I re-found in the council text, with real zone codes, were used; 160 of 331 zone calls failed the quote check and were left alone. Replay on 2,880 judged rules: 0 wrong hides (3 wrong-land fixed, 1 cannot-tell).",
+      "repro": "Quotes are stored in the scratch file zone_confirmed.json; each is in the council page text."
+    },
+    {
+      "scenario": "A narrowing entry is wider than the row's zones.",
+      "what_happens": "Nothing: it would widen a row.",
+      "mitigated": true,
+      "how": "Narrows only when the entry's zones are a strict subset of the row's.",
+      "repro": "tests/test_gate_rules_land.py::test_zones_kind_narrows_a_wider_row_but_never_widens"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "A Campbelltown R4 house no longer shows the R3-only rules; not yet checked in a browser."
+  }
+}

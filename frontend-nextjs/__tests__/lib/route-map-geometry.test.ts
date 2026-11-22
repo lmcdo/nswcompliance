@@ -1,8 +1,8 @@
 /**
- * The route map is drawn from latitude/longitude with a local flat projection: north must be up, east right,
+ * The route map is drawn from latitude/longitude with the Web Mercator projection the street-map tiles use: north must be up, east right,
  * every drawn point must be on the picture, and a degenerate route must never give NaN or Infinity.
  */
-import { destinationLabel, projectRouteMap } from '@/lib/route-map-geometry';
+import { BASEMAP, destinationLabel, mercator, projectRouteMap, tileUrl, zoomFor } from '@/lib/route-map-geometry';
 import type { LatLon, RouteLine, RouteMap } from '@/lib/evidence-statement';
 
 const DEST = { name: 'Turramurra station', kind: 'station_outline' as const };
@@ -196,5 +196,82 @@ describe('destinationLabel', () => {
     expect(destinationLabel(undefined)).toBe('the destination (station entrance)');
     expect(destinationLabel({ name: null, kind: 'town_centre_edge' })).toBe('the edge of the destination');
     expect(destinationLabel({ name: null, kind: 'entrance' })).toBe('the destination (station entrance)');
+  });
+});
+
+
+describe('Web Mercator and the street-map tiles', () => {
+  it('mercator puts the equator at 0 and longitude 180 at half the world', () => {
+    expect(mercator([0, 0]).x).toBeCloseTo(0, 6);
+    expect(mercator([0, 0]).y).toBeCloseTo(0, 6);
+    expect(mercator([0, 180]).x).toBeCloseTo(Math.PI * 6378137, 3);
+    expect(mercator([45, 0]).y).toBeCloseTo(5621521.486, 2);          // the published value for 45 degrees north
+  });
+
+  it('a known Sydney point lands in the known tile (zoom 16, Sydney CBD)', () => {
+    const r = projectRouteMap(mapOf(line([[-33.8688, 151.2093], [-33.8680, 151.2100]]), null), 820, 5)!;
+    const k = 2 ** r.zoom;
+    const lat = (-33.8688 * Math.PI) / 180;
+    const wx = Math.floor(((151.2093 + 180) / 360) * k);
+    const wy = Math.floor(((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * k);
+    expect(r.tiles.map((t) => t.key)).toContain(`${r.zoom}/${wx}/${wy}`);
+  });
+
+  it('tiles cover the whole picture with no gap, and are drawn at least at their own size', () => {
+    const r = projectRouteMap(mapOf(line(CAREFUL_PTS), line(NORMAL_PTS)))!;
+    expect(r.tiles.length).toBeGreaterThan(0);
+    expect(r.tiles.length).toBeLessThanOrEqual(25);
+    const minX = Math.min(...r.tiles.map((t) => t.x)), minY = Math.min(...r.tiles.map((t) => t.y));
+    const maxX = Math.max(...r.tiles.map((t) => t.x + t.size)), maxY = Math.max(...r.tiles.map((t) => t.y + t.size));
+    expect(minX).toBeLessThanOrEqual(0.001); expect(minY).toBeLessThanOrEqual(0.001);
+    expect(maxX).toBeGreaterThanOrEqual(r.size - 0.001); expect(maxY).toBeGreaterThanOrEqual(r.size - 0.001);
+    const size = r.tiles[0].size;
+    expect(size).toBeGreaterThanOrEqual(256 * 0.999);                  // never shrunk, so street names are not made smaller than the tile's own
+    expect(size).toBeLessThan(256 * 2.001);
+    for (const t of r.tiles) expect(Math.abs(t.size - size)).toBeLessThan(1e-6);
+  });
+
+  it('neighbouring tiles touch exactly', () => {
+    const r = projectRouteMap(mapOf(line(CAREFUL_PTS), null))!;
+    const byKey = new Map(r.tiles.map((t) => [t.key, t]));
+    for (const t of r.tiles) {
+      const [z, x, y] = t.key.split('/').map(Number);
+      const right = byKey.get(`${z}/${x + 1}/${y}`), below = byKey.get(`${z}/${x}/${y + 1}`);
+      if (right) expect(right.x).toBeCloseTo(t.x + t.size, 6);
+      if (below) expect(below.y).toBeCloseTo(t.y + t.size, 6);
+    }
+  });
+
+  it('the route stays on the tiles: the start point sits inside the tile that holds it', () => {
+    const r = projectRouteMap(mapOf(line(CAREFUL_PTS), null))!;
+    const first = parse(r.careful!.points)[0];
+    const holder = r.tiles.find((t) => first.x >= t.x && first.x < t.x + t.size && first.y >= t.y && first.y < t.y + t.size);
+    expect(holder).toBeTruthy();
+    const n = 2 ** r.zoom;
+    const lat = (START[0] * Math.PI) / 180;
+    const tx = Math.floor(((START[1] + 180) / 360) * n);
+    const ty = Math.floor(((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * n);
+    expect(holder!.key).toBe(`${r.zoom}/${tx}/${ty}`);
+  });
+
+  it('zoom is clamped to the service, and is finite for any span', () => {
+    expect(zoomFor(1, 820)).toBe(BASEMAP.maxZoom);
+    expect(zoomFor(1e9, 820)).toBe(12);
+    expect(zoomFor(0, 820)).toBeLessThanOrEqual(BASEMAP.maxZoom);
+    expect(Number.isFinite(zoomFor(NaN, 820))).toBe(true);
+  });
+
+  it('tileUrl fills z, y then x in the order this service uses', () => {
+    expect(tileUrl(16, 60294, 39327)).toBe('https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Base_Map/MapServer/tile/16/39327/60294');
+    expect(tileUrl(3, 1, 2, 'https://t.example/{z}/{x}/{y}.png')).toBe('https://t.example/3/1/2.png');
+  });
+
+  it('the scale bar is in ground metres', () => {
+    const r = projectRouteMap(mapOf(line(CAREFUL_PTS), null))!;
+    const a = mercator(START), b = mercator(END);
+    const groundM = Math.hypot(b.x - a.x, b.y - a.y) * Math.cos((-33.74 * Math.PI) / 180);
+    const q = parse(r.careful!.points);
+    const px = Math.hypot(q[2].x - q[0].x, q[2].y - q[0].y);
+    expect(r.scaleBar.px / r.scaleBar.m).toBeCloseTo(px / groundM, 1);
   });
 });
