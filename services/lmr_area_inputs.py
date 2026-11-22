@@ -290,6 +290,18 @@ def _num_or_none(v: Any) -> bool:
     return v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v >= 0 and v != float("inf"))
 
 
+def _flood_answer_consistent(got: dict) -> bool:
+    """The distances must agree with the inside flag, or the decision could read a contradiction as clear. Inside means the lot touches a flood area: the distance to one is 0 and an edge
+    distance exists. Outside means it does not: both distances are None together (no flood area within the search distance), or both are numbers, equal (the nearest area's distance
+    is its edge distance for a point outside it) and above 0."""
+    edge, near = got.get("edge_m"), got.get("nearest_m")
+    if got.get("inside") is True:
+        return near == 0 and edge is not None
+    if edge is None or near is None:
+        return edge is None and near is None
+    return near > 0 and abs(edge - near) <= 1.0   # noqa: regulatory-number -- tolerance in metres between two distances measured the same way, not a planning figure
+
+
 def _flood_study(lat: float, lng: float, rings: Optional[list], fn: Any, all_layers: bool = False) -> dict:
     """How the lot sits against the saved flood-study layers: {"pmf": {...}} and, for the evidence page (all_layers), "aep500" and "aep100" too. The two flood-frequency layers are
     context only and cost about 0.1 s each, so the public check reads the Probable Maximum Flood layer alone. A layer that gave no valid answer is left out, never filled in,
@@ -305,7 +317,7 @@ def _flood_study(lat: float, lng: float, rings: Optional[list], fn: Any, all_lay
             continue
         if (isinstance(got, dict) and isinstance(got.get("inside"), bool) and isinstance(got.get("within_box"), bool)
                 and "edge_m" in got and "nearest_m" in got   # a missing key is a malformed answer, never "no flood area nearby" (None means that only when the key is present)
-                and _num_or_none(got.get("edge_m")) and _num_or_none(got.get("nearest_m"))
+                and _num_or_none(got.get("edge_m")) and _num_or_none(got.get("nearest_m")) and _flood_answer_consistent(got)
                 and isinstance(got.get("as_of"), str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", got.get("as_of") or "")):
             out[name] = got
     return out

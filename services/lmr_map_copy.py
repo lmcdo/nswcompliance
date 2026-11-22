@@ -184,7 +184,7 @@ class MapCopy:
 
         name = COPY_KEYS.get(key)
         lay = self.layer(name, today) if name else None
-        if lay is None:
+        if lay is None or lay.skipped:   # a flood layer with even one unreadable or empty area is incomplete: a lot in that area would read as clear, so it gives no answer
             return None
         target: Any = Point(lng, lat)
         used_outline = False

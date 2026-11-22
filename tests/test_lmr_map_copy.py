@@ -279,3 +279,14 @@ def test_the_real_pmf_file_places_known_points():
     assert far["inside"] is False and far["within_box"] is True and 9000 <= far["nearest_m"] <= 11000
     assert mc.flood_distance("hn_pmf", -33.6103, 150.8156, today=FLOOD_TODAY)["inside"] is True        # Windsor
     assert mc.flood_distance("hn_pmf", -33.73, 151.005, today=FLOOD_TODAY)["inside"] is False         # Castle Hill
+
+
+def test_a_flood_layer_with_a_skipped_area_gives_no_answer_never_a_clear(tmp_path):
+    """One unreadable or zero-area flood polygon means a lot inside it would read as clear, so the whole layer answers None (the area check then keeps its older rule)."""
+    raw = gzip.compress(json.dumps({"type": "FeatureCollection", "features": [_feat(FLAT), _feat(ZERO)]}).encode())
+    (tmp_path / "hn_pmf.geojson.gz").write_bytes(raw)
+    (tmp_path / "manifest.json").write_text(json.dumps({"read_on": "2026-11-18", "layers": {"hn_pmf": {"features": 2, "files": [
+        {"file": "hn_pmf.geojson.gz", "sha256": hashlib.sha256(raw).hexdigest()}]}}}))
+    c = mc.MapCopy(tmp_path)
+    assert c.layer("hn_pmf", TODAY).skipped == 1                                       # the layer itself loads (the generic loader tolerates it)
+    assert c.flood_distance("hn_pmf", -33.695, 150.705, today=TODAY) is None           # but the flood answer refuses to rest on an incomplete layer

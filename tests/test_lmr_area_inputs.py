@@ -298,9 +298,11 @@ def test_flood_study_keeps_a_valid_answer_unchanged_and_passes_the_key_and_lot()
     assert out == {"pmf": _good()} and calls == [("hn_pmf", LAT, LNG, RING)]
 
 
-def test_flood_study_accepts_none_distances_and_zero():
-    out = inp._flood_study(LAT, LNG, None, lambda *a: _good(edge_m=None, nearest_m=0))
-    assert out["pmf"]["edge_m"] is None and out["pmf"]["nearest_m"] == 0
+def test_flood_study_accepts_both_distances_none_and_zero_when_inside():
+    out = inp._flood_study(LAT, LNG, None, lambda *a: _good(edge_m=None, nearest_m=None))   # no flood area within the search distance
+    assert out["pmf"]["edge_m"] is None and out["pmf"]["nearest_m"] is None
+    inside = inp._flood_study(LAT, LNG, None, lambda *a: _good(inside=True, edge_m=120.0, nearest_m=0))   # inside: the distance to a flood area is 0
+    assert inside["pmf"]["nearest_m"] == 0 and inside["pmf"]["edge_m"] == 120.0
 
 
 def _without(key):
@@ -332,7 +334,8 @@ def test_flood_study_one_bad_layer_does_not_drop_the_others():
     def fn(key, *a):
         if key == "hn_500aep":
             raise ValueError("x")
-        return _good(edge_m=1.0 if key == "hn_pmf" else 2.0)
+        d = 1.0 if key == "hn_pmf" else 2.0
+        return _good(edge_m=d, nearest_m=d)
 
     out = inp._flood_study(LAT, LNG, RING, fn, all_layers=True)
     assert set(out) == {"pmf", "aep100"} and out["aep100"]["edge_m"] == 2.0 and out["pmf"]["edge_m"] == 1.0
@@ -472,3 +475,21 @@ def test_gather_pipeline_nearest_is_not_asked_twice(monkeypatch):
     monkeypatch.setattr(inp, "_pipeline_nearest", lambda *a: pytest.fail("must not be called"))
     m = _g(monkeypatch, want_distances=True, layers={"pipeline": {"hit": False, "names": [], "nearest_m": 99}})
     assert m["pipeline"]["nearest_m"] == 99
+
+
+# ---- a flood answer that contradicts itself is rejected (inside with a distance above 0, outside at distance 0, one distance missing, edge and nearest far apart)
+@pytest.mark.parametrize("bad", [
+    _good(inside=False, edge_m=None, nearest_m=0.0), _good(inside=False, edge_m=0.0, nearest_m=0.0), _good(inside=False, edge_m=500.0, nearest_m=None),
+    _good(inside=False, edge_m=None, nearest_m=500.0), _good(inside=False, edge_m=500.0, nearest_m=900.0), _good(inside=True, edge_m=None, nearest_m=0.0),
+    _good(inside=True, edge_m=300.0, nearest_m=25.0),
+])
+def test_flood_study_rejects_a_contradictory_answer(bad):
+    assert inp._flood_study(-33.7, 150.7, None, lambda key, la, ln, rings: dict(bad)) == {}
+
+
+@pytest.mark.parametrize("ok", [
+    _good(inside=True, edge_m=300.0, nearest_m=0.0), _good(inside=False, edge_m=500.0, nearest_m=500.0), _good(inside=False, edge_m=500.4, nearest_m=499.9),
+    _good(inside=False, edge_m=None, nearest_m=None),
+])
+def test_flood_study_keeps_a_consistent_answer(ok):
+    assert set(inp._flood_study(-33.7, 150.7, None, lambda key, la, ln, rings: dict(ok))) == {"pmf"}

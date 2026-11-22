@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "The area check now uses our own copy of the 2024 Hawkesbury-Nepean River Flood Study flood areas to decide s164(1)(f), instead of the whole river catchment, and the evidence data carries the distances behind the flood and pipeline paragraphs. A lot inside the study's box is decided by the flood areas: well outside (more than the 100 m margin) is clear with its distance, inside is a warning (our copy is not proven equal to the law's Figure 1-1), within the margin is a warning that says the lot is on the edge. A lot outside the box, a missing copy or a malformed answer keeps the older catchment rule. The evidence endpoint also reports the nearest mapped gas pipeline (never a clear: fuel pipelines and the law's licence list are not on the map) and a coverage file naming the 13 of the law's 33 pipelines with no published route. The flood copy is three committed files made read-only from spatial_overlays, shipped in the Python image with the manifest only, so the other saved state maps stay off in production.",
-  "commit_hash": "22456031",
+  "commit_hash": "8ba0a9a9",
   "files": [
     "Dockerfile.python",
     "data/law/maps/manifest.json",
@@ -29,7 +29,7 @@
     "command": "python -m pytest tests/test_lmr_map_copy.py tests/test_lmr_area_inputs.py tests/test_lmr_flood_study.py tests/test_lmr_area_decision.py tests/test_evidence_statement.py tests/test_lmr_data_files.py tests/test_lmr_map_layers_data.py -q -o addopts= ; python scripts/lmr_area/check_flood_copy.py 600 ; python scripts/lmr_area/compare_flood_rule.py 70",
     "expected": "Tests pass; the copy-versus-source check prints 0 for 'source INSIDE but copy says clear' and 0 flips beyond the margin; the before/after prints 0 lots moved to clear while inside or near a flood area.",
     "fails_when": "A lot inside a flood area is cleared, the margin is applied the wrong way, a lot outside the study box is decided by the flood copy, a distance is wrong (degrees for metres, no cos of latitude), a malformed or missing-key answer reads as no flood nearby, the copy's own age limit or date is ignored, the downloader drops the flood layers, or the image lacks the flood files.",
-    "observed_red": "Twenty hand breakages each turned a test red and were restored: margin test off by one side, box test ignored, an inside lot reported clear, the flood extent never deciding, a missing distance key accepted, a negative distance accepted, the frequency layers always read, no nearest pipeline result, pipeline distance in degrees, inside never true, distance always 0, longitude not scaled, the layer's own age limit and read date ignored, outline ignored, box always true, named-gap count off by one, malformed coverage file accepted, the law's distance dropped from the pipeline row, flood figures dropped from the rule list. A further breakage of the downloader (dropping layers it does not own) turned its test red, and removing the check script's connection close turned its real-database leak test red; four opt-in real-database tests (the copy against the rows, the export read-back, a read-only session, the connection release) pass. Real data: 600 points (189 inside the flood areas) copy versus source gave 0 inside-but-clear and 0 flips beyond the margin; 489 points before and after gave 0 moved to clear while inside or near a flood area (153 lots moved from a warning to a clear outside the flood areas). Real lots end to end: 28 Selwyn Street Pymble is clear with the nearest flood area 9.9 km away; Windsor and Penrith are flagged inside. Tests passed: full suite 11,089 passed; the 57 failures (database and environment tests) also fail on a clean checkout."
+    "observed_red": "Twenty-two hand breakages each turned a test red and were restored (the last two, from the cross-review: a flood layer with a skipped area still answering, and a flood answer whose distances contradict its inside flag being accepted): margin test off by one side, box test ignored, an inside lot reported clear, the flood extent never deciding, a missing distance key accepted, a negative distance accepted, the frequency layers always read, no nearest pipeline result, pipeline distance in degrees, inside never true, distance always 0, longitude not scaled, the layer's own age limit and read date ignored, outline ignored, box always true, named-gap count off by one, malformed coverage file accepted, the law's distance dropped from the pipeline row, flood figures dropped from the rule list. A further breakage of the downloader (dropping layers it does not own) turned its test red, and removing the check script's connection close turned its real-database leak test red; four opt-in real-database tests (the copy against the rows, the export read-back, a read-only session, the connection release) pass. Real data: 600 points (189 inside the flood areas) copy versus source gave 0 inside-but-clear and 0 flips beyond the margin; 489 points before and after gave 0 moved to clear while inside or near a flood area (153 lots moved from a warning to a clear outside the flood areas). Real lots end to end: 28 Selwyn Street Pymble is clear with the nearest flood area 9.9 km away; Windsor and Penrith are flagged inside. Tests passed: full suite 11,089 passed; the 57 failures (database and environment tests) also fail on a clean checkout."
   },
   "pre_impl": {
     "existing_data": "spatial_overlays already holds the study's flood areas (430 PMF, 393 1-in-500 year, 1,607 1-in-100 year polygons, read-only counts 2026-11-22). The area check read only the catchment layer for s164(1)(f). services/lmr_map_copy.py already reads committed map files.",
@@ -56,14 +56,14 @@
     },
     {
       "name": "_flood_study",
-      "file_line": "services/lmr_area_inputs.py:293",
+      "file_line": "services/lmr_area_inputs.py:305",
       "input": "the lot point and outline and the injected flood function",
       "output": "the valid layer answers keyed pmf, aep500 and aep100",
       "if_none": "A layer with a malformed, partial or raising answer is left out, never filled in; the public check reads the flood-extent layer only."
     },
     {
       "name": "_pipeline_nearest",
-      "file_line": "services/lmr_area_inputs.py:317",
+      "file_line": "services/lmr_area_inputs.py:329",
       "input": "the latitude and longitude of the lot",
       "output": "nearest mapped gas pipeline in metres with its name, from up to three widening queries",
       "if_none": "No answer from the service gives an empty dict; nothing within 60 km gives nearest None with the distance searched."
@@ -121,9 +121,9 @@
   "values": [
     {
       "value": "flood copy answer fields (inside, within_box, edge_m, nearest_m, as_of)",
-      "read_at": "services/lmr_area_inputs.py:293",
+      "read_at": "services/lmr_area_inputs.py:305",
       "nullable": "edge_m and nearest_m may be None only when the key is present",
-      "guard_at": "services/lmr_area_inputs.py:293 (type, key-present, non-negative and date checks)",
+      "guard_at": "services/lmr_area_inputs.py:305 (type, key-present, non-negative and date checks)",
       "if_missing": "The layer is left out and the older rule applies."
     },
     {
@@ -190,7 +190,7 @@
       "repro": "python -m pytest tests/test_lmr_area_inputs.py -q -o addopts= -k pipeline_nearest"
     }
   ],
-  "residual_risk": "1) Our flood extents are not proven equal to the law's Figure 1-1 (a small overview map with no coordinates): an inside lot stays a warning, worded as on the study's flood map. 2) The flood copy has a 400 day age limit, my choice for a dated study; the owner-approved 45 days is for monthly-changing legal maps. The copy came from spatial_overlays synced 2026-10-29; whether that is the data.nsw.gov.au update of 2025-10-08 was not checked. 3) The list of 13 pipelines with no published route came from one research pass and is marked not verified; no route was found for licences 1, 3, 4, 5, 6, 10, 12, 14, 24, 29, 35, 42 or Clyde to Gore Bay, and a request to NSW Energy, Viva and Ampol is pending. 4) The earlier six-layer map copy (PR 1672) is still not in the Python image, so it is off in production; that is left as a separate decision. 5) One Marrickville topic-coverage test already failed before this change.",
+  "residual_risk": "1) Our flood extents are not proven equal to the law's Figure 1-1 (a small overview map with no coordinates): an inside lot stays a warning, worded as on the study's flood map. 2) The flood copy has a 400 day age limit, my choice for a dated study; the owner-approved 45 days is for monthly-changing legal maps. The copy came from spatial_overlays synced 2026-10-29; whether that is the data.nsw.gov.au update of 2025-10-08 was not checked. 3) The list of 13 pipelines with no published route came from one research pass and is marked not verified; no route was found for licences 1, 3, 4, 5, 6, 10, 12, 14, 24, 29, 35, 42 or Clyde to Gore Bay, and a request to NSW Energy, Viva and Ampol is pending. 4) The earlier six-layer map copy (PR 1672) is still not in the Python image, so it is off in production; that is left as a separate decision. 5) One Marrickville topic-coverage test already failed before this change. 6) Two cross-review points were judged and not changed: the flood-study box is the box our flood copy spans (a lot outside it keeps the older rule; inside it, absence from the study is absence from the law's Figure 1-1), and the copy is not proven equal to that figure, so a clear needs the 100 m margin and the wording says our copy; and spatial_overlays has no is_active column, so that filter does not apply.",
   "post_merge": {
     "db_reset": "None: the database was only read.",
     "secrets": "None.",
