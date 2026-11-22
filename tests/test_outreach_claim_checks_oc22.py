@@ -57,10 +57,14 @@ def test_unreadable_or_empty_record_fails_not_passes(tmp_path):
     assert run(tmp_path, {})[0] == occ.FAIL
 
 
-def test_oc22_is_declared_false_until_a_record_exists():
+def test_oc22_is_declared_true_only_when_a_record_exists():
+    """A claim declared true needs a record. The reverse is NOT required: a record can sit in the repo and the claim still be declared false when
+    the record is stale (its data fingerprint no longer matches, 2026-11-22) or a fresh run failed. The ledger (scripts/dq_check.py) enforces the other
+    direction: a row declared false whose check passes reads contradicted, so a forgotten flip back to true is caught there."""
     d = json.loads((ROOT / ".claude" / "dq_checks.json").read_text(encoding="utf-8"))["checks"]["OC-22"]
     assert d["blocks_outreach"] is True
-    assert (ROOT / "data" / "lmr_area_accuracy.json").is_file() == (d["declared"] == "true")
+    if d["declared"] == "true":
+        assert (ROOT / "data" / "lmr_area_accuracy.json").is_file()
 
 
 def test_the_fingerprint_changes_when_a_walking_file_changes(tmp_path):
