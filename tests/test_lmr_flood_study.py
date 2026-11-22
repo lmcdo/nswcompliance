@@ -128,3 +128,13 @@ def test_the_flood_rule_alone_passes_its_figures_on_in_the_public_rule_list():
     flood = [r for r in rules if r["rule"] == "pmf_hawkesbury_nepean"]
     assert len(flood) == 1 and flood[0]["figures"]["nearest_m"] == 9855.7 and flood[0]["figures"]["flood_state"] == "outside"
     assert all("figures" not in r for r in rules if r["rule"] != "pmf_hawkesbury_nepean")
+
+
+def test_f_a_lot_touching_a_flood_area_warns_even_when_its_outline_runs_past_the_box():
+    r = _f_rule(_fm(CLEAR, _pmf(inside=True, within_box=False, edge_m=0.0, nearest_m=0.0)))
+    assert r["outcome"] == "warn" and r["figures"]["flood_state"] == "inside"
+
+
+def test_f_a_lot_outside_the_box_and_not_touching_a_flood_area_keeps_the_older_rule():
+    r = _f_rule(_fm(CLEAR, _pmf(inside=False, within_box=False, edge_m=900.0, nearest_m=900.0)))
+    assert "flood_state" not in r["figures"] and "our inference" in r["detail"]

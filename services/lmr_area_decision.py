@@ -403,7 +403,9 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
     # applies unchanged: the study area lies inside the river's catchment, so a lot outside the catchment cannot be on it (our inference, printed with the answer).
     pf = facts.paragraph("f")
     pmf = (m.get("flood_study") or {}).get("pmf") if isinstance(m.get("flood_study"), dict) else None
-    pmf_decides = isinstance(pmf, dict) and pmf.get("within_box") is True   # a lot outside the box the study mapped keeps the older rule
+    # A lot inside the box our copy spans is decided by it. A lot that touches a flood area is decided by it even if its outline runs past the box (an intersection is conclusive);
+    # any other lot outside the box keeps the older rule.
+    pmf_decides = isinstance(pmf, dict) and (pmf.get("within_box") is True or pmf.get("inside") is True)
     if pmf_decides:
         edge = pmf.get("edge_m")
         facts_out = {"flood_state": None, "edge_m": edge, "nearest_m": pmf.get("nearest_m"), "inside": pmf.get("inside"), "margin_m": FLOOD_EDGE_M,

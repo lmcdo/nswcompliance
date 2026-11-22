@@ -188,3 +188,27 @@ def test_the_downloader_keeps_the_flood_study_layers_it_does_not_own(tmp_path, m
     for name in FLOOD_STUDY:
         assert after["layers"][name] == src["layers"][name], name
     assert set(after["layers"]) == set(EXPECTED) | set(FLOOD_STUDY)
+
+
+@pytest.mark.parametrize("content", ["{ not json", "[]", '{"read_on": "2026-11-18"}', '{"layers": []}'])
+def test_the_downloader_stops_without_writing_anything_when_the_existing_manifest_cannot_be_read(tmp_path, monkeypatch, content, capsys):
+    """Carrying on would delete the flood layers it does not own; it must stop, say why, and leave every file as it found it."""
+    out = tmp_path / "maps"
+    out.mkdir()
+    (out / "manifest.json").write_text(content, encoding="utf-8")
+    monkeypatch.setattr(dl, "OUT_DIR", out)
+    fc = {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"OBJECTID": 1}, "geometry": {"type": "Point", "coordinates": [151.0, -33.0]}}]}
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: json.loads(json.dumps(fc)))
+    assert dl.main(["--apply"]) == 1
+    assert "STOPPED" in capsys.readouterr().out
+    assert (out / "manifest.json").read_text(encoding="utf-8") == content
+    assert sorted(p.name for p in out.iterdir()) == ["manifest.json"]   # no layer file was written either
+
+
+def test_the_downloader_may_initialise_when_there_is_no_manifest_yet(tmp_path, monkeypatch):
+    out = tmp_path / "maps"
+    monkeypatch.setattr(dl, "OUT_DIR", out)
+    fc = {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"OBJECTID": 1}, "geometry": {"type": "Point", "coordinates": [151.0, -33.0]}}]}
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: json.loads(json.dumps(fc)))
+    assert dl.main(["--apply"]) == 0
+    assert set(json.loads((out / "manifest.json").read_text(encoding="utf-8"))["layers"]) == set(EXPECTED)
