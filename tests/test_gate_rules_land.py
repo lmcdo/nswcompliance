@@ -65,6 +65,14 @@ def test_zones_kind_sets_zones_only_when_unrestricted(use, zones):
     assert ch == [(1, "v2_applicable_zones", zones, ["R2", "R3"], "land_limits")]  # noqa: zone-codes  (test input, not taxonomy data)
 
 
+def test_zones_kind_narrows_a_wider_row_but_never_widens(use):
+    use(entry("zones", ["R2"]))  # noqa: zone-codes  (test input, not taxonomy data)
+    ch = g.apply_land_limits(FakeCur([row(zones=["R2", "R3", "R4"])]), None, True)  # noqa: zone-codes  (test input, not taxonomy data)
+    assert ch == [(1, "v2_applicable_zones", ["R2", "R3", "R4"], ["R2"], "land_limits")]  # noqa: zone-codes  (test input, not taxonomy data)
+    assert g.apply_land_limits(FakeCur([row(zones=["R2"])]), None, True) == []  # same set: nothing to do  # noqa: zone-codes  (test input, not taxonomy data)
+    assert g.apply_land_limits(FakeCur([row(zones=["R3", "R4"])]), None, True) == []  # not a superset: leave  # noqa: zone-codes  (test input, not taxonomy data)
+
+
 def test_zones_kind_leaves_an_already_restricted_row(use):
     use(entry("zones", ["R2"]))  # noqa: zone-codes  (test input, not taxonomy data)
     assert g.apply_land_limits(FakeCur([row(zones=["B1"])]), None, True) == []  # noqa: zone-codes  (test input, not taxonomy data)
@@ -111,7 +119,7 @@ def test_the_real_file_is_consistent():
     es = g.entries()                                   # raises on a malformed or miscounted entry
     assert len(es) > 100
     assert {e["kind"] for e in es} == {"zones", "heritage"}   # place-specific rows are held for an owner decision
-    assert sum(e["expect"] for e in es) == 739
+    assert sum(e["expect"] for e in es) == 868
     assert all(set(e["zones"]) for e in es if e["kind"] == "zones")
 
 
