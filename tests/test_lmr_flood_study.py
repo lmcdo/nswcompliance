@@ -138,3 +138,14 @@ def test_f_a_lot_touching_a_flood_area_warns_even_when_its_outline_runs_past_the
 def test_f_a_lot_outside_the_box_and_not_touching_a_flood_area_keeps_the_older_rule():
     r = _f_rule(_fm(CLEAR, _pmf(inside=False, within_box=False, edge_m=900.0, nearest_m=900.0)))
     assert "flood_state" not in r["figures"] and "our inference" in r["detail"]
+
+
+def test_f_no_clear_from_the_flood_copy_without_a_lot_outline():
+    """Only the point was tested: a parcel could cross the flood area, so the older rule applies (which also needs an outline to clear)."""
+    r = _f_rule(_fm(CLEAR, _pmf(inside=False, within_box=True, used_outline=False, edge_m=900.0, nearest_m=900.0)))
+    assert "flood_state" not in r["figures"] and "our inference" in r["detail"]
+
+
+def test_f_a_point_inside_a_flood_area_still_warns_without_an_outline():
+    r = _f_rule(_fm(CLEAR, _pmf(inside=True, within_box=True, used_outline=False, edge_m=300.0, nearest_m=0.0)))
+    assert r["outcome"] == "warn" and r["figures"]["flood_state"] == "inside"
