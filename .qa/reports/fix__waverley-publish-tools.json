@@ -1,12 +1,13 @@
 {
  "tier": "standard",
  "justification": "Standard: adds an opt-in flag to the commit script and commits a decision script that records review verdicts. Not Minor: the decision script writes verdicts to the production review queue when run with --apply. Not Critical: nothing runs in this change, the flag only skips a fleet-wide nightly sweep, both default to the old behaviour, and the decision script is dry-run by default, backs up before writing and changes only status and reviewer fields on pending rows.",
- "commit_hash": "904afbe3",
+ "commit_hash": "83ba9407",
  "files": [
   "scripts/dcp_commit_approved.py",
   "tests/test_dcp_commit_approved_council_quote.py",
   "scripts/dcp_decide_by_page_cells.py",
-  "tests/test_dcp_decide_by_page_cells.py"
+  "tests/test_dcp_decide_by_page_cells.py",
+  "tests/test_dcp_decide_by_page_cells_real_db.py"
  ],
  "pre_impl": {
   "existing_data": "Waverley's review queue holds 7,920 pending rows for its staged file v1.2-2026-11-10: 4,645 added, 3,250 removed, 25 changed. Of the 3,250 removed rows, 2,919 still have their exact words printed in the new PDF; 331 do not. A dry run of the decision script on the real queue gave approve 4,482, skip 3,532 and wrote nothing.",
@@ -20,7 +21,7 @@
   "command": "python -m pytest tests/test_dcp_commit_approved_council_quote.py tests/test_dcp_decide_by_page_cells.py -q",
   "fails_when": "The flag stops gating either fleet sweep call, or the per-chapter council words step is placed behind the flag, or the decision script approves a row with a cell not on its page or skips a rule worded with should or is required.",
   "observed_red": "Two deliberate breaks of the flag (ignored at the end of a commit, ignored on an idle night) each failed a test.",
-  "observed_green": "32 related tests pass. A dry run of the decision script on Waverley's real queue returned approve 4,482 and skip 3,532 and wrote nothing."
+  "observed_green": "32 related tests pass. A dry run of the decision script on Waverley's real queue returned approve 4,482 and skip 3,532 and wrote nothing. One real-layer test samples 300 real pending Waverley rows against the real PDF and checks every approved row has all its cells on its page (passes with the real flags on, not skipped)."
  },
  "functions": [
   {
