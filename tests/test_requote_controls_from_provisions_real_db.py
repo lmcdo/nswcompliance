@@ -18,11 +18,11 @@ def test_every_planned_quote_for_a_real_council_is_a_substring_of_its_current_ru
         pytest.skip("real database test: run with PYTEST_REAL_DB=1 DATABASE_URL=... -o addopts= -m database; skipped, not a pass")
     conn = r._connect(readonly=True)
     try:
-        ctls, provs = r._load(conn.cursor(), "waverley")
+        ctls, provs, others = r._load(conn.cursor(), "waverley")
     finally:
         conn.close()
     assert provs, "no current Waverley rules"
-    planned, rejected = r.plan(ctls, provs, {})
+    planned, rejected = r.plan(ctls, provs, {}, others)
     by_id = {p["id"]: p for p in provs}
     for cid, p in planned.items():
         assert r.ws(p["quote"]) in r.ws(by_id[p["provision_id"]]["text"])

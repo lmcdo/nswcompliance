@@ -47,7 +47,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MARGIN = 1.5            # noqa: regulatory-number -- engineering margin: best unit must beat the runner-up by this factor, not a planning figure
 MIN_QUOTE = 8           # noqa: regulatory-number -- shortest quote worth storing, in characters
 MAX_QUOTE = 400         # noqa: regulatory-number -- longest quote, in characters (one sentence or one table row)
-HOLD_REASON = re.compile(r"^(quote not|chapter_pdf_changed)", re.I)   # a hold the quote check itself wrote; a person's note is never released here
+HOLD_REASON = re.compile(r"(quote not word-for-word in source PDF \(whole-PDF check [0-9-]+\)"
+                         r"|quote not proven word for word on the cited PDF page \((unchecked|wrong_page|not_found|no_source)\)"
+                         r"|chapter_pdf_changed)")   # the complete reasons the quote check writes; HOLD_REASON.fullmatch, never a prefix, so a person's note is never released
 _NUM = re.compile(r"\d+(?:\.\d+)?")
 _STOP = set("the a an of to and or for in on is are be must not shall with by at as that this from all any".split())
 
@@ -73,6 +75,7 @@ def units(text: str) -> list[str]:
     return [u for u in out if MIN_QUOTE <= len(u) <= MAX_QUOTE]
 
 
+LABEL = re.compile(r"^(?:[A-Za-z]{0,3}[0-9]+(?:[.][0-9]+)*[.)]?|[(][a-z0-9]+[)]|[-*>#]+)" + chr(92) + "s*")   # O1, 3.2.1, (a), a bullet or a heading mark
 OBJECTIVE = re.compile(r"^(to|the objectives? (of|are|is))" + chr(92) + "b", re.I)   # an objective states an aim ("To support ... target"), not a control a lot must meet
 
 
@@ -83,7 +86,10 @@ def prove(quote: Optional[str], provision_text: Optional[str], ctl: dict) -> tup
         return False, "no quote or wrong length"
     if q not in ws(provision_text):
         return False, "not an exact substring of the rule"
-    if OBJECTIVE.match(q):
+    bare = q
+    for _ in range(6):          # a label may be stacked: "# O1 (a) To support ..."
+        bare = LABEL.sub("", bare, count=1).strip()
+    if OBJECTIVE.match(q) or OBJECTIVE.match(bare):
         return False, "an objective, not a control"
     want = numbers_of(ctl)
     if want and not want <= set(_NUM.findall(q)):
@@ -146,7 +152,7 @@ def propose(ctl: dict, idx: Index) -> Optional[tuple[int, Any, str]]:
     return top[0][1], top[0][2], top[0][3]
 
 
-def plan(ctls: list[dict], provs: list[dict], answers: dict[int, dict]) -> tuple[dict[int, dict], dict[int, str]]:
+def plan(ctls: list[dict], provs: list[dict], answers: dict[int, dict], others: Optional[list[dict]] = None) -> tuple[dict[int, dict], dict[int, str]]:
     """(planned, rejected). planned[cid] = {provision_id, page, quote, ctl, by}; rejected[cid] = why it was left alone."""
     by_id = {p["id"]: p for p in provs}
     idx = Index(provs)
@@ -167,6 +173,9 @@ def plan(ctls: list[dict], provs: list[dict], answers: dict[int, dict]) -> tuple
                 continue
             pid, _page, quote = got
             by = "program"
+        if not ctl.get("source_chapter_key") or by_id[pid].get("chapter") != ctl.get("source_chapter_key"):
+            rejected[cid] = f"{by}: the rule is not in the control's own chapter"
+            continue
         ok, why = prove(quote, by_id[pid]["text"], ctl)
         if not ok:
             rejected[cid] = f"{by}: {why}"
@@ -175,13 +184,25 @@ def plan(ctls: list[dict], provs: list[dict], answers: dict[int, dict]) -> tuple
     for cid in ambiguous(planned):
         rejected[cid] = "ambiguous: the same quote is planned for a control of a different value"
         planned.pop(cid)
+    # ... and against EVERY other current control of the council, including ones already proven: a table-cell quote already verbatim for
+    # value 0 must not be written onto the control for 0.4.
+    held = {ws(o.get("source_text")): [] for o in (others or [])}
+    for o in others or []:
+        held[ws(o.get("source_text"))].append(o)
+    for cid in list(planned):
+        q = planned[cid]["quote"]
+        mine = (planned[cid]["ctl"].get("value_min"), planned[cid]["ctl"].get("value_max"))
+        if any(o["id"] != cid and (o.get("value_min"), o.get("value_max")) != mine for o in held.get(q, [])):
+            rejected[cid] = "ambiguous: another current control with a different value already holds this quote"
+            planned.pop(cid)
     return planned, rejected
 
 
-CTL_SQL = """SELECT id, control_type, dev_type, value_min, value_max, unit, condition, source_text, pdf_page, provision_id
+CTL_SQL = """SELECT id, control_type, dev_type, value_min, value_max, unit, condition, source_text, pdf_page, provision_id, source_chapter_key
              FROM dcp_setback_controls WHERE lga = %s AND is_current AND (needs_review IS TRUE OR provision_id IS NULL OR quote_status IS DISTINCT FROM 'verbatim')
              ORDER BY id"""
-PROV_SQL = """SELECT id, provision_text, pdf_page FROM regulatory_provisions
+OTHERS_SQL = """SELECT id, value_min, value_max, source_text FROM dcp_setback_controls WHERE lga = %s AND is_current"""
+PROV_SQL = """SELECT id, provision_text, pdf_page, source_chapter_key FROM regulatory_provisions
               WHERE source_council = %s AND is_current AND source_chapter_key = ANY(%s)"""
 
 
@@ -200,8 +221,10 @@ def _load(cur, council: str):
     ctls = [dict(zip(cols, r)) for r in cur.fetchall()]
     chapters = sorted({r for r in _chapters(cur, council)})
     cur.execute(PROV_SQL, (council, chapters))
-    provs = [{"id": i, "text": t, "page": p} for i, t, p in cur.fetchall()]
-    return ctls, provs
+    provs = [{"id": i, "text": t, "page": p, "chapter": ch} for i, t, p, ch in cur.fetchall()]
+    cur.execute(OTHERS_SQL, (council,))
+    others = [dict(zip(("id", "value_min", "value_max", "source_text"), r)) for r in cur.fetchall()]
+    return ctls, provs, others
 
 
 def _chapters(cur, council: str) -> list[str]:
@@ -228,9 +251,9 @@ def main() -> int:
 
 def _requote(conn, a) -> int:
     cur = conn.cursor()
-    ctls, provs = _load(cur, a.council)
+    ctls, provs, others = _load(cur, a.council)
     answers = {x["control_id"]: x for x in json.loads(Path(a.answers).read_text(encoding="utf-8"))} if a.answers else {}
-    planned, rejected = plan(ctls, provs, answers)
+    planned, rejected = plan(ctls, provs, answers, others)
     print(f"{a.council}: {len(ctls)} controls not yet proven; {len(provs)} current rules; proven proposals {len(planned)} "
           f"({sum(1 for p in planned.values() if p['by'] == 'program')} by program, {sum(1 for p in planned.values() if p['by'] == 'reader')} by reader); left alone {len(rejected)}")
     for why, n in collections.Counter(rejected.values()).most_common():
@@ -280,7 +303,7 @@ def _release(conn, a) -> int:
     cur.execute("SELECT id, review_reason FROM dcp_setback_controls WHERE lga = %s AND is_current AND needs_review IS TRUE "
                 "AND quote_status = 'verbatim' AND provision_id IS NOT NULL ORDER BY id", (a.council,))
     rows = cur.fetchall()
-    free = [i for i, why in rows if HOLD_REASON.match(why or "")]
+    free = [i for i, why in rows if HOLD_REASON.fullmatch(why or "")]
     print(f"{a.council}: {len(rows)} held rows are proven verbatim and linked; {len(free)} are held only for a quote reason (releasable); "
           f"{len(rows) - len(free)} carry a person's note and are left held")
     if not a.apply or not free:
@@ -295,14 +318,19 @@ def _release(conn, a) -> int:
             if i in free:
                 w.writerow([i, why])
     print("backup:", back)
-    cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, review_reason = NULL, reviewed_at = now() WHERE id = ANY(%s) AND is_current AND needs_review IS TRUE "
-                "AND quote_status = 'verbatim'", (free,))
-    if cur.rowcount != len(free):
+    why_by_id = dict(rows)
+    n = 0
+    for i in free:       # per row, guarded on exactly what was read: a hold a person wrote since is never released
+        cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, review_reason = NULL, reviewed_at = now() WHERE id = %s AND lga = %s AND is_current "
+                    "AND needs_review IS TRUE AND quote_status = 'verbatim' AND provision_id IS NOT NULL AND review_reason IS NOT DISTINCT FROM %s",
+                    (i, a.council, why_by_id[i]))
+        n += cur.rowcount
+    if n != len(free):
         conn.rollback()
-        print("ABORTED: rows changed while planning; nothing written.")
+        print(f"ABORTED: {len(free) - n} row(s) changed while planning; nothing written.")
         return 1
     conn.commit()
-    print(f"RELEASED {cur.rowcount}")
+    print(f"RELEASED {n}")
     return 0
 
 

@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new script that, when run with --apply, edits the quote, page and link of numeric controls in the production controls table, and can release held rows. Not Minor: it writes to production and decides what a planner is shown as the council's words. Not Critical: dry run is the default, nothing runs in this change, every write is backed up first and guarded on the values read at planning time, migration 120 still wipes the proof on the edit so nothing is served until the existing word for word check passes, and release only frees holds the quote check itself wrote.",
- "commit_hash": "93f28938",
+ "commit_hash": "5ff2d738",
  "files": [
   "scripts/requote_controls_from_provisions.py",
   "tests/test_requote_controls_from_provisions.py",
@@ -18,8 +18,8 @@
  "falsifiable_check": {
   "command": "python -m pytest tests/test_requote_controls_from_provisions.py -q ; python scripts/requote_controls_from_provisions.py --council waverley --answers ANSWERS.json",
   "fails_when": "A quote that is not in the rule, lacks the control's number, is an objective, or is shared across values is planned; a reader's none is overruled; or release frees a hold a person wrote.",
-  "observed_red": "Seven deliberate breaks (number check off, substring check off, objective allowed, ambiguity ignored, reader none overruled, release any hold, no margin) each failed at least one test, and the first version of the objective rule failed its own test until repaired.",
-  "observed_green": "13 tests pass and 1 real-layer test passes. A dry run on Waverley plans 27 controls (0 by program, 27 by reader), leaves 15 ambiguous table cells, 10 whose quote lacks the number and 7 with no match, and writes nothing."
+  "observed_red": "Eleven deliberate breaks (number check off, substring check off, objective allowed, ambiguity ignored, reader none overruled, release any hold, no margin, chapter check off, label strip off, prefix match for holds, other controls ignored, release reason guard off) each failed at least one test.",
+  "observed_green": "19 tests pass and 1 real-layer test passes. A dry run on Waverley plans 27 controls (0 by program, 27 by reader) and leaves 15 ambiguous table cells, 10 whose quote lacks the number and 7 with no match; nothing is written."
  },
  "functions": [
   {
@@ -98,6 +98,34 @@
    "mitigated": true,
    "how": "Release frees only rows held for a reason the quote check wrote, and only when proven verbatim and linked.",
    "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k release -q"
+  },
+  {
+   "scenario": "The quote is in a different chapter of the same council with the same number and similar words.",
+   "what_happens": "A control would be linked to an unrelated rule and carry its text.",
+   "mitigated": true,
+   "how": "The rule must be in the control's own chapter, and a control with no chapter is left alone.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k another_chapter -q"
+  },
+  {
+   "scenario": "A quote is already held word for word by another current control of a different value.",
+   "what_happens": "The ambiguous cell would be written onto a second control.",
+   "mitigated": true,
+   "how": "The plan checks every other current control of the council, not only the unresolved ones.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k already_held -q"
+  },
+  {
+   "scenario": "A person writes a hold after planning and the release step runs.",
+   "what_happens": "A deliberate hold would be removed.",
+   "mitigated": true,
+   "how": "The release updates each row only while its reason is still the one planned on, and aborts and rolls back if any row differs.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k release_aborts -q"
+  },
+  {
+   "scenario": "An objective carries a clause label such as O1 or a bracketed letter.",
+   "what_happens": "An aim would pass as a control.",
+   "mitigated": true,
+   "how": "Clause labels are stripped before the objective test.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k labelled_objective -q"
   }
  ],
  "post_merge": {
