@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new script that, when run with --apply, edits the quote, page and link of numeric controls in the production controls table, and can release held rows. Not Minor: it writes to production and decides what a planner is shown as the council's words. Not Critical: dry run is the default, nothing runs in this change, every write is backed up first and guarded on the values read at planning time, migration 120 still wipes the proof on the edit so nothing is served until the existing word for word check passes, and release only frees holds the quote check itself wrote.",
- "commit_hash": "5ff2d738",
+ "commit_hash": "481eb617",
  "files": [
   "scripts/requote_controls_from_provisions.py",
   "tests/test_requote_controls_from_provisions.py",
