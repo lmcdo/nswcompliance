@@ -1,10 +1,12 @@
 {
  "tier": "standard",
  "justification": "Standard: it changes one published number and the declared state of six outreach claim rows. Not Minor: published figures and claim states are involved. Not Critical: no served answer, query or rule changes, the outreach is private pilot only, every flipped row is one whose own check was measured failing, and no check was loosened.",
- "commit_hash": "982f8fd3",
+ "commit_hash": "d5b075b5",
  "files": [
   ".claude/dq_checks.json",
-  "frontend-nextjs/lib/coverage.ts"
+  "frontend-nextjs/lib/coverage.ts",
+  "tests/test_no_hardcoded_council_counts.py",
+  "tests/test_outreach_claim_checks_oc22.py"
  ],
  "pre_impl": {
   "existing_data": "The published council count was 22; the database query behind it reads 21 because Waverley's 59 number rules are all held (43 not word for word on a 10 November check, 9 unchecked). Six claim rows failed their own checks on the live database on 2026-11-21 and 2026-11-22: OC-1, OC-18, OC-22, OC-24, OC-29 and OC-30.",
@@ -18,7 +20,7 @@
   "command": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils ; python scripts/dq_check.py --outreach",
   "fails_when": "The published council count differs from the database count, or a claim's declared state disagrees with its check in either direction.",
   "observed_red": "Before this change the outreach check read contradicted for OC-1, OC-18, OC-22, OC-24, OC-29 and OC-30 on the live database.",
-  "observed_green": "After: the council count reads 21 published and 21 live (OK), and the full outreach check reads 21 of 30 claims pass, 5 not yet, 4 not verified here, 0 contradicted. The 4 not verified here need packages only CI has."
+  "observed_green": "After: the council count reads 21 published and 21 live (OK), and the full outreach check reads 21 of 30 claims pass, 5 not yet, 4 not verified here, 0 contradicted. The 4 not verified here need packages only CI has. Two guard tests that pinned the old state were updated: the council count pin 22 to 21, and the OC-22 test now requires a record only when the claim is declared true, because the ledger already catches the other direction. 820 related tests pass."
  },
  "functions": [
   {
@@ -72,6 +74,13 @@
    "mitigated": true,
    "how": "Each note names its measured number and date, so it can be re-measured and corrected.",
    "repro": "python scripts/audit_rate_check.py"
+  },
+  {
+   "scenario": "The OC-22 guard test no longer fails when a record exists but the claim is declared false.",
+   "what_happens": "A claim could stay declared false after a good run is recorded.",
+   "mitigated": true,
+   "how": "The ledger reads a row declared false whose check passes as contradicted, so the forgotten flip back to true is caught there.",
+   "repro": "python scripts/dq_check.py --outreach"
   }
  ],
  "post_merge": {
