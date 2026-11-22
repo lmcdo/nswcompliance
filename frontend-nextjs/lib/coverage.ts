@@ -137,7 +137,7 @@
 export const COVERAGE = {
   provisionsTotal: 53716,
   dcpActionableProvisions: 39827,
-  dcpNumericCouncils: 21,   // 22 -> 21 on 22 Nov 2026: Waverley's 59 number rules are all held (43 quote not word for word on a 10 Nov check, 9 unchecked, 7 other), so it serves none until its new file is published; 25 -> 21 on 29 Oct 2026 after 641 number rules whose quote is not the council's words were withheld; 24 after 85 proven rules returned the same day; 22 on 3 Nov 2026 after 73 script-written quotes were rolled back
+  dcpNumericCouncils: 22,   // 21 -> 22 on 23 Nov 2026: Waverley's plan republished and 22 of its 59 number controls re-quoted from the council's own words and proven word for word; 22 -> 21 on 22 Nov 2026: Waverley's 59 number rules are all held (43 quote not word for word on a 10 Nov check, 9 unchecked, 7 other), so it serves none until its new file is published; 25 -> 21 on 29 Oct 2026 after 641 number rules whose quote is not the council's words were withheld; 24 after 85 proven rules returned the same day; 22 on 3 Nov 2026 after 73 script-written quotes were rolled back
   dcpSetbackTripleCouncils: 12,   // 16 -> 10 on 29 Oct 2026 (same withholding), 13 after 85 proven rules returned, 11 after 24 quotes found wholly on the next page were held; 13 after 49 more proven rules returned (council words, page fixed); 12 on 3 Nov 2026 after the 73-quote rollback; only councils whose front, side AND rear quotes are proven count
   dcpSetbackRows: 1069,
   heritageAreas: 2039,
@@ -158,7 +158,7 @@ export const COVERAGE = {
 export const COVERAGE_DISPLAY = {
   provisionsTotal: '53,000+',
   dcpActionableProvisions: '39,000+',
-  dcpNumericCouncils: '21',
+  dcpNumericCouncils: '22',
   dcpSetbackTripleCouncils: '12',
   dcpSetbackRows: '1,000+',
   heritageAreas: '2,039',
