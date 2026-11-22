@@ -71,10 +71,13 @@ def pipeline_coverage(path: Path = PIPELINE_COVERAGE_PATH) -> Optional[dict]:
     except (OSError, ValueError):
         return None
     lic = doc.get("licences_with_no_published_route") if isinstance(doc, dict) else None
-    if not (isinstance(lic, list) and lic and all(isinstance(x, int) and not isinstance(x, bool) and x > 0 for x in lic)
-            and isinstance(doc.get("named_in_law"), int) and isinstance(doc.get("checked_on"), str)):
+    named = doc.get("named_in_law") if isinstance(doc, dict) else None
+    if not (isinstance(lic, list) and lic and all(isinstance(x, int) and not isinstance(x, bool) and x > 0 for x in lic) and len(set(lic)) == len(lic)
+            and isinstance(named, int) and not isinstance(named, bool) and named > 0 and isinstance(doc.get("checked_on"), str)):
         return None
     other = doc.get("other_named_pipeline_with_no_published_route")
+    if len(lic) + (1 if isinstance(other, str) and other else 0) > named:   # more pipelines without a route than the law names is a malformed file
+        return None
     return {"licences": lic, "other": other if isinstance(other, str) and other else None, "named_in_law": doc.get("named_in_law"),
             "no_route_count": len(lic) + (1 if isinstance(other, str) and other else 0), "checked_on": doc.get("checked_on"), "verified": False}
 

@@ -407,6 +407,9 @@ def test_pipeline_coverage_reads_a_good_file(tmp_path):
     "not json", "[]", {}, {**_GOOD_COV, "licences_with_no_published_route": []}, {**_GOOD_COV, "licences_with_no_published_route": ["1"]},
     {**_GOOD_COV, "licences_with_no_published_route": [True]}, {**_GOOD_COV, "licences_with_no_published_route": [0]},
     {**_GOOD_COV, "licences_with_no_published_route": None}, {**_GOOD_COV, "named_in_law": "33"}, {**_GOOD_COV, "checked_on": 20261122},
+    {**_GOOD_COV, "named_in_law": True}, {**_GOOD_COV, "named_in_law": 0}, {**_GOOD_COV, "named_in_law": -3},
+    {**_GOOD_COV, "licences_with_no_published_route": [1, 1, 3]},                                   # a licence listed twice
+    {**_GOOD_COV, "named_in_law": 2},                                                              # three pipelines without a route, but the law names only two
 ])
 def test_pipeline_coverage_is_none_for_a_malformed_file_never_all_covered(tmp_path, bad):
     assert es.pipeline_coverage(_cov(tmp_path, bad)) is None
