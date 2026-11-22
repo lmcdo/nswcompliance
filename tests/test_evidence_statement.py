@@ -344,3 +344,78 @@ def test_a_clause_without_its_subrule_is_unreadable(tmp_path):
     p = tmp_path / "facts.json"
     p.write_text(json.dumps(doc), encoding="utf-8")
     assert es.road_rules(p)["status"] == "unreadable"
+
+
+# ---- flood-study and pipeline facts on the exclusion rows (distances for the page; nothing computed in evidence_statement)
+def _flood_lot(inside=False, edge_m=9855.7, nearest_m=9855.7, **over):
+    pmf = {"inside": inside, "edge_m": edge_m, "nearest_m": nearest_m, "within_box": True, "used_outline": True, "as_of": "2026-11-22", "polygons": 5}
+    m = _lot(hn_catchment={"point": True, "lot": True}, flood_study={"pmf": pmf, "aep500": {**pmf, "nearest_m": 10217.7}, "aep100": {**pmf, "nearest_m": 10246.9}},
+             pipeline={"hit": False, "names": [], "nearest_m": 23916, "nearest_name": "Sydney to Newcastle Pipeline"})
+    m.update(over)
+    return d.decide(m, FACTS)
+
+
+def test_flood_row_carries_the_rules_figures_and_the_two_frequency_distances():
+    rows = {r["para"]: r for r in es.exclusions(_flood_lot(), FACTS)}
+    f = rows["f"]
+    assert f["result"] == "clear" and f["facts"]["flood_state"] == "outside" and f["facts"]["nearest_m"] == 9855.7
+    assert f["facts"]["margin_m"] == d.FLOOD_EDGE_M and f["facts"]["copy_as_of"] == "2026-11-22"
+    assert f["facts"]["nearest_500_year_m"] == 10217.7 and f["facts"]["nearest_100_year_m"] == 10246.9
+
+
+def test_flood_row_inside_is_a_warning_with_its_state_never_clear():
+    f = {r["para"]: r for r in es.exclusions(_flood_lot(inside=True, edge_m=300.0, nearest_m=0.0), FACTS)}["f"]
+    assert f["result"] == "warn" and f["facts"]["flood_state"] == "inside" and f["facts"]["inside"] is True
+
+
+def test_flood_row_without_the_flood_copy_has_no_facts_and_the_older_rule_applies():
+    m = _lot(hn_catchment={"point": True, "lot": True})
+    f = {r["para"]: r for r in es.exclusions(d.decide(m, FACTS), FACTS)}["f"]
+    assert f["result"] == "warn" and "facts" not in f
+
+
+def test_pipeline_row_carries_the_nearest_distance_the_law_distance_and_the_named_gap_but_is_never_cleared():
+    i = {r["para"]: r for r in es.exclusions(_flood_lot(), FACTS)}["i"]
+    assert i["result"] == "not_checked"          # a gas map miss clears nothing: fuel pipelines and the law's licence list are not on it
+    assert i["facts"]["nearest_m"] == 23916 and i["facts"]["nearest_name"] == "Sydney to Newcastle Pipeline"
+    assert i["facts"]["limit_m"] == FACTS.number("s164_i_distance") and i["facts"]["hit"] is False
+    gap = i["facts"]["gap"]
+    assert gap["named_in_law"] == 33 and gap["no_route_count"] == 13 and gap["verified"] is False and 42 in gap["licences"] and gap["other"] == "Clyde to Gore Bay"
+
+
+def test_pipeline_row_has_no_facts_when_the_pipeline_was_not_measured():
+    m = _lot()
+    assert "facts" not in {r["para"]: r for r in es.exclusions(d.decide(m, FACTS), FACTS)}["i"]
+
+
+def _cov(tmp_path, doc):
+    import json
+    p = tmp_path / "cov.json"
+    p.write_text(json.dumps(doc) if not isinstance(doc, str) else doc, encoding="utf-8")
+    return p
+
+
+_GOOD_COV = {"checked_on": "2026-11-22", "named_in_law": 33, "licences_with_no_published_route": [1, 3], "other_named_pipeline_with_no_published_route": "Clyde to Gore Bay"}
+
+
+def test_pipeline_coverage_reads_a_good_file(tmp_path):
+    got = es.pipeline_coverage(_cov(tmp_path, _GOOD_COV))
+    assert got == {"licences": [1, 3], "other": "Clyde to Gore Bay", "named_in_law": 33, "no_route_count": 3, "checked_on": "2026-11-22", "verified": False}
+
+
+@pytest.mark.parametrize("bad", [
+    "not json", "[]", {}, {**_GOOD_COV, "licences_with_no_published_route": []}, {**_GOOD_COV, "licences_with_no_published_route": ["1"]},
+    {**_GOOD_COV, "licences_with_no_published_route": [True]}, {**_GOOD_COV, "licences_with_no_published_route": [0]},
+    {**_GOOD_COV, "licences_with_no_published_route": None}, {**_GOOD_COV, "named_in_law": "33"}, {**_GOOD_COV, "checked_on": 20261122},
+])
+def test_pipeline_coverage_is_none_for_a_malformed_file_never_all_covered(tmp_path, bad):
+    assert es.pipeline_coverage(_cov(tmp_path, bad)) is None
+
+
+def test_pipeline_coverage_missing_file_is_none(tmp_path):
+    assert es.pipeline_coverage(tmp_path / "nope.json") is None
+
+
+def test_the_committed_coverage_file_is_readable_and_counts_thirteen_of_thirty_three():
+    got = es.pipeline_coverage()
+    assert got is not None and got["no_route_count"] == 13 and got["named_in_law"] == 33

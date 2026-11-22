@@ -111,6 +111,57 @@
      "sha256": "38f6d370dfd3e8e4ea74dca92bbe64a90ddb5124da285f069f28acd9c0eed5ac"
     }
    ]
+  },
+  "hn_pmf": {
+   "source": "spatial_overlays instrument_key HNRFS_2024_PMF, ingested from: Hawkesbury-Nepean River Flood Study, May 2024 (NSW Reconstruction Authority), flood-extents.zip at data.nsw.gov.au/data/dataset/2024-hawkesbury-nepean-river-flood-study",
+   "use": "Probable Maximum Flood extent (s164(1)(f))",
+   "features": 430,
+   "read_on": "2026-11-22",
+   "max_age_days": 400,
+   "simplified_to_deg": 0.0001,
+   "study_date": "2024-05",
+   "files": [
+    {
+     "file": "hn_pmf.geojson.gz",
+     "features": 430,
+     "bytes": 256324,
+     "sha256": "d0664a2ac4d8fd88963b0e778e1abe46ff95c0d64f69d8b346189fbb0d6f3a57"
+    }
+   ]
+  },
+  "hn_500aep": {
+   "source": "spatial_overlays instrument_key HNRFS_2024_500AEP, ingested from: Hawkesbury-Nepean River Flood Study, May 2024 (NSW Reconstruction Authority), flood-extents.zip at data.nsw.gov.au/data/dataset/2024-hawkesbury-nepean-river-flood-study",
+   "use": "1-in-500 year flood extent (context)",
+   "features": 393,
+   "read_on": "2026-11-22",
+   "max_age_days": 400,
+   "simplified_to_deg": 0.0003,
+   "study_date": "2024-05",
+   "files": [
+    {
+     "file": "hn_500aep.geojson.gz",
+     "features": 393,
+     "bytes": 139800,
+     "sha256": "9c1d2d5f1879877411852b14dd57f5072c6780042b9a7e6186ea4e1ae2d30185"
+    }
+   ]
+  },
+  "hn_100aep": {
+   "source": "spatial_overlays instrument_key HNRFS_2024_100AEP, ingested from: Hawkesbury-Nepean River Flood Study, May 2024 (NSW Reconstruction Authority), flood-extents.zip at data.nsw.gov.au/data/dataset/2024-hawkesbury-nepean-river-flood-study",
+   "use": "1-in-100 year flood extent (context)",
+   "features": 1607,
+   "read_on": "2026-11-22",
+   "max_age_days": 400,
+   "simplified_to_deg": 0.0003,
+   "study_date": "2024-05",
+   "files": [
+    {
+     "file": "hn_100aep.geojson.gz",
+     "features": 1607,
+     "bytes": 158818,
+     "sha256": "b992eb91cfd4fcdafff01c7d52a057be3cd8b8f7e4750bd9c430b9130c23abd9"
+    }
+   ]
   }
  }
 }

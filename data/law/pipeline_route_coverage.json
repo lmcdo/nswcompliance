@@ -1,0 +1,21 @@
+{
+ "checked_on": "2026-11-22",
+ "law": "State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77(3), saved at data/law/transport-infrastructure-sepp-2021-s2.77-as-at-2026-11-08.txt",
+ "named_in_law": 33,
+ "licences_with_no_published_route": [
+  1,
+  3,
+  4,
+  5,
+  6,
+  10,
+  12,
+  14,
+  24,
+  29,
+  35,
+  42
+ ],
+ "other_named_pipeline_with_no_published_route": "Clyde to Gore Bay",
+ "basis": "Research on 2026-11-22: no NSW licence register or map layer carrying Pipelines Act licence numbers is published online; Geoscience Australia's national gas layer holds about 17 of the licensed gas pipelines by NAME only. No route was found for the licences listed here. This list was made by a research pass and has not been checked by a second source; re-check after the NSW Department of Climate Change, Energy, the Environment and Water answers a request for the register."
+}

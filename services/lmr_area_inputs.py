@@ -281,6 +281,65 @@ def _noise_bands(lat: float, lng: float, rings: Optional[list]) -> Optional[list
     return [{"code": (f.get("attributes") or {}).get("ANEF_CODE"), "name": (f.get("attributes") or {}).get("LAY_NAME")} for f in feats]
 
 
+# prior-art-checked: reuse not viable because the hits are pip internals and a blog page; this reads the flood-study copy through the injected function (services/lmr_map_copy.flood_distance),
+# the same pattern as copy_fn, and validates every field because a malformed answer must never read as "clear".
+FLOOD_STUDY_LAYERS = {"pmf": "hn_pmf", "aep500": "hn_500aep", "aep100": "hn_100aep"}
+
+
+def _num_or_none(v: Any) -> bool:
+    return v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v >= 0 and v != float("inf"))
+
+
+def _flood_study(lat: float, lng: float, rings: Optional[list], fn: Any, all_layers: bool = False) -> dict:
+    """How the lot sits against the saved flood-study layers: {"pmf": {...}} and, for the evidence page (all_layers), "aep500" and "aep100" too. The two flood-frequency layers are
+    context only and cost about 0.1 s each, so the public check reads the Probable Maximum Flood layer alone. A layer that gave no valid answer is left out, never filled in,
+    so the decision falls back to what it did before."""
+    out: dict[str, Any] = {}
+    for name, key in FLOOD_STUDY_LAYERS.items():
+        if name != "pmf" and not all_layers:
+            continue
+        try:
+            got = fn(key, lat, lng, rings)
+        except Exception as exc:  # noqa: BLE001 -- a failing copy leaves the layer out
+            logger.warning("lmr inputs: flood study copy failed for %s: %s", key, exc)
+            continue
+        if (isinstance(got, dict) and isinstance(got.get("inside"), bool) and isinstance(got.get("within_box"), bool)
+                and "edge_m" in got and "nearest_m" in got   # a missing key is a malformed answer, never "no flood area nearby" (None means that only when the key is present)
+                and _num_or_none(got.get("edge_m")) and _num_or_none(got.get("nearest_m"))
+                and isinstance(got.get("as_of"), str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", got.get("as_of") or "")):
+            out[name] = got
+    return out
+
+
+PIPELINE_LADDER_M = (5000, 20000, 60000)
+
+
+def _pipeline_nearest(lat: float, lng: float) -> dict:
+    """The nearest gas pipeline on Geoscience Australia's national map, in metres, for the evidence page. One to three small queries, widening: 5 km, 20 km, 60 km.
+    {"nearest_m", "nearest_name"} or {"nearest_m": None, "searched_m": 60000} when none within the widest search; {} when the service did not answer."""
+    import math
+
+    mx, my = 111320.0 * math.cos(math.radians(lat)), 110540.0
+    for radius in PIPELINE_LADDER_M:
+        params = {**_point_params(lat, lng, out_fields="feature_name"), "distance": str(radius), "units": "esriSRUnit_Meter", "returnGeometry": "true", "outSR": "4326"}
+        feats = _features(_get_json(LAYERS["pipeline"], params, post=True))
+        if feats is None:
+            return {}
+        best = None
+        for f in feats:
+            for path in ((f.get("geometry") or {}).get("paths") or []):
+                pts = [((x - lng) * mx, (y - lat) * my) for x, y in path]
+                for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+                    dx, dy = x2 - x1, y2 - y1
+                    t = 0.0 if dx == dy == 0 else max(0.0, min(1.0, -(x1 * dx + y1 * dy) / (dx * dx + dy * dy)))
+                    d = math.hypot(x1 + t * dx, y1 + t * dy)
+                    if best is None or d < best[0]:
+                        best = (d, (f.get("attributes") or {}).get("feature_name"))
+        if best is not None:
+            return {"nearest_m": round(best[0]), "nearest_name": best[1]}
+    return {"nearest_m": None, "searched_m": PIPELINE_LADDER_M[-1]}
+
+
 def _pipeline_near(lat: float, lng: float, rings: Optional[list], metres: float) -> dict:
     """Is a gas pipeline on Geoscience Australia's national map within `metres` of the lot? hit True / False, or None when the service did not answer."""
     extra = {"distance": str(metres), "units": "esriSRUnit_Meter"}
@@ -407,7 +466,8 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
            walk_surfaces: Optional[list] = None, safe_surfaces: Optional[list] = None, layers: Optional[dict] = None,
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
            bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None, copy_fn: Optional[Any] = None,
-           want_route: bool = False, route_surfaces: Optional[list] = None) -> dict:
+           want_route: bool = False, route_surfaces: Optional[list] = None,
+           flood_study_fn: Optional[Any] = None, want_distances: bool = False) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
     `want_route` (the evidence page only) also keeps the route each walk followed: a "route" entry on the crossings-only walk (from its own
@@ -449,6 +509,11 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
             m["pipeline"] = _pipeline_near(lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))
         except dec.LawFactsError:
             m["pipeline"] = {"hit": None, "names": []}
+    if flood_study_fn is not None and "flood_study" not in m:
+        m["flood_study"] = _flood_study(lat, lng, rings, flood_study_fn, all_layers=want_distances)
+    pl = m.get("pipeline")
+    if want_distances and isinstance(pl, dict) and pl.get("hit") is False and "nearest_m" not in pl:   # only the evidence page asks: the public check stays one query
+        m["pipeline"] = {**pl, **_pipeline_nearest(lat, lng)}
     if flood_fn is not None and "flood_planning" not in m:
         m["flood_planning"] = _flood_answer(m.get("lga"), rings, flood_fn)
 

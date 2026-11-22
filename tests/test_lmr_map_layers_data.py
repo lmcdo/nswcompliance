@@ -18,6 +18,8 @@ import download_map_layers as dl  # noqa: E402
 MAPS = REPO / "data" / "law" / "maps"
 EXPECTED = {"tod_sites": 9597, "accelerated_tod": 8, "lmr_exclusion": 4, "hn_catchment": 11, "georges_catchment": 1,
             "coastal_vuln": 10, "airport_noise": 29, "heritage_shr": 1825}
+# The flood-study copy (scripts/lmr_area/export_flood_copy.py) shares the manifest but is NOT made by download_map_layers.py: the downloader must leave it exactly as it is.
+FLOOD_STUDY = {"hn_pmf": 430, "hn_500aep": 393, "hn_100aep": 1607}
 LIMIT = 2 * 1024 * 1024
 
 
@@ -38,9 +40,12 @@ def test_the_script_names_exactly_the_layers_the_area_check_asks_for_live():
 
 def test_the_manifest_lists_every_layer_with_the_feature_counts_read_on_the_day():
     m = manifest()
-    assert set(m["layers"]) == set(EXPECTED) and m["read_on"] >= "2026-11-18"
-    for name, n in EXPECTED.items():
+    assert set(m["layers"]) == set(EXPECTED) | set(FLOOD_STUDY) and m["read_on"] >= "2026-11-18"
+    for name, n in {**EXPECTED, **FLOOD_STUDY}.items():
         assert m["layers"][name]["features"] == n, name
+    for name in FLOOD_STUDY:   # a dated study: its own read_on and age limit, and the tolerance it was simplified to
+        meta = m["layers"][name]
+        assert meta["read_on"] >= "2026-11-22" and meta["max_age_days"] == 400 and meta["simplified_to_deg"] > 0 and meta["study_date"] == "2024-05", name
 
 
 def test_every_file_is_listed_unmodified_and_fits_the_repo_limit():
@@ -165,3 +170,21 @@ def test_a_layer_over_the_repo_limit_is_split_into_numbered_parts(monkeypatch, t
     info = json.loads((tmp_path / "manifest.json").read_text())["layers"]["big"]
     assert len(info["files"]) > 1 and sum(f["features"] for f in info["files"]) == 12
     assert all(f["file"].startswith("big.part") for f in info["files"])
+
+
+def test_the_downloader_keeps_the_flood_study_layers_it_does_not_own(tmp_path, monkeypatch):
+    """Its next --apply rewrites the manifest from its own LAYERS; the flood layers must survive that, or the flood check silently stops answering."""
+    import types
+
+    src = manifest()
+    out = tmp_path / "maps"
+    out.mkdir()
+    (out / "manifest.json").write_text(json.dumps(src), encoding="utf-8")
+    monkeypatch.setattr(dl, "OUT_DIR", out)
+    fc = {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"OBJECTID": 1}, "geometry": {"type": "Point", "coordinates": [151.0, -33.0]}}]}
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: json.loads(json.dumps(fc)))
+    assert dl.main(["--apply"]) == 0
+    after = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    for name in FLOOD_STUDY:
+        assert after["layers"][name] == src["layers"][name], name
+    assert set(after["layers"]) == set(EXPECTED) | set(FLOOD_STUDY)

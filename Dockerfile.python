@@ -45,6 +45,14 @@ COPY data/lmr_route_normal/ ./data/lmr_route_normal/
 # against the saved text, so BOTH files must be in the image; without them the evidence data says the road rules are unreadable.
 COPY data/law/road_rules_2014_pedestrian_facts.json ./data/law/road_rules_2014_pedestrian_facts.json
 COPY data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt ./data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt
+# The 2024 Hawkesbury-Nepean flood study copy (services/lmr_map_copy.py flood_distance reads data/law/maps/manifest.json and these three files; without them the flood check keeps its older
+# catchment rule and the evidence page shows no flood distance) and the list of the law's pipelines that have no published route (services/evidence_statement.py).
+# ONLY these files are copied on purpose: the other saved state maps in data/law/maps are not in the image, so the six-layer own-copy path of PR 1672 stays off here; turning it on is a separate decision.
+COPY data/law/maps/manifest.json ./data/law/maps/manifest.json
+COPY data/law/maps/hn_pmf.geojson.gz ./data/law/maps/hn_pmf.geojson.gz
+COPY data/law/maps/hn_500aep.geojson.gz ./data/law/maps/hn_500aep.geojson.gz
+COPY data/law/maps/hn_100aep.geojson.gz ./data/law/maps/hn_100aep.geojson.gz
+COPY data/law/pipeline_route_coverage.json ./data/law/pipeline_route_coverage.json
 # Sydney Airport's endorsed 2045 ANEF contours (services/sydney_anef.py reads this one file; without it every lot near the airport would answer "chart could not be read").
 COPY data/anef/sydney_anef_2045.json ./data/anef/sydney_anef_2045.json
 COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py

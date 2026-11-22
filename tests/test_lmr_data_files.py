@@ -109,10 +109,14 @@ def test_the_python_image_copies_every_file_the_area_check_reads():
     without these COPY lines every deployed lot would come back with a "Why:" reason and no area."""
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
     for needed in ("data/law/housing_sepp_lmr_facts.json", "data/law/lmr_station_entrances.json", "data/lmr_walk/", "data/lmr_walk_safe/", "data/lmr_route_normal/", "data/anef/sydney_anef_2045.json",
-                   "data/law/road_rules_2014_pedestrian_facts.json", "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt"):
+                   "data/law/road_rules_2014_pedestrian_facts.json", "data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt",
+                   "data/law/maps/manifest.json", "data/law/maps/hn_pmf.geojson.gz", "data/law/maps/hn_500aep.geojson.gz", "data/law/maps/hn_100aep.geojson.gz",
+                   "data/law/pipeline_route_coverage.json"):
         assert any(line.startswith("COPY") and needed in line for line in docker.splitlines()), needed
     assert (REPO / "data" / "law" / "housing_sepp_lmr_facts.json").is_file()
     assert (REPO / "data" / "anef" / "sydney_anef_2045.json").is_file()
+    assert (REPO / "data" / "law" / "maps" / "manifest.json").is_file()
+    assert (REPO / "data" / "law" / "pipeline_route_coverage.json").is_file()
 
 
 def test_the_crossings_only_walk_files_are_exactly_the_shipped_set_and_each_loads_with_the_safe_rule():

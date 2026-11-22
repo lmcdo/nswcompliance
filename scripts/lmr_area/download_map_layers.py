@@ -131,6 +131,11 @@ def main(argv: list[str]) -> int:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         for nm, g in pending:
             (OUT_DIR / nm).write_bytes(g)
+        try:   # layers this script does not own (the flood-study copy from export_flood_copy.py) stay exactly as they are
+            kept = {k: v for k, v in (json.loads((OUT_DIR / "manifest.json").read_text(encoding="utf-8")).get("layers") or {}).items() if k not in LAYERS}
+        except (OSError, ValueError):
+            kept = {}
+        manifest["layers"] = {**manifest["layers"], **kept}
         (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {len(manifest['layers'])} files and manifest.json to {OUT_DIR}")
     elif not apply:

@@ -169,6 +169,11 @@ jobs:
           # Unlisted = fail; a fixed one left in the ledger = fail; open count may only fall. Target: 0 open.
           # (2026-10-22: the old per-file count allowed 261 and named none, so none were removed.)
           python scripts/lint_hardcoded_regulatory_numbers.py --check
+      # The Hawkesbury-Nepean flood paragraph (s164(1)(f)) is decided from our saved copy of the 2024 flood study. This runs the rule before and after on random points (no network,
+      # no database) and fails if any lot inside or within the margin of a flood area would be reported clear. The copy-versus-source check needs the database and is run after each re-export.
+      - name: Flood rule - no lot inside or near a flood area becomes clear
+        if: always()
+        run: python scripts/lmr_area/compare_flood_rule.py 40
       # One producer per shared fact (2026-10-19): the yield box and the DCP tab
       # disagreed on one page because each derived the setback itself. 390 sites
       # produce 23 shared facts; this stops NEW copies while they are merged.
