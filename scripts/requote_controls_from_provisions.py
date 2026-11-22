@@ -295,7 +295,7 @@ def _release(conn, a) -> int:
             if i in free:
                 w.writerow([i, why])
     print("backup:", back)
-    cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, review_reason = NULL, reviewed_at = now() WHERE id = ANY(%s) AND needs_review IS TRUE "
+    cur.execute("UPDATE dcp_setback_controls SET needs_review = FALSE, review_reason = NULL, reviewed_at = now() WHERE id = ANY(%s) AND is_current AND needs_review IS TRUE "
                 "AND quote_status = 'verbatim'", (free,))
     if cur.rowcount != len(free):
         conn.rollback()
