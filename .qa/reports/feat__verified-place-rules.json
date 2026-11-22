@@ -1,0 +1,39 @@
+{
+  "tier": "minor",
+  "justification": "Minor: data lists only, no code. Withholds 311 council rules whose own text limits them to a named place with no outline, each verified by a reader against the council's page with a verbatim quote that I re-checked mechanically, and lists them on the council not-covered list per the 2026-10-15 ruling. Applied live with owner approval and a row-level backup; same pattern as #1655 and #1662.",
+  "commit_hash": "da40236d",
+  "files": [
+    "data/chapter_scope/never_serve.json",
+    "data/chapter_scope/not_covered_2026-10-15.json",
+    "frontend-nextjs/shared/not-covered-councils.json"
+  ],
+  "break_it": [
+    {
+      "scenario": "A re-publish re-keys the withheld rows and serves them to every house again.",
+      "what_happens": "Every house in the council sees rules for one named place again.",
+      "mitigated": true,
+      "how": "The rows are in never_serve.json with text fingerprints, which derive_precinct_keys, gate_rules and enrichment skip, and DQ-148 fails if one is served.",
+      "repro": "python scripts/dq_probe_live.py --id DQ-148 prints count 0."
+    },
+    {
+      "scenario": "A rule that is general or only excludes a place is hidden as place-limited.",
+      "what_happens": "Every house in the council loses a rule that applies to it.",
+      "mitigated": true,
+      "how": "Only rows where a reader gave a place name and a verbatim quote that I re-found in the supplied text were used; general, unsure and unverified rows were left alone.",
+      "repro": "311 of 355 place-limited calls passed the quote check; 44 did not and were excluded."
+    },
+    {
+      "scenario": "A house inside the named place loses a rule that applies to it.",
+      "what_happens": "That house no longer sees the rule on its main list.",
+      "mitigated": false,
+      "how": "Accepted under the 2026-10-15 ruling that unmapped small-area rules are hidden and listed as not covered yet; the council-level notice lists them.",
+      "repro": "Rows are listed per council and chapter in not_covered_2026-10-15.json."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "The council not-covered notice is not yet checked in a browser."
+  }
+}
