@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: one published figure and four claim rows change after a production write. Not Minor: a published number is involved. Not Critical: no query, rule or served answer changes in this pull request; the production write it follows (22 Waverley controls re-quoted, proven and released) was done with backups and the number is checked against the live database.",
- "commit_hash": "096ec6ac",
+ "commit_hash": "740d9079",
  "files": [
   "frontend-nextjs/lib/coverage.ts",
   "tests/test_no_hardcoded_council_counts.py",
