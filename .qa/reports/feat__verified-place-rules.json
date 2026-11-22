@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: data lists only, no code. Withholds 311 council rules whose own text limits them to a named place with no outline, each verified by a reader against the council's page with a verbatim quote that I re-checked mechanically, and lists them on the council not-covered list per the 2026-10-15 ruling. Applied live with owner approval and a row-level backup; same pattern as #1655 and #1662.",
-  "commit_hash": "da40236d",
+  "commit_hash": "b95e1aa8",
   "files": [
     "data/chapter_scope/never_serve.json",
     "data/chapter_scope/not_covered_2026-10-15.json",
