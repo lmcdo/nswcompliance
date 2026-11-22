@@ -1,7 +1,7 @@
 {
   "tier": "minor",
   "justification": "Minor: data and test count only, no code. 94 Campbelltown (78) and Hornsby (16) DCP rules limited to the zones the council's headings name; applied live with owner go and a row backup; same step as #1679.",
-  "commit_hash": "282fc5dc",
+  "commit_hash": "b72cb18d",
   "files": [
     "data/chapter_scope/land_limits.json",
     "tests/test_gate_rules_land.py"
