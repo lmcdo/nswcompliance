@@ -11,10 +11,10 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-pytestmark = [pytest.mark.database,
-              pytest.mark.skipif(os.environ.get("PYTEST_REAL_DB") != "1", reason="needs PYTEST_REAL_DB=1 and a real DATABASE_URL: psycopg2 is stubbed by default")]
+pytestmark = [pytest.mark.skipif(os.environ.get("PYTEST_REAL_DB") != "1", reason="needs PYTEST_REAL_DB=1 and a real DATABASE_URL: psycopg2 is stubbed by default")]
 
 
+@pytest.mark.database
 def test_the_committed_flood_copy_agrees_with_the_database_rows_it_was_made_from(capsys):
     from scripts.lmr_area import check_flood_copy as chk
 
@@ -25,6 +25,7 @@ def test_the_committed_flood_copy_agrees_with_the_database_rows_it_was_made_from
     assert "points 60" in out
 
 
+@pytest.mark.database
 def test_the_check_releases_its_connection_even_when_the_comparison_fails(monkeypatch):
     import psycopg2
 

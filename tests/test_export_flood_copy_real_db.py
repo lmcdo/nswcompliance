@@ -12,8 +12,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-pytestmark = [pytest.mark.database,
-              pytest.mark.skipif(os.environ.get("PYTEST_REAL_DB") != "1", reason="needs PYTEST_REAL_DB=1 and a real DATABASE_URL: psycopg2 is stubbed by default")]
+pytestmark = [pytest.mark.skipif(os.environ.get("PYTEST_REAL_DB") != "1", reason="needs PYTEST_REAL_DB=1 and a real DATABASE_URL: psycopg2 is stubbed by default")]
 
 
 def _cursor():
@@ -28,6 +27,7 @@ def _cursor():
     return conn, cur
 
 
+@pytest.mark.database
 def test_the_smallest_flood_layer_reads_back_in_full_and_matches_the_committed_manifest():
     from scripts.lmr_area import export_flood_copy as ex
 
@@ -44,6 +44,7 @@ def test_the_smallest_flood_layer_reads_back_in_full_and_matches_the_committed_m
     assert len({f["properties"]["source_oid"] for f in feats}) == len(feats)
 
 
+@pytest.mark.database
 def test_the_export_session_is_read_only():
     import psycopg2
 
