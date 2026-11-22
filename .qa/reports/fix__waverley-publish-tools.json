@@ -1,0 +1,113 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds an opt-in flag to the commit script and commits a decision script that records review verdicts. Not Minor: the decision script writes verdicts to the production review queue when run with --apply. Not Critical: nothing runs in this change, the flag only skips a fleet-wide nightly sweep, both default to the old behaviour, and the decision script is dry-run by default, backs up before writing and changes only status and reviewer fields on pending rows.",
+ "commit_hash": "52e29291",
+ "files": [
+  "scripts/dcp_commit_approved.py",
+  "tests/test_dcp_commit_approved_council_quote.py",
+  "scripts/dcp_decide_by_page_cells.py",
+  "tests/test_dcp_decide_by_page_cells.py",
+  "tests/test_dcp_decide_by_page_cells_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Waverley's review queue holds 7,920 pending rows for its staged file v1.2-2026-11-10: 4,645 added, 3,250 removed, 25 changed. Of the 3,250 removed rows, 2,919 still have their exact words printed in the new PDF; 331 do not. A dry run of the decision script on the real queue gave approve 4,482, skip 3,532 and wrote nothing.",
+  "assumption_mismatch": "The 11 November handoff said about 140 rows were left and the decision script ran; the script had a corrupted line in the unpushed copy (carriage returns inside a string) and the queue is 7,920 rows, not 140. Both were fixed or measured before any use.",
+  "new_vs_existing": "dcp_commit_approved.py already ran council_quote --unchecked fleet-wide on every commit (timeout 3300 s) as a nightly job; this adds a flag to skip it for a one-council commit, which already stores its own words per chapter. The decision script reuses CHAPTER_ROWS_SQL from dcp_approve_proven.",
+  "external_source_error": "If the PDF cannot be read the decision script raises before writing anything; the commit script's own guards and the per-chapter quote step are unchanged.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A rule is approved whose words are not on its page. The script approves a row only when every cell is printed on its stated page or the page either side, and skips everything else."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dcp_commit_approved_council_quote.py tests/test_dcp_decide_by_page_cells.py -q",
+  "fails_when": "The flag stops gating either fleet sweep call, or the per-chapter council words step is placed behind the flag, or the decision script approves a row with a cell not on its page or skips a rule worded with should or is required.",
+  "observed_red": "Four deliberate breaks (flag ignored at the end of a commit, flag ignored on an idle night, plain substring matching, short cells dropped) each failed a test.",
+  "observed_green": "17 related tests pass plus 1 real-layer test on 300 real Waverley rows. After the cross-review fixes (whole-word matching, short cells kept, truthful stored reason) the dry run on the real queue reads approve 4,480 and skip 3,534 (was 4,482 and 3,532) and writes nothing."
+ },
+ "functions": [
+  {
+   "name": "main --skip-fleet-sweep",
+   "file_line": "scripts/dcp_commit_approved.py",
+   "input": "the commit arguments including the skip flag",
+   "output": "the same commit with the fleet-wide unchecked quote sweep skipped and a printed line saying so",
+   "if_none": "without the flag the sweep runs exactly as before"
+  },
+  {
+   "name": "decide",
+   "file_line": "scripts/dcp_decide_by_page_cells.py",
+   "input": "a queued row's change type, text and its page text",
+   "output": "approve or skip for that row",
+   "if_none": "an empty text or a removal is skipped, never approved"
+  },
+  {
+   "name": "main --apply",
+   "file_line": "scripts/dcp_decide_by_page_cells.py",
+   "input": "the chapter list and the apply flag",
+   "output": "a backup CSV then status, reviewer and reason on pending rows only",
+   "if_none": "without --apply nothing is written"
+  }
+ ],
+ "values": [
+  {
+   "value": "review verdict per queued row",
+   "read_at": "the row's own text against its stated page in the chapter's current PDF",
+   "if_missing": "the row is skipped"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Pending review rows of the named chapters",
+   "file_line": "scripts/dcp_approve_proven.py CHAPTER_ROWS_SQL",
+   "where_clause": "WHERE status = pending AND council and chapter match AND source_content_hash equals the chapter's current hash"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The fleet sweep is skipped and a rule is left with no quote verdict.",
+   "what_happens": "A rule could stay withheld until the nightly run.",
+   "mitigated": true,
+   "how": "The per-chapter quote step for the committed chapter still runs; only the fleet-wide sweep for other councils is skipped and the nightly job still does it.",
+   "repro": "python -m pytest tests/test_dcp_commit_approved_council_quote.py -k skip_fleet -q"
+  },
+  {
+   "scenario": "A table cell is missing from its page.",
+   "what_happens": "A rule with a wrong cell would be approved.",
+   "mitigated": true,
+   "how": "A row is approved only when every cell is printed on its stated page or a page either side.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -q"
+  },
+  {
+   "scenario": "A real rule worded with should or is required is skipped.",
+   "what_happens": "A real rule would be left out of the published plan.",
+   "mitigated": true,
+   "how": "The decision no longer demands a requirement word; the six measured rows from 11 November are tested.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -q"
+  },
+  {
+   "scenario": "The decision script is run with --apply on the wrong chapter.",
+   "what_happens": "Verdicts would be written on rows that were not meant to be touched.",
+   "mitigated": true,
+   "how": "It writes only on pending rows of the named chapters, after a CSV backup of every row, and the rollback restores them to pending.",
+   "repro": "python scripts/dcp_decide_by_page_cells.py --chapters waverley/waverley-dcp-2022"
+  },
+  {
+   "scenario": "A table value is a smaller number printed inside a bigger one on the page, for example 5 metres against 15 metres.",
+   "what_happens": "The wrong value would be approved as the council's words.",
+   "mitigated": true,
+   "how": "A cell counts as printed only as whole words; 5 metres is not found inside 15 metres.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -k inside_a_different -q"
+  },
+  {
+   "scenario": "A short table cell such as 3 m or No differs from the page.",
+   "what_happens": "The difference would be ignored and the row approved.",
+   "mitigated": true,
+   "how": "Every cell holding a letter or digit is checked, however short.",
+   "repro": "python -m pytest tests/test_dcp_decide_by_page_cells.py -k short_cell -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dcp_commit_approved.py --help lists --skip-fleet-sweep; a Waverley-only commit with the flag prints that the fleet sweep was skipped."
+ }
+}

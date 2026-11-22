@@ -91,3 +91,12 @@ def test_main_calls_the_sweep_once_after_commits_and_alerts_on_failure():
     assert src.index("run_council_quote(council, chapter_key)") < src.rindex("run_unchecked_council_quote_sweep(")
     assert "if sweep_rc:" in src and "send(" in src
     assert "if sweep_rc and not committed:" in src
+
+
+def test_skip_fleet_sweep_flag_exists_and_gates_both_sweep_calls():
+    src = open(dca.__file__, encoding="utf-8").read()
+    assert '"--skip-fleet-sweep"' in src
+    assert src.count("args.skip_fleet_sweep") == 2   # the idle-night early return, and the end-of-commit sweep (which prints that it skipped)
+    # the per-chapter council words step is not behind the flag: a skipped fleet sweep must not skip a committed chapter's own words
+    i = src.index("run_council_quote(council, chapter_key)")
+    assert "skip_fleet_sweep" not in src[max(0, i - 200):i + 200]
