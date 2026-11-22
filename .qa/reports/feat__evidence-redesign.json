@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "The area check now uses our own copy of the 2024 Hawkesbury-Nepean River Flood Study flood areas to decide s164(1)(f), instead of the whole river catchment, and the evidence data carries the distances behind the flood and pipeline paragraphs. A lot inside the study's box is decided by the flood areas: well outside (more than the 100 m margin) is clear with its distance, inside is a warning (our copy is not proven equal to the law's Figure 1-1), within the margin is a warning that says the lot is on the edge. A lot outside the box, a missing copy or a malformed answer keeps the older catchment rule. The evidence endpoint also reports the nearest mapped gas pipeline (never a clear: fuel pipelines and the law's licence list are not on the map) and a coverage file naming the 13 of the law's 33 pipelines with no published route. The flood copy is three committed files made read-only from spatial_overlays, shipped in the Python image with the manifest only, so the other saved state maps stay off in production.",
-  "commit_hash": "e4ae6c6f",
+  "commit_hash": "b20e4d94",
   "files": [
     "Dockerfile.python",
     "data/law/maps/manifest.json",
