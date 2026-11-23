@@ -8,7 +8,7 @@ export default function ControlsSection({ data }: { data: Evidence }) {
   const cc = data.council_controls;
   return (
     <section id="controls" aria-labelledby="controls-h" className="flex flex-col gap-4 scroll-mt-6">
-      <h2 id="controls-h" className="text-2xl font-bold tracking-tight">3 · {lgaName(data.lga) ? `${lgaName(data.lga)}'s` : 'The council\'s'} rules for building a house</h2>
+      <h2 id="controls-h" className="text-2xl font-bold tracking-tight">3 · {lgaName(data.lga) ? `${lgaName(data.lga)}'s` : 'The council\'s'} own rules for building a house</h2>
       <p className="max-w-3xl text-base leading-relaxed text-gray-600">Controls for other kinds of development, and controls that apply only to part of a council area, are not shown here.</p>
       {cc.status !== 'ok' ? (
         <p className="text-sm">{cc.status === 'none' ? 'No current controls are held for this council.' : `Could not be read: ${cc.reason ?? 'no reason given'}.`}</p>

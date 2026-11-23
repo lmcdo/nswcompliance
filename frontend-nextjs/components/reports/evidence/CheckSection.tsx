@@ -55,9 +55,9 @@ export default function CheckSection({ data }: { data: Evidence }) {
   const instrument = data.law_instrument ? ` of ${data.law_instrument}` : '';
   return (
     <section id="check" aria-labelledby="check-h" className="flex flex-col gap-5 scroll-mt-6">
-      <h2 id="check-h" className="text-2xl font-bold tracking-tight">2 · Where the rules don&apos;t apply</h2>
+      <h2 id="check-h" className="text-2xl font-bold tracking-tight">2 · Land the housing rules leave out</h2>
       <p className="max-w-3xl text-base leading-relaxed text-gray-600">
-        The Low and Mid Rise housing rules don&apos;t apply to some land, such as flood-prone land. The law lists {t.total} kinds, in section 164(1){instrument}. {t.clear} did not apply to this lot.
+        Whatever the walk, the Low and Mid Rise housing rules leave out some land, such as flood-prone land. The law lists {t.total} kinds, in section 164(1){instrument}. {t.clear} did not apply to this lot.
         {t.excludes > 0 ? ` ${t.excludes === 1 ? 'One' : t.excludes} ${t.excludes === 1 ? 'was' : 'were'} found to apply to this lot.` : ''}{t.other.length - t.excludes > 0 ? ` ${t.other.length - t.excludes === 1 ? 'One' : t.other.length - t.excludes} could not be settled by this tool and ${t.other.length - t.excludes === 1 ? 'needs' : 'need'} a person.` : ''} Law wording for all {t.total}: see The proof section below.
       </p>
       {data.summary?.line ? <p className="text-sm font-semibold">{data.summary.line}</p> : null}

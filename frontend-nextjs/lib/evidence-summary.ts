@@ -23,40 +23,43 @@ export function walkVerdict(w: Evidence['walk']): WalkVerdict {
   const limit = finite(w.limit_m) ? w.limit_m : null, low = finite(w.walk_low_m) ? w.walk_low_m : null, high = finite(w.walk_high_m) ? w.walk_high_m : null;
   let best: number | null = finite(w.walk_best_m) ? w.walk_best_m : null;
   if (best === null && low !== null && finite(w.margin_low_m)) best = low + w.margin_low_m;   // the measured walk is the low end plus its margin
+  if (best === null || best < 0) return { kind: 'unknown', limit, low, high, best, gapM: null };   // no measured walk, no verdict: the range alone is never turned into 'within' or 'over'
   if (limit === null || low === null || high === null || low > high || limit <= 0 || low < 0) return { kind: 'unknown', limit, low, high, best, gapM: null };
   if (low > limit) return { kind: 'over', limit, low, high, best, gapM: low - limit };
   if (high <= limit) return { kind: 'within', limit, low, high, best, gapM: limit - high };
   return { kind: 'straddles', limit, low, high, best, gapM: null };
 }
 
-/** The words for the first tile and the bottom line, from the verdict. No colour verdict and no 'complies': it says where the numbers sit and that a person decides. */
+/** The words for the first tile and the bottom line. The measured walk against the limit, in metres; no colour verdict and no 'complies': it says where the walk sits and that a person decides. */
 export function verdictWords(v: WalkVerdict, detail: string | null): { pill: string; sentence: string; margin: string | null; bottom: string } {
   const lim = v.limit !== null ? fmtNum(v.limit) : '';
+  const has = v.best !== null && v.limit !== null;
+  const diff = has && v.best !== null && v.limit !== null ? Math.abs(v.best - v.limit) : v.gapM ?? 0;
   if (v.kind === 'over') {
     return {
       pill: `Over the ${lim} m limit`,
-      sentence: `The walk looks longer than ${lim} m, the limit the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.`,
-      margin: `Even the shortest case is ${fmtNum(v.gapM ?? 0)} m over.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m over the ${lim} m limit` : `The walk is longer than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.`,
+      margin: has ? `Shortest walk ${fmtNum(v.best as number)} m: ${fmtNum(diff)} m over.` : null,
       bottom: 'On this measure the lot does not meet the walking test.',
     };
   }
   if (v.kind === 'within') {
     return {
       pill: `Within the ${lim} m limit`,
-      sentence: `The walk looks shorter than ${lim} m, the limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.`,
-      margin: `Even the longest case is ${fmtNum(v.gapM ?? 0)} m under.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m under the ${lim} m limit` : `The walk is shorter than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.`,
+      margin: has ? `Shortest walk ${fmtNum(v.best as number)} m: ${fmtNum(diff)} m under.` : null,
       bottom: 'On this measure the lot meets the walking test.',
     };
   }
   if (v.kind === 'straddles') {
     return {
-      pill: `The range crosses the ${lim} m limit`,
-      sentence: `The walk could be shorter or longer than ${lim} m, so this tool cannot say which side of the limit the lot is on.`,
-      margin: null,
-      bottom: 'The walk could fall either side of the limit, so this tool cannot say whether the lot meets the walking test.',
+      pill: `Too close to the ${lim} m limit to call`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m against the ${lim} m limit.` : `The walk is close to the ${lim} m limit.`} That is close enough that a small difference in the route could put the lot on the other side, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.`,
+      margin: has ? `Shortest walk ${fmtNum(v.best as number)} m.` : null,
+      bottom: 'The walk is too close to the limit for this tool to say whether the lot meets the walking test.',
     };
   }
-  return { pill: 'No walking range', sentence: detail ?? 'No walking range was measured.', margin: null, bottom: 'No walking range was measured, so the walking test could not be applied.' };
+  return { pill: 'No walk measured', sentence: detail ?? 'No walk was measured.', margin: null, bottom: 'No walk was measured, so the walking test could not be applied.' };
 }
 
 export interface ScaleModel {

@@ -13,7 +13,7 @@ const EvidenceStatement = require('@/app/reports/evidence-statement/EvidenceStat
 const payload = (over: Record<string, unknown> = {}) => ({
   law_version_date: '2026-10-23', headline: 'Head line', lga: 'PENRITH', notes: ['A note'],
   exclusions: [{ para: 'a', clause: 's164(1)(a)', page: 78, law_words: 'bush fire prone land,', result: 'clear', result_words: 'No exclusion found', detail: 'lot outline is not on bush fire prone land', source_checked: 'NSW bush fire map' }],
-  walk: { clause: 's163', page: 77, anchor: 'Penrith station', limit_m: 800, walk_low_m: 454, walk_high_m: 754, detail: null, heuristic: null },
+  walk: { clause: 's163', page: 77, anchor: 'Penrith station', limit_m: 800, walk_low_m: 454, walk_high_m: 754, detail: null, heuristic: null, walk_best_m: 479 },
   council_controls: { status: 'ok', as_at_line: null, controls: [{ control_type: 'front_setback', requirement: '4.5 m', council_words: 'words here', clause: '2.8', clause_shown: false, page: 32, version_checks: { status: 'ok', versions: [{ version: 'v1.1', verdict: 'not_found', result_words: 'These words were not found in this file', checked_page: 32, stale: false }, { version: 'v1.2', verdict: 'verbatim', result_words: 'Same words on the cited page', checked_page: 32, stale: false }] } }] },
   council_files: { status: 'unreadable', reason: 'the file ledger did not answer', files: [] },
   ...over,
@@ -29,7 +29,9 @@ describe('evidence statement page', () => {
     mockFetch(payload());
     render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
-    expect(screen.getByText(/Possible walk: 454 to 754 m/)).toBeTruthy();
+    expect(screen.getByText('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.')).toBeTruthy();
+    expect(screen.getByText('The shortest walk against the limit')).toBeTruthy();
+    expect(screen.queryByText(/Possible walk/)).toBeNull();
     expect(screen.getByText('words here')).toBeTruthy();
     expect(screen.getByText(/Clause 2\.8: label not checked against the page/)).toBeTruthy();
     expect(screen.getByText(/v1.1: These words were not found in this file/)).toBeTruthy();
@@ -40,7 +42,7 @@ describe('evidence statement page', () => {
     expect(screen.queryByText(/Why a range\?/)).toBeNull();
   });
 
-  it('shows the count line, the range reason, the crossings-only walk, the not-checked card, the scope line and the footer', async () => {
+  it('shows the count line, the walk method, the crossings-only walk, the not-checked card, the scope line and the footer', async () => {
     params = 'lat=-33.75&lng=150.70';
     const base = payload();
     mockFetch(payload({
@@ -50,7 +52,8 @@ describe('evidence statement page', () => {
     }));
     render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText(/13 paragraphs of section 164\(1\): 2 not checked by this tool; 11 no exclusion found/)).toBeTruthy());
-    expect(screen.getByText(/less 25 m to the measured walk plus 75 m/)).toBeTruthy();
+    expect(screen.getByText(/How it is measured:/)).toBeTruthy();
+    expect(screen.queryByText(/less 25 m to the measured walk plus 75 m/)).toBeNull();
     expect(screen.getByText(/Crossings-only walk, for information/)).toBeTruthy();
     expect(screen.getByText(/about 861 m \(\+85 m compared with the normal walk\)/)).toBeTruthy();
     expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
@@ -62,6 +65,55 @@ describe('evidence statement page', () => {
     expect(screen.getAllByText(/It is not a planning certificate/)).toHaveLength(2);   // the method box and the record line
     expect(screen.getByText(/Section 164 exclusions \(law version dated 2026-10-23\)/)).toBeTruthy();
   });
+
+  it('never prints a range, a range reason or the engine heuristic, even when the payload carries them', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, heuristic: 'The engine heuristic: a second walking-route estimate.', margin_low_m: 25, margin_high_m: 75 } }));
+    const { container } = render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    const text = container.textContent ?? '';
+    expect(text).not.toContain('Why a range');
+    expect(text).not.toContain('Possible walk');
+    expect(text).not.toContain('second walking-route');
+    expect(text).not.toContain('engine heuristic');
+    expect(text).not.toMatch(/454 to 754/);
+    expect(text).toContain('Shortest walk 479 m');   // the one measured walk is printed instead
+  });
+
+  it('prints the measured walk (walk_best_m) as the walk tile figure and in the scale, not low to high', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, walk_best_m: 623 } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
+    expect(tile.textContent).toContain('623 m');
+    expect(tile.textContent).not.toMatch(/to 754/);
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('The shortest walk is 623 metres.');
+  });
+
+  it('with no walk_best_m, uses low plus margin_low_m (454 + 25 = 479) as the one walk', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, walk_best_m: null, margin_low_m: 25 } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    expect((screen.getByText('1 · THE WALK').closest('a') as HTMLElement).textContent).toContain('479 m');
+  });
+
+  it('with no measured walk at all, says no walk was measured and draws no scale', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, walk_best_m: null, detail: 'no route found' } }));
+    const { container } = render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    expect((screen.getByText('1 · THE WALK').closest('a') as HTMLElement).textContent).toContain('No walk measured');
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(container.querySelector('#walk')?.textContent).toContain('No walk was measured. no route found');
+    expect(container.querySelector('#walk')?.textContent).not.toContain('The shortest walk against the limit');
+  });
+
 
   it('shows an error, not a page with a missing section, when an optional part arrives in the wrong shape', async () => {
     params = 'lat=-33.75&lng=150.70';

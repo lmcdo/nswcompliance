@@ -42,21 +42,21 @@ describe('distanceWords', () => {
 
 describe('walkVerdict', () => {
   it('is over when even the shortest case is over the limit, with the gap', () => {
-    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 850, walk_high_m: 950 }));
+    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 850, walk_high_m: 950, walk_best_m: 900 }));
     expect(v).toMatchObject({ kind: 'over', limit: 800, low: 850, high: 950, gapM: 50 });
   });
   it('is within when even the longest case is inside the limit, with the gap', () => {
-    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754 }));
+    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754, walk_best_m: 600 }));
     expect(v).toMatchObject({ kind: 'within', gapM: 46 });
   });
   it('straddles when the range crosses the limit, and gives no gap', () => {
-    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 700, walk_high_m: 900 }));
+    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 700, walk_high_m: 900, walk_best_m: 800 }));
     expect(v.kind).toBe('straddles');
     expect(v.gapM).toBeNull();
   });
   it('treats a limit equal to the low end as straddles (low is not over), and equal to the high end as within with gap 0', () => {
-    expect(walkVerdict(walk({ limit_m: 700, walk_low_m: 700, walk_high_m: 900 })).kind).toBe('straddles');
-    const v = walkVerdict(walk({ limit_m: 900, walk_low_m: 700, walk_high_m: 900 }));
+    expect(walkVerdict(walk({ limit_m: 700, walk_low_m: 700, walk_high_m: 900, walk_best_m: 800 })).kind).toBe('straddles');
+    const v = walkVerdict(walk({ limit_m: 900, walk_low_m: 700, walk_high_m: 900, walk_best_m: 800 }));
     expect(v.kind).toBe('within');
     expect(v.gapM).toBe(0);
   });
@@ -74,6 +74,21 @@ describe('walkVerdict', () => {
     const v = walkVerdict(walk({ limit_m: 800, walk_low_m: null, walk_high_m: 754 }));
     expect(v).toMatchObject({ limit: 800, low: null, high: 754 });
   });
+  it('is unknown, never within/over/straddles, when low and high are valid but there is no measured walk', () => {
+    for (const o of [{ walk_low_m: 454, walk_high_m: 754 }, { walk_low_m: 850, walk_high_m: 950 }, { walk_low_m: 700, walk_high_m: 900 }]) {
+      const v = walkVerdict(walk(o));
+      expect(v.kind).toBe('unknown');
+      expect(v.best).toBeNull();
+      expect(v.gapM).toBeNull();
+    }
+  });
+  it('is unknown when the measured walk is negative', () => {
+    expect(walkVerdict(walk({ walk_best_m: -5 })).kind).toBe('unknown');
+  });
+  it('takes a real kind from low plus margin when there is no walk_best_m', () => {
+    const v = walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754, margin_low_m: 25 }));
+    expect(v).toMatchObject({ kind: 'within', best: 479, gapM: 46 });
+  });
   it('uses walk_best_m when given', () => {
     expect(walkVerdict(walk({ walk_best_m: 500 })).best).toBe(500);
   });
@@ -86,37 +101,54 @@ describe('walkVerdict', () => {
 });
 
 describe('verdictWords', () => {
-  it('over: names the limit, the gap, and says the lot does not meet the test', () => {
-    const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 1103, walk_high_m: 1203 })), null);
+  it('over: names the measured walk, the limit and the gap in metres, with no range', () => {
+    const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 853, walk_high_m: 1203, walk_best_m: 878 })), null);
     expect(w.pill).toBe('Over the 800 m limit');
-    expect(w.margin).toBe('Even the shortest case is 303 m over.');
-    expect(w.sentence).toContain('longer than 800 m');
+    expect(w.margin).toBe('Shortest walk 878 m: 78 m over.');
+    expect(w.sentence).toBe('The shortest walk is 878 m, which is 78 m over the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.');
     expect(w.bottom).toBe('On this measure the lot does not meet the walking test.');
   });
-  it('within: names the limit and the gap under it', () => {
-    const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754 })), null);
+  it('over with no measured walk: says the walk is longer than the limit and gives no metre figure or margin', () => {
+    const w = verdictWords({ kind: 'over', limit: 800, low: 1103, high: 1203, best: null, gapM: 303 }, null);
+    expect(w.margin).toBeNull();
+    expect(w.sentence).toBe('The walk is longer than the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.');
+  });
+  it('within: names the measured walk, the limit and the gap under it', () => {
+    const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754, walk_best_m: 479 })), null);
     expect(w.pill).toBe('Within the 800 m limit');
-    expect(w.margin).toBe('Even the longest case is 46 m under.');
-    expect(w.sentence).toContain('shorter than 800 m');
+    expect(w.margin).toBe('Shortest walk 479 m: 321 m under.');
+    expect(w.sentence).toBe('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.');
     expect(w.bottom).toBe('On this measure the lot meets the walking test.');
   });
-  it('straddles: says the tool cannot say, with no margin line', () => {
-    const w = verdictWords(walkVerdict(walk({ walk_low_m: 700, walk_high_m: 900 })), null);
-    expect(w.pill).toBe('The range crosses the 800 m limit');
+  it('within with no measured walk: says the walk is shorter than the limit and gives no margin', () => {
+    const w = verdictWords({ kind: 'within', limit: 800, low: 454, high: 754, best: null, gapM: 46 }, null);
     expect(w.margin).toBeNull();
-    expect(w.bottom).toContain('cannot say whether the lot meets the walking test');
+    expect(w.sentence).toBe('The walk is shorter than the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.');
+  });
+  it('straddles: gives the shortest walk against the limit and says the tool cannot say; no range wording', () => {
+    const w = verdictWords(walkVerdict(walk({ walk_low_m: 700, walk_high_m: 900, walk_best_m: 790 })), null);
+    expect(w.pill).toBe('Too close to the 800 m limit to call');
+    expect(w.margin).toBe('Shortest walk 790 m.');
+    expect(w.sentence).toContain('The shortest walk is 790 m against the 800 m limit.');
+    expect(w.bottom).toBe('The walk is too close to the limit for this tool to say whether the lot meets the walking test.');
+    expect(JSON.stringify(w).toLowerCase()).not.toContain('range');
+  });
+  it('straddles with no measured walk: no margin line', () => {
+    const w = verdictWords({ kind: 'straddles', limit: 800, low: 700, high: 900, best: null, gapM: null }, null);
+    expect(w.margin).toBeNull();
+    expect(w.sentence).toContain('The walk is close to the 800 m limit.');
   });
   it('unknown: uses the payload detail as the sentence when there is one, else a fixed line, and never a verdict', () => {
     const v = walkVerdict(walk({ walk_low_m: null }));
     expect(verdictWords(v, 'no route to the station').sentence).toBe('no route to the station');
-    expect(verdictWords(v, null).sentence).toBe('No walking range was measured.');
+    expect(verdictWords(v, null).sentence).toBe('No walk was measured.');
     const w = verdictWords(v, null);
-    expect(w.pill).toBe('No walking range');
+    expect(w.pill).toBe('No walk measured');
     expect(w.margin).toBeNull();
-    expect(w.bottom).toBe('No walking range was measured, so the walking test could not be applied.');
+    expect(w.bottom).toBe('No walk was measured, so the walking test could not be applied.');
   });
   it('never uses the word complies', () => {
-    for (const o of [{ walk_low_m: 900, walk_high_m: 950 }, { walk_low_m: 100, walk_high_m: 200 }, { walk_low_m: 700, walk_high_m: 900 }, { walk_low_m: null }]) {
+    for (const o of [{ walk_low_m: 900, walk_high_m: 950, walk_best_m: 920 }, { walk_low_m: 100, walk_high_m: 200, walk_best_m: 150 }, { walk_low_m: 700, walk_high_m: 900, walk_best_m: 800 }, { walk_low_m: null }]) {
       expect(JSON.stringify(verdictWords(walkVerdict(walk(o)), null)).toLowerCase()).not.toContain('complies');
     }
   });
@@ -262,6 +294,7 @@ describe('walkVerdict rejects zero and negative distances', () => {
     expect(w({ walk_low_m: -100, walk_high_m: -50 }).kind).toBe('unknown');
     expect(w({ limit_m: 0 }).kind).toBe('unknown');
     expect(w({ limit_m: -5 }).kind).toBe('unknown');
-    expect(w({}).kind).toBe('within');
+    expect(w({ walk_best_m: 600 }).kind).toBe('within');
+    expect(w({ walk_best_m: -1 }).kind).toBe('unknown');
   });
 });
