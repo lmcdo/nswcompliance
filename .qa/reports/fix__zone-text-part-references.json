@@ -1,0 +1,76 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a change to the applicability tagger's zone reading. Not Minor: it changes which text can produce a zone tag. Not Critical: nothing is written by this change, it only stops plan cross-references such as Part E4 from being read as zones, and the retag dry run on Waverley's real rows predicts 0 value changes and 0 served rows narrowed.",
+ "commit_hash": "97aad8b6",
+ "files": [
+  "enrichment/extractors/applicability_tagger.py",
+  "tests/test_applicability_plan_references.py"
+ ],
+ "pre_impl": {
+  "existing_data": "DQ-114 reads 1 on 2026-11-23 and read 0 before Waverley was republished. The one row is Waverley rule 275148, Special Character Areas, page 187: 'Refer to Part E4 for Special Character Areas'. Its text names E4, which is also the Environmental Living zone, Waverley has no such zone, and the tagger fell back to ALL with source filtered_to_all.",
+  "assumption_mismatch": "I first thought the 38 untagged Waverley annexure-page rows were the cause. They are no_config, which DQ-114 deliberately excludes. The one row DQ-114 counts is a different fault: a chapter reference read as a zone.",
+  "new_vs_existing": "The tagger skips text extraction for config-driven councils for exactly this reason, but a row with no config match still reads zones from text. Nothing stripped plan cross-references; the reference words cover part, chapter, annexure, appendix, section, figure, table and schedule.",
+  "external_source_error": "Not applicable: a pure function with no network or database call.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A cross-reference to a chapter is shown as a zone rule or hides a rule from the zones it applies to. The reference is removed before zone patterns run, and a zone written with the word zone or land is kept."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_applicability_plan_references.py tests/test_applicability_reference_rows.py tests/test_applicability_provenance.py -q",
+  "fails_when": "Part E4 is read as the E4 zone, or a real zone mention next to a reference is lost, or the word zone is stripped.",
+  "observed_red": "Two deliberate breaks (stripping off, and stripping the word zone) each failed tests.",
+  "observed_green": "117 tagger tests pass. The retag dry run on Waverley's 11,350 rows predicts 0 value changes and 0 served rows narrowed; nothing is written."
+ },
+ "functions": [
+  {
+   "name": "strip_plan_references",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "the text of one provision row",
+   "output": "the text with cross-references such as Part E4 or Annexure B3-2 removed",
+   "if_none": "an empty or missing text returns an empty string"
+  },
+  {
+   "name": "_extract_zones_from_text",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "the text of one provision row",
+   "output": "the zones the text names after cross-references are removed",
+   "if_none": "no zone mention returns an empty set as before"
+  }
+ ],
+ "values": [
+  {
+   "value": "zones read from text",
+   "read_at": "the row text with plan cross-references removed",
+   "if_missing": "the row keeps ALL and its earlier source"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "A rule says Refer to Part E4.",
+   "what_happens": "It would be tagged to the E4 zone, then dropped to filtered_to_all.",
+   "mitigated": true,
+   "how": "The reference is removed before the zone patterns run.",
+   "repro": "python -m pytest tests/test_applicability_plan_references.py -k part_reference -q"
+  },
+  {
+   "scenario": "A real zone mention sits next to a plan reference.",
+   "what_happens": "The real zone would be lost with the reference.",
+   "mitigated": true,
+   "how": "Only the reference phrase is removed; a zone written as zone E4 or land zoned B3 is kept.",
+   "repro": "python -m pytest tests/test_applicability_plan_references.py -k next_to_a_reference -q"
+  },
+  {
+   "scenario": "Reference words are broadened to include zone.",
+   "what_happens": "Real zone mentions would be stripped and rules would lose their zone scope.",
+   "mitigated": true,
+   "how": "A test proves a zone written with the word zone is still found.",
+   "repro": "python -m pytest tests/test_applicability_plan_references.py -k word_zone -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/retag_applicability_slug_docids.py --councils waverley (dry run), then --apply after the owner's yes; python scripts/dq_probe_live.py --id DQ-114 then reads 0."
+ }
+}
