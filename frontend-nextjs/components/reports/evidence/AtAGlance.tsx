@@ -16,15 +16,16 @@ export default function AtAGlance({ data }: { data: Evidence }) {
   const t = tally(data.exclusions);
   const cc = data.council_controls;
   const ccLabels = cc.status === 'ok' ? cc.controls.map((c) => c.label ?? c.control_type ?? 'Control not named') : [];
-  const needPerson = t.other.length;
   const excluded = t.excludes;
+  const anyOpen = t.other.length;
+  const needPerson = anyOpen - excluded;   // rows still open; an excluded row is a finding, not an open question
   return (
     <section aria-labelledby="glance-h" className="flex flex-col gap-5 rounded-3xl border border-gray-300 bg-white p-5 shadow-sm sm:p-8">
       <h2 id="glance-h" className="text-xl font-bold tracking-tight">At a glance</h2>
       <div className="flex flex-wrap gap-4">
         <a href="#walk" className={TILE}>
           <span className={LABEL}>1 · THE WALK</span>
-          {v.low !== null && v.high !== null ? <span className={BIG}>{fmtNum(v.low)} to {fmtNum(v.high)} m</span> : <span className={BIG}>No range</span>}
+          {v.kind !== 'unknown' && v.low !== null && v.high !== null ? <span className={BIG}>{fmtNum(v.low)} to {fmtNum(v.high)} m</span> : <span className={BIG}>No range</span>}
           <span className="text-sm text-gray-600">walk to the nearest station or town centre</span>
           <span className={`${PILL} ${v.kind === 'over' ? 'bg-gray-900 text-white' : 'border-2 border-gray-900 text-gray-900'}`}><span aria-hidden="true">{v.kind === 'over' ? '▲' : v.kind === 'within' ? '▼' : '◐'}</span>{words.pill}</span>
           <span className="text-sm leading-snug text-gray-800">{v.best !== null ? `Measured walk ${fmtNum(v.best)} m. ` : ''}{words.margin ?? ''}</span>
@@ -34,9 +35,9 @@ export default function AtAGlance({ data }: { data: Evidence }) {
           <span className={BIG}>{t.clear} of {t.total} checks clear</span>
           <span className="text-sm text-gray-600">The housing rules don&apos;t apply to some land, such as flood-prone land.</span>
           {t.total === 0 ? <span className={`${PILL} border-2 border-gray-900 text-gray-900`}><span aria-hidden="true">◐</span>No checks were returned</span>
-            : needPerson === 0 ? <span className={`${PILL} bg-gray-200 text-gray-900`}><span aria-hidden="true">✓</span>All clear</span>
-            : <span className={`${PILL} border-2 border-gray-900 text-gray-900`}><span aria-hidden="true">{statusOf(excluded > 0 ? 'excludes' : 'warn').symbol}</span>{excluded > 0 ? `${excluded} excluded` : `${needPerson} to check`}</span>}
-          {needPerson > 0 ? <span className="text-sm leading-snug text-gray-800">{t.other.map(rowTitle).join('; ')}.</span> : null}
+            : anyOpen === 0 ? <span className={`${PILL} bg-gray-200 text-gray-900`}><span aria-hidden="true">✓</span>All clear</span>
+            : <span className={`${PILL} border-2 border-gray-900 text-gray-900`}><span aria-hidden="true">{statusOf(excluded > 0 ? 'excludes' : 'warn').symbol}</span>{excluded > 0 ? `${excluded} excluded` : `${anyOpen} to check`}</span>}
+          {anyOpen > 0 ? <span className="text-sm leading-snug text-gray-800">{t.other.map(rowTitle).join('; ')}.</span> : null}
         </a>
         <a href="#controls" className={TILE}>
           <span className={LABEL}>3 · COUNCIL BUILDING RULES</span>
@@ -46,7 +47,7 @@ export default function AtAGlance({ data }: { data: Evidence }) {
         </a>
       </div>
       <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
-        <p className="text-base leading-relaxed"><strong>Bottom line.</strong> {words.bottom}{needPerson > 0 ? ` ${needPerson === 1 ? 'One check' : `${needPerson} checks`} for land where the rules don't apply still ${needPerson === 1 ? 'needs' : 'need'} a person.` : ''} This tool shows what it checked; the planner or the council decides.</p>
+        <p className="text-base leading-relaxed"><strong>Bottom line.</strong> {words.bottom}{excluded > 0 ? ` ${excluded === 1 ? 'One check' : `${excluded} checks`} found land where the rules don't apply.` : ''}{needPerson > 0 ? ` ${needPerson === 1 ? 'One check' : `${needPerson} checks`} for land where the rules don't apply still ${needPerson === 1 ? 'needs' : 'need'} a person.` : ''} This tool shows what it checked; the planner or the council decides.</p>
         <nav aria-label="Jump to" className="flex flex-wrap gap-x-5 gap-y-2 text-sm"><span className="text-gray-600">Jump to:</span>
           <a className="text-blue-700 underline" href="#walk">The walk</a><a className="text-blue-700 underline" href="#check">Where the rules don&apos;t apply</a>
           <a className="text-blue-700 underline" href="#controls">Council rules</a><a className="text-blue-700 underline" href="#method">How it was measured</a><a className="text-blue-700 underline" href="#proof">The proof</a>

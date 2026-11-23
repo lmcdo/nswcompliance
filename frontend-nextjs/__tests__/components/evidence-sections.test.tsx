@@ -353,7 +353,7 @@ describe('AtAGlance', () => {
     expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain('On this measure the lot meets the walking test. One check for land where the rules don\'t apply still needs a person.');
     one.unmount();
     const many = render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' }), row({ para: 'b', result: 'excludes' })] })} />);
-    expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain('2 checks for land where the rules don\'t apply still need a person.');
+    expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain("One check found land where the rules don't apply. One check for land where the rules don't apply still needs a person.");
     many.unmount();
     render(<AtAGlance data={evidence()} />);
     expect(screen.getByText(/Bottom line\./).parentElement?.textContent).not.toContain('needs a person');
@@ -403,5 +403,16 @@ describe('isEvidence checks the flood and pipeline fact values', () => {
     expect(isEvidence(withFacts({ flood_state: 'maybe' }))).toBe(false);
     expect(isEvidence(withFacts({ hit: 'yes' }))).toBe(false);
     expect(isEvidence(withFacts({ hit: false }))).toBe(true);
+  });
+});
+
+describe('AtAGlance: excluded rows and malformed ranges', () => {
+  it('does not say an excluded row still needs a person, and shows no range for a malformed one', () => {
+    const data = evidence({ exclusions: [row({ para: 'a', result: 'excludes', result_words: 'Excluded' }), row({ para: 'b' })], walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: -100, walk_high_m: -50, detail: null, heuristic: null } as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    expect(container.textContent).not.toMatch(/still needs a person|still need a person/);
+    expect(container.textContent).toContain('1 excluded');
+    expect(container.textContent).toContain('No range');
+    expect(container.textContent).not.toContain('-100');
   });
 });
