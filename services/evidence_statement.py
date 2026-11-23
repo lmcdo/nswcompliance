@@ -108,6 +108,25 @@ def _row_facts(para: str, area: dict, rule_figures: dict, facts: dec.LawFacts) -
     return None
 
 
+# What each paragraph of s164(1) is about, in a few plain words, so a reader of the evidence page knows what the clause refers to. Topic labels only: no planning figure, and the law's own
+# words are shown beside them. Read from the law's wording of each paragraph (the saved text of the instrument); a paragraph not listed is shown by its clause.
+PLAIN_TITLES = {
+    "a": "Bush fire prone land",
+    "b": "Coastal land",
+    "c": "Land under Chapter 5, TOD sites",
+    "d": "Heritage items",
+    "e": "Councils named in the law",
+    "f": "Flood: Probable Maximum Flood, Hawkesbury-Nepean",
+    "f1": "Flood: Georges River catchment",
+    "g": "Flood planning areas",
+    "h": "Aircraft noise",
+    "i": "Gas and fuel pipelines",
+    "k": "Near a listed station entrance",
+    "l": "Accelerated TOD precinct",
+    "m": "Low and Mid Rise exclusion area",
+}
+
+
 def exclusions(area: dict, facts: dec.LawFacts) -> list[dict]:
     """One row per live paragraph of s164(1), in the law's order. j (repealed) has no row."""
     by_para: dict[str, list[dict]] = {}
@@ -138,6 +157,7 @@ def exclusions(area: dict, facts: dec.LawFacts) -> list[dict]:
         else:
             row.update(result="not_checked", detail="no check was run for this paragraph", source_checked=NOT_RUN_SOURCE)
         row["result_words"] = RESULT_WORDS.get(row["result"], row["result"])  # noqa: bracket-access -- set by the branches above
+        row["title"] = PLAIN_TITLES.get(para)   # None for a paragraph not listed: the page then shows the clause
         extra = _row_facts(para, area, (worst.get("figures") if rules else None) or {}, facts)
         if extra:
             row["facts"] = extra
@@ -200,7 +220,7 @@ def manual_checks(rows: list[dict]) -> list[dict]:
     """The paragraphs this tool did not clear, so a person has to look: could not be determined, possible exclusion,
     not checked, or any result this module does not recognise. Taken from the rows, so the list cannot drift from the table."""
     return [{"clause": r.get("clause"), "page": r.get("page"), "law_words": r.get("law_words"),
-             "result_words": r.get("result_words"), "detail": r.get("detail"), "not_seen": r.get("not_seen")}
+             "result_words": r.get("result_words"), "detail": r.get("detail"), "not_seen": r.get("not_seen"), "title": r.get("title")}
             for r in rows if r.get("result") not in _NO_HAND_CHECK]
 
 
@@ -258,6 +278,7 @@ def build(area: dict, controls: dict, files: dict, facts: Optional[dec.LawFacts]
     return {
         "road_rules": road_rules(),
         "law_version_date": area.get("law_version_date") or facts.version_date,
+        "law_instrument": facts.instrument,   # the law's own title (from the saved facts), shown beside the clause numbers
         "headline": area.get("headline"),
         "pathway": area.get("pathway"),
         "lga": (area.get("measured") or {}).get("lga"),

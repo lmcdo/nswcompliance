@@ -90,6 +90,7 @@ class LawFacts:
         try:
             self.version_date: str = doc["law_version_date"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
             self._facts: dict = doc["facts"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+            self.instrument: Optional[str] = doc.get("instrument") if isinstance(doc.get("instrument"), str) else None   # the law's own title, for display only
         except (KeyError, TypeError) as exc:
             raise LawFactsError(f"facts document malformed: {exc}") from exc
 

@@ -29,24 +29,23 @@ describe('evidence statement page', () => {
     mockFetch(payload());
     render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
-    expect(screen.getByText(/454 to 754 m/)).toBeTruthy();
+    expect(screen.getByText(/Possible walk: 454 to 754 m/)).toBeTruthy();
     expect(screen.getByText('words here')).toBeTruthy();
-    expect(screen.getByText(/label not checked against the page/)).toBeTruthy();
+    expect(screen.getByText(/Clause 2\.8: label not checked against the page/)).toBeTruthy();
     expect(screen.getByText(/v1.1: These words were not found in this file/)).toBeTruthy();
     expect(screen.getByText(/v1.2: Same words on the cited page/)).toBeTruthy();
-    expect(screen.getByText(/Could not be read: the file ledger did not answer/)).toBeTruthy();
     // an older server answer has none of the newer parts: they are left out, never printed empty
-    expect(screen.queryByText(/To check by hand/)).toBeNull();
+    expect(screen.queryByText(/Next step:/)).toBeNull();   // the one row is clear, so nothing is handed to a person
     expect(screen.queryByText(/Crossings-only walk, for information/)).toBeNull();
-    expect(screen.queryByText(/The walk is a range because/)).toBeNull();
+    expect(screen.queryByText(/Why a range\?/)).toBeNull();
   });
 
-  it('shows the count line, the range reason, the crossings-only walk, the by-hand list, the scope line and the footer', async () => {
+  it('shows the count line, the range reason, the crossings-only walk, the not-checked card, the scope line and the footer', async () => {
     params = 'lat=-33.75&lng=150.70';
     const base = payload();
     mockFetch(payload({
       summary: { total: 13, counts: { clear: 11, not_checked: 2 }, line: '13 paragraphs of section 164(1): 2 not checked by this tool; 11 no exclusion found.' },
-      manual_checks: [{ clause: 's164(1)(i)', page: 79, law_words: 'a gas pipeline,', result_words: 'Not checked by this tool', detail: null, not_seen: null }],
+      exclusions: [...base.exclusions, { para: 'i', clause: 's164(1)(i)', page: 79, law_words: 'a gas pipeline,', result: 'not_checked', result_words: 'Not checked by this tool', detail: null, source_checked: 'none', not_seen: null }],
       walk: { ...base.walk, margin_low_m: 25, margin_high_m: 75, entrance_unmapped_extra_m: 0, crossings_only_walk_m: 861, crossings_only_note: 'Crossing busy roads only at lights, the walk is about 861 m (+85 m compared with the normal walk). Check the crossings on the ground.' },
     }));
     render(<EvidenceStatement />);
@@ -55,10 +54,12 @@ describe('evidence statement page', () => {
     expect(screen.getByText(/Crossings-only walk, for information/)).toBeTruthy();
     expect(screen.getByText(/about 861 m \(\+85 m compared with the normal walk\)/)).toBeTruthy();
     expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
-    expect(screen.getByText('To check by hand')).toBeTruthy();
-    expect(screen.getByText(/s164\(1\)\(i\) \(page 79\): a gas pipeline,/)).toBeTruthy();
+    expect(screen.getByText(/The law says: .a gas pipeline,./)).toBeTruthy();   // the not-checked paragraph is a card with the law's words and a next step
+    expect(screen.getByText(/s164\(1\)\(i\) · page 79/)).toBeTruthy();
+    expect(screen.getAllByText(/Next step:/)).toHaveLength(1);
+    expect(screen.getByText(/1 to check/)).toBeTruthy();
     expect(screen.getByText(/controls that apply only to part of a council area, are not shown here/)).toBeTruthy();
-    expect(screen.getByText(/It is not a planning certificate/)).toBeTruthy();
+    expect(screen.getAllByText(/It is not a planning certificate/)).toHaveLength(2);   // the method box and the record line
     expect(screen.getByText(/Section 164 exclusions \(law version dated 2026-10-23\)/)).toBeTruthy();
   });
 
@@ -81,46 +82,6 @@ describe('evidence statement page', () => {
     expect(screen.getByText(/It does not change the result above/)).toBeTruthy();
   });
 
-  it('says when our records for the council begin, from the dates in the files table', async () => {
-    params = 'lat=-33.75&lng=150.70';
-    mockFetch(payload({ council_files: { status: 'ok', files: [
-      { chapter: 'ch1', version: 'v1.2', held_from: '2026-10-26T00:00:00', replaced_on: null, current: true, council_file_date: 'x', council_file_date_note: null },
-      { chapter: 'ch1', version: 'v1.1', held_from: '2026-02-28T04:00:00', replaced_on: '2026-10-26T00:00:00', current: false, council_file_date: null, council_file_date_note: 'not kept for earlier versions' },
-      { chapter: 'ch2', version: 'v1.0', held_from: '2026-06-01T00:00:00', replaced_on: null, current: true, council_file_date: null, council_file_date_note: null },
-    ] } }));
-    render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/earliest file we hold for this council is held from 2026-02-28/)).toBeTruthy());
-  });
-
-  it('says nothing about when records begin when ANY listed file has no held-from date, because that file could be older', async () => {
-    params = 'lat=-33.75&lng=150.70';
-    mockFetch(payload({ council_files: { status: 'ok', files: [
-      { chapter: 'ch1', version: 'v1.1', held_from: '2026-02-28T04:00:00', replaced_on: null, current: true, council_file_date: null, council_file_date_note: null },
-      { chapter: 'ch2', version: 'v1.0', held_from: null, replaced_on: null, current: false, council_file_date: null, council_file_date_note: null },
-    ] } }));
-    render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
-    expect(screen.queryByText(/earliest file we hold/)).toBeNull();
-  });
-
-  it('says nothing about when records begin when a date is not in YYYY-MM-DD form, because it would not sort correctly', async () => {
-    params = 'lat=-33.75&lng=150.70';
-    mockFetch(payload({ council_files: { status: 'ok', files: [
-      { chapter: 'ch1', version: 'v1.1', held_from: '2026-2-28', replaced_on: null, current: false, council_file_date: null, council_file_date_note: null },
-      { chapter: 'ch1', version: 'v1.2', held_from: '2026-10-26T00:00:00Z', replaced_on: null, current: true, council_file_date: null, council_file_date_note: null },
-    ] } }));
-    render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
-    expect(screen.queryByText(/earliest file we hold/)).toBeNull();
-  });
-
-  it('says nothing about when records begin when no file has a held-from date, or the files could not be read', async () => {
-    params = 'lat=-33.75&lng=150.70';
-    mockFetch(payload({ council_files: { status: 'ok', files: [{ chapter: 'ch1', version: 'v1', held_from: null, replaced_on: null, current: true, council_file_date: null, council_file_date_note: null }] } }));
-    render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
-    expect(screen.queryByText(/earliest file we hold/)).toBeNull();
-  });
 
   const ROAD_RULES = {
     status: 'ok', instrument: 'Road Rules 2014 (NSW), regulations 231, 232 and 234', copied_on: '2026-11-20',
@@ -149,7 +110,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload({ road_rules: ROAD_RULES }));
     render(<EvidenceStatement />);
-    await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('At a glance')).toBeTruthy());
     expect(screen.queryByText(/NSW road rules for pedestrians/)).toBeNull();
   });
 
@@ -213,13 +174,15 @@ describe('evidence statement page', () => {
     note: 'The lines follow mapped footpaths and roads and may differ from the walk on the ground.',
   };
   const withRouteMap = (over: Record<string, unknown> = {}) => payload({ route_map: { ...ROUTE_MAP, ...over } });
+  // the page also has a labelled range scale (role=img), so the route map is found by its own figure
+const mapDrawn = (c: HTMLElement) => waitFor(() => expect(c.querySelector('figure svg')).not.toBeNull());
   const legendOf = (c: HTMLElement) => c.querySelector('figcaption')?.textContent ?? '';
 
   it('draws the route map as a labelled picture with both distances, the difference, the attribution and the note', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap());
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(container.querySelector('svg title')?.textContent).toContain('Turramurra station and town centre');
     const desc = container.querySelector('svg desc')?.textContent ?? '';
     expect(desc).toContain('878');
@@ -245,8 +208,8 @@ describe('evidence statement page', () => {
     for (const body of [payload(), payload({ route_map: null })]) {
       mockFetch(body);
       const { container, unmount } = render(<EvidenceStatement />);
-      await waitFor(() => expect(screen.getByText(/Council files held/)).toBeTruthy());
-      expect(screen.queryByRole('img')).toBeNull();
+      await waitFor(() => expect(screen.getByText('At a glance')).toBeTruthy());
+      expect(container.querySelector('figure')).toBeNull();
       expect(container.querySelector('svg')).toBeNull();
       expect(container.textContent ?? '').not.toMatch(/route map/i);
       unmount();
@@ -258,7 +221,7 @@ describe('evidence statement page', () => {
     const note = 'No normal route is drawn: the normal walk is measured to a different point than the one shown.';
     mockFetch(withRouteMap({ normal: null, normal_note: note }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(legendOf(container)).toContain(note);
     expect(legendOf(container)).toContain('963 m');
     const routes = Array.from(container.querySelectorAll('polyline')).filter((l) => l.getAttribute('stroke') !== '#ffffff');
@@ -271,7 +234,7 @@ describe('evidence statement page', () => {
     const note = 'No crossings-only route is drawn: no route avoids crossing busy roads away from lights.';
     mockFetch(withRouteMap({ careful: null, careful_note: note }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(legendOf(container)).toContain(note);
     expect(legendOf(container)).toContain('878 m');
     const routes = Array.from(container.querySelectorAll('polyline'));
@@ -282,9 +245,10 @@ describe('evidence statement page', () => {
   it('says why the route map is not drawn, in words and with no picture, when the data says unavailable', async () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(payload({ route_map: { status: 'unavailable', reason: 'the street map for this area could not be read' } }));
-    render(<EvidenceStatement />);
+    const { container } = render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText(/The route map is not drawn: the street map for this area could not be read/)).toBeTruthy());
-    expect(screen.queryByRole('img')).toBeNull();
+    expect(container.querySelector('figure')).toBeNull();
+    expect(container.querySelector('svg')).toBeNull();
   });
 
   it('shows an error, not a missing or half-drawn map, when the route map arrives in the wrong shape', async () => {
@@ -314,7 +278,7 @@ describe('evidence statement page', () => {
       careful: routeLine(962.8, CAREFUL_POINTS, { length_m: 965.4 }),
     }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     const legend = legendOf(container);
     const desc = container.querySelector('svg desc')?.textContent ?? '';
     for (const text of [legend, desc]) {
@@ -329,7 +293,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap({ destination: undefined }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(container.querySelector('svg title')?.textContent).toContain('Turramurra station and town centre');
     expect(container.querySelector('svg title')?.textContent).not.toContain('the destination');
   });
@@ -339,7 +303,7 @@ describe('evidence statement page', () => {
     const other = { name: 'Petersham station', kind: 'entrance' };
     mockFetch(withRouteMap({ destinations_differ: true, normal: routeLine(877.7, NORMAL_POINTS, { destination: other }) }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     const title = container.querySelector('svg title')?.textContent ?? '';
     expect(title).toContain('Petersham station');
     expect(title).toContain('Turramurra station and town centre');
@@ -356,7 +320,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap({ destinations_differ: false }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     const text = container.querySelector('svg')?.textContent ?? '';
     expect(text).toContain('End');
     expect(text).not.toContain('End (normal)');
@@ -383,7 +347,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 35.4 }) }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(legendOf(container)).toContain('The last 35 m of the crossings-only walk, from the end of its line to the destination, are not drawn.');
     expect(legendOf(container)).not.toContain('of the normal walk');
   });
@@ -392,7 +356,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap({ careful: routeLine(962.8, CAREFUL_POINTS, { end_link_not_drawn_m: 0 }) }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(legendOf(container)).not.toContain('are not drawn');
   });
 
@@ -410,7 +374,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap({ normal: null, normal_note: 'No normal route is drawn: test.' }));
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     const desc = container.querySelector('svg desc')?.textContent ?? '';
     expect(desc).toContain('The walk starts at the lot and ends at');
     expect(desc).not.toContain('Both start');
@@ -430,7 +394,7 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap());
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     const tiles = Array.from(container.querySelectorAll('svg image'));
     expect(tiles.length).toBeGreaterThan(0);
     expect(tiles.length).toBeLessThanOrEqual(25);
@@ -442,7 +406,7 @@ describe('evidence statement page', () => {
     expect(legendOf(container)).not.toContain('State of New South Wales');      // not named until a tile has actually drawn
     fireEvent.load(tiles[0]);
     await waitFor(() => expect(legendOf(container)).toContain('State of New South Wales (Spatial Services'));
-    expect(legendOf(container)).toContain('Orange dots: roads this tool treats as busy');   // the street map cannot show which roads are busy under our rule
+    expect(legendOf(container)).toContain('Grey dots: roads this tool treats as busy');   // the street map cannot show which roads are busy under our rule
     expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);        // so the dots stay on top of it
   });
 
@@ -450,12 +414,12 @@ describe('evidence statement page', () => {
     params = 'lat=-33.75&lng=150.70';
     mockFetch(withRouteMap());
     const { container } = render(<EvidenceStatement />);
-    expect(await screen.findByRole('img')).toBeTruthy();
+    await mapDrawn(container);
     expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);   // the busy-road dots
     for (const t of Array.from(container.querySelectorAll('svg image'))) fireEvent.error(t);
     await waitFor(() => expect(container.querySelectorAll('svg image')).toHaveLength(0));
     expect(legendOf(container)).not.toContain('State of New South Wales');
-    expect(legendOf(container)).toContain('Orange dots: roads this tool treats as busy');
+    expect(legendOf(container)).toContain('Grey dots: roads this tool treats as busy');
     expect(container.querySelectorAll('polyline').length).toBeGreaterThan(0);     // the routes are still drawn
   });
 
@@ -472,14 +436,16 @@ describe('evidence statement page', () => {
     expect(container.querySelectorAll('svg circle[r="4"]').length).toBeGreaterThan(0);   // this lot's own dots are drawn
   });
 
-  it('puts the notes before the walking range so a reader meets them first', async () => {
+  it('prints the notes the check returned, and the headline, in the how-it-was-measured section', async () => {
     params = 'lat=-33.75&lng=150.70';
-    mockFetch(payload());
+    mockFetch(payload({ notes: ['A note', 'Second note'] }));
     const { container } = render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText('A note')).toBeTruthy());
-    const text = container.textContent ?? '';
-    expect(text.indexOf('A note')).toBeGreaterThan(-1);
-    expect(text.indexOf('A note')).toBeLessThan(text.indexOf('Walking range'));
+    const method = container.querySelector('#method') as HTMLElement;
+    expect(method.textContent).toContain('A note');
+    expect(method.textContent).toContain('Second note');
+    expect(method.textContent).toContain('Head line');
+    expect(container.querySelector('#walk')?.textContent).not.toContain('A note');
   });
 
   it('shows an error, not an empty statement, when the data is partial or the call fails', async () => {
