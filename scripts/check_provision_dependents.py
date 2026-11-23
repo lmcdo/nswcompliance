@@ -61,6 +61,7 @@ def verdict(rows: list[dict]) -> tuple[bool, list[str]]:
 
 def columns(cur) -> list[tuple[str, str, str]]:
     """(table, column, data_type) for every foreign key to regulatory_provisions and every column named like a rule id."""
+    # catalogue queries: they list COLUMNS that reference regulatory_provisions and read no rule rows, so there is no is_current to filter on (the sweep filters rules by is_current)
     cur.execute("""SELECT cl.relname, a.attname FROM pg_constraint k JOIN pg_class cl ON cl.oid = k.conrelid
                    JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY(k.conkey)
                    WHERE k.contype = 'f' AND k.confrelid = 'regulatory_provisions'::regclass AND cl.relnamespace = 'public'::regnamespace""")
@@ -92,7 +93,7 @@ def sweep(conn, council: Optional[str]) -> list[dict]:
             out.append({"table": table, "column": col, "rows": rows, "dead": dead})
         except Exception as exc:  # noqa: BLE001 -- a column that could not be checked is reported, never skipped as clean
             conn.rollback()
-            out.append({"table": table, "column": col, "rows": 0, "dead": 0, "error": str(exc).split("\n")[0][:80]})
+            out.append({"table": table, "column": col, "rows": 0, "dead": 0, "error": (str(exc).strip().splitlines() or ["unreadable"])[0][:80]})
     return out
 
 
