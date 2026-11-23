@@ -376,11 +376,11 @@ describe('AtAGlance', () => {
     expect(screen.getByText("The council's own house rules (Front setback; rear_setback; Control not named) are further down. They are not part of the walking test.")).toBeTruthy();
     many.unmount();
     const none = render(<AtAGlance data={evidence({ council_controls: { status: 'none', controls: [] } })} />);
-    expect(screen.getByText("The council's own house rules are further down. They are not part of the walking test.")).toBeTruthy();
+    expect(screen.getByText("No current house rules are held for this council. They would not be part of the walking test.")).toBeTruthy();
     expect(none.container.textContent).not.toContain('Front setback');
     none.unmount();
     const bad = render(<AtAGlance data={evidence({ council_controls: { status: 'unreadable', controls: [] } })} />);
-    expect(screen.getByText("The council's own house rules are further down. They are not part of the walking test.")).toBeTruthy();
+    expect(screen.getByText("The council's own house rules could not be read. They are not part of the walking test.")).toBeTruthy();
     expect(bad.container.textContent).not.toContain('rules found');
   });
   it('bottom line: uses the verdict words, and says how many checks still need a person (singular and plural)', () => {
@@ -459,5 +459,24 @@ describe('AtAGlance walk tile: the big number is the measured walk', () => {
     const { container } = render(<AtAGlance data={data} />);
     const big = container.querySelector('a[href="#walk"] .text-3xl') as HTMLElement;
     expect(big.textContent).toBe('878 m');
+  });
+});
+
+describe('AtAGlance: the walk tile and the council note for unusual answers', () => {
+  it('shows the measured walk and says the test result is unavailable when the range is missing', () => {
+    const data = evidence({ walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: null, walk_best_m: 479, walk_high_m: null, detail: null, heuristic: null } as unknown as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    expect((container.querySelector('a[href="#walk"] .text-3xl') as HTMLElement).textContent).toBe('479 m');
+    expect(container.textContent).toContain('Walking-test result unavailable');
+    expect(container.textContent).not.toContain('No walk measured');
+  });
+  it('says what the council note is when no house rules are held or they could not be read, not that they are further down', () => {
+    const none = render(<AtAGlance data={evidence({ council_controls: { status: 'none', as_at_line: null, controls: [] } })} />);
+    expect(none.container.textContent).toContain('No current house rules are held for this council.');
+    expect(none.container.textContent).not.toContain('further down');
+    none.unmount();
+    const bad = render(<AtAGlance data={evidence({ council_controls: { status: 'unreadable', reason: 'x', controls: [] } as unknown as Evidence['council_controls'] })} />);
+    expect(bad.container.textContent).toContain('could not be read');
+    expect(bad.container.textContent).not.toContain('further down');
   });
 });

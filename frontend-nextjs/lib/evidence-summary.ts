@@ -24,7 +24,7 @@ export function walkVerdict(w: Evidence['walk']): WalkVerdict {
   let best: number | null = finite(w.walk_best_m) ? w.walk_best_m : null;
   if (best === null && low !== null && finite(w.margin_low_m)) best = low + w.margin_low_m;   // the measured walk is the low end plus its margin
   if (best === null || best < 0) return { kind: 'unknown', limit, low, high, best, gapM: null };   // no measured walk, no verdict: the range alone is never turned into 'within' or 'over'
-  if (limit === null || low === null || high === null || low > high || limit <= 0 || low < 0) return { kind: 'unknown', limit, low, high, best, gapM: null };
+  if (limit === null || low === null || high === null || low > high || limit <= 0 || low < 0 || best < low || best > high) return { kind: 'unknown', limit, low, high, best, gapM: null };   // a measured walk outside its own range is an inconsistent answer: no verdict
   if (low > limit) return { kind: 'over', limit, low, high, best, gapM: low - limit };
   if (high <= limit) return { kind: 'within', limit, low, high, best, gapM: limit - high };
   return { kind: 'straddles', limit, low, high, best, gapM: null };
@@ -58,6 +58,9 @@ export function verdictWords(v: WalkVerdict, detail: string | null): { pill: str
       margin: has ? `Shortest walk ${fmtNum(v.best as number)} m.` : null,
       bottom: 'The walk is too close to the limit for this tool to say whether the lot meets the walking test.',
     };
+  }
+  if (v.best !== null) {   // a measured walk with no usable verdict: show the walk, say the test could not be applied
+    return { pill: 'Walking-test result unavailable', sentence: `The shortest walk is ${fmtNum(v.best)} m. This tool could not apply the walking limit to it.${detail ? ` ${detail}` : ''}`, margin: `Shortest walk ${fmtNum(v.best)} m.`, bottom: 'The walking test could not be applied to the measured walk.' };
   }
   return { pill: 'No walk measured', sentence: detail ?? 'No walk was measured.', margin: null, bottom: 'No walk was measured, so the walking test could not be applied.' };
 }

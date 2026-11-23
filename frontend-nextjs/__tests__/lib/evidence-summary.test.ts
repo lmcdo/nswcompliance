@@ -298,3 +298,21 @@ describe('walkVerdict rejects zero and negative distances', () => {
     expect(w({ walk_best_m: -1 }).kind).toBe('unknown');
   });
 });
+
+describe('a measured walk outside its own range, or with no usable verdict', () => {
+  const w = (o: Record<string, unknown>) => walkVerdict({ clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 850, walk_high_m: 950, detail: null, heuristic: null, walk_best_m: 900, ...o } as never);
+  it('gives no verdict when the measured walk is outside the low to high range, so a distance is never labelled the wrong way', () => {
+    expect(w({}).kind).toBe('over');
+    expect(w({ walk_best_m: 700 }).kind).toBe('unknown');
+    expect(w({ walk_best_m: 960 }).kind).toBe('unknown');
+  });
+  it('keeps and shows the measured walk when only the verdict is unavailable', () => {
+    const v = w({ walk_low_m: null, walk_high_m: null });
+    expect(v.kind).toBe('unknown');
+    expect(v.best).toBe(900);
+    const words = verdictWords(v, null);
+    expect(words.pill).toBe('Walking-test result unavailable');
+    expect(words.sentence).toContain('The shortest walk is 900 m.');
+    expect(verdictWords(w({ walk_best_m: null, walk_low_m: null, walk_high_m: null }), null).pill).toBe('No walk measured');
+  });
+});
