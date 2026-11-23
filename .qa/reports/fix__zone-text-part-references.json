@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a change to the applicability tagger's zone reading. Not Minor: it changes which text can produce a zone tag. Not Critical: nothing is written by this change, it only stops plan cross-references such as Part E4 from being read as zones, and the retag dry run on Waverley's real rows predicts 0 value changes and 0 served rows narrowed.",
- "commit_hash": "d35936f3",
+ "commit_hash": "97aad8b6",
  "files": [
   "enrichment/extractors/applicability_tagger.py",
   "tests/test_applicability_plan_references.py"
