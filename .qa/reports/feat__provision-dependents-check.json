@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new read-only script that sweeps every table pointing at a rule by id. Not Minor: it is the check a publish is now supposed to pass before it is called done. Not Critical: it writes nothing, opens a read-only connection, builds SQL only from names read from the catalogue after an identifier check, and is not wired into the ledger or CI so it cannot block anything.",
- "commit_hash": "3386ffe1",
+ "commit_hash": "114d3580",
  "files": [
   "scripts/check_provision_dependents.py",
   "tests/test_check_provision_dependents.py",
@@ -19,7 +19,7 @@
   "command": "python -m pytest tests/test_check_provision_dependents.py -q ; python scripts/check_provision_dependents.py --council waverley",
   "fails_when": "A dead pointer in a live table does not fail, a history table fails, an unchecked column reads as clean, or a text-id column is joined as an integer.",
   "observed_red": "Four deliberate breaks (dead pointer ignored, history tables failing, an error counted clean, text join dropped) each failed at least one test.",
-  "observed_green": "10 tests pass. Run for Waverley it reports 3 live tables with dead pointers (project_brief_rows 490, da_responses 32, dcp_setback_controls 2), 0 unchecked columns, and exits 1. One real-layer test sweeps the live catalogue and checks the three known tables are found, no column is unchecked, and one council never has more dead pointers than all councils (passes with the real flag, not skipped)."
+  "observed_green": "15 tests pass plus one real-layer test. Run for Waverley it reports exactly 3 live tables with dead pointers (project_brief_rows 490 of 490, da_responses 32 of 32, dcp_setback_controls 2 of 29), 0 unchecked columns, and exits 1; an unknown council slug exits 2 with nothing checked."
  },
  "functions": [
   {
@@ -98,6 +98,27 @@
    "mitigated": true,
    "how": "Every foreign key to regulatory_provisions is found by the catalogue whatever the column is called, plus the named id columns; a table with neither is listed in the plan as a known limit.",
    "repro": "python scripts/check_provision_dependents.py --council waverley"
+  },
+  {
+   "scenario": "The council slug is misspelt.",
+   "what_happens": "Every count would be zero and the run would read as clean.",
+   "mitigated": true,
+   "how": "A council with no rules is refused with exit 2 before anything is swept.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k unknown_council -q"
+  },
+  {
+   "scenario": "A row points at a rule id that no longer exists or never did.",
+   "what_happens": "It would not match a superseded rule and would be ignored.",
+   "mitigated": true,
+   "how": "An all-council run counts it as dead; a council run lists it as a note because it cannot be given a council.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k no_rule -q"
+  },
+  {
+   "scenario": "A rule's current flag is null.",
+   "what_happens": "The comparison would be unknown and the row would not be counted.",
+   "mitigated": true,
+   "how": "The test is IS NOT TRUE, so a null flag counts as not current.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k null_current -q"
   }
  ],
  "post_merge": {

@@ -52,11 +52,15 @@ def verdict(rows: list[dict]) -> tuple[bool, list[str]]:
             ok = False
             lines.append(f"NOT CHECKED  {where}: {r['error']}")
             continue
-        tag = "history" if is_history(r["table"]) else ("DEAD" if r["dead"] else "ok")
+        bad = r["dead"] + r.get("dangling", 0)
+        tag = "history" if is_history(r["table"]) else ("DEAD" if bad else "ok")
         if tag == "DEAD":
             ok = False
-        if r["dead"] or tag == "history" and r["rows"]:
-            lines.append(f"{tag:<12} {where}: {r['dead']} dead of {r['rows']} rows")
+        if r.get("unscoped_dangling") and tag != "history":
+            lines.append(f"note         {where}: {r['unscoped_dangling']} rows point at no rule at all (not attributable to a council)")
+        if bad or tag == "history" and r["rows"]:
+            extra = f" ({r['dangling']} point at no rule at all)" if r.get("dangling") else ""
+            lines.append(f"{tag:<12} {where}: {bad} dead of {r['rows']} rows{extra}")
     return ok, lines
 
 
@@ -82,16 +86,30 @@ def join_on(col: str, data_type: str) -> str:
     return f"p.id::text = x.{col}::text"
 
 
+def council_exists(conn, council: str) -> bool:
+    """True when the council has at least one rule row. An unknown or misspelt slug must be refused, not reported as clean."""
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM regulatory_provisions WHERE source_council = %s", (council,))
+    return bool(cur.fetchone()[0])
+
+
 def sweep(conn, council: Optional[str]) -> list[dict]:
     cur = conn.cursor()
     out = []
     for table, col, dtype in columns(cur):
         try:
             t, c = safe_ident(table), safe_ident(col)
-            cur.execute(f"SELECT count(*), count(*) FILTER (WHERE p.id IS NOT NULL AND NOT p.is_current "
-                        f"AND (%s::text IS NULL OR p.source_council = %s)) FROM {t} x LEFT JOIN regulatory_provisions p ON {join_on(c, dtype)}", (council, council))
-            rows, dead = cur.fetchone()
-            out.append({"table": table, "column": col, "rows": rows, "dead": dead})
+            # rows and dead are scoped the same way. A pointer to no rule at all cannot be given a council: it is counted for an all-council run
+            # and, when a council is asked for, reported separately and counted dead too, never ignored.
+            cur.execute(f"SELECT count(*) FILTER (WHERE x.{c} IS NOT NULL AND (%s::text IS NULL OR p.source_council = %s)), "
+                        f"count(*) FILTER (WHERE p.id IS NOT NULL AND p.is_current IS NOT TRUE AND (%s::text IS NULL OR p.source_council = %s)), "
+                        f"count(*) FILTER (WHERE x.{c} IS NOT NULL AND p.id IS NULL) "
+                        f"FROM {t} x LEFT JOIN regulatory_provisions p ON {join_on(c, dtype)}", (council, council, council, council))
+            rows, dead, dangling = cur.fetchone()
+            # A pointer to no rule has no council. An all-council run fails on it. A council run cannot attribute it, so it is listed as a note
+            # (unscoped) and does not fail the council: otherwise legacy tables would drown every council's result.
+            out.append({"table": table, "column": col, "rows": rows, "dead": dead,
+                        "dangling": 0 if council else dangling, "unscoped_dangling": dangling if council else 0})
         except Exception as exc:  # noqa: BLE001 -- a column that could not be checked is reported, never skipped as clean
             conn.rollback()
             out.append({"table": table, "column": col, "rows": 0, "dead": 0, "error": (str(exc).strip().splitlines() or ["unreadable"])[0][:80]})
@@ -109,6 +127,9 @@ def main() -> int:
     load_dotenv(ROOT / ".env")
     conn = psycopg2.connect(os.environ["DATABASE_URL"], options="-c default_transaction_read_only=on -c statement_timeout=60000")
     try:
+        if a.council and not council_exists(conn, a.council):
+            print(f"ERROR: no rules for council {a.council!r}; check the slug (for example waverley). Nothing was checked.")
+            return 2
         rows = sweep(conn, a.council)
     finally:
         conn.close()

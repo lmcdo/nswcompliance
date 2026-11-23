@@ -63,8 +63,8 @@ def test_a_catalogue_name_that_is_not_a_plain_identifier_is_refused():
 
 
 class _Cur:
-    def __init__(self, fail_on):
-        self.fail_on, self.sql, self.i = fail_on, [], 0
+    def __init__(self, fail_on, count=10):
+        self.fail_on, self.sql, self.i, self.count = fail_on, [], 0, count
 
     def execute(self, sql, args=()):
         self.sql.append(sql)
@@ -72,7 +72,7 @@ class _Cur:
             raise RuntimeError("boom")
 
     def fetchone(self):
-        return (10, 2)
+        return (10, 2, 0) if any("FILTER" in q for q in self.sql[-1:]) else (self.count,)
 
 
 class _Conn:
@@ -91,7 +91,7 @@ def test_sweep_reports_a_failing_column_as_an_error_row_and_carries_on(monkeypat
     conn = _Conn(_Cur(fail_on='"bad_table"'))
     rows = c.sweep(conn, "waverley")
     assert [r["table"] for r in rows] == ["good_table", "bad_table"]
-    assert rows[0]["dead"] == 2 and "error" in rows[1] and conn.rolled == 1
+    assert rows[0]["dead"] == 2 and rows[0]["dangling"] == 0 and "error" in rows[1] and conn.rolled == 1
 
 
 def test_sweep_never_writes():
@@ -104,3 +104,44 @@ def test_sweep_never_writes():
     finally:
         c.columns = orig
     assert all(s.lstrip().upper().startswith("SELECT") for s in cur.sql)
+
+
+def test_a_pointer_to_no_rule_at_all_fails_even_when_no_rule_is_superseded():
+    ok, lines = c.verdict([row(dead=0) | {"dangling": 4}])
+    assert ok is False and "4 point at no rule at all" in lines[0]
+
+
+def test_for_one_council_a_pointer_to_no_rule_is_a_note_that_does_not_fail_that_council():
+    ok, lines = c.verdict([row(dead=0) | {"dangling": 0, "unscoped_dangling": 268}])
+    assert ok is True and lines[0].startswith("note") and "268" in lines[0]
+
+
+def test_the_sweep_moves_dangling_ids_to_the_note_when_a_council_is_given_and_fails_on_them_when_not():
+    cur = _Cur(None)
+    orig = c.columns
+    c.columns = lambda cur_: [("t", "provision_id", "integer")]
+    cur.fetchone = lambda: (10, 2, 5)
+    try:
+        one = c.sweep(_Conn(cur), "waverley")[0]
+        every = c.sweep(_Conn(cur), None)[0]
+    finally:
+        c.columns = orig
+    assert one["dangling"] == 0 and one["unscoped_dangling"] == 5
+    assert every["dangling"] == 5 and every["unscoped_dangling"] == 0
+
+
+def test_an_unknown_council_is_refused_not_reported_as_clean():
+    assert c.council_exists(_Conn(_Cur(None, count=0)), "wavereley") is False
+    assert c.council_exists(_Conn(_Cur(None, count=4446)), "waverley") is True
+
+
+def test_the_sweep_scopes_the_row_count_and_treats_a_null_current_flag_as_not_current():
+    cur = _Cur(None)
+    orig = c.columns
+    c.columns = lambda cur_: [("t", "provision_id", "integer")]
+    try:
+        c.sweep(_Conn(cur), "waverley")
+    finally:
+        c.columns = orig
+    sql = cur.sql[-1]
+    assert "IS NOT TRUE" in sql and sql.count("p.source_council = %s") == 2
