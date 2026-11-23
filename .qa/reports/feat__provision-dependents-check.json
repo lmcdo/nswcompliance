@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: a new read-only script that sweeps every table pointing at a rule by id. Not Minor: it is the check a publish is now supposed to pass before it is called done. Not Critical: it writes nothing, opens a read-only connection, builds SQL only from names read from the catalogue after an identifier check, and is not wired into the ledger or CI so it cannot block anything.",
- "commit_hash": "46b0d79f",
+ "commit_hash": "bde38506",
  "files": [
   "scripts/check_provision_dependents.py",
   "tests/test_check_provision_dependents.py",
