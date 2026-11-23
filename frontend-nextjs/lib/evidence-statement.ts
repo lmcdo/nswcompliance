@@ -114,7 +114,9 @@ const factsOk = (f: unknown): boolean => {
   const gapOk = g === undefined || g === null || (typeof g === 'object' && !Array.isArray(g) && finite((g as Record<string, unknown>).no_route_count) && finite((g as Record<string, unknown>).named_in_law)
     && Array.isArray((g as Record<string, unknown>).licences) && ((g as Record<string, unknown>).licences as unknown[]).every(finite));
   return ['edge_m', 'nearest_m', 'margin_m', 'nearest_500_year_m', 'nearest_100_year_m', 'limit_m', 'searched_m'].every((k) => optNum(x[k]))
-    && optString(x.nearest_name) && optString(x.copy_as_of) && optString(x.study) && optString(x.map) && gapOk;
+    && optString(x.nearest_name) && optString(x.copy_as_of) && optString(x.study) && optString(x.map) && gapOk
+    && (x.flood_state === undefined || x.flood_state === null || ['outside', 'edge', 'inside'].includes(x.flood_state as string))   // a value the page does not know is a malformed answer
+    && (x.hit === undefined || x.hit === null || typeof x.hit === 'boolean');
 };
 
 /** True only for a payload with every part the page reads. A partial payload is a failure, never an empty page. */

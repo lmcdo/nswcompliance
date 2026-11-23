@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
-import type { Evidence, EvidenceExclusion, PipelineGap } from '@/lib/evidence-statement';
+import { isEvidence, type Evidence, type EvidenceExclusion, type PipelineGap } from '@/lib/evidence-statement';
 import { walkVerdict } from '@/lib/evidence-summary';
 import AtAGlance from '@/components/reports/evidence/AtAGlance';
 import CheckSection, { factLines } from '@/components/reports/evidence/CheckSection';
@@ -392,5 +392,16 @@ describe('an excluded row is not described as unsettled', () => {
     const { container } = render(<CheckSection data={data} />);
     expect(container.textContent).toContain('One was found to apply to this lot.');
     expect(container.textContent).toContain('One could not be settled by this tool and needs a person.');
+  });
+});
+
+describe('isEvidence checks the flood and pipeline fact values', () => {
+  const withFacts = (facts: Record<string, unknown>) => ({ ...evidence(), exclusions: [{ ...row({ para: 'f' }), facts }] });
+  it('accepts the known values and refuses one the page does not know', () => {
+    expect(isEvidence(evidence())).toBe(true);
+    expect(isEvidence(withFacts({ flood_state: 'outside', nearest_m: 9900 }))).toBe(true);
+    expect(isEvidence(withFacts({ flood_state: 'maybe' }))).toBe(false);
+    expect(isEvidence(withFacts({ hit: 'yes' }))).toBe(false);
+    expect(isEvidence(withFacts({ hit: false }))).toBe(true);
   });
 });
