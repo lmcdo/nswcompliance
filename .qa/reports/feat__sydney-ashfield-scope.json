@@ -1,0 +1,43 @@
+{
+  "tier": "minor",
+  "justification": "Minor: data and test count only, no code. 17 Ashfield rules limited to the zones the council names (R3, E1, MU1) and 55 City of Sydney schedule rules limited to a named place with no outline are withheld (Green Square, Central Sydney, Late Night Management Areas, Local Centre Areas, City Living Area, Oxford Street). Applied live with owner go and a row backup; same step as #1679 and #1681.",
+  "commit_hash": "6119a329",
+  "files": [
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only land_limits --council city_of_sydney",
+    "fails_when": "Prints to-change greater than 0 after the apply.",
+    "observed_red": "Before the apply it printed to-change=17 (Ashfield) and 55 (City of Sydney); after, 0 for both."
+  },
+  "break_it": [
+    {
+      "scenario": "A reader's place or zone limit is wrong and a rule is hidden from a house it applies to.",
+      "what_happens": "That house loses a rule.",
+      "mitigated": true,
+      "how": "Only rows with a verbatim quote that I re-found in the council text were used: 89 of 127 limited calls passed. Replay on 3 judged runs: 7 wrong rules hidden, 0 right-judged rules hidden.",
+      "repro": "Quotes are in the scratch file scope_confirmed.json."
+    },
+    {
+      "scenario": "A house inside Green Square or Central Sydney loses a rule that applies to it.",
+      "what_happens": "The rule is not shown to that house.",
+      "mitigated": false,
+      "how": "Accepted under the 2026-10-15 ruling that unmapped small-area rules are hidden. These 55 rows are not yet on the not-covered list, which waits for #1676 to merge.",
+      "repro": "python scripts/derive_precinct_keys.py --only land_limits --council city_of_sydney prints to-change=0."
+    },
+    {
+      "scenario": "A publish re-sets the rows.",
+      "what_happens": "The rules reach all houses again.",
+      "mitigated": true,
+      "how": "The step runs after every publish and matches by text fingerprint.",
+      "repro": "Both councils print to-change=0 after the apply."
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "A Darlington house no longer shows Green Square rules; not checked in a browser."
+  }
+}
