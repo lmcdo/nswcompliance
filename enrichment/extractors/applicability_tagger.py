@@ -58,6 +58,22 @@ TRUSTED_ALL_SOURCES = frozenset({'config_specific', 'config_all',
                                  'config_declined', 'text_regex'})
 
 
+# prior-art-checked: 2026-11-23, no existing detection of annexure / definition / abbreviation rows in enrichment/ or scripts/ (grep reference|annexure|glossary);
+# the no_config fallthrough in tag_with_provenance is where they landed. Measured on Waverley after its 2026-11-23 republish: 498 rows fell to no_config and
+# 450 of them were exactly these (279 Annexure, 171 Definitions/Abbreviations), pages 150 to 190 and 410 to 490, with no Part because they sit outside Parts A to E.
+REFERENCE_HEADING = re.compile(r"^\s*#+\s*(annexure|appendix|appendices|definitions?|abbreviations?|glossary)\b", re.IGNORECASE)
+
+
+def is_reference_row(text: Optional[str]) -> bool:
+    """True when the row's own heading says it is reference material: an annexure, appendix, definition, abbreviation or glossary entry.
+
+    Such a row states what a term means or lists examples (a tree species, a reusable material); it sets no control that depends on the development type,
+    so it applies to every development type and every zone. That is a statement of universality, recorded as config_all and not as the no_config fallthrough.
+    Only the heading line is read, never the body, so a rule that merely mentions a definition is not caught."""
+    first = (text or "").lstrip().split("\n", 1)[0]
+    return bool(REFERENCE_HEADING.match(first))
+
+
 class ApplicabilityTagger:
     """
     Tag provisions with applicable zones and development types.
@@ -854,12 +870,16 @@ class ApplicabilityTagger:
             else:
                 # _get_config_driven returns None when no council config matched.
                 zone_source = dev_type_source = 'no_config'
+                if is_reference_row(text):
+                    # An annexure, definition or abbreviation applies to everything: a decision, not a fallthrough.
+                    zone_source = dev_type_source = 'config_all'
 
         # 2. Extract from text (supplement structural config)
         # Skip text extraction for config-driven councils — the config is
         # authoritative, and text regex produces false positives (e.g. matching
         # DCP chapter codes "B3", "E1" as zone codes).
-        if text and not config:
+        # A reference row's heading code ("Annexure B3-2") is a chapter code, not the B3 zone: never read zones from its text.
+        if text and not config and not is_reference_row(text):
             text_zones = self._extract_zones_from_text(text)
             text_dev_types = self._extract_dev_types_from_text(text)
 
