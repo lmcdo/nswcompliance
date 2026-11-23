@@ -1,9 +1,10 @@
 {
- "tier": "minor",
- "justification": "Minor: one claim row goes back to true because its own check now passes, and two notes are remeasured. No query, rule or served answer changes. The check itself was run and read passing.",
- "commit_hash": "0a907d47",
+ "tier": "standard",
+ "justification": "Standard: it changes the declared state of four ledger rows (OC-30 back to true, DQ-69 to fixed, DQ-88 reopened) and two notes, in both ledger files. Not Critical: no query, rule or served answer changes; each row was re-measured and the check outputs were read before changing its state.",
+ "commit_hash": "440912d6",
  "files": [
-  ".claude/dq_checks.json"
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
  ],
  "break_it": [
   {
@@ -12,6 +13,20 @@
    "mitigated": true,
    "how": "The ledger reads a row declared true whose check fails as contradicted and blocks every pull request until it is corrected.",
    "repro": "python scripts/outreach_claim_checks.py OC-30"
+  },
+  {
+   "scenario": "DQ-88 stays declared fixed while the monitor has flagged 18 instruments.",
+   "what_happens": "The ledger would hide open review work.",
+   "mitigated": true,
+   "how": "It is reopened in both files with the measured number and the cause.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-88"
+  },
+  {
+   "scenario": "DQ-69 stays open although the monitor checks every instrument again.",
+   "what_happens": "The ledger would claim a block that has lifted.",
+   "mitigated": true,
+   "how": "It is declared fixed with the measured 0 and a note that the monitor is flagging instruments, which is DQ-88.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-69"
   }
  ],
  "post_merge": {
@@ -19,5 +34,36 @@
   "secrets": "No",
   "other_repo": "No",
   "manual_verify": "python scripts/dq_check.py --outreach reads 0 contradicted in CI."
- }
+ },
+ "pre_impl": {
+  "existing_data": "On 2026-11-23 Waverley's brief was loaded (490 stale rows replaced by 524) and OC-30 reads 43 of 44 = 98 percent. The legislation monitor, blocked since 2 November, is checking again: DQ-69 reads 0 and DQ-88 reads 18 flagged instruments.",
+  "assumption_mismatch": "I expected only OC-30 to need a change. Main also went red on DQ-69 and DQ-88, which are the legislation monitor's rows and not connected to Waverley; they are corrected here because they block every pull request.",
+  "new_vs_existing": "The ledger already enforces both directions; these edits only bring four rows in line with what their own checks read.",
+  "external_source_error": "Not applicable: no network or database call is added.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A claim or defect is declared in a state its own check contradicts. Each state now matches the measured number."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_check.py --outreach ; python scripts/dq_probe_live.py --id DQ-88",
+  "fails_when": "A row declared fixed or true reads a failing check, or a row declared open reads a passing one.",
+  "observed_red": "Before this change main read contradicted or red for OC-30 (passing while declared false), DQ-69 (passing while declared open) and DQ-88 (failing while declared fixed).",
+  "observed_green": "After: OC-30 holds at 43 of 44, DQ-69 reads 0 and DQ-88 reads 18 and is declared open; the full ledger shows only DQ-113, which was red before this work."
+ },
+ "functions": [
+  {
+   "name": "declared state of OC-30, DQ-69 and DQ-88",
+   "file_line": ".claude/dq_checks.json",
+   "input": "each row's own check output read on 2026-11-23",
+   "output": "a declared state that agrees with that output, with a dated note",
+   "if_none": "a row whose check cannot run stays unverified and is not changed"
+  }
+ ],
+ "values": [
+  {
+   "value": "declared state per ledger row",
+   "read_at": "the row's own check, re-run before the edit",
+   "if_missing": "unchanged"
+  }
+ ],
+ "queries": []
 }
