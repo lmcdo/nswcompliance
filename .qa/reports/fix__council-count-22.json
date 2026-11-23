@@ -1,0 +1,85 @@
+{
+ "tier": "standard",
+ "justification": "Standard: one published figure and four claim rows change after a production write. Not Minor: a published number is involved. Not Critical: no query, rule or served answer changes in this pull request; the production write it follows (22 Waverley controls re-quoted, proven and released) was done with backups and the number is checked against the live database.",
+ "commit_hash": "0e25b8b9",
+ "files": [
+  "frontend-nextjs/lib/coverage.ts",
+  "tests/test_no_hardcoded_council_counts.py",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "On 2026-11-23 Waverley's plan was republished (4,446 rules live) and 27 of its 59 numeric controls were re-quoted from the council's own words; 24 proved word for word against the PDF; 22 were released (2 carry a person's note). The live count of councils with served numeric controls is now 22.",
+  "assumption_mismatch": "I expected all three Waverley-dependent claims to return to true with the count. They do not: OC-29 recall is 86 percent against a 90 percent bar, OC-30 is 38 of 44 (86 percent) against 90 percent, and OC-24 now reads 592 stale brief rows, up from 102, most likely brief rows still pointing at Waverley's superseded rules. OC-17 also now fails: the republished Waverley rules have no development-type config (DQ-33 reads 498 served council rows falling through to ALL), so it is marked not holding too.",
+  "new_vs_existing": "The count returns to the figure the page had before 22 Nov, now true again by measurement; the three claim rows keep their not holding state with remeasured numbers.",
+  "external_source_error": "Not applicable: no network or database call is added.",
+  "frontend_type": "Not applicable: a plain constant.",
+  "user_failure_mode": "A published number or claim state disagrees with the database. The verifier compares the figure with the live count and reads 22 published, 22 live."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils ; python -m pytest tests/test_no_hardcoded_council_counts.py -q",
+  "fails_when": "The published council count differs from the database count.",
+  "observed_red": "Before this change the verifier read 21 published and 22 live (drift) after the Waverley controls were released.",
+  "observed_green": "After: 22 published and 22 live (OK), and the guard tests pass (161 related tests)."
+ },
+ "functions": [
+  {
+   "name": "dcpNumericCouncils",
+   "file_line": "frontend-nextjs/lib/coverage.ts",
+   "input": "the published figure and its display text",
+   "output": "the number of councils with numeric controls shown across the site",
+   "if_none": "not applicable: a plain constant checked against the database count by the verifier"
+  }
+ ],
+ "values": [
+  {
+   "value": "published council count",
+   "read_at": "frontend-nextjs/lib/coverage.ts, checked by scripts/verify_coverage_stats.py against the database",
+   "if_missing": "the verifier fails and names the drift"
+  }
+ ],
+ "queries": [],
+ "break_it": [
+  {
+   "scenario": "Waverley's controls are held again by a later check.",
+   "what_happens": "The published 22 would overstate coverage.",
+   "mitigated": true,
+   "how": "The verifier compares the published number with the live count on every run and the comment names why it is 22.",
+   "repro": "python scripts/verify_coverage_stats.py --field dcpNumericCouncils"
+  },
+  {
+   "scenario": "A claim row stays marked not holding after it passes again.",
+   "what_happens": "A true claim would be hidden.",
+   "mitigated": true,
+   "how": "The ledger reads a row declared false whose check passes as contradicted; OC-24, OC-29 and OC-30 were rechecked and still fail.",
+   "repro": "python scripts/dq_check.py --outreach"
+  },
+  {
+   "scenario": "The notes on the three claims drift from the truth.",
+   "what_happens": "A reader would be misled about why a claim is not holding.",
+   "mitigated": true,
+   "how": "Each note names its remeasured number and date.",
+   "repro": "python scripts/outreach_claim_checks.py OC-30"
+  },
+  {
+   "scenario": "OC-17 stays declared true while new Waverley rules apply to all development types.",
+   "what_happens": "The claim that every rule shown applies to this property would be published without support.",
+   "mitigated": true,
+   "how": "OC-17 is marked not holding with the measured DQ-33 number and what clears it.",
+   "repro": "python scripts/outreach_claim_checks.py OC-17"
+  },
+  {
+   "scenario": "DQ-33 stays declared fixed while 498 Waverley rules apply to all development types.",
+   "what_happens": "The ledger would say a regression was fixed when it is open.",
+   "mitigated": true,
+   "how": "DQ-33 is reopened in both ledger files with the measured number and the cause, so the ledger and its check agree.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-33"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_check.py --outreach reads 0 contradicted in CI."
+ }
+}
