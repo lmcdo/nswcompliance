@@ -342,6 +342,9 @@ def _report() -> int:
 # Scripts that are deliberately not invoked by CI or a hook. Each needs a
 # reason, and the reason has to be a mechanism, not an intention.
 _UNWIRED_OK = {
+    "check_provision_dependents.py": "run by hand after every council publish (step 7 of ~/.claude/plans/ce-after-a-publish-dependents-PLAN-2026-11-23.md); "
+                                     "it needs a live DATABASE_URL that CI does not have, and an all-council run is red today on other councils and legacy "
+                                     "tables, so wiring it as a gate now would block every pull request. Wire it per council in the PR that clears them.",
     "check_pr_gates.py": "run by hand immediately before `gh pr merge`; wiring it "
                          "into CI is circular - it asks whether CI passed.",
     "check_served_output.py": "needs a running dev server AND currently fails on the "

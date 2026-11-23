@@ -1,0 +1,131 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a new read-only script that sweeps every table pointing at a rule by id. Not Minor: it is the check a publish is now supposed to pass before it is called done. Not Critical: it writes nothing, opens a read-only connection, builds SQL only from names read from the catalogue after an identifier check, and is not wired into the ledger or CI so it cannot block anything.",
+ "commit_hash": "dfe93ec4",
+ "files": [
+  "scripts/check_provision_dependents.py",
+  "tests/test_check_provision_dependents.py",
+  "tests/test_check_provision_dependents_real_db.py",
+  "scripts/dq_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "After Waverley's 4,446-rule publish on 2026-11-23 the sweep found 490 of 490 Waverley project_brief_rows, 32 da_responses rows and 2 setback controls pointing at superseded rules; 5 columns hold text ids. 32 id-referencing columns exist (foreign keys to regulatory_provisions plus columns named like a rule id).",
+  "assumption_mismatch": "I treated the publish as done once the rule proofs ran. A publish supersedes rules and creates new ids, and nothing in the commit script lists the tables that point at the old ids; only OC-24 noticed, and only for the brief.",
+  "new_vs_existing": "plan_brief_checks.brief_integrity counts stale pointers for one table; this sweeps all of them by catalogue. Text-id columns are joined on the text form instead of being skipped. The ledger's rule that every check script must be run by something is satisfied by an explicit allow-list entry with its mechanism (run by hand after every publish, needs a live database that CI lacks), not by wiring it as a gate that would be red today.",
+  "external_source_error": "A column that cannot be checked is reported as NOT CHECKED and fails the run; it is never read as clean.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A council is called republished while the brief, saved responses or controls still cite superseded rules. The check names every such table with its count."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_check_provision_dependents.py -q ; python scripts/check_provision_dependents.py --council waverley",
+  "fails_when": "A dead pointer in a live table does not fail, a history table fails, an unchecked column reads as clean, or a text-id column is joined as an integer.",
+  "observed_red": "Four deliberate breaks (dead pointer ignored, history tables failing, an error counted clean, text join dropped) each failed at least one test.",
+  "observed_green": "15 tests pass plus one real-layer test. Run for Waverley it reports exactly 3 live tables with dead pointers (project_brief_rows 490 of 490, da_responses 32 of 32, dcp_setback_controls 2 of 29), 0 unchecked columns, and exits 1; an unknown council slug exits 2 with nothing checked."
+ },
+ "functions": [
+  {
+   "name": "verdict",
+   "file_line": "scripts/check_provision_dependents.py",
+   "input": "the per-column counts of rows and dead pointers",
+   "output": "pass or fail with one line per problem column",
+   "if_none": "a column with an error fails the run and is never read as clean"
+  },
+  {
+   "name": "sweep",
+   "file_line": "scripts/check_provision_dependents.py",
+   "input": "a read-only connection and an optional council slug",
+   "output": "rows, dead pointers and any error for every id column",
+   "if_none": "a failing column becomes an error row and the sweep carries on"
+  },
+  {
+   "name": "join_on",
+   "file_line": "scripts/check_provision_dependents.py",
+   "input": "a quoted column name and its data type",
+   "output": "the join text for that column",
+   "if_none": "any type other than an integer type joins on the text form"
+  }
+ ],
+ "values": [
+  {
+   "value": "dead pointers per table",
+   "read_at": "a left join of each id column to regulatory_provisions where the rule is not current",
+   "if_missing": "an unreadable column is NOT CHECKED and fails"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Count rows and dead pointers for one id column of one council",
+   "file_line": "scripts/check_provision_dependents.py sweep",
+   "where_clause": "join to regulatory_provisions on the id, counting rows whose rule is not current and, when a council is given, whose source_council matches; read-only connection, 60 s limit"
+  },
+  {
+   "purpose": "List the id columns",
+   "file_line": "scripts/check_provision_dependents.py columns",
+   "where_clause": "catalogue queries on pg_constraint and information_schema for public tables only"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A table keeps rule ids as text.",
+   "what_happens": "An integer join would fail and the table would be skipped or read as clean.",
+   "mitigated": true,
+   "how": "Non-integer columns join on the text form and are counted.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k text_ids -q"
+  },
+  {
+   "scenario": "A table is a backup or history table.",
+   "what_happens": "It would fail every run for pointing at old rows on purpose.",
+   "mitigated": true,
+   "how": "Backup, change log, versions and archived tables are shown but do not fail.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k history_table -q"
+  },
+  {
+   "scenario": "A catalogue name contains a quote or a space.",
+   "what_happens": "It could alter the SQL.",
+   "mitigated": true,
+   "how": "Names must match a plain identifier pattern or the run raises before any query.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k plain_identifier -q"
+  },
+  {
+   "scenario": "One column cannot be queried.",
+   "what_happens": "It would be silently left out and the council called clean.",
+   "mitigated": true,
+   "how": "It is reported as NOT CHECKED, fails the run, and the sweep continues.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k failing_column -q"
+  },
+  {
+   "scenario": "The list of id columns misses a table that points at rules, for example a new table with an unusual column name.",
+   "what_happens": "That table would not be swept and the council could be called clean.",
+   "mitigated": true,
+   "how": "Every foreign key to regulatory_provisions is found by the catalogue whatever the column is called, plus the named id columns; a table with neither is listed in the plan as a known limit.",
+   "repro": "python scripts/check_provision_dependents.py --council waverley"
+  },
+  {
+   "scenario": "The council slug is misspelt.",
+   "what_happens": "Every count would be zero and the run would read as clean.",
+   "mitigated": true,
+   "how": "A council with no rules is refused with exit 2 before anything is swept.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k unknown_council -q"
+  },
+  {
+   "scenario": "A row points at a rule id that no longer exists or never did.",
+   "what_happens": "It would not match a superseded rule and would be ignored.",
+   "mitigated": true,
+   "how": "An all-council run counts it as dead; a council run lists it as a note because it cannot be given a council.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k no_rule -q"
+  },
+  {
+   "scenario": "A rule's current flag is null.",
+   "what_happens": "The comparison would be unknown and the row would not be counted.",
+   "mitigated": true,
+   "how": "The test is IS NOT TRUE, so a null flag counts as not current.",
+   "repro": "python -m pytest tests/test_check_provision_dependents.py -k null_current -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/check_provision_dependents.py --council <name> after every council publish; the plan is ~/.claude/plans/ce-after-a-publish-dependents-PLAN-2026-11-23.md."
+ }
+}
