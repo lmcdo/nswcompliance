@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+# prior-art-checked: 2026-11-23. plan_brief_checks.brief_integrity (OC-24) counts stale pointers for project_brief_rows only; scripts/dcp_commit_approved.py re-proves rules but
+# lists no dependents; scripts/validate_controls_provenance.py looks at controls only. Nothing swept every table that points at a rule by id. Found the hard way on
+# 2026-11-23: Waverley's 4,446-rule publish left project_brief_rows (490), da_responses (32) and setback controls pointing at superseded rules.
+# Plan: ~/.claude/plans/ce-after-a-publish-dependents-PLAN-2026-11-23.md
+"""After a council's plan is republished its old rules are superseded and the new ones have NEW ids. Count, per table, how many rows still point at a superseded rule.
+
+    python scripts/check_provision_dependents.py --council waverley      # read-only; exit 1 if any known table has a dead pointer for the council
+    python scripts/check_provision_dependents.py                          # every council
+
+Tables are found two ways: every foreign key to regulatory_provisions, and every column named like a rule id (provision_id, source_provision_id, ...). A column
+that is not an integer id (some tables hold text ids) is listed as NOT CHECKED, never as clean. Backup and history tables (names containing backup, change_log,
+versions) are shown but do not fail the check: they are meant to point at old rows.
+Nothing is written; the connection is read-only.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Optional
+
+ROOT = Path(__file__).resolve().parents[1]
+ID_COLUMNS = ("provision_id", "rule_id", "regulatory_provision_id", "first_provision_id", "source_provision_id", "superseded_by", "parent_provision_id", "sepp_provision_id",
+              "primary_source_provision_id", "canonical_provision_id")
+HISTORY = re.compile(r"(backup|change_log|_versions?$|archived)", re.I)
+IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
+
+
+def is_history(table: str) -> bool:
+    """A table meant to keep pointers to old rows."""
+    return bool(HISTORY.search(table))
+
+
+def safe_ident(name: str) -> str:
+    """A table or column name read from the catalogue, checked before it is put into SQL."""
+    if not IDENT.match(name):
+        raise ValueError(f"unexpected identifier {name!r}")
+    return f'"{name}"'
+
+
+def verdict(rows: list[dict]) -> tuple[bool, list[str]]:
+    """(ok, lines). ok is False when a non-history table has a dead pointer or a column could not be checked."""
+    ok = True
+    lines = []
+    for r in rows:
+        where = f"{r['table']}.{r['column']}"
+        if r.get("error"):
+            ok = False
+            lines.append(f"NOT CHECKED  {where}: {r['error']}")
+            continue
+        tag = "history" if is_history(r["table"]) else ("DEAD" if r["dead"] else "ok")
+        if tag == "DEAD":
+            ok = False
+        if r["dead"] or tag == "history" and r["rows"]:
+            lines.append(f"{tag:<12} {where}: {r['dead']} dead of {r['rows']} rows")
+    return ok, lines
+
+
+def columns(cur) -> list[tuple[str, str, str]]:
+    """(table, column, data_type) for every foreign key to regulatory_provisions and every column named like a rule id."""
+    cur.execute("""SELECT cl.relname, a.attname FROM pg_constraint k JOIN pg_class cl ON cl.oid = k.conrelid
+                   JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY(k.conkey)
+                   WHERE k.contype = 'f' AND k.confrelid = 'regulatory_provisions'::regclass AND cl.relnamespace = 'public'::regnamespace""")
+    found = set(cur.fetchall())
+    cur.execute("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = ANY(%s) AND table_name <> 'regulatory_provisions'",
+                (list(ID_COLUMNS),))
+    found |= set(cur.fetchall())
+    cur.execute("SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'")
+    types = {(t, c): d for t, c, d in cur.fetchall()}
+    return sorted((t, c, types.get((t, c), "")) for t, c in found)
+
+
+def join_on(col: str, data_type: str) -> str:
+    """Integer ids join directly; any other type (some tables keep ids as text) joins on the text form, so it is checked and not skipped."""
+    if data_type in ("integer", "bigint", "smallint"):
+        return f"p.id = x.{col}"
+    return f"p.id::text = x.{col}::text"
+
+
+def sweep(conn, council: Optional[str]) -> list[dict]:
+    cur = conn.cursor()
+    out = []
+    for table, col, dtype in columns(cur):
+        try:
+            t, c = safe_ident(table), safe_ident(col)
+            cur.execute(f"SELECT count(*), count(*) FILTER (WHERE p.id IS NOT NULL AND NOT p.is_current "
+                        f"AND (%s::text IS NULL OR p.source_council = %s)) FROM {t} x LEFT JOIN regulatory_provisions p ON {join_on(c, dtype)}", (council, council))
+            rows, dead = cur.fetchone()
+            out.append({"table": table, "column": col, "rows": rows, "dead": dead})
+        except Exception as exc:  # noqa: BLE001 -- a column that could not be checked is reported, never skipped as clean
+            conn.rollback()
+            out.append({"table": table, "column": col, "rows": 0, "dead": 0, "error": str(exc).split("\n")[0][:80]})
+    return out
+
+
+def main() -> int:
+    import psycopg2
+    from dotenv import load_dotenv
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--council", help="source_council slug, for example waverley (default: every council)")
+    a = ap.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    load_dotenv(ROOT / ".env")
+    conn = psycopg2.connect(os.environ["DATABASE_URL"], options="-c default_transaction_read_only=on -c statement_timeout=60000")
+    try:
+        rows = sweep(conn, a.council)
+    finally:
+        conn.close()
+    ok, lines = verdict(rows)
+    print(f"council: {a.council or 'all'}; {len(rows)} id columns swept")
+    for ln in lines:
+        print(" ", ln)
+    print("PASS: no dead pointers" if ok else "FAIL: dead pointers or unchecked columns above")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
