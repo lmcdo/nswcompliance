@@ -1,0 +1,67 @@
+{
+  "tier": "standard",
+  "justification": "Standard: small code change (a new 'key' kind in gate_rules_land.py) plus data. 31 City of Sydney schedule rules, previously withheld for everyone, are now keyed to outlines already in dcp_precinct_boundaries (5.2 Green Square 16, 5.1 Central Sydney 13, 5.11 Oxford Street 2), so only houses inside see them. Applied live with owner go and a row backup.",
+  "commit_hash": "775796c1",
+  "files": [
+    "scripts/gate_rules_land.py",
+    "data/chapter_scope/land_limits.json",
+    "tests/test_gate_rules_land.py"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/derive_precinct_keys.py --only land_limits --council city_of_sydney",
+    "fails_when": "Prints to-change greater than 0 after the apply.",
+    "observed_red": "Before the apply it printed to-change=31; after, 0. DQ-148 is 0."
+  },
+  "break_it": [
+    {
+      "scenario": "Locality 5.2 is not the same area as the Green Square Urban Renewal Area.",
+      "what_happens": "Houses in 5.2 outside the renewal area, or the reverse, see or miss Schedule 10 rules.",
+      "mitigated": false,
+      "how": "Accepted; the area size matches the public figure closely. Undo is the row backup.",
+      "repro": "Compare dcp_precinct_boundaries 5.2 with the City's Green Square development area layer."
+    },
+    {
+      "scenario": "A publish re-sets the rows to unkeyed.",
+      "what_happens": "Rules reach all houses or none again.",
+      "mitigated": true,
+      "how": "The step runs after every publish and matches by text fingerprint.",
+      "repro": "derive_precinct_keys.py --only land_limits --council city_of_sydney prints to-change=0."
+    },
+    {
+      "scenario": "A row already keyed, heritage-marked or in a condition layer is overwritten.",
+      "what_happens": "A correct limit is lost.",
+      "mitigated": true,
+      "how": "The key kind skips those rows; covered by a unit test.",
+      "repro": "tests/test_gate_rules_land.py::test_key_kind_keys_an_unkeyed_row_to_the_named_precinct"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "A Darlington house no longer shows Green Square rules; not checked in a browser."
+  },
+  "functions": [
+    {
+      "name": "apply_land_limits",
+      "file_line": "scripts/gate_rules_land.py:53",
+      "input": "A database cursor, an optional council slug, an apply flag, an optional set of rule names",
+      "output": "A list of (id, column, before, after, rule) changes; the key kind emits a precinct id change and, when needed, a layer change",
+      "if_none": "A row with no text, an unlisted fingerprint, a precinct key, a heritage marker or a condition layer is left alone"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "Select current rows of one council and chapter so listed ones can be limited",
+      "file_line": "scripts/gate_rules_land.py:60",
+      "where_clause": "is_current AND source_council AND source_chapter_key IS NOT DISTINCT FROM",
+      "if_zero": "No rows change; the step prints to-change=0"
+    }
+  ],
+  "pre_impl": {
+    "existing_data": "dcp_precinct_boundaries already holds City of Sydney outlines 5.1, 5.2 and 5.11 from the City's open data; Sydney is not a nearest-fallback LGA, so houses outside get no precinct.",
+    "assumption_mismatch": "Assumed Schedule 10's 'Green Square Urban Renewal Area (Green Square)' is the 5.2 Green Square locality; the area (about 276.6 ha) is close to the public figure for the renewal area, but the boundary was not confirmed.",
+    "new_vs_existing": "Extends gate_rules_land with kind 'key'; no new script."
+  }
+}
