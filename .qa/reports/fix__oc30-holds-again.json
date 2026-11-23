@@ -1,0 +1,23 @@
+{
+ "tier": "minor",
+ "justification": "Minor: one claim row goes back to true because its own check now passes, and two notes are remeasured. No query, rule or served answer changes. The check itself was run and read passing.",
+ "commit_hash": "882f4a0f",
+ "files": [
+  ".claude/dq_checks.json"
+ ],
+ "break_it": [
+  {
+   "scenario": "OC-30 is declared true although its check fails again later.",
+   "what_happens": "A public claim would be declared true without support.",
+   "mitigated": true,
+   "how": "The ledger reads a row declared true whose check fails as contradicted and blocks every pull request until it is corrected.",
+   "repro": "python scripts/outreach_claim_checks.py OC-30"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_check.py --outreach reads 0 contradicted in CI."
+ }
+}
