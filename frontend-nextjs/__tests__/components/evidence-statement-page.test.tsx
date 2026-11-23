@@ -515,3 +515,14 @@ const mapDrawn = (c: HTMLElement) => waitFor(() => expect(c.querySelector('figur
     expect(f).not.toHaveBeenCalled();
   });
 });
+
+describe('evidence statement page: a measured walk with no limit', () => {
+  it('shows the measured walk in the walk card and does not say no walk was measured', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload({ walk: { clause: 's163', page: 77, anchor: 'Penrith station', limit_m: null, walk_low_m: 454, walk_high_m: 754, walk_best_m: 479, detail: null, heuristic: null } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('At a glance')).toBeTruthy());
+    expect(screen.getByText(/The shortest walk is 479 m\. This tool could not apply the walking limit to it\./)).toBeTruthy();
+    expect(screen.queryByText(/No walk was measured/)).toBeNull();
+  });
+});

@@ -97,7 +97,7 @@ export default function EvidenceStatement() {
           {data.law_instrument || w.clause ? `The law (${[data.law_instrument, w.clause, w.page != null ? `page ${w.page}` : null].filter(Boolean).join(', ')}) counts` : 'The law counts'} land within{limitText || ' a set'} walking distance of a station or town centre. The walk is measured from the nearest part of the lot. Law wording: see The proof section below.
         </p>
         <div className="flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          {v.best !== null && v.limit !== null ? (
+          {v.best !== null ? (
             <>
               <p className="text-base font-semibold">The shortest walk against the limit</p>
               <p className="text-lg leading-snug">{words.sentence}</p>

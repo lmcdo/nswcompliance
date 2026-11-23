@@ -480,3 +480,17 @@ describe('AtAGlance: the walk tile and the council note for unusual answers', ()
     expect(bad.container.textContent).not.toContain('further down');
   });
 });
+
+describe('the walk is shown even when the limit is missing; an ok council list with no rules is not described as further down', () => {
+  it('walk card shows the measured walk and the unavailable message, not No walk was measured', () => {
+    const data = evidence({ walk: { clause: null, page: null, anchor: null, limit_m: null, walk_low_m: 450, walk_best_m: 479, walk_high_m: 750, detail: null, heuristic: null } as unknown as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    expect(container.textContent).toContain('479 m');
+    expect(container.textContent).not.toContain('No walk measured');
+  });
+  it('an ok council status with no controls says none are held', () => {
+    const { container } = render(<AtAGlance data={evidence({ council_controls: { status: 'ok', as_at_line: null, controls: [] } as unknown as Evidence['council_controls'] })} />);
+    expect(container.textContent).toContain('No current house rules are held for this council.');
+    expect(container.textContent).not.toContain('further down');
+  });
+});

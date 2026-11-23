@@ -316,3 +316,12 @@ describe('a measured walk outside its own range, or with no usable verdict', () 
     expect(verdictWords(w({ walk_best_m: null, walk_low_m: null, walk_high_m: null }), null).pill).toBe('No walk measured');
   });
 });
+
+describe('a negative measured walk is not a measured walk', () => {
+  it('is dropped, so no figure is shown for it', () => {
+    const v = walkVerdict({ clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 450, walk_high_m: 750, detail: null, heuristic: null, walk_best_m: -5 } as never);
+    expect(v.best).toBeNull();
+    expect(v.kind).toBe('unknown');
+    expect(verdictWords(v, null).pill).toBe('No walk measured');
+  });
+});
