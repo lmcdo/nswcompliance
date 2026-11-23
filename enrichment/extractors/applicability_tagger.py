@@ -74,6 +74,19 @@ def is_reference_row(text: Optional[str]) -> bool:
     return bool(REFERENCE_HEADING.match(first))
 
 
+# prior-art-checked: 2026-11-23, nothing in enrichment/ stripped plan cross-references before the zone regexes. A reference such as "Refer to Part E4" names a chapter of the
+# plan, but E4 is also a zone code (Environmental Living), so Waverley rule 275148 ("Refer to Part E4 for Special Character Areas") was tagged to a zone Waverley does not
+# have and fell to filtered_to_all, which DQ-114 counts as an undecided scope (reads 1; it read 0 before Waverley was republished).
+PLAN_REFERENCE = re.compile(
+    r"\b(?:parts?|chapters?|annexures?|appendix|appendices|sections?|figures?|tables?|schedules?)\s+[A-Z]{1,2}[0-9]{1,2}(?:[.-][0-9]+)*\b",
+    re.IGNORECASE)
+
+
+def strip_plan_references(text: str) -> str:
+    """Remove plan cross-references (a Part, Annexure or Chapter followed by its code) so their chapter codes are not read as zone codes."""  # noqa: zone-codes -- no zone literals now
+    return PLAN_REFERENCE.sub(" ", text or "")
+
+
 class ApplicabilityTagger:
     """
     Tag provisions with applicable zones and development types.
@@ -736,6 +749,7 @@ class ApplicabilityTagger:
     def _extract_zones_from_text(self, text: str) -> Set[str]:
         """Extract explicit zone mentions from provision text."""
         zones = set()
+        text = strip_plan_references(text)     # "Refer to Part E4" is a chapter of the plan, not the E4 zone
 
         for zone, pattern in self.zone_patterns.items():
             if pattern.search(text):
