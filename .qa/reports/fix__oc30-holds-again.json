@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: it changes the declared state of four ledger rows (OC-30 back to true, DQ-69 to fixed, DQ-88 reopened) and two notes, in both ledger files. Not Critical: no query, rule or served answer changes; each row was re-measured and the check outputs were read before changing its state.",
- "commit_hash": "440912d6",
+ "commit_hash": "ef1b5dff",
  "files": [
   ".claude/dq_checks.json",
   ".claude/DATA_QUALITY_TRACKER.md"
