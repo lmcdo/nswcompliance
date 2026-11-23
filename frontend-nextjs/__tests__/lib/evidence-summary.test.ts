@@ -255,3 +255,13 @@ describe('statusOf', () => {
     expect(statusOf('')).toEqual({ symbol: '○', words: 'Could not be determined' });
   });
 });
+
+describe('walkVerdict rejects zero and negative distances', () => {
+  const w = (o: Record<string, unknown>) => walkVerdict({ clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 454, walk_high_m: 754, detail: null, heuristic: null, ...o } as never);
+  it('is unknown, never within, for a negative range or a zero limit', () => {
+    expect(w({ walk_low_m: -100, walk_high_m: -50 }).kind).toBe('unknown');
+    expect(w({ limit_m: 0 }).kind).toBe('unknown');
+    expect(w({ limit_m: -5 }).kind).toBe('unknown');
+    expect(w({}).kind).toBe('within');
+  });
+});

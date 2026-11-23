@@ -149,7 +149,7 @@ describe('CheckSection', () => {
     const { container } = render(<CheckSection data={data} />);
     const intro = container.querySelector('p') as HTMLElement;
     expect(intro.textContent).toContain('The law lists 4 kinds, in section 164(1) of Some Policy 2024. 2 did not apply to this lot.');
-    expect(intro.textContent).toContain('2 could not be settled by this tool and need a person.');
+    expect(intro.textContent).toContain('One was found to apply to this lot. One could not be settled by this tool and needs a person.');
   });
   it('says "One ... needs" for a single row and prints nothing about a person when none needs one', () => {
     const one = render(<CheckSection data={evidence({ exclusions: [row({ para: 'a' }), row({ para: 'b', result: 'warn' })] })} />);
@@ -381,5 +381,16 @@ describe('empty and partial answers are never read as clear', () => {
   it('says nothing about distance when the flood distance is absent, and says none within the search distance only when it is explicitly null', () => {
     expect(factLines({ flood_state: 'outside' })).toEqual([]);
     expect(factLines({ flood_state: 'outside', nearest_m: null })[0]).toBe('No flood area is within the search distance.');
+  });
+});
+
+describe('an excluded row is not described as unsettled', () => {
+  it('says it was found to apply, and keeps could-not-settle for the others', () => {
+    const row = (para: string, result: string, words: string) => ({ para, clause: `s164(1)(${para})`, page: 78, law_words: 'x', result, result_words: words, detail: null, source_checked: null });
+    const data = { law_version_date: '2026-10-23', lga: 'PENRITH', exclusions: [row('a', 'excludes', 'Excluded'), row('i', 'not_checked', 'Not checked by this tool'), row('b', 'clear', 'No exclusion found')], walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 1, walk_high_m: 2, detail: null, heuristic: null },
+      council_controls: { status: 'none', as_at_line: null, controls: [] }, notes: [] } as unknown as Evidence;
+    const { container } = render(<CheckSection data={data} />);
+    expect(container.textContent).toContain('One was found to apply to this lot.');
+    expect(container.textContent).toContain('One could not be settled by this tool and needs a person.');
   });
 });

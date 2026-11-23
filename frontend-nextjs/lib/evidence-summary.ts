@@ -23,7 +23,7 @@ export function walkVerdict(w: Evidence['walk']): WalkVerdict {
   const limit = finite(w.limit_m) ? w.limit_m : null, low = finite(w.walk_low_m) ? w.walk_low_m : null, high = finite(w.walk_high_m) ? w.walk_high_m : null;
   let best: number | null = finite(w.walk_best_m) ? w.walk_best_m : null;
   if (best === null && low !== null && finite(w.margin_low_m)) best = low + w.margin_low_m;   // the measured walk is the low end plus its margin
-  if (limit === null || low === null || high === null || low > high) return { kind: 'unknown', limit, low, high, best, gapM: null };
+  if (limit === null || low === null || high === null || low > high || limit <= 0 || low < 0) return { kind: 'unknown', limit, low, high, best, gapM: null };
   if (low > limit) return { kind: 'over', limit, low, high, best, gapM: low - limit };
   if (high <= limit) return { kind: 'within', limit, low, high, best, gapM: limit - high };
   return { kind: 'straddles', limit, low, high, best, gapM: null };

@@ -58,7 +58,7 @@ export default function CheckSection({ data }: { data: Evidence }) {
       <h2 id="check-h" className="text-2xl font-bold tracking-tight">2 · Where the rules don&apos;t apply</h2>
       <p className="max-w-3xl text-base leading-relaxed text-gray-600">
         The Low and Mid Rise housing rules don&apos;t apply to some land, such as flood-prone land. The law lists {t.total} kinds, in section 164(1){instrument}. {t.clear} did not apply to this lot.
-        {t.other.length > 0 ? ` ${t.other.length === 1 ? 'One' : t.other.length} could not be settled by this tool and ${t.other.length === 1 ? 'needs' : 'need'} a person.` : ''} Law wording for all {t.total}: see The proof section below.
+        {t.excludes > 0 ? ` ${t.excludes === 1 ? 'One' : t.excludes} ${t.excludes === 1 ? 'was' : 'were'} found to apply to this lot.` : ''}{t.other.length - t.excludes > 0 ? ` ${t.other.length - t.excludes === 1 ? 'One' : t.other.length - t.excludes} could not be settled by this tool and ${t.other.length - t.excludes === 1 ? 'needs' : 'need'} a person.` : ''} Law wording for all {t.total}: see The proof section below.
       </p>
       {data.summary?.line ? <p className="text-sm font-semibold">{data.summary.line}</p> : null}
       <div className="flex flex-wrap gap-4">{cards.map((r) => <Card key={r.para} r={r} />)}</div>
