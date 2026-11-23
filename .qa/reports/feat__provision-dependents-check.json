@@ -1,16 +1,17 @@
 {
  "tier": "standard",
  "justification": "Standard: a new read-only script that sweeps every table pointing at a rule by id. Not Minor: it is the check a publish is now supposed to pass before it is called done. Not Critical: it writes nothing, opens a read-only connection, builds SQL only from names read from the catalogue after an identifier check, and is not wired into the ledger or CI so it cannot block anything.",
- "commit_hash": "d47732da",
+ "commit_hash": "0d5de5c0",
  "files": [
   "scripts/check_provision_dependents.py",
   "tests/test_check_provision_dependents.py",
-  "tests/test_check_provision_dependents_real_db.py"
+  "tests/test_check_provision_dependents_real_db.py",
+  "scripts/dq_check.py"
  ],
  "pre_impl": {
   "existing_data": "After Waverley's 4,446-rule publish on 2026-11-23 the sweep found 490 of 490 Waverley project_brief_rows, 32 da_responses rows and 2 setback controls pointing at superseded rules; 5 columns hold text ids. 32 id-referencing columns exist (foreign keys to regulatory_provisions plus columns named like a rule id).",
   "assumption_mismatch": "I treated the publish as done once the rule proofs ran. A publish supersedes rules and creates new ids, and nothing in the commit script lists the tables that point at the old ids; only OC-24 noticed, and only for the brief.",
-  "new_vs_existing": "plan_brief_checks.brief_integrity counts stale pointers for one table; this sweeps all of them by catalogue. Text-id columns are joined on the text form instead of being skipped.",
+  "new_vs_existing": "plan_brief_checks.brief_integrity counts stale pointers for one table; this sweeps all of them by catalogue. Text-id columns are joined on the text form instead of being skipped. The ledger's rule that every check script must be run by something is satisfied by an explicit allow-list entry with its mechanism (run by hand after every publish, needs a live database that CI lacks), not by wiring it as a gate that would be red today.",
   "external_source_error": "A column that cannot be checked is reported as NOT CHECKED and fails the run; it is never read as clean.",
   "frontend_type": "Not applicable: no frontend change.",
   "user_failure_mode": "A council is called republished while the brief, saved responses or controls still cite superseded rules. The check names every such table with its count."
