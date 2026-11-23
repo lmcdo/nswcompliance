@@ -1,7 +1,7 @@
 {
  "tier": "minor",
  "justification": "Minor: one claim row goes back to true because its own check now passes, and two notes are remeasured. No query, rule or served answer changes. The check itself was run and read passing.",
- "commit_hash": "882f4a0f",
+ "commit_hash": "0a907d47",
  "files": [
   ".claude/dq_checks.json"
  ],
