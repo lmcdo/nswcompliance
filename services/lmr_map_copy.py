@@ -44,15 +44,22 @@ def _edge_deg(lat: float) -> float:
 COPY_KEYS = {
     "tod_map": "tod_sites", "accelerated": "accelerated_tod", "exclusion": "lmr_exclusion", "hn_catchment": "hn_catchment",
     "georges_catchment": "georges_catchment", "coastal_vuln": "coastal_vuln", "airport_noise": "airport_noise", "heritage_shr": "heritage_shr",
+    # the 2024 Hawkesbury-Nepean River Flood Study extents (see flood_distance); a study, so each layer carries its own read_on and age limit in the manifest
+    "hn_pmf": "hn_pmf", "hn_500aep": "hn_500aep", "hn_100aep": "hn_100aep",
 }
+FLOOD_EDGE_M = 100.0   # noqa: regulatory-number -- engineering margin: 15 m flood-model cell plus the coarse scale of the law's Figure 1-1, not a planning figure
+FLOOD_SEARCH_DEG = 0.3   # about 30 km: a flood area farther than this is reported as "none within the search distance"
 
 
 class _Layer:
-    def __init__(self, geoms: list, props: list, as_of: date, skipped: int):
+    def __init__(self, geoms: list, props: list, as_of: date, skipped: int, max_age_days: int = MAX_AGE_DAYS):
         from shapely.strtree import STRtree
 
         self.geoms, self.props, self.as_of, self.skipped = geoms, props, as_of, skipped
+        self.max_age_days = max_age_days
         self.tree = STRtree(geoms)
+        bs = [g.bounds for g in geoms]
+        self.bounds = (min(b[0] for b in bs), min(b[1] for b in bs), max(b[2] for b in bs), max(b[3] for b in bs))   # lng/lat box the layer covers
 
 
 class MapCopy:
@@ -79,14 +86,17 @@ class MapCopy:
 
         m = self._read_manifest()
         meta = ((m or {}).get("layers") or {}).get(name)
-        try:
-            as_of = datetime.strptime(str((m or {}).get("read_on")), "%Y-%m-%d").date()
-        except ValueError:
-            logger.warning("map copy: %s has no readable read_on date", name)
-            return None
         if not isinstance(meta, dict) or not meta.get("files"):
             logger.warning("map copy: %s is not in the manifest", name)
             return None
+        # A layer may carry its own read_on and max_age_days (a dated study, not a monthly-changing legal map); otherwise the file-wide date and the 45-day limit apply.
+        try:
+            as_of = datetime.strptime(str(meta.get("read_on") or (m or {}).get("read_on")), "%Y-%m-%d").date()
+        except ValueError:
+            logger.warning("map copy: %s has no readable read_on date", name)
+            return None
+        own_age = meta.get("max_age_days")
+        max_age = own_age if isinstance(own_age, int) and not isinstance(own_age, bool) and own_age > 0 else MAX_AGE_DAYS
         geoms: list = []
         props: list = []
         skipped = 0
@@ -115,7 +125,7 @@ class MapCopy:
         if len(geoms) + skipped != meta.get("features") or not geoms:
             logger.warning("map copy: %s has %d shapes + %d skipped, manifest says %s", name, len(geoms), skipped, meta.get("features"))
             return None
-        return _Layer(geoms, props, as_of, skipped)
+        return _Layer(geoms, props, as_of, skipped, max_age)
 
     def layer(self, name: str, today: Optional[date] = None) -> Optional[_Layer]:
         today = today or date.today()
@@ -128,7 +138,7 @@ class MapCopy:
         if lay.as_of > today:   # a read_on date in the future is a typo or a clock fault; it must not keep a copy fresh
             logger.warning("map copy: %s read_on %s is in the future", name, lay.as_of)
             return None
-        if (today - lay.as_of).days > MAX_AGE_DAYS:
+        if (today - lay.as_of).days > lay.max_age_days:
             return None
         return lay
 
@@ -161,6 +171,49 @@ class MapCopy:
                 logger.warning("map copy: lot outline unusable: %s", exc)
         return {"point": point_hit, "lot": lot_hit, "as_of": lay.as_of.isoformat(), "near_edge": near_edge}
 
+    def flood_distance(self, key: str, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[dict]:
+        """How the lot sits against one flood-study layer, in metres, or None (no answer: the copy is missing, unproven or too old).
+
+        {"inside": the lot (its outline when given, else the point) touches the flood area,
+         "edge_m": metres from the lot to the nearest flood-area EDGE (0 when the lot straddles it), None if none within the search distance,
+         "nearest_m": metres to the nearest flood area itself (0 when inside), None if none within the search distance,
+         "within_box": the lot lies inside the box the layer covers (a lot outside it was never mapped by the study),
+         "used_outline": whether the lot outline was used, "as_of": date the copy was read, "polygons": how many flood areas were searched}"""
+        from shapely.geometry import Point, Polygon
+        from shapely.ops import transform
+
+        name = COPY_KEYS.get(key)
+        lay = self.layer(name, today) if name else None
+        if lay is None or lay.skipped:   # a flood layer with even one unreadable or empty area is incomplete: a lot in that area would read as clear, so it gives no answer
+            return None
+        target: Any = Point(lng, lat)
+        used_outline = False
+        if rings and len(rings) >= 4:
+            try:
+                p = Polygon(rings)
+                p = p if p.is_valid else p.buffer(0)
+                if not p.is_empty:   # a degenerate outline repairs to nothing: fall back to the point, never to "nothing found"
+                    target, used_outline = p, True
+            except Exception as exc:  # noqa: BLE001 -- an unusable outline falls back to the point
+                logger.warning("map copy: lot outline unusable: %s", exc)
+        mx, my = 111320.0 * math.cos(math.radians(lat)), 110540.0   # metres per degree here (the same flat scale the walking maps use)
+
+        def metric(g: Any) -> Any:
+            return transform(lambda x, y, z=None: ((x - lng) * mx, (y - lat) * my), g)
+
+        minx, miny, maxx, maxy = lay.bounds
+        tb = target.bounds
+        within_box = tb[0] >= minx and tb[2] <= maxx and tb[1] >= miny and tb[3] <= maxy
+        cand = list(lay.tree.query(target.buffer(FLOOD_SEARCH_DEG)))
+        inside = any(lay.geoms[i].intersects(target) for i in cand)
+        nearest = edge = None
+        if cand:
+            t_m = metric(target)
+            nearest = 0.0 if inside else min(t_m.distance(metric(lay.geoms[i])) for i in cand)
+            edge = min(t_m.distance(metric(lay.geoms[i].boundary)) for i in cand)
+        return {"inside": inside, "edge_m": None if edge is None else round(edge, 1), "nearest_m": None if nearest is None else round(nearest, 1),
+                "within_box": within_box, "used_outline": used_outline, "as_of": lay.as_of.isoformat(), "polygons": len(cand)}
+
     def noise_bands(self, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[list]:
         """Every airport-noise band the lot (or the point) touches, as the live reader returns them; None = no answer."""
         from shapely.geometry import Point, Polygon
@@ -190,3 +243,7 @@ def check(key: str, lat: float, lng: float, rings: Optional[list] = None, today:
 
 def noise_bands(lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[list]:
     return _default.noise_bands(lat, lng, rings, today)
+
+
+def flood_distance(key: str, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[dict]:
+    return _default.flood_distance(key, lat, lng, rings, today)

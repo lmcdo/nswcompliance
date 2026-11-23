@@ -275,3 +275,221 @@ def test_live_portal_chapter5_point_answers_chapter5():
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=180, cwd=root)
     assert r.returncode == 0, r.stderr[-800:]
     assert json.loads(r.stdout.strip().splitlines()[-1]) == "tod"
+
+
+# ---- flood study + pipeline distance -----------------------------------------------------------------------
+import math  # noqa: E402
+
+
+def _good(**over):
+    base = {"inside": False, "edge_m": 250.0, "nearest_m": 250.0, "within_box": True, "used_outline": True, "as_of": "2026-11-22", "polygons": 3}
+    base.update(over)
+    return base
+
+
+def test_flood_study_keeps_a_valid_answer_unchanged_and_passes_the_key_and_lot():
+    calls = []
+
+    def fn(key, lat, lng, rings):
+        calls.append((key, lat, lng, rings))
+        return _good()
+
+    out = inp._flood_study(LAT, LNG, RING, fn)
+    assert out == {"pmf": _good()} and calls == [("hn_pmf", LAT, LNG, RING)]
+
+
+def test_flood_study_accepts_both_distances_none_and_zero_when_inside():
+    out = inp._flood_study(LAT, LNG, None, lambda *a: _good(edge_m=None, nearest_m=None))   # no flood area within the search distance
+    assert out["pmf"]["edge_m"] is None and out["pmf"]["nearest_m"] is None
+    inside = inp._flood_study(LAT, LNG, None, lambda *a: _good(inside=True, edge_m=120.0, nearest_m=0))   # inside: the distance to a flood area is 0
+    assert inside["pmf"]["nearest_m"] == 0 and inside["pmf"]["edge_m"] == 120.0
+
+
+def _without(key):
+    d = _good()
+    d.pop(key)
+    return d
+
+
+@pytest.mark.parametrize("bad", [
+    _without("inside"), _without("within_box"), _without("as_of"),
+    pytest.param(_without("edge_m")),
+    pytest.param(_without("nearest_m")),
+    _good(edge_m=-1.0), _good(nearest_m=-0.1), _good(edge_m=float("nan")), _good(nearest_m=float("inf")), _good(edge_m=True),
+    _good(edge_m="12"), _good(as_of="22/11/2026"), _good(as_of="2026-11-22T00:00"), _good(as_of=20261122), _good(inside="yes"), _good(inside=1),
+    _good(within_box="yes"), None, "answer", [], 7,
+])
+def test_flood_study_leaves_out_a_malformed_answer_never_defaults_it(bad):
+    assert inp._flood_study(LAT, LNG, RING, lambda *a: bad) == {}
+
+
+def test_flood_study_a_raising_copy_is_left_out_not_raised():
+    def fn(*a):
+        raise RuntimeError("copy unreadable")
+
+    assert inp._flood_study(LAT, LNG, RING, fn, all_layers=True) == {}
+
+
+def test_flood_study_one_bad_layer_does_not_drop_the_others():
+    def fn(key, *a):
+        if key == "hn_500aep":
+            raise ValueError("x")
+        d = 1.0 if key == "hn_pmf" else 2.0
+        return _good(edge_m=d, nearest_m=d)
+
+    out = inp._flood_study(LAT, LNG, RING, fn, all_layers=True)
+    assert set(out) == {"pmf", "aep100"} and out["aep100"]["edge_m"] == 2.0 and out["pmf"]["edge_m"] == 1.0
+
+
+def test_flood_study_reads_only_pmf_unless_all_layers_is_asked():
+    seen = []
+
+    def fn(key, *a):
+        seen.append(key)
+        return _good()
+
+    assert set(inp._flood_study(LAT, LNG, RING, fn)) == {"pmf"} and seen == ["hn_pmf"]
+    seen.clear()
+    assert set(inp._flood_study(LAT, LNG, RING, fn, all_layers=True)) == {"pmf", "aep500", "aep100"}
+    assert seen == ["hn_pmf", "hn_500aep", "hn_100aep"]
+
+
+@pytest.mark.parametrize("v,ok", [(None, True), (0, True), (12.5, True), (-1, False), (float("nan"), False), (float("inf"), False), (True, False), ("3", False)])
+def test_num_or_none(v, ok):
+    assert inp._num_or_none(v) is ok
+
+
+# ---- _pipeline_nearest -----------------------------------------------------------------------------------
+MX, MY = 111320.0 * math.cos(math.radians(LAT)), 110540.0
+
+
+def _pipe(east_m, name="Moomba to Sydney"):
+    x = LNG + east_m / MX
+    return {"attributes": {"feature_name": name}, "geometry": {"paths": [[[x, LAT - 0.01], [x, LAT + 0.01]]]}}
+
+
+def test_pipeline_nearest_measures_from_the_path_with_the_flat_scale(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, post=False, **kw):
+        calls.append(params)
+        return {"features": [_pipe(1000), _pipe(4000, "Far one")]}
+
+    monkeypatch.setattr(inp, "_get_json", fake_get)
+    out = inp._pipeline_nearest(LAT, LNG)
+    assert out["nearest_name"] == "Moomba to Sydney" and abs(out["nearest_m"] - 1000) <= 15 and isinstance(out["nearest_m"], int)
+    assert len(calls) == 1 and calls[0]["distance"] == "5000"
+
+
+def test_pipeline_nearest_measures_to_the_segment_not_just_the_vertices(monkeypatch):
+    monkeypatch.setattr(inp, "_get_json", lambda *a, **k: {"features": [_pipe(300)]})   # vertices are 1.1 km north and south; the nearest point is mid-segment
+    assert abs(inp._pipeline_nearest(LAT, LNG)["nearest_m"] - 300) <= 5
+
+
+def test_pipeline_nearest_widens_when_the_first_radius_is_empty(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, post=False, **kw):
+        calls.append(params["distance"])
+        return {"features": []} if len(calls) == 1 else {"features": [_pipe(12000)]}
+
+    monkeypatch.setattr(inp, "_get_json", fake_get)
+    out = inp._pipeline_nearest(LAT, LNG)
+    assert len(calls) == 2 and calls == ["5000", "20000"] and abs(out["nearest_m"] - 12000) <= 150
+
+
+def test_pipeline_nearest_nothing_anywhere_says_how_far_it_searched(monkeypatch):
+    calls = []
+    monkeypatch.setattr(inp, "_get_json", lambda *a, **k: calls.append(1) or {"features": []})
+    assert inp._pipeline_nearest(LAT, LNG) == {"nearest_m": None, "searched_m": 60000}
+    assert len(calls) == 3
+
+
+def test_pipeline_nearest_a_feature_without_a_path_does_not_count(monkeypatch):
+    monkeypatch.setattr(inp, "_get_json", lambda *a, **k: {"features": [{"attributes": {"feature_name": "x"}, "geometry": {}}]})
+    assert inp._pipeline_nearest(LAT, LNG) == {"nearest_m": None, "searched_m": 60000}
+
+
+def test_pipeline_nearest_service_not_answering_gives_empty_never_a_distance(monkeypatch):
+    monkeypatch.setattr(inp, "_get_json", lambda *a, **k: None)
+    assert inp._pipeline_nearest(LAT, LNG) == {}
+
+
+def test_pipeline_nearest_service_failing_on_the_second_radius_gives_empty(monkeypatch):
+    seq = iter([{"features": []}, None])
+    monkeypatch.setattr(inp, "_get_json", lambda *a, **k: next(seq))
+    assert inp._pipeline_nearest(LAT, LNG) == {}
+
+
+# ---- gather: flood study and pipeline distance wiring ----------------------------------------------------
+def _gather_layers(**over):
+    base = {"lga": "Inner West", "sydney_anef": {"x": 1}, "pipeline": {"hit": False, "names": []}}
+    base.update(over)
+    return base
+
+
+def _g(monkeypatch, **kw):
+    monkeypatch.setattr(inp, "town_centre_polygons", lambda *a, **k: [])
+    return inp.gather(LAT, LNG, rings=RING, stations={}, layers=_gather_layers(**kw.pop("layers", {})), **kw)
+
+
+def test_gather_without_a_flood_study_fn_adds_no_flood_study(monkeypatch):
+    m = _g(monkeypatch)
+    assert "flood_study" not in m and m["pipeline"] == {"hit": False, "names": []}
+
+
+def test_gather_flood_study_public_check_reads_only_pmf(monkeypatch):
+    seen = []
+
+    def fn(key, lat, lng, rings):
+        seen.append((key, rings))
+        return _good()
+
+    m = _g(monkeypatch, flood_study_fn=fn)
+    assert m["flood_study"] == {"pmf": _good()} and seen == [("hn_pmf", RING)]
+
+
+def test_gather_flood_study_with_distances_reads_all_three(monkeypatch):
+    m = _g(monkeypatch, flood_study_fn=lambda *a: _good(), want_distances=True)
+    assert set(m["flood_study"]) == {"pmf", "aep500", "aep100"}
+
+
+def test_gather_does_not_overwrite_a_flood_study_already_in_the_saved_layers(monkeypatch):
+    saved = {"pmf": _good(edge_m=7.0)}
+    m = _g(monkeypatch, layers={"flood_study": saved}, flood_study_fn=lambda *a: pytest.fail("must not be called"))
+    assert m["flood_study"] == saved
+
+
+def test_gather_pipeline_nearest_only_with_distances_and_a_miss(monkeypatch):
+    monkeypatch.setattr(inp, "_pipeline_nearest", lambda lat, lng: {"nearest_m": 1234, "nearest_name": "SENTINEL"})
+    assert "nearest_m" not in _g(monkeypatch)["pipeline"]                                               # public check: one query only
+    with_d = _g(monkeypatch, want_distances=True)["pipeline"]
+    assert with_d == {"hit": False, "names": [], "nearest_m": 1234, "nearest_name": "SENTINEL"}
+    hit = _g(monkeypatch, want_distances=True, layers={"pipeline": {"hit": True, "names": ["P"]}})["pipeline"]
+    assert hit == {"hit": True, "names": ["P"]}                                                         # a hit already says it is within the law's distance
+    unknown = _g(monkeypatch, want_distances=True, layers={"pipeline": {"hit": None, "names": []}})["pipeline"]
+    assert unknown == {"hit": None, "names": []}                                                        # the service did not answer: no distance guessed
+
+
+def test_gather_pipeline_nearest_is_not_asked_twice(monkeypatch):
+    monkeypatch.setattr(inp, "_pipeline_nearest", lambda *a: pytest.fail("must not be called"))
+    m = _g(monkeypatch, want_distances=True, layers={"pipeline": {"hit": False, "names": [], "nearest_m": 99}})
+    assert m["pipeline"]["nearest_m"] == 99
+
+
+# ---- a flood answer that contradicts itself is rejected (inside with a distance above 0, outside at distance 0, one distance missing, edge and nearest far apart)
+@pytest.mark.parametrize("bad", [
+    _good(inside=False, edge_m=None, nearest_m=0.0), _good(inside=False, edge_m=0.0, nearest_m=0.0), _good(inside=False, edge_m=500.0, nearest_m=None),
+    _good(inside=False, edge_m=None, nearest_m=500.0), _good(inside=False, edge_m=500.0, nearest_m=900.0), _good(inside=True, edge_m=None, nearest_m=0.0),
+    _good(inside=True, edge_m=300.0, nearest_m=25.0),
+])
+def test_flood_study_rejects_a_contradictory_answer(bad):
+    assert inp._flood_study(-33.7, 150.7, None, lambda key, la, ln, rings: dict(bad)) == {}
+
+
+@pytest.mark.parametrize("ok", [
+    _good(inside=True, edge_m=300.0, nearest_m=0.0), _good(inside=False, edge_m=500.0, nearest_m=500.0), _good(inside=False, edge_m=500.4, nearest_m=499.9),
+    _good(inside=False, edge_m=None, nearest_m=None),
+])
+def test_flood_study_keeps_a_consistent_answer(ok):
+    assert set(inp._flood_study(-33.7, 150.7, None, lambda key, la, ln, rings: dict(ok))) == {"pmf"}

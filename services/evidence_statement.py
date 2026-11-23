@@ -60,6 +60,54 @@ def _para_of(rule: dict) -> Optional[str]:
     return clause[len("s164(1)("):-1]
 
 
+PIPELINE_COVERAGE_PATH = Path(__file__).resolve().parent.parent / "data" / "law" / "pipeline_route_coverage.json"
+
+
+def pipeline_coverage(path: Path = PIPELINE_COVERAGE_PATH) -> Optional[dict]:
+    """Which of the law's named pipelines have no published route we could find, from the saved coverage file, or None when it cannot be read or is malformed.
+    None means the page says nothing about coverage; it is never read as 'all pipelines covered'."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    lic = doc.get("licences_with_no_published_route") if isinstance(doc, dict) else None
+    named = doc.get("named_in_law") if isinstance(doc, dict) else None
+    if not (isinstance(lic, list) and lic and all(isinstance(x, int) and not isinstance(x, bool) and x > 0 for x in lic) and len(set(lic)) == len(lic)
+            and isinstance(named, int) and not isinstance(named, bool) and named > 0 and isinstance(doc.get("checked_on"), str)):
+        return None
+    other = doc.get("other_named_pipeline_with_no_published_route")
+    if len(lic) + (1 if isinstance(other, str) and other else 0) > named:   # more pipelines without a route than the law names is a malformed file
+        return None
+    return {"licences": lic, "other": other if isinstance(other, str) and other else None, "named_in_law": doc.get("named_in_law"),
+            "no_route_count": len(lic) + (1 if isinstance(other, str) and other else 0), "checked_on": doc.get("checked_on"), "verified": False}
+
+
+def _row_facts(para: str, area: dict, rule_figures: dict, facts: dec.LawFacts) -> Optional[dict]:
+    """The distances behind a paragraph, for the page: the flood rule's own figures plus the two flood-frequency distances (paragraph f), or the nearest mapped gas
+    pipeline and the named gap (paragraph i). Read from what the area check measured; nothing is computed or filled in here."""
+    measured = area.get("measured") or {}
+    if para == "f":
+        out = dict(rule_figures) if isinstance(rule_figures, dict) and rule_figures else {}
+        fs = measured.get("flood_study") if isinstance(measured.get("flood_study"), dict) else {}
+        for k, label in (("aep500", "nearest_500_year_m"), ("aep100", "nearest_100_year_m")):
+            layer = fs.get(k) if isinstance(fs.get(k), dict) else None
+            if layer is not None and layer.get("nearest_m") is not None:
+                out[label] = layer.get("nearest_m")
+        return out or None
+    if para == "i":
+        pl = measured.get("pipeline") if isinstance(measured.get("pipeline"), dict) else None
+        if pl is None:
+            return None
+        out = {"limit_m": facts.number("s164_i_distance"), "map": "Geoscience Australia national gas pipeline map", "hit": pl.get("hit"), "names": pl.get("names")}
+        if "nearest_m" in pl:
+            out.update(nearest_m=pl.get("nearest_m"), nearest_name=pl.get("nearest_name"), searched_m=pl.get("searched_m"))
+        cov = pipeline_coverage()
+        if cov is not None:
+            out["gap"] = cov
+        return out
+    return None
+
+
 def exclusions(area: dict, facts: dec.LawFacts) -> list[dict]:
     """One row per live paragraph of s164(1), in the law's order. j (repealed) has no row."""
     by_para: dict[str, list[dict]] = {}
@@ -90,6 +138,9 @@ def exclusions(area: dict, facts: dec.LawFacts) -> list[dict]:
         else:
             row.update(result="not_checked", detail="no check was run for this paragraph", source_checked=NOT_RUN_SOURCE)
         row["result_words"] = RESULT_WORDS.get(row["result"], row["result"])  # noqa: bracket-access -- set by the branches above
+        extra = _row_facts(para, area, (worst.get("figures") if rules else None) or {}, facts)
+        if extra:
+            row["facts"] = extra
         rows.append(row)
     return rows
 

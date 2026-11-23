@@ -60,6 +60,7 @@ YES, NO, CANT, BORDER = "yes", "no", "cant_tell", "borderline"
 # judge follows its own rules for crossings and access. A range of the same size on both sides covered only 88% (150 m each way);
 # 75 m below and 225 m above covers about 94% with a smaller total width. The first 150 m margin was set on one sample and covered
 # only 86% of two fresh samples, so these two numbers are set on all three samples and must be checked on lots drawn with new seeds.
+FLOOD_EDGE_M = 100.0   # noqa: regulatory-number -- margin for the flood-study copy's map detail (15 m model cell plus the coarse Figure 1-1), same value as services/lmr_map_copy.FLOOD_EDGE_M, not a planning figure
 WALK_MARGIN_LOW_M = 75    # noqa: regulatory-number -- measured router disagreement, not a planning figure
 WALK_MARGIN_HIGH_M = 225  # noqa: regulatory-number -- measured router disagreement, not a planning figure
 SANITY_MAX_M = 100000000.0  # noqa: regulatory-number -- upper sanity bound on a distance read from a chart answer (also rejects NaN and infinity); not a planning figure
@@ -180,6 +181,11 @@ def layer_state(layer: Any) -> str:
     if lot is None and pt is False:
         return "unknown"  # point clear, lot outline missing: a part of the lot could still be in it
     return "unknown"
+
+
+def _distance_words(metres: float) -> str:
+    """A distance for a sentence: metres to one decimal under a kilometre (so 100.4 m is never shown as '100 m' beside a 100 m margin), otherwise kilometres to one decimal ('9.9 km')."""
+    return f"{metres / 1000:.1f} km" if metres >= 1000 else f"{metres:.1f}".rstrip("0").rstrip(".") + " m"
 
 
 def _rule(code: str, clause: dict, outcome: str, detail: str, **figures: Any) -> dict:
@@ -392,10 +398,37 @@ def _lmr_rules(m: dict, facts: LawFacts) -> list[dict]:
         else:
             rules.append(_rule("pmf_georges_river", pf1, "unknown", "the Georges River Catchment map did not answer"))
 
-    # (f) Hawkesbury-Nepean Probable Maximum Flood. The paragraph names a flood-study figure, not a catchment; the study area lies inside
-    # the river's catchment, so a lot outside the catchment cannot be on it. That inference is ours, and it is printed with the answer.
-    if "hn_catchment" in m:
-        pf = facts.paragraph("f")
+    # (f) Hawkesbury-Nepean Probable Maximum Flood. The paragraph names the flood-study figure, not a catchment. When our copy of the study's own flood extent can place the lot
+    # (inside the box it covers), that decides: well outside = clear, on or near the extent = a warning with the distance, never a clear. Otherwise the older rule below
+    # applies unchanged: the study area lies inside the river's catchment, so a lot outside the catchment cannot be on it (our inference, printed with the answer).
+    pf = facts.paragraph("f")
+    pmf = (m.get("flood_study") or {}).get("pmf") if isinstance(m.get("flood_study"), dict) else None
+    # A lot inside the box our copy spans is decided by it. A lot that touches a flood area is decided by it even if its outline runs past the box (an intersection is conclusive);
+    # any other lot outside the box keeps the older rule.
+    # A "clear" needs the lot's OUTLINE: a point 150 m outside could be on a parcel that crosses the flood area, and the catchment rule below already refuses to clear on a point alone.
+    pmf_decides = isinstance(pmf, dict) and (pmf.get("inside") is True or (pmf.get("within_box") is True and pmf.get("used_outline") is True))
+    if pmf_decides:
+        edge = pmf.get("edge_m")
+        facts_out = {"flood_state": None, "edge_m": edge, "nearest_m": pmf.get("nearest_m"), "inside": pmf.get("inside"), "margin_m": FLOOD_EDGE_M,
+                     "copy_as_of": pmf.get("as_of"), "used_outline": pmf.get("used_outline"), "study": "Hawkesbury-Nepean River Flood Study, May 2024"}
+        if pmf.get("inside") is True:
+            facts_out["flood_state"] = "inside"
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "warn",
+                               "the lot is on the Probable Maximum Flood map of the 2024 Hawkesbury-Nepean River Flood Study (our copy): the law excludes land identified as Probable Maximum Flood "
+                               "in the study's Figure 1-1, and our copy is not proven to equal that figure to the metre", **facts_out))
+        elif edge is not None and edge <= FLOOD_EDGE_M:
+            facts_out["flood_state"] = "edge"
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "warn",
+                               f"the lot is {_distance_words(edge)} from the edge of the Probable Maximum Flood map of the 2024 Hawkesbury-Nepean River Flood Study (our copy), inside the {FLOOD_EDGE_M:g} m margin "
+                               "for map detail: the map cannot say which side of the edge the lot is on", **facts_out))
+        else:
+            facts_out["flood_state"] = "outside"
+            near = pmf.get("nearest_m")
+            where = f"the nearest flood area is {_distance_words(near)} away" if near is not None else "no flood area is within the search distance"
+            rules.append(_rule("pmf_hawkesbury_nepean", pf, "clear",
+                               f"the lot is not on the Probable Maximum Flood map of the 2024 Hawkesbury-Nepean River Flood Study (our copy): {where}, outside the {FLOOD_EDGE_M:g} m margin for map detail",
+                               **facts_out))
+    elif "hn_catchment" in m:
         st = layer_state(m.get("hn_catchment"))
         if st == "clear":
             rules.append(_rule("pmf_hawkesbury_nepean", pf, "clear",
@@ -574,7 +607,9 @@ def _decide(m: dict, facts: LawFacts) -> dict:
         lmr = {"answer": dist_answer, **dist,
                "figures": {k: dist.get(k) for k in ("straight_m", "limit_m", "walk_m", "walk_low_m", "walk_high_m", "walk_best_m",
                                                     "margin_low_m", "margin_high_m", "entrance_unmapped_extra_m", "anchor", "entrance_id")}}
-    lmr["rules"] = [{k: r[k] for k in ("rule", "clause", "page", "outcome", "detail")} for r in rules]
+    # the flood rule alone also passes on its figures (distances, the margin, the copy date) for the evidence page; every other rule keeps the shape it always had
+    lmr["rules"] = [{**{k: r[k] for k in ("rule", "clause", "page", "outcome", "detail")},
+                     **({"figures": r.get("figures")} if r.get("rule") == "pmf_hawkesbury_nepean" and r.get("figures") else {})} for r in rules]
 
     # --- TOD answer: its own question, its own clause ---
     c5 = rules[0]
@@ -620,6 +655,10 @@ def _decide(m: dict, facts: LawFacts) -> dict:
         dates = sorted({str(v) for v in mcopy.values()})
         notes.append(f"{len(mcopy)} of the state maps were read from our own copy (read on {', '.join(dates)}), not from the live state map; "
                      "a map changed since then may differ. A lot close to a map edge is always checked on the live map.")
+    fs = m.get("flood_study") if isinstance(m.get("flood_study"), dict) else None
+    if fs and isinstance(fs.get("pmf"), dict) and fs["pmf"].get("within_box") is True:   # noqa: bracket-access -- fs.get("pmf") is a dict by the test on this line
+        notes.append(f"The flood areas were read from our own copy of the 2024 Hawkesbury-Nepean River Flood Study (copy read {fs['pmf'].get('as_of')}; study dated May 2024), not from a live map. "  # noqa: bracket-access -- tested above
+                     "A lot within the margin of a flood edge is reported as on the edge, never as clear.")
     ls = m.get("lot_source") if isinstance(m.get("lot_source"), dict) else None
     if ls is not None:
         notes.append(f"The lot outline was read from our own copy of the lot boundaries{' as at ' + str(ls.get('as_of')) if ls.get('as_of') else ''}, not from the live state property map; a lot subdivided or merged since then may differ.")
@@ -638,7 +677,7 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     return {"pathway": pathway, "headline": _headline(pathway, lmr, tod), "lmr": lmr, "tod": tod,
             "not_checked": nc, "warnings": warnings,
             "notes": notes, "law_version_date": facts.version_date,
-            "measured": {k: m.get(k) for k in ("lga", "lga_source", "straight_m", "sched12_straight_m", "walk") if k in m}}
+            "measured": {k: m.get(k) for k in ("lga", "lga_source", "straight_m", "sched12_straight_m", "walk", "pipeline", "flood_study") if k in m}}
 
 
 def _headline(pathway: str, lmr: dict, tod: dict) -> str:

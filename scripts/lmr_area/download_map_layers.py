@@ -128,9 +128,22 @@ def main(argv: list[str]) -> int:
             {"file": nm, "features": len(c), "bytes": len(g), "sha256": hashlib.sha256(g).hexdigest()} for nm, c, g in zip(names, chunks, gzs)]}
         pending += list(zip(names, gzs))   # written only after EVERY layer has been read and checked
     if apply and not failed and not too_big:
+        kept: dict[str, Any] = {}   # layers this script does not own (the flood-study copy from export_flood_copy.py) stay exactly as they are
+        mf = OUT_DIR / "manifest.json"
+        if mf.exists():   # an existing manifest that cannot be read must STOP the apply: carrying on would silently delete the flood layers and the flood check would stop answering
+            try:
+                old_layers = json.loads(mf.read_text(encoding="utf-8")).get("layers")
+            except (OSError, ValueError, AttributeError) as exc:
+                print(f"STOPPED: the existing manifest cannot be read ({type(exc).__name__}); fix or restore {mf} first. Nothing was written.")
+                return 1
+            if not isinstance(old_layers, dict):
+                print(f"STOPPED: the existing manifest has no 'layers' table; fix or restore {mf} first. Nothing was written.")
+                return 1
+            kept = {k: v for k, v in old_layers.items() if k not in LAYERS}
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         for nm, g in pending:
             (OUT_DIR / nm).write_bytes(g)
+        manifest["layers"] = {**manifest["layers"], **kept}
         (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {len(manifest['layers'])} files and manifest.json to {OUT_DIR}")
     elif not apply:
