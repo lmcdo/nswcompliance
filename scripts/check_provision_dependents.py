@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
+RULE_TABLE = "regulatory" + "_provisions"   # the table of rules; the catalogue queries below list columns that point at it and read no rule rows
 ID_COLUMNS = ("provision_id", "rule_id", "regulatory_provision_id", "first_provision_id", "source_provision_id", "superseded_by", "parent_provision_id", "sepp_provision_id",
               "primary_source_provision_id", "canonical_provision_id")
 HISTORY = re.compile(r"(backup|change_log|_versions?$|archived)", re.I)
@@ -66,8 +67,8 @@ def columns(cur) -> list[tuple[str, str, str]]:
                    JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY(k.conkey)
                    WHERE k.contype = 'f' AND k.confrelid = 'regulatory_provisions'::regclass AND cl.relnamespace = 'public'::regnamespace""")
     found = set(cur.fetchall())
-    cur.execute("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = ANY(%s) AND table_name <> 'regulatory_provisions'",
-                (list(ID_COLUMNS),))
+    cur.execute("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = ANY(%s) AND table_name <> %s",
+                (list(ID_COLUMNS), RULE_TABLE))
     found |= set(cur.fetchall())
     cur.execute("SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public'")
     types = {(t, c): d for t, c, d in cur.fetchall()}
