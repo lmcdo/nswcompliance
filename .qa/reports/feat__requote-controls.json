@@ -1,0 +1,144 @@
+{
+ "tier": "standard",
+ "justification": "Standard: a new script that, when run with --apply, edits the quote, page and link of numeric controls in the production controls table, and can release held rows. Not Minor: it writes to production and decides what a planner is shown as the council's words. Not Critical: dry run is the default, nothing runs in this change, every write is backed up first and guarded on the values read at planning time, migration 120 still wipes the proof on the edit so nothing is served until the existing word for word check passes, and release only frees holds the quote check itself wrote.",
+ "commit_hash": "f0a81f61",
+ "files": [
+  "scripts/requote_controls_from_provisions.py",
+  "tests/test_requote_controls_from_provisions.py",
+  "tests/test_requote_controls_from_provisions_real_db.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Waverley's 59 current numeric controls: 58 typed by hand in May 2026, 1 text extraction; 54 had no provision link; 0 served; the quote check against the new file reads 0 verbatim. The council's new plan is live with 4,446 current rules.",
+  "assumption_mismatch": "I assumed re-proving the old quotes would bring controls back. The quotes are paraphrases (for example Low Density Residential: 2 bedrooms or fewer, Maximum 1), so they fail against any version of the plan and must be replaced with the council's own words. A first program proposer also accepted an objective sentence (To support the 29 percent canopy target) that a reader had rightly refused, which is why a reader's none now stands and objectives are rejected.",
+  "new_vs_existing": "link_controls_to_provisions.py only links a control whose stored quote is already inside one rule, so a paraphrase can never link; dcp_quote_status.py proves but never edits. Nothing replaced a paraphrase with the council's words. The earlier requote batches were one-off scripts not kept in scripts/.",
+  "external_source_error": "If a rule, page or control changes while planning, the guarded update aborts the whole write and rolls back. A reader answer that is not an exact piece of a current rule of that council is dropped.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A planner is shown a number with words that are not the council's, or the wrong row of a table. A quote must be an exact substring of a current rule, contain the control's number as a whole token, not be an objective, and not be shared with a control of a different value; then the existing check proves it against the PDF before anything is served."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_requote_controls_from_provisions.py -q ; python scripts/requote_controls_from_provisions.py --council waverley --answers ANSWERS.json",
+  "fails_when": "A quote that is not in the rule, lacks the control's number, is an objective, or is shared across values is planned; a reader's none is overruled; or release frees a hold a person wrote.",
+  "observed_red": "Eleven deliberate breaks (number check off, substring check off, objective allowed, ambiguity ignored, reader none overruled, release any hold, no margin, chapter check off, label strip off, prefix match for holds, other controls ignored, release reason guard off) each failed at least one test.",
+  "observed_green": "22 tests pass and 1 real-layer test passes. A dry run on Waverley plans 27 controls (0 by program, 27 by reader) and leaves 16 ambiguous table cells, 9 whose quote lacks the number and 7 with no match; nothing is written. Numbers are compared as exact decimals, so 12.345678 is never accepted as 12.3457."
+ },
+ "functions": [
+  {
+   "name": "prove",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "a proposed quote, the rule text and the control",
+   "output": "proven, or the reason it is refused",
+   "if_none": "an empty, too short or too long quote is refused and never stored"
+  },
+  {
+   "name": "plan",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "the controls, the council's current rules and any reader answers",
+   "output": "the proven quotes to write and a reason for every control left alone",
+   "if_none": "a control with no number or no clear best sentence is left alone and listed"
+  },
+  {
+   "name": "_requote",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "the council and the apply flag",
+   "output": "a backup file, then source text, page and link written on the proven rows only",
+   "if_none": "without --apply nothing is written; a row that changed while planning aborts the whole write"
+  }
+ ],
+ "values": [
+  {
+   "value": "the council's words for a control",
+   "read_at": "an exact substring of a current regulatory_provisions row of that council",
+   "if_missing": "the control stays held and unchanged"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Controls not yet proven for one council",
+   "file_line": "scripts/requote_controls_from_provisions.py CTL_SQL",
+   "where_clause": "WHERE lga = council AND is_current AND (held OR unlinked OR not verbatim); read-only connection unless --apply"
+  },
+  {
+   "purpose": "The council's current rules in the controls' chapters",
+   "file_line": "scripts/requote_controls_from_provisions.py PROV_SQL",
+   "where_clause": "WHERE source_council = council AND is_current AND source_chapter_key in the controls' chapters"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A quote is a table cell block that fits several controls of different values.",
+   "what_happens": "A planner could be shown the wrong row's number as the council's words.",
+   "mitigated": true,
+   "how": "A quote planned for controls of different values is dropped for all of them; Waverley's 15 car parking cells stay held.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k ambiguous -q"
+  },
+  {
+   "scenario": "The quote is an objective that mentions the number.",
+   "what_happens": "An aim such as a canopy target would be served as a control a lot must meet.",
+   "mitigated": true,
+   "how": "A quote starting with To or The objective is refused, and a reader's none is never overruled by the program.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k objective -q"
+  },
+  {
+   "scenario": "The number is only found inside a bigger number, 5 inside 15.",
+   "what_happens": "A wrong value would be accepted as present.",
+   "mitigated": true,
+   "how": "Numbers are compared as whole tokens.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k bigger_number -q"
+  },
+  {
+   "scenario": "A reader names a rule that is not a current rule of that council, or invents a sentence.",
+   "what_happens": "A control could be linked to someone else's clause.",
+   "mitigated": true,
+   "how": "The quote must be an exact substring of a current rule of that same council, otherwise it is dropped.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k reader_answer -q"
+  },
+  {
+   "scenario": "A held row carries a person's written note and the release step runs.",
+   "what_happens": "A deliberate hold would be undone.",
+   "mitigated": true,
+   "how": "Release frees only rows held for a reason the quote check wrote, and only when proven verbatim and linked.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k release -q"
+  },
+  {
+   "scenario": "The quote is in a different chapter of the same council with the same number and similar words.",
+   "what_happens": "A control would be linked to an unrelated rule and carry its text.",
+   "mitigated": true,
+   "how": "The rule must be in the control's own chapter, and a control with no chapter is left alone.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k another_chapter -q"
+  },
+  {
+   "scenario": "A quote is already held word for word by another current control of a different value.",
+   "what_happens": "The ambiguous cell would be written onto a second control.",
+   "mitigated": true,
+   "how": "The plan checks every other current control of the council, not only the unresolved ones.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k already_held -q"
+  },
+  {
+   "scenario": "A person writes a hold after planning and the release step runs.",
+   "what_happens": "A deliberate hold would be removed.",
+   "mitigated": true,
+   "how": "The release updates each row only while its reason is still the one planned on, and aborts and rolls back if any row differs.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k release_aborts -q"
+  },
+  {
+   "scenario": "An objective carries a clause label such as O1 or a bracketed letter.",
+   "what_happens": "An aim would pass as a control.",
+   "mitigated": true,
+   "how": "Clause labels are stripped before the objective test.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k labelled_objective -q"
+  },
+  {
+   "scenario": "A control value has more than six significant digits and the rule shows a rounded neighbour.",
+   "what_happens": "A different number would be accepted as the council's.",
+   "mitigated": true,
+   "how": "Values and quote numbers are compared as exact decimals with trailing zeros removed, with no rounding.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k long_decimal -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "For Waverley: run the script with --apply, then dcp_quote_status.py --council waverley --apply, then the script with --release; rows proven verbatim are served and python scripts/verify_coverage_stats.py --field dcpNumericCouncils reads 22."
+ }
+}
