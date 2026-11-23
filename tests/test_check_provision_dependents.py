@@ -72,7 +72,7 @@ class _Cur:
             raise RuntimeError("boom")
 
     def fetchone(self):
-        return (10, 2, 0) if any("FILTER" in q for q in self.sql[-1:]) else (self.count,)
+        return (10, 2, 0) if any("LEFT JOIN" in q for q in self.sql[-1:]) else (self.count,)
 
 
 class _Conn:
