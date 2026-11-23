@@ -1,11 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { evidenceUrl, isEvidence, type Evidence } from '@/lib/evidence-statement';
+import { fmtNum, lgaName, verdictWords, walkVerdict } from '@/lib/evidence-summary';
 import RouteMapFigure from '@/components/reports/RouteMapFigure';
+import AtAGlance from '@/components/reports/evidence/AtAGlance';
+import CheckSection from '@/components/reports/evidence/CheckSection';
+import ControlsSection from '@/components/reports/evidence/ControlsSection';
+import ProofSection from '@/components/reports/evidence/ProofSection';
+import RangeScale from '@/components/reports/evidence/RangeScale';
 
-const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } tr, figure, svg { break-inside: avoid; } }';
+// header, nav and footer are the SITE's (and this page's jump links); the page's own title block and record line are divs so they print.
+const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } figure, svg { break-inside: avoid; } }';
+
+/** Opens every folded section while the page prints, and puts each back as it was afterwards, so the printed record carries the proof. */
+function useOpenFoldsForPrint() {
+  useEffect(() => {
+    const was = new Map<HTMLDetailsElement, boolean>();
+    const open = () => document.querySelectorAll<HTMLDetailsElement>('.evidence-statement details').forEach((d) => { was.set(d, d.open); d.open = true; });
+    const restore = () => { was.forEach((v, d) => { d.open = v; }); was.clear(); };
+    window.addEventListener('beforeprint', open);
+    window.addEventListener('afterprint', restore);
+    return () => { window.removeEventListener('beforeprint', open); window.removeEventListener('afterprint', restore); };
+  }, []);
+}
 
 export default function EvidenceStatement() {
   const sp = useSearchParams();
@@ -14,6 +33,8 @@ export default function EvidenceStatement() {
   const address = sp?.get('address') ?? null;
   const [data, setData] = useState<Evidence | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
+  useOpenFoldsForPrint();
 
   useEffect(() => {
     const url = evidenceUrl(lat, lng);
@@ -32,178 +53,80 @@ export default function EvidenceStatement() {
     return () => { live = false; };
   }, [lat, lng]);
 
+  const copyLink = useCallback(() => {
+    if (!navigator.clipboard) { setCopied('failed'); return; }
+    navigator.clipboard.writeText(window.location.href).then(() => setCopied('done'), () => setCopied('failed'));
+  }, []);
+
   if (error) return <p className="p-6 text-sm" role="alert">{error}</p>;
   if (!data) return <p className="p-6 text-sm">Loading the evidence for this lot...</p>;
 
   const w = data.walk;
-  const cc = data.council_controls;
-  const cf = data.council_files;
-  // The earliest "held from" among the files listed below (ISO dates sort as text). Read from the same list, and only when EVERY file
-  // has a date: a file with no date could be older, so "we hold nothing earlier" could not be said.
-  const heldDates = cf.status === 'ok' ? cf.files.map((f) => f.held_from?.slice(0, 10)) : [];
-  // A date that is not strictly YYYY-MM-DD would not sort correctly as text, so it counts as undated.
-  const earliestHeld = heldDates.length > 0 && heldDates.every((d) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? (heldDates as string[]).slice().sort()[0] : null;
+  const v = walkVerdict(w);
+  const words = verdictWords(v, w.detail);
+  const hasCrossings = !!(w.crossings_only_note || w.crossings_only_walk_m != null);
+  const limitText = v.limit !== null ? ` ${fmtNum(v.limit)} m` : '';
   return (
-    <main className="mx-auto max-w-4xl p-6 text-sm text-gray-900 evidence-statement">
+    <main className="evidence-statement mx-auto flex max-w-4xl flex-col gap-10 px-4 py-8 text-sm text-gray-900 sm:px-8">
       <style>{PRINT_CSS}</style>
-      <div className="no-print mb-4">
-        <button type="button" onClick={() => window.print()} className="rounded border px-3 py-1">Print or save as PDF</button>
+      <div className="no-print flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => window.print()} className="min-h-11 rounded-full bg-blue-700 px-5 text-sm font-medium text-white">Print or save as PDF</button>
+        <button type="button" onClick={copyLink} className="min-h-11 rounded-full border border-gray-300 bg-white px-5 text-sm font-medium">Copy link</button>
+        {copied !== 'idle' ? <span role="status" className="text-sm text-gray-600">{copied === 'done' ? 'Link copied.' : 'The link could not be copied: copy it from the address bar.'}</span> : null}
       </div>
-      <h1 className="text-xl font-semibold">Site evidence statement</h1>
-      <p className="text-gray-600">
-        Point {lat}, {lng}{data.lga ? ` (${data.lga})` : ''}.{address ? ` Reference typed in the link, not checked against the point: ${address}.` : ''} Law version dated {data.law_version_date ?? 'not given'}.
-      </p>
-      {data.headline && <p className="mt-2">{data.headline}</p>}
-      {data.summary?.line ? <p className="mt-2 font-semibold">{data.summary.line}</p> : null}
 
-      {data.notes.length > 0 && (
-        <>
-          <h2 className="mt-6 text-lg font-semibold">Notes on how to read this</h2>
-          <ul className="list-disc pl-5">{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
-        </>
-      )}
+      <div className="flex flex-col gap-3">
+        <h1 className="text-4xl font-bold leading-tight tracking-tight">Low and Mid Rise housing: walking-distance check</h1>
+        <p className="max-w-3xl text-lg leading-snug">
+          {`Is this lot within${limitText || ' a set'} walking distance of a station or town centre, and is any of it on land where the housing rules don't apply?`} What this tool found, and the law&apos;s words behind it.
+        </p>
+        <p className="text-2xl font-semibold tracking-tight">{address ?? `Point ${lat}, ${lng}`}</p>
+        <p className="flex flex-wrap gap-2 text-xs text-gray-700">
+          {lgaName(data.lga) ? <span className="rounded-full bg-gray-100 px-3 py-1.5">{lgaName(data.lga)}</span> : null}
+          <span className="rounded-full bg-gray-100 px-3 py-1.5">Law as at {data.law_version_date ?? 'not given'}</span>
+          <span className="rounded-full bg-gray-100 px-3 py-1.5">Point {lat}, {lng}</span>
+        </p>
+        {address ? <p className="text-xs text-gray-600">Reference typed in the link, not checked against the point: {address}.</p> : null}
+      </div>
 
-      <h2 className="mt-6 text-lg font-semibold">Walking range</h2>
-      <p>
-        {w.walk_low_m != null && w.walk_high_m != null
-          ? `Measured walk from ${w.anchor ?? 'the nearest anchor'}: ${w.walk_low_m} to ${w.walk_high_m} m. Limit in the law: ${w.limit_m ?? 'not given'} m${w.clause ? ` (${w.clause}, page ${w.page})` : ''}.`
-          : `No walking range was measured. ${w.detail ?? ''}`}
-      </p>
-      {w.walk_low_m != null && w.walk_high_m != null && w.margin_low_m != null && w.margin_high_m != null && (
-        <p className="text-gray-600">
-          {`The walk is a range because the measurement can be off: the range runs from the measured walk less ${w.margin_low_m} m to the measured walk plus ${w.margin_high_m} m${w.entrance_unmapped_extra_m ? `, plus up to ${w.entrance_unmapped_extra_m} m because the station entrance is not mapped` : ''}.`}
+      <AtAGlance data={data} />
+
+      <section id="walk" aria-labelledby="walk-h" className="flex flex-col gap-5 scroll-mt-6">
+        <h2 id="walk-h" className="text-2xl font-bold tracking-tight">1 · The walk</h2>
+        <p className="max-w-3xl text-base leading-relaxed text-gray-600">
+          {data.law_instrument || w.clause ? `The law (${[data.law_instrument, w.clause, w.page != null ? `page ${w.page}` : null].filter(Boolean).join(', ')}) counts` : 'The law counts'} land within{limitText || ' a set'} walking distance of a station or town centre. The walk is measured from the nearest part of the lot. Law wording: see The proof section below.
         </p>
-      )}
-      {w.heuristic && <p className="text-gray-600">{w.heuristic}</p>}
-      {w.crossings_only_note || w.crossings_only_walk_m != null ? (
-        <p className="mt-2">
-          <strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.
-        </p>
-      ) : null}
-      {data.route_map ? <RouteMapFigure routeMap={data.route_map} /> : null}
-      {(w.crossings_only_note || w.crossings_only_walk_m != null) && data.road_rules ? (
-        <section className="mt-2">
-          <h3 className="font-semibold">NSW road rules for pedestrians at lights and near crossings</h3>
-          {data.road_rules.status === 'ok' && data.road_rules.rules ? (
+        <div className="flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
+          {v.low !== null && v.high !== null ? (
             <>
-              <p className="text-gray-600">
-                The exact wording of the {data.road_rules.instrument ?? 'NSW Road Rules'}, copied from AustLII on {data.road_rules.copied_on ?? 'a date not recorded'}. Shown for reference. This tool does not decide whether a walk is lawful.
+              <p className="text-base font-semibold">Where the walk falls against the limit</p>
+              <p className="text-lg leading-snug">{words.sentence}</p>
+              <RangeScale verdict={v} />
+              <p className="text-sm text-gray-700">
+                Possible walk: {fmtNum(v.low)} to {fmtNum(v.high)} m (allows for map error){v.best !== null ? `. Measured walk: ${fmtNum(v.best)} m` : ''}{v.limit !== null ? `. The limit: ${fmtNum(v.limit)} m.` : '.'}
               </p>
-              {data.road_rules.rules.map((rr) => (
-                <figure key={rr.clause} className="mt-2">
-                  <blockquote className="whitespace-pre-wrap border-l-2 pl-2">{rr.quote}</blockquote>
-                  <figcaption className="text-gray-600">{rr.clause}{rr.heading ? `, ${rr.heading}` : ''}. Source: {rr.source_url}</figcaption>
-                </figure>
-              ))}
+              {w.margin_low_m != null && w.margin_high_m != null ? (
+                <p className="text-sm leading-relaxed text-gray-700">
+                  <strong>Why a range?</strong> {`A walk measured on a map can be wrong: the range runs from the measured walk less ${fmtNum(w.margin_low_m)} m to the measured walk plus ${fmtNum(w.margin_high_m)} m${w.entrance_unmapped_extra_m ? `, plus up to ${fmtNum(w.entrance_unmapped_extra_m)} m because the station entrance is not mapped` : ''}.`}
+                </p>
+              ) : null}
+              {w.heuristic ? <p className="text-sm text-gray-700">{w.heuristic}</p> : null}
             </>
-          ) : (
-            <p>The road rules wording could not be shown: {data.road_rules.reason ?? 'no reason given'}.</p>
-          )}
-        </section>
-      ) : null}
+          ) : <p>{`No walking range was measured. ${w.detail ?? ''}`}</p>}
+          {hasCrossings ? (
+            <p className="text-sm leading-relaxed"><strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.</p>
+          ) : null}
+        </div>
+        {data.route_map ? <RouteMapFigure routeMap={data.route_map} /> : null}
+      </section>
 
-      <h2 className="mt-6 text-lg font-semibold">Section 164 exclusions (law version dated {data.law_version_date ?? 'not given'})</h2>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="text-left">
-            <th className="border p-1">Clause</th><th className="border p-1">Law wording</th>
-            <th className="border p-1">Source checked</th><th className="border p-1">Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.exclusions.map((x) => (
-            <tr key={x.para} className="align-top">
-              <td className="border p-1 whitespace-nowrap">{x.clause}<br />page {x.page}</td>
-              <td className="border p-1">{x.law_words}</td>
-              <td className="border p-1">{x.source_checked}</td>
-              <td className="border p-1">
-                <strong>{x.result_words}</strong><br />{x.detail}
-                {x.not_seen ? <><br />Not seen: {x.not_seen}</> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <CheckSection data={data} />
+      <ControlsSection data={data} />
+      <ProofSection data={data} showRoadRules={hasCrossings} />
 
-      {data.manual_checks && data.manual_checks.length > 0 && (
-        <>
-          <h2 className="mt-6 text-lg font-semibold">To check by hand</h2>
-          <p>This tool did not clear these paragraphs. Check the lot on the NSW Planning Portal Spatial Viewer or ask the council for a planning certificate.</p>
-          <ul className="list-disc pl-5">
-            {data.manual_checks.map((m, i) => (
-              <li key={i}>{m.clause ?? 'Paragraph not named'}{m.page != null ? ` (page ${m.page})` : ''}: {m.law_words ?? 'law wording not held'}. {m.result_words ?? ''}{m.not_seen ? ` Not seen: ${m.not_seen}.` : ''}</li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <h2 className="mt-6 text-lg font-semibold">Council controls (dwelling house)</h2>
-      <p className="text-gray-600">Controls for other kinds of development, and controls that apply only to part of a council area, are not shown here.</p>
-      {cc.status !== 'ok' ? (
-        <p>{cc.status === 'none' ? 'No current controls are held for this council.' : `Could not be read: ${cc.reason ?? 'no reason given'}.`}</p>
-      ) : (
-        <>
-          {cc.as_at_line && <p className="text-gray-600">{cc.as_at_line}</p>}
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="text-left">
-                <th className="border p-1">Control</th><th className="border p-1">Council wording</th><th className="border p-1">Clause and page</th><th className="border p-1">Quote on the cited page, by file version</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cc.controls.map((c, i) => (
-                <tr key={i} className="align-top">
-                  <td className="border p-1">{c.label ?? c.control_type ?? 'Control not named'}<br />{c.requirement ?? 'No requirement text'}</td>
-                  <td className="border p-1">{c.council_words ?? 'Council wording not held'}</td>
-                  <td className="border p-1">
-                    {c.clause ? `${c.clause}${c.clause_shown ? '' : ' (label not checked against the page)'}, ` : ''}page {c.page ?? 'not given'}
-                  </td>
-                  <td className="border p-1">
-                    {c.version_checks?.status === 'ok' ? c.version_checks.versions.map((v) => (
-                      <div key={v.version}>{v.version}: {v.result_words}{v.stale ? ' (check made on an older wording of this quote)' : ''}</div>
-                    )) : c.version_checks?.status === 'unreadable' ? 'Could not be read.' : 'Not checked.'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      <h2 className="mt-6 text-lg font-semibold">Council files held</h2>
-      {cf.status !== 'ok' ? (
-        <p>{cf.status === 'none' ? 'No council files are held.' : `Could not be read: ${cf.reason ?? 'no reason given'}.`}</p>
-      ) : (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="text-left">
-              <th className="border p-1">Chapter</th><th className="border p-1">Version</th><th className="border p-1">Held from</th>
-              <th className="border p-1">Replaced on</th><th className="border p-1">Council file date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cf.files.map((f, i) => (
-              <tr key={i}>
-                <td className="border p-1">{f.chapter}</td>
-                <td className="border p-1">{f.version}</td>
-                <td className="border p-1">{f.held_from?.slice(0, 10) ?? 'not recorded'}</td>
-                <td className="border p-1">{f.current ? 'current' : (f.replaced_on?.slice(0, 10) ?? 'not recorded')}</td>
-                <td className="border p-1">{f.council_file_date ?? f.council_file_date_note ?? 'not recorded'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {earliestHeld && (
-        <p className="mt-2 text-gray-600">The earliest file we hold for this council is held from {earliestHeld}. We hold no earlier copy, so a version replaced before that date is not on this page.</p>
-      )}
-      <p className="mt-2 text-gray-600">
-        These are the files we hold. A plan date shown above is the date the plan document states; this page does not say which file is in force. Each version is checked against the page the current plan cites; an older file can be paginated differently, so "different page" does not mean the control is wrong.
-      </p>
-
-      <p className="mt-6 border-t pt-2 text-gray-600">
-        This page shows what this tool checked and what it did not. It is not a planning certificate and it does not decide whether a lot is inside or outside a housing area. The planner or the council decides.
-      </p>
+      <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 text-xs leading-relaxed text-gray-600">
+        <p>Record: law as at {data.law_version_date ?? 'not given'}{lgaName(data.lga) ? ` · ${lgaName(data.lga)}` : ''}. This page shows what this tool checked and what it did not. It is not a planning certificate and it does not decide whether a lot is inside or outside a housing area. The planner or the council decides.</p>
+      </div>
     </main>
   );
 }

@@ -1,8 +1,20 @@
 // Shape of GET /api/housing-sepp/evidence (built in services/evidence_statement.py). prior-art-checked: no existing type for it (grep lib/ hooks/, 2026-11-20).
 
+/** The pipelines the law names that have no published route we could find (data/law/pipeline_route_coverage.json via services/evidence_statement.py). verified is false until a second source agrees. */
+export interface PipelineGap { licences: number[]; other: string | null; named_in_law: number; no_route_count: number; checked_on: string; verified: boolean }
+/** Whether the pipeline-gap list was cross-checked against a second source (the payload's flag). */
+export const gapCrossChecked = (g: PipelineGap): boolean => g.verified === true;
+/** The distances and figures behind a paragraph (flood: paragraph f; pipelines: paragraph i). Every field is optional: an older server sends none. */
+export interface ExclusionFacts {
+  flood_state?: 'inside' | 'edge' | 'outside' | null; edge_m?: number | null; nearest_m?: number | null; margin_m?: number | null; inside?: boolean | null;
+  copy_as_of?: string | null; study?: string | null; nearest_500_year_m?: number | null; nearest_100_year_m?: number | null;
+  limit_m?: number | null; map?: string | null; hit?: boolean | null; nearest_name?: string | null; searched_m?: number | null; gap?: PipelineGap | null;
+}
 export interface EvidenceExclusion {
   para: string; clause: string; page: number; law_words: string; result: string; result_words: string;
   detail: string | null; source_checked: string; not_seen?: string | null;
+  title?: string | null;                 // a plain-words topic for the paragraph
+  facts?: ExclusionFacts | null;
 }
 export interface VersionCheck { version: string; verdict: string; result_words: string; checked_page: number | null; stale: boolean }
 export interface EvidenceControl {
@@ -15,7 +27,7 @@ export interface EvidenceFile {
 }
 /** A paragraph the tool did not clear, so a person has to look. Built from the exclusion rows in services/evidence_statement.py. */
 export interface ManualCheck {
-  clause: string | null; page: number | null; law_words: string | null; result_words: string | null; detail: string | null; not_seen?: string | null;
+  clause: string | null; page: number | null; law_words: string | null; result_words: string | null; detail: string | null; not_seen?: string | null; title?: string | null;
 }
 /** NSW Road Rules wording, word for word from the saved text (services/evidence_statement.py road_rules()). */
 export interface RoadRule { clause: string; heading: string | null; quote: string; source_url: string }
@@ -37,6 +49,7 @@ export interface RouteMap {
 }
 export interface Evidence {
   law_version_date: string | null; headline: string | null; lga: string | null; notes: string[];
+  law_instrument?: string | null;   // the law's own title; absent from an older server
   exclusions: EvidenceExclusion[];
   // Optional: the page (Vercel) and the data (Railway) deploy separately, so an older response without these must still render.
   route_map?: RouteMap | null;
@@ -47,6 +60,7 @@ export interface Evidence {
     clause: string | null; page: number | null; anchor: string | null; limit_m: number | null; walk_low_m: number | null; walk_high_m: number | null; detail: string | null; heuristic: string | null;
     margin_low_m?: number | null; margin_high_m?: number | null; entrance_unmapped_extra_m?: number | null;
     crossings_only_walk_m?: number | null; crossings_only_note?: string | null;
+    answer?: string | null; walk_best_m?: number | null;
   };
   council_controls: { status: 'ok' | 'none' | 'unreadable'; reason?: string; as_at_line?: string | null; controls: EvidenceControl[] };
   council_files: { status: 'ok' | 'none' | 'unreadable'; reason?: string; files: EvidenceFile[] };
@@ -91,6 +105,20 @@ export function routeMapOk(rm: unknown): boolean {
   return drawn.length > 0 && drawn.every(routeLineOk);
 }
 
+const optNum = (v: unknown) => v === undefined || v === null || finite(v);
+const factsOk = (f: unknown): boolean => {
+  if (f === undefined || f === null) return true;
+  if (typeof f !== 'object' || Array.isArray(f)) return false;
+  const x = f as Record<string, unknown>;
+  const g = x.gap;
+  const gapOk = g === undefined || g === null || (typeof g === 'object' && !Array.isArray(g) && finite((g as Record<string, unknown>).no_route_count) && finite((g as Record<string, unknown>).named_in_law)
+    && Array.isArray((g as Record<string, unknown>).licences) && ((g as Record<string, unknown>).licences as unknown[]).every(finite));
+  return ['edge_m', 'nearest_m', 'margin_m', 'nearest_500_year_m', 'nearest_100_year_m', 'limit_m', 'searched_m'].every((k) => optNum(x[k]))
+    && optString(x.nearest_name) && optString(x.copy_as_of) && optString(x.study) && optString(x.map) && gapOk
+    && (x.flood_state == null || ['outside', 'edge', 'inside'].includes(x.flood_state as string))   // a value the page does not know is a malformed answer
+    && (x.hit == null || typeof x.hit === 'boolean');
+};
+
 /** True only for a payload with every part the page reads. A partial payload is a failure, never an empty page. */
 export function isEvidence(x: unknown): x is Evidence {
   const r = x as Partial<Evidence> | null;
@@ -105,7 +133,9 @@ export function isEvidence(x: unknown): x is Evidence {
   const roadRulesOk = r?.road_rules === undefined || (!!r.road_rules && typeof r.road_rules === 'object'
     && optText(r.road_rules.reason) && optText(r.road_rules.instrument) && optText(r.road_rules.copied_on)
     && (r.road_rules.status === 'unreadable' || (r.road_rules.status === 'ok' && Array.isArray(r.road_rules.rules) && r.road_rules.rules.length > 0 && r.road_rules.rules.every(roadRuleOk))));
-  const optionalParts = roadRulesOk && routeMapOk(r?.route_map) && (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
+  const extrasOk = optString(r?.law_instrument) && (!Array.isArray(r?.exclusions) || r.exclusions.every((e) => !!e && typeof e === 'object' && optString((e as { title?: unknown }).title) && factsOk((e as { facts?: unknown }).facts)))
+    && (!r?.walk || typeof r.walk !== 'object' || (optNum((r.walk as { walk_best_m?: unknown }).walk_best_m) && optString((r.walk as { answer?: unknown }).answer)));
+  const optionalParts = extrasOk && roadRulesOk && routeMapOk(r?.route_map) && (r?.manual_checks === undefined || rows(r.manual_checks, ['clause', 'law_words']))
     && (r?.summary === undefined || (!!r.summary && typeof r.summary === 'object' && typeof (r.summary as { line?: unknown }).line === 'string'));
   return !!r && typeof r === 'object' && optionalParts && rows(r.exclusions, ['para', 'clause', 'page', 'law_words', 'result_words', 'source_checked'])
     && Array.isArray(r.notes) && !!r.walk && typeof r.walk === 'object'

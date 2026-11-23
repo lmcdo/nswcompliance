@@ -422,3 +422,26 @@ def test_pipeline_coverage_missing_file_is_none(tmp_path):
 def test_the_committed_coverage_file_is_readable_and_counts_thirteen_of_thirty_three():
     got = es.pipeline_coverage()
     assert got is not None and got["no_route_count"] == 13 and got["named_in_law"] == 33
+
+
+def test_every_live_paragraph_has_a_plain_title_and_it_reaches_the_hand_check_list():
+    rows = es.exclusions(d.decide(_lot(), FACTS), FACTS)
+    assert all(r["title"] for r in rows)
+    assert {r["para"] for r in rows} == set(es.PLAIN_TITLES)
+    by_clause = {r["clause"]: r["title"] for r in rows}
+    manual = es.manual_checks(rows)
+    assert manual and all(m["title"] == by_clause[m["clause"]] for m in manual)
+
+
+def test_a_paragraph_without_a_listed_title_carries_none_never_a_guess(monkeypatch):
+    monkeypatch.setattr(es, "PLAIN_TITLES", {})
+    rows = es.exclusions(d.decide(_lot(), FACTS), FACTS)
+    assert all(r["title"] is None for r in rows)
+
+
+def test_law_instrument_is_the_saved_facts_title_and_none_when_the_file_has_none():
+    area = d.decide(_lot(), FACTS)
+    assert es.build(area, {"status": "none", "controls": []}, {"status": "none", "files": []}, FACTS)["law_instrument"] == FACTS.instrument
+    assert FACTS.instrument and "Housing" in FACTS.instrument
+    doc = {"law_version_date": "2026-01-01", "facts": {}, "instrument": 7}
+    assert d.LawFacts(doc).instrument is None

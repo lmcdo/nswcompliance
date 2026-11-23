@@ -1,0 +1,190 @@
+{
+  "tier": "Standard",
+  "justification": "The evidence page is rebuilt for a planner: an at-a-glance box first, the walk on a labelled number line, cards for the paragraphs a person must check (with the flood and pipeline distances already in the data), the council's rules as cards, and the law's wording and method folded. The council-files table is removed on purpose. The evidence data gains a plain topic title for each paragraph and the instrument's name. No planning number is typed: every figure, limit, distance and margin shown comes from the payload.",
+  "commit_hash": "13204c5a",
+  "files": [
+    "services/evidence_statement.py",
+    "services/lmr_area_decision.py",
+    "frontend-nextjs/lib/evidence-statement.ts",
+    "frontend-nextjs/lib/evidence-summary.ts",
+    "frontend-nextjs/components/reports/evidence/CheckSection.tsx",
+    "frontend-nextjs/components/reports/evidence/ControlsSection.tsx",
+    "frontend-nextjs/components/reports/evidence/AtAGlance.tsx",
+    "frontend-nextjs/components/reports/evidence/RangeScale.tsx",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/components/reports/evidence/ProofSection.tsx",
+    "frontend-nextjs/components/reports/RouteMapFigure.tsx",
+    "tests/test_evidence_statement.py",
+    "frontend-nextjs/__tests__/lib/evidence-summary.test.ts",
+    "frontend-nextjs/__tests__/components/evidence-sections.test.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_evidence_statement.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx ; npx tsc --noEmit -p .",
+    "expected": "66 backend tests and 122 frontend tests pass; tsc prints no errors.",
+    "fails_when": "A paragraph title or the instrument name is dropped from the data, a distance is shown in the wrong unit or rounded to 1000 m, a not-checked paragraph is shown as clear, a clause label not checked against its page is shown as a clause, the clear count is wrong, or a tick label sits on the limit label.",
+    "observed_red": "Ten hand breakages each turned a test red and were restored: the distance rounding, the sentence capital, the not-checked What-we-found line always shown, the next step shown for a clear row, an unchecked clause shown as a clause, the tick overlap guard (found green at first, a test added, then red), the clear count, the paragraph title, the instrument name, and the instrument type guard. Rendered with real data (28 Selwyn Street Pymble and Windsor) in headless Chrome at desktop width and at 480 px, the smallest it allows; the phone view has no element wider than the window."
+  },
+  "pre_impl": {
+    "existing_data": "The evidence endpoint already returns the rows, the walk, the controls and the facts for flood and pipeline (PR 1678; this branch is stacked on it).",
+    "assumption_mismatch": "An earlier mock-up named the wrong clause and said the tool does not check for gas pipelines; both were corrected from the code before building.",
+    "new_vs_existing": "New: the summary helpers and five section components, a title per paragraph and the instrument name. Removed: the council-files table and the older single-table layout. Unchanged: the route map data and the payload checks for older servers.",
+    "external_source_error": "An older server answer without the new fields still loads: every new field is optional, and a present field of the wrong shape shows the error line.",
+    "frontend_type": "title, facts, law_instrument and walk fields are optional in the type and checked by the guard.",
+    "user_failure_mode": "A planner scans the box for the answer; a paragraph this tool could not check is shown as needing a person, never as clear."
+  },
+  "functions": [
+    {
+      "name": "exclusions",
+      "file_line": "services/evidence_statement.py:130",
+      "input": "the area check output and the law facts",
+      "output": "one row per live paragraph, now with a plain title",
+      "if_none": "A paragraph with no listed title gets none and the page shows its clause."
+    },
+    {
+      "name": "manual_checks",
+      "file_line": "services/evidence_statement.py:219",
+      "input": "the rows of the evidence table",
+      "output": "the rows not cleared, with their title",
+      "if_none": "No such row gives an empty list."
+    },
+    {
+      "name": "build",
+      "file_line": "services/evidence_statement.py:273",
+      "input": "area, controls, files and the facts",
+      "output": "the evidence data including the law's instrument name",
+      "if_none": "No instrument in the saved facts gives none, never a guessed name."
+    },
+    {
+      "name": "distanceWords",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:11",
+      "input": "a distance in metres as a number",
+      "output": "metres, or kilometres to one decimal, rounded before the unit is chosen",
+      "if_none": "A bad number gives a words line saying it could not be read."
+    },
+    {
+      "name": "walkVerdict",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:22",
+      "input": "the walk from the payload",
+      "output": "over, within, straddles or unknown with the limit and range",
+      "if_none": "A missing limit or range gives unknown, never within."
+    },
+    {
+      "name": "buildScale",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:67",
+      "input": "limit, low, high and best",
+      "output": "percent positions for the scale and its ticks",
+      "if_none": "Any missing number gives none and the scale is not drawn."
+    },
+    {
+      "name": "tally",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:83",
+      "input": "the list of exclusion rows from the payload",
+      "output": "counts of clear, excluded and others, with the clear rows",
+      "if_none": "An empty list of rows gives zero in every count."
+    },
+    {
+      "name": "lgaName",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:95",
+      "input": "the council name from the data",
+      "output": "the same letters in title case",
+      "if_none": "An empty name gives none."
+    },
+    {
+      "name": "factLines",
+      "file_line": "frontend-nextjs/components/reports/evidence/CheckSection.tsx:10",
+      "input": "the facts of a row and its detail",
+      "output": "plain lines for flood and pipeline distances",
+      "if_none": "An absent field adds no line."
+    },
+    {
+      "name": "RangeScale",
+      "file_line": "frontend-nextjs/components/reports/evidence/RangeScale.tsx:7",
+      "input": "the walk verdict with its limit and range",
+      "output": "a labelled number line with a text label for every mark",
+      "if_none": "Missing numbers draw nothing at all."
+    },
+    {
+      "name": "ControlsSection",
+      "file_line": "frontend-nextjs/components/reports/evidence/ControlsSection.tsx:7",
+      "input": "the evidence data from the server",
+      "output": "one card per council rule with its page",
+      "if_none": "No controls or an unreadable source says so in words."
+    },
+    {
+      "name": "AtAGlance",
+      "file_line": "frontend-nextjs/components/reports/evidence/AtAGlance.tsx:13",
+      "input": "the evidence data from the server",
+      "output": "three summary tiles and a bottom line",
+      "if_none": "No range shows No range, never a number."
+    },
+    {
+      "name": "EvidenceStatement",
+      "file_line": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx:29",
+      "input": "the lat and lng in the address bar",
+      "output": "the full evidence page for the lot",
+      "if_none": "A failed or malformed answer shows an error line."
+    }
+  ],
+  "values": [
+    {
+      "value": "title, law_instrument, facts and walk fields from the payload",
+      "read_at": "frontend-nextjs/lib/evidence-statement.ts:121",
+      "nullable": "yes, all optional",
+      "guard_at": "frontend-nextjs/lib/evidence-statement.ts:121 (type guard)",
+      "if_missing": "Left out of the page; never filled in."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A paragraph the tool could not check is shown as clear.",
+      "what_happens": "A planner would skip a check that needs a person.",
+      "mitigated": "Mitigated: not-checked rows are cards with a next step and counted as needing a person.",
+      "how": "Tests on the tally, the card and the at-a-glance pill.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "An older server answer without the new fields.",
+      "what_happens": "The page could crash or show empty cards.",
+      "mitigated": "Mitigated: fields are optional and the page tests use a payload without them.",
+      "how": "The page test file loads an older-shaped payload.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx"
+    },
+    {
+      "scenario": "A distance just under a kilometre reads 1000 m.",
+      "what_happens": "An odd figure on a legal-style page.",
+      "mitigated": "Mitigated: rounding happens before the unit is chosen.",
+      "how": "A test at 999.96 m.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/lib/evidence-summary.test.ts"
+    },
+    {
+      "scenario": "Labels collide on a phone.",
+      "what_happens": "The scale becomes hard to read.",
+      "mitigated": "Mitigated: shorter labels on small screens, cards use min-w-0, a tick near the limit is not drawn.",
+      "how": "Rendered with real data at 480 px; a test for the tick guard.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-sections.test.tsx -t tick"
+    },
+    {
+      "scenario": "The council-files table is wanted back.",
+      "what_happens": "Records dates no longer show.",
+      "mitigated": "Removed on purpose at the user's request; the data field is still validated.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    },
+    {
+      "scenario": "The page deploys before the data, or the reverse.",
+      "what_happens": "New fields missing or unused.",
+      "mitigated": "Mitigated: optional fields, and the page leaves out what is missing.",
+      "how": "The same older-payload test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx"
+    }
+  ],
+  "residual_risk": "1) The phone view was rendered at 480 px, not 390 px, because headless Chrome will not go below 482 px; the layout has no element wider than the window. 2) The flood and pipeline data this page shows shipped in PR 1678, already on main. 3) The plain titles are my short topic labels read from the law's wording of each paragraph; the law's own words sit beside them. 4) The council-files table was removed, so a planner no longer sees which council files are held.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "Open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 after both deploys and check the box, scale and cards."
+  }
+}

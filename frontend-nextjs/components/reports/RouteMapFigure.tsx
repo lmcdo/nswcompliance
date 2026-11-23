@@ -5,7 +5,7 @@ import React, { useId, useMemo, useState } from 'react';
 import type { RouteMap } from '@/lib/evidence-statement';
 import { BASEMAP, destinationLabel, projectRouteMap } from '@/lib/route-map-geometry';
 
-const COLOURS = { background: '#f4f1ea', busy: '#e8a33d', normal: '#2b6cb0', careful: '#1f9d55', lot: '#111827', destination: '#7c3aed' };
+const COLOURS = { background: '#f4f1ea', busy: '#4b5563', normal: '#e8710a', careful: '#1d5fa8', lot: '#111827', destination: '#7c3aed' };
 
 /** The walk to the station drawn as a line, once under the normal rule and once under the crossings-only rule. The legend and the text
  *  alternative carry every number, so the picture is never the only way to read it. A route that may not be drawn says why in text. */
@@ -20,8 +20,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
     return <p className="mt-2 text-gray-600">{`The route map is not drawn: ${routeMap.reason ?? 'no route could be drawn for this lot.'}`}</p>;
   }
 
-  const dotsNote = ' Orange dots mark the roads this tool treats as busy.';
-  const dotsLegend = ' Orange dots: roads this tool treats as busy.';
+  const dotsNote = ' Grey dots mark the roads this tool treats as busy.';
+  const dotsLegend = ' Grey dots: roads this tool treats as busy.';
   const normal = routeMap.normal ?? null;
   const careful = routeMap.careful ?? null;
   const dest = destinationLabel(routeMap.destination ?? careful?.destination ?? normal?.destination);   // a route's own destination if the top level has none
@@ -62,6 +62,7 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
         {drawn.busy.map((b, i) => <circle key={i} cx={b.x} cy={b.y} r={4} fill={COLOURS.busy} stroke="#ffffff" strokeWidth={1.5} />)}
         {/* the crossings-only route is drawn wider and first, the normal route thinner and dashed on top: where they share a path both show */}
         {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke="#ffffff" strokeWidth={15} strokeLinejoin="round" strokeLinecap="round" /> : null}
+        {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke="#ffffff" strokeWidth={15} strokeLinejoin="round" strokeLinecap="round" /> : null}
         {drawn.careful ? <polyline points={drawn.careful.points} fill="none" stroke={COLOURS.careful} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" /> : null}
         {drawn.normal ? <polyline points={drawn.normal.points} fill="none" stroke={COLOURS.normal} strokeWidth={4} strokeDasharray="12 8" strokeLinejoin="round" strokeLinecap="butt" /> : null}
         <circle cx={drawn.lot.x} cy={drawn.lot.y} r={9} fill={COLOURS.lot} />
@@ -81,8 +82,8 @@ export default function RouteMapFigure({ routeMap }: { routeMap: RouteMap }) {
       </svg>
       <figcaption className="mt-1">
         <ul className="list-disc pl-5">
-          <li>{normalM !== null ? <><strong>Normal route</strong> (blue dashed line): {normalM} m{differ ? `, ending at ${destNormal}` : ''}.</> : (routeMap.normal_note ?? 'The normal route is not drawn.')}</li>
-          <li>{carefulM !== null ? <><strong>Crossings-only route</strong> (green line): {carefulM} m{diffText}{differ ? `, ending at ${destCareful}` : ''}.</> : (routeMap.careful_note ?? 'The crossings-only route is not drawn.')}</li>
+          <li>{normalM !== null ? <><strong>Normal route</strong> (orange dashed line): {normalM} m{differ ? `, ending at ${destNormal}` : ''}.</> : (routeMap.normal_note ?? 'The normal route is not drawn.')}</li>
+          <li>{carefulM !== null ? <><strong>Crossings-only route</strong> (blue solid line): {carefulM} m{diffText}{differ ? `, ending at ${destCareful}` : ''}.</> : (routeMap.careful_note ?? 'The crossings-only route is not drawn.')}</li>
           <li>{differ ? 'Black dot: where the walks start on the lot. Purple squares: where each walk ends.' + dotsLegend : `Black dot: where the walk starts on the lot. Purple square: the end of the walk, ${dest}.${dotsLegend}`}</li>
         </ul>
         {notDrawn.map((t) => <p key={t} className="mt-1">{t}</p>)}
