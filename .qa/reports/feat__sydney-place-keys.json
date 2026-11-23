@@ -1,7 +1,7 @@
 {
   "tier": "standard",
-  "justification": "Standard: small code change (a new 'key' kind in gate_rules_land.py) plus data. 31 City of Sydney schedule rules, previously withheld for everyone, are now keyed to outlines already in dcp_precinct_boundaries (5.2 Green Square 16, 5.1 Central Sydney 13, 5.11 Oxford Street 2), so only houses inside see them. Applied live with owner go and a row backup.",
-  "commit_hash": "775796c1",
+  "justification": "Standard: small code change (a new 'key' kind in gate_rules_land.py) plus data. 99 City of Sydney schedule rules (31 from reader quotes, 68 more from the schedule's own page ranges with page already proven), previously withheld for everyone, are now keyed to outlines already in dcp_precinct_boundaries (5.2 Green Square, 5.1 Central Sydney, 5.11 Oxford Street), so only houses inside see them. Applied live with owner go and a row backup.",
+  "commit_hash": "adfd18d9",
   "files": [
     "scripts/gate_rules_land.py",
     "data/chapter_scope/land_limits.json",
@@ -10,7 +10,7 @@
   "falsifiable_check": {
     "command": "python scripts/derive_precinct_keys.py --only land_limits --council city_of_sydney",
     "fails_when": "Prints to-change greater than 0 after the apply.",
-    "observed_red": "Before the apply it printed to-change=31; after, 0. DQ-148 is 0."
+    "observed_red": "Before the apply it printed to-change=31 then 136 (68 rows, two columns each); after, 0. DQ-148 is 0."
   },
   "break_it": [
     {
@@ -33,6 +33,13 @@
       "mitigated": true,
       "how": "The key kind skips those rows; covered by a unit test.",
       "repro": "tests/test_gate_rules_land.py::test_key_kind_keys_an_unkeyed_row_to_the_named_precinct"
+    },
+    {
+      "scenario": "A row on a schedule page is not part of that schedule.",
+      "what_happens": "It is keyed to the wrong place.",
+      "mitigated": true,
+      "how": "Page ranges were read from the PDF itself (Schedule 10 pp56-60, 12 pp69-77, 13 pp78-80) and only rows with page_check on_page were used. Replay: 7 wrong rules fixed, 0 right-for-the-house rules hidden.",
+      "repro": "Compare each key entry's rows with the schedule page ranges."
     }
   ],
   "post_merge": {
