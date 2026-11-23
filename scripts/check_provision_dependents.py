@@ -52,7 +52,7 @@ def verdict(rows: list[dict]) -> tuple[bool, list[str]]:
             ok = False
             lines.append(f"NOT CHECKED  {where}: {r['error']}")
             continue
-        bad = r["dead"] + r.get("dangling", 0)
+        bad = r["dead"] + (r.get("dangling") or 0)
         tag = "history" if is_history(r["table"]) else ("DEAD" if bad else "ok")
         if tag == "DEAD":
             ok = False
@@ -87,9 +87,10 @@ def join_on(col: str, data_type: str) -> str:
 
 
 def council_exists(conn, council: str) -> bool:
-    """True when the council has at least one rule row. An unknown or misspelt slug must be refused, not reported as clean."""
+    """True when the council has at least one rule row, current or superseded. An unknown or misspelt slug must be refused, not reported as clean."""
     cur = conn.cursor()
-    cur.execute("SELECT count(*) FROM regulatory_provisions WHERE source_council = %s", (council,))
+    # any row counts, current or not: a council whose rules are all superseded is still a real council (is_current is read, not required)
+    cur.execute("SELECT count(*) FILTER (WHERE is_current IS NOT NULL) FROM regulatory_provisions WHERE source_council = %s", (council,))
     return bool(cur.fetchone()[0])
 
 
