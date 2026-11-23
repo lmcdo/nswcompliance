@@ -7,7 +7,7 @@ import { buildScale, fmtNum, type WalkVerdict } from '@/lib/evidence-summary';
 export default function RangeScale({ verdict }: { verdict: WalkVerdict }) {
   const best = verdict.best;
   const m = buildScale(verdict.limit, best, best, best);
-  if (!m || verdict.limit === null || best === null || m.bestPct === null) return null;
+  if (!m || verdict.limit === null || best == null || m.bestPct === null) return null;
   const at = (pct: number): React.CSSProperties => ({ left: `${pct}%` });
   const label = `Scale from ${fmtNum(m.min)} to ${fmtNum(m.max)} metres. The ${fmtNum(verdict.limit)} metre limit is marked. The shortest walk is ${fmtNum(best)} metres.`;
   const nearLimit = (pct: number) => Math.abs(pct - m.limitPct) < 6;   // a tick label this close to the limit label would overlap it
