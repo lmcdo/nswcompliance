@@ -509,7 +509,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     # entrance (`optimistic_by_m`): the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length.
     opt = walk.get("optimistic_by_m") or 0
     opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and opt >= 0 else 0.0  # qa-ignore: opt is type-checked on this same line
-    lo_m, hi_m = wm, wm + opt
+    lo_m, hi_m = float(round(wm)), float(round(wm + opt))   # whole metres, the same figures the page shows, so the answer and the display can never disagree at the limit
     best = wm + opt / 2
     base.update({"walk_m": round(wm), "walk_low_m": round(lo_m), "walk_high_m": round(hi_m), "walk_best_m": round(best),
                  "entrance_unmapped_extra_m": round(opt),
@@ -518,7 +518,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     if hi_m <= outer:
         band = "inner" if hi_m <= inner else ("outer" if lo_m > inner else "straddles_inner_limit")
         return YES, {**base, "reason_code": "walk_range_under_limit", "band": band, "inner_limit_m": inner,
-                     "detail": (f"the walk is {round(lo_m)} m, under the {round(outer)} m limit" if round(lo_m) == round(hi_m) else f"walking range {round(lo_m)}-{round(hi_m)} m is under the {round(outer)} m limit")}
+                     "detail": (f"the walk is {round(lo_m)} m, within the {round(outer)} m limit" if round(lo_m) == round(hi_m) else f"walking range {round(lo_m)}-{round(hi_m)} m is under the {round(outer)} m limit")}
     if lo_m > outer:   # over means longer than the limit: a walk of exactly the limit is within it
         return NO, {**base, "reason_code": "walk_range_over_limit",
                     "detail": (f"the walk is {round(lo_m)} m, over the {round(outer)} m limit" if round(lo_m) == round(hi_m) else f"walking range {round(lo_m)}-{round(hi_m)} m is over the {round(outer)} m limit")}

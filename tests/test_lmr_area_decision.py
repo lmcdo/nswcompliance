@@ -166,9 +166,9 @@ def test_860_m_with_a_mapped_entrance_is_no_and_says_over():
     assert (r["walk_low_m"], r["walk_high_m"], r["walk_best_m"]) == (860, 860, 860)   # a 'no' keeps its figures on the result itself
 
 
-def test_800_m_exactly_is_yes_and_says_under():
+def test_800_m_exactly_is_yes_and_says_within():
     r = walk_lot(800)
-    assert r["answer"] == "yes" and r["detail"] == "the walk is 800 m, under the 800 m limit"
+    assert r["answer"] == "yes" and r["detail"] == "the walk is 800 m, within the 800 m limit"
 
 
 def test_801_m_is_no():
@@ -546,3 +546,11 @@ def test_failure_reply_has_every_field_the_page_requires():
         assert r["tod"]["answer"] in ("yes", "no", "borderline", "cant_tell")
         for key in ("warnings", "not_checked", "notes"):
             assert isinstance(r[key], list), key
+
+
+def test_the_answer_uses_the_same_whole_metres_the_page_shows():
+    """800.4 m displays as 800 m, so it must be answered as 800 m (within), never 'over' while the page shows 800."""
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.4, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "yes" and step[1]["walk_best_m"] == 800
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.6, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "no" and step[1]["walk_best_m"] == 801
