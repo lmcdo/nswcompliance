@@ -196,3 +196,31 @@ def test_the_ambiguity_key_treats_6_and_6_point_0_as_one_value():
     a = {"quote": q, "ctl": ctl(1, vmin=Decimal("6"))}
     b = {"quote": q, "ctl": ctl(2, vmin=Decimal("6.0"))}
     assert r.ambiguous({1: a, 2: b}) == set()
+
+
+def test_a_number_in_an_unrelated_rule_is_not_a_proposal():
+    """0.7 appears in a sign-size rule and 15 in a communal open space rule: a matching number alone is not evidence."""
+    sign = {"id": 5, "page": 129, "chapter": "ch-a", "text": "A sign must not exceed 1m x 0.7m in size. The sign shall be affixed to the front facade."}
+    parking = ctl(10, vmax=0.7, text="Medium density residential: 2 bedroom Maximum 0.7 (Zone 1)", ct="car_parking")
+    filler = [{"id": 100 + i, "page": i, "chapter": "ch-a", "text": f"Rule number {i} about drainage, signage and trees in the plan."} for i in range(30)]
+    planned, rej = r.plan([parking], filler + [sign], {})
+    assert planned == {} and rej[10] == "no proposal"
+    soil = ctl(11, vmin=15, text="50% of the landscaped area must be deep soil zone.", ct="deep_soil_min")
+    comm = {"id": 6, "page": 236, "chapter": "ch-a", "text": "15% of the total site area for development in the R3 zone is to be provided as consolidated communal open space."}
+    planned, rej = r.plan([soil], filler + [comm], {})
+    assert planned == {} and rej[11] == "no proposal"
+
+
+def test_a_truncated_stored_quote_still_finds_its_full_sentence():
+    """The stored text is cut off mid-word ('capab'); the full sentence in the plan is the same rule."""
+    stored = "Each dwelling is to have a minimum of 25m² of private open space capab"
+    full = {"id": 7, "page": 206, "chapter": "ch-a", "text": "Each dwelling is to have a minimum of 25m² of private open space capable of being used for recreation."}
+    filler = [{"id": 100 + i, "page": i, "chapter": "ch-a", "text": f"Rule number {i} about drainage, signage and trees in the plan."} for i in range(30)]
+    planned, rej = r.plan([ctl(12, vmin=25, text=stored, ct="private_open_space")], filler + [full], {})
+    assert 12 in planned and planned[12]["by"] == "program" and planned[12]["quote"].endswith("recreation.")
+
+
+def test_cover_counts_the_share_of_the_stored_words_found_in_the_sentence():
+    assert r.covers("minimum 6m rear setback applies", "A minimum 6m rear setback applies.") > 0.9
+    assert r.covers("minimum 6m rear setback applies", "Awnings should extend across the footpath.") < 0.3
+    assert r.covers("", "anything") == 0.0 and r.covers(None, "anything") == 0.0

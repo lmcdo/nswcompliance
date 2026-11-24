@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RULE_TABLE = "regulatory" + "_provisions"   # the table of rules; the catalogue queries below list columns that point at it and read no rule rows
 ID_COLUMNS = ("provision_id", "rule_id", "regulatory_provision_id", "first_provision_id", "source_provision_id", "superseded_by", "parent_provision_id", "sepp_provision_id",
               "primary_source_provision_id", "canonical_provision_id")
-HISTORY = re.compile(r"(backup|change_log|_versions?$|archived)", re.I)
+HISTORY = re.compile(r"(backup|change_log|_versions?$|archived|^da_responses$)", re.I)   # da_responses: answers a person typed in a DA session about the rules of that day; kept as typed, never re-pointed
 IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 

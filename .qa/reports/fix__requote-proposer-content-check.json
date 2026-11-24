@@ -1,0 +1,84 @@
+{
+ "tier": "standard",
+ "justification": "Standard: tightens the proposer in a script that can rewrite control quotes, and adds one history-table name to a read-only check. Not Minor: a wrong proposal puts an unrelated sentence behind a control. Not Critical: both scripts only propose or read; every write is a separate apply step that asks first and keeps a backup.",
+ "commit_hash": "a46a7afa",
+ "files": [
+  "scripts/requote_controls_from_provisions.py",
+  "tests/test_requote_controls_from_provisions.py",
+  "scripts/check_provision_dependents.py",
+  "tests/test_check_provision_dependents.py"
+ ],
+ "pre_impl": {
+  "existing_data": "A dry run on Waverley listed 6 program proposals; 2 (controls 284 and 294) paired a stored car parking quote about units with a sentence about 0.2 spaces per 100 square metres. The old gate matched on the number alone.",
+  "assumption_mismatch": "I assumed a matching number in the same chapter meant the same rule; a 0.7 in a sign-size rule and a 15 percent figure in an open space rule both matched.",
+  "new_vs_existing": "The proposer already proved substring and exact decimal. This adds one more check, that the sentence contains at least three quarters of the stored text's content words. History tables gain da_responses because saved answers are meant to keep the rule they cited.",
+  "external_source_error": "A stored text with no content words scores 0 and proposes nothing.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A control shows a council sentence that is about something else."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_requote_controls_from_provisions.py tests/test_check_provision_dependents.py -q",
+  "fails_when": "A number printed in an unrelated rule is proposed, a truncated stored quote stops finding its full sentence, or da_responses fails the dependents check.",
+  "observed_red": "With the coverage gate switched off one test fails; with da_responses removed from the history list the history test fails.",
+  "observed_green": "40 tests pass. Scores measured: the two correct proposals and the two already-verbatim ones score 1.0, the sign-size sentence scores 0.0, the car parking pair scores 0.6 and is now dropped at the 0.75 threshold."
+ },
+ "functions": [
+  {
+   "name": "covers",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "the stored text and a candidate sentence",
+   "output": "the share of the stored words the sentence contains",
+   "if_none": "no stored text scores 0 and nothing is proposed"
+  },
+  {
+   "name": "content_words",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "a quote or sentence as plain text, possibly empty",
+   "output": "its letters-only words longer than two letters, minus stop words",
+   "if_none": "an empty text gives an empty set"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "No new query; the proposer reads the same rows as before and a council with no current rows proposes nothing",
+   "file_line": "scripts/requote_controls_from_provisions.py propose",
+   "where_clause": "unchanged: current actionable rules of the council"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The stored quote is cut off mid-word.",
+   "what_happens": "The cut word would count as missing and a correct sentence would be dropped.",
+   "mitigated": true,
+   "how": "A word of four letters or more that is a prefix of a sentence word counts as found.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k truncated -q"
+  },
+  {
+   "scenario": "A number appears in an unrelated rule.",
+   "what_happens": "It would be proposed as the control's quote.",
+   "mitigated": true,
+   "how": "The sentence must contain at least three quarters of the stored content words.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k unrelated -q"
+  },
+  {
+   "scenario": "The proposer reads the rows with no new filter and a council has no current actionable rules.",
+   "what_happens": "Nothing is proposed and every control stays held, which reads as nothing found rather than as an error.",
+   "mitigated": true,
+   "how": "The dry run prints the count of controls held and proposed for the council so an empty result is visible.",
+   "repro": "python scripts/requote_controls_from_provisions.py --council waverley"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/requote_controls_from_provisions.py --council waverley (dry run) and read each proposal before any --apply."
+ }
+}
