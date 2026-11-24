@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds page ranges to Waverley's config and one page-based rule to the tagger that decides which development types a rule shows for. Not Minor: it changes tagging for 38 live rows once applied. Not Critical: the dry run narrows 0 served rows (the only direction that hides a control), nothing is written by this change, and the apply is a separate step that asks first and keeps a backup table.",
- "commit_hash": "ed8a80c3",
+ "commit_hash": "663f93e0",
  "files": [
   "enrichment/extractors/applicability_tagger.py",
   "enrichment/config/waverley_config.py",
