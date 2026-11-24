@@ -14,7 +14,7 @@ export default function WalkMethod({ walk }: { walk: Evidence['walk'] }) {
         <p className="font-semibold">How the walk is calculated</p>
         <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5">
           <li><strong>The route.</strong> Public footpaths and marked crossings from OpenStreetMap, the open map of the world.</li>
-          <li><strong>The start.</strong> The nearest part of the lot. The law counts a lot if any part of it is within the distance, so the walk starts from the point on the lot&apos;s boundary that is closest to the station.</li>
+          <li><strong>The start.</strong> The nearest part of the lot. The law counts a lot if any part of it is within the distance, so the walk starts from the point on the lot&apos;s boundary that is closest to the station entrance or town centre.</li>
           <li><strong>The finish.</strong> The nearest station entrance, or the edge of a town centre.</li>
           <li><strong>The distance.</strong> The shortest walk along those footpaths and crossings, added up in metres. It is not a straight line.</li>
           <li><strong>Checks.</strong> The tool refuses impossible answers, such as a walk shorter than the straight line or a lot with no footpath nearby. It says it cannot tell instead of guessing.</li>

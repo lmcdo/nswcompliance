@@ -554,3 +554,8 @@ def test_the_answer_uses_the_same_whole_metres_the_page_shows():
     assert step[0] == "yes" and step[1]["walk_best_m"] == 800
     step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.6, "anchor": "X", "entrance_id": "e"}}, FACTS)
     assert step[0] == "no" and step[1]["walk_best_m"] == 801
+
+
+def test_an_infinite_station_outline_length_is_treated_as_a_mapped_entrance_not_a_crash():
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 700.0, "optimistic_by_m": float("inf"), "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "yes" and step[1]["entrance_unmapped_extra_m"] == 0

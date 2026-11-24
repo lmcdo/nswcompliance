@@ -38,6 +38,7 @@ Measurement shapes (all optional; a key that is ABSENT means "not wired", a key 
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -508,7 +509,7 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     # The walk is a point, the measured shortest walk, unless it was measured to a station building outline instead of a mapped
     # entrance (`optimistic_by_m`): the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length.
     opt = walk.get("optimistic_by_m") or 0
-    opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and opt >= 0 else 0.0  # qa-ignore: opt is type-checked on this same line
+    opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and math.isfinite(opt) and opt >= 0 else 0.0  # qa-ignore: opt is type-checked on this same line
     lo_m, hi_m = float(round(wm)), float(round(wm + opt))   # whole metres, the same figures the page shows, so the answer and the display can never disagree at the limit
     best = wm + opt / 2
     base.update({"walk_m": round(wm), "walk_low_m": round(lo_m), "walk_high_m": round(hi_m), "walk_best_m": round(best),
