@@ -33,6 +33,8 @@ and the zone lists inferred from those labels hid 114 served rows until
 Source PDF: waverley/Waverley_DCP_2022_Full_Version_Amendment5.pdf
 Registry key: waverley/waverley-dcp-2022
 """
+import json
+from pathlib import Path
 
 # NO PART OF THIS DCP STATES A ZONE. Checked 2026-10-03 by reading every Part's
 # own opening sentence in the source PDF; each scopes itself by DEVELOPMENT or by
@@ -85,9 +87,16 @@ WAVERLEY_PRECINCTS: dict[str, str] = {
     "E7": "Edina Estate",
 }
 
+with open(Path(__file__).with_name("waverley_part_pages.json"), encoding="utf-8") as _fh:
+    _PAGES = json.load(_fh)
+
+
 WAVERLEY_CONFIG = {
     "council": "waverley",
     "dcp_name": "Waverley DCP 2022",
+    # Pages that name their own Part (annexures) and pages that hold no control (contents, general notes): waverley_part_pages.json.
+    "part_pages": _PAGES["ranges"],
+    "reference_pages": _PAGES["reference_pages"],
     # EVERY entry declares BOTH keys, each carrying the Part's own sentence.
     # Nothing here is a fallthrough: the Parts of this DCP are scoped by
     # DEVELOPMENT and by MAPPED AREA, and not one of them states a zone. The four
