@@ -272,6 +272,7 @@ def main() -> int:
     ap.add_argument("--council", required=True)
     ap.add_argument("--answers", help="JSON list of {control_id, provision_id, quote} from a reader")
     ap.add_argument("--candidates", help="write the top candidate rules per unresolved control to this JSON file for a reader")
+    ap.add_argument("--skip", type=int, nargs="*", default=[], help="control ids to leave out of the write (a person is holding them)")
     ap.add_argument("--release", action="store_true", help="free rows proven verbatim (dry run unless --apply)")
     ap.add_argument("--apply", action="store_true")
     a = ap.parse_args()
@@ -288,6 +289,7 @@ def _requote(conn, a) -> int:
     ctls, provs, others = _load(cur, a.council)
     answers = {x["control_id"]: x for x in json.loads(Path(a.answers).read_text(encoding="utf-8"))} if a.answers else {}
     planned, rejected = plan(ctls, provs, answers, others)
+    planned = {k: v for k, v in planned.items() if k not in set(a.skip)}
     print(f"{a.council}: {len(ctls)} controls not yet proven; {len(provs)} current rules; proven proposals {len(planned)} "
           f"({sum(1 for p in planned.values() if p['by'] == 'program')} by program, {sum(1 for p in planned.values() if p['by'] == 'reader')} by reader); left alone {len(rejected)}")
     for why, n in collections.Counter(rejected.values()).most_common():
