@@ -46,6 +46,7 @@ from typing import Any, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 MARGIN = 1.5            # noqa: regulatory-number -- engineering margin: best unit must beat the runner-up by this factor, not a planning figure
+MIN_COVER = 0.75         # noqa: regulatory-number -- share of the stored text's content words the proposed sentence must contain, not a planning figure
 MIN_QUOTE = 8           # noqa: regulatory-number -- shortest quote worth storing, in characters
 MAX_QUOTE = 400         # noqa: regulatory-number -- longest quote, in characters (one sentence or one table row)
 HOLD_REASON = re.compile(r"(quote not word-for-word in source PDF \(whole-PDF check [0-9-]+\)"
@@ -155,12 +156,30 @@ class Index:
         return scored[:k]
 
 
+def content_words(text: Optional[str]) -> set[str]:
+    """The words of a stored quote that say WHAT it is about: letters only, numbers and stop words dropped, longer than two letters."""
+    return {w for w in _tok(text or "") if w.isalpha() and len(w) > 2}
+
+
+def covers(stored: Optional[str], unit: str) -> float:
+    """Share of the stored text's content words that the proposed sentence contains. A stored word cut off at the end ("capab") counts when the sentence has a word that starts with it."""
+    want = content_words(stored)
+    if not want:
+        return 0.0
+    have = content_words(unit)
+    hit = sum(1 for w in want if w in have or any(h.startswith(w) for h in have if len(w) >= 4))
+    return hit / len(want)
+
+
 def propose(ctl: dict, idx: Index) -> Optional[tuple[int, Any, str]]:
     """The deterministic proposer: the unit that holds all the control's numbers and clearly beats the next one, else None (needs a reader)."""
     if not numbers_of(ctl):
         return None
     top = idx.best(ctl, 2)
     if not top or top[0][0] <= 0:
+        return None
+    # A number printed in an unrelated rule (0.7 in a sign-size rule) is not evidence. The sentence must be about the same thing as the stored text.
+    if covers(ctl.get("source_text"), top[0][3]) < MIN_COVER:
         return None
     if len(top) > 1 and top[1][0] > 0 and top[0][0] < MARGIN * top[1][0]:
         return None

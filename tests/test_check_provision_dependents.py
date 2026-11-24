@@ -22,7 +22,7 @@ def test_a_dead_pointer_in_a_live_table_fails():
 
 
 def test_no_dead_pointers_passes():
-    ok, lines = c.verdict([row(dead=0), row(table="da_responses", dead=0)])
+    ok, lines = c.verdict([row(dead=0), row(table="dcp_setback_controls", dead=0)])
     assert ok is True and lines == []
 
 
@@ -42,9 +42,9 @@ def test_a_live_table_with_a_dead_pointer_still_fails_when_history_tables_are_cl
 
 
 def test_history_table_names():
-    for t in ("x_backup_2026", "provision_change_log", "provision_versions", "foo_archived"):
+    for t in ("x_backup_2026", "provision_change_log", "provision_versions", "foo_archived", "da_responses"):
         assert c.is_history(t), t
-    for t in ("project_brief_rows", "da_responses", "dcp_setback_controls"):
+    for t in ("project_brief_rows", "dcp_setback_controls", "da_responses_2"):
         assert not c.is_history(t), t
 
 
