@@ -231,10 +231,10 @@ describe('ControlsSection', () => {
   });
   it('uses the council name in the heading, or a generic one when there is none', () => {
     const named = render(<ControlsSection data={evidence({ lga: 'KU-RING-GAI' })} />);
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("3 · Ku-ring-gai's rules for building a house");
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("3 · Ku-ring-gai's own rules for building a house");
     named.unmount();
     render(<ControlsSection data={evidence({ lga: null })} />);
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("3 · The council's rules for building a house");
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe("3 · The council's own rules for building a house");
   });
   it('shows the as-at line only when given', () => {
     const a = render(<ControlsSection data={evidence({ council_controls: { status: 'ok', as_at_line: 'As at some date', controls: [] } })} />);
@@ -247,16 +247,25 @@ describe('ControlsSection', () => {
 
 describe('RangeScale', () => {
   const v = (o: Partial<Evidence['walk']> = {}) => walkVerdict({ clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 454, walk_high_m: 754, detail: null, heuristic: null, walk_best_m: 479, ...o });
-  it('is a labelled image whose label carries every number', () => {
+  it('is a labelled image whose label carries the limit and the shortest walk, and no range', () => {
     render(<RangeScale verdict={v()} />);
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('Scale from 300 to 900 metres. The 800 metre limit is marked. The measured walk is 479 metres. The possible range is 454 to 754 metres.');
+    const label = screen.getByRole('img').getAttribute('aria-label');
+    expect(label).toBe('Scale from 300 to 900 metres. The 800 metre limit is marked. The shortest walk is 479 metres.');
+    expect(label?.toLowerCase()).not.toContain('range');
   });
-  it('leaves out the measured-walk sentence and dot when there is no best', () => {
-    const { container } = render(<RangeScale verdict={v({ walk_best_m: null })} />);
+  it('moves the label with the measured walk (not a constant)', () => {
+    render(<RangeScale verdict={v({ walk_best_m: 905, walk_low_m: 880, walk_high_m: 990 })} />);
     const label = screen.getByRole('img').getAttribute('aria-label') ?? '';
-    expect(label).not.toContain('measured walk');
-    expect(label).toContain('The possible range is 454 to 754 metres.');
-    expect(container.textContent).not.toContain('Measured walk');
+    expect(label).toContain('The shortest walk is 905 metres.');
+    expect(label).not.toContain('479');
+  });
+  it('renders nothing when there is no measured walk (best null and no margin)', () => {
+    const { container } = render(<RangeScale verdict={v({ walk_best_m: null })} />);
+    expect(container.innerHTML).toBe('');
+  });
+  it('falls back to low plus margin_low when walk_best_m is null', () => {
+    render(<RangeScale verdict={v({ walk_best_m: null, margin_low_m: 25 })} />);
+    expect(screen.getByRole('img').getAttribute('aria-label')).toContain('The shortest walk is 479 metres.');
   });
   it('draws no tick label on top of the limit label, and keeps the ticks that are clear of it', () => {
     const { container } = render(<RangeScale verdict={v()} />);
@@ -264,23 +273,23 @@ describe('RangeScale', () => {
     expect(bare).not.toContain('800');
     expect(bare).toContain('700');
   });
-  it('prints the limit and the range as text on the scale, so colour is never the only carrier', () => {
+  it('prints the limit and the shortest walk as text on the scale, so colour is never the only carrier', () => {
     const { container } = render(<RangeScale verdict={v()} />);
     expect(container.textContent).toContain('800 m limit');
-    expect(container.textContent).toContain('454 to 754 m');
-    expect(container.textContent).toContain('479 m');
+    expect(container.textContent).toContain('Shortest walk 479 m');
     expect(container.textContent).toContain('Over the limit');
+    expect(container.textContent).toContain('Within the limit');
+    expect(container.textContent).not.toContain('454');
+    expect(container.textContent).not.toContain('754');
+    expect((container.textContent ?? '').toLowerCase()).not.toContain('range');
   });
-  it('renders nothing when limit, low or high is null', () => {
-    for (const o of [{ limit_m: null }, { walk_low_m: null }, { walk_high_m: null }]) {
-      const { container, unmount } = render(<RangeScale verdict={v(o)} />);
-      expect(container.innerHTML).toBe('');
-      unmount();
-    }
+  it('renders nothing when the limit is null, even though a walk was measured', () => {
+    const { container } = render(<RangeScale verdict={v({ limit_m: null })} />);
+    expect(container.innerHTML).toBe('');
   });
-  it('renders nothing for a back-to-front range or a non-finite number', () => {
-    for (const o of [{ walk_low_m: 900, walk_high_m: 700 }, { walk_high_m: NaN }, { limit_m: 0 }]) {
-      const { container, unmount } = render(<RangeScale verdict={v(o)} />);
+  it('renders nothing when the range is unusable and there is no measured walk', () => {
+    for (const o of [{ walk_low_m: null }, { walk_high_m: null }, { walk_low_m: 900, walk_high_m: 700 }, { limit_m: 0 }]) {
+      const { container, unmount } = render(<RangeScale verdict={v({ ...o, walk_best_m: null })} />);
       expect(container.innerHTML).toBe('');
       unmount();
     }
@@ -288,33 +297,54 @@ describe('RangeScale', () => {
 });
 
 describe('AtAGlance', () => {
-  it('walk tile: prints the range, the pill, the measured walk and the margin from the payload', () => {
-    render(<AtAGlance data={evidence({ walk: { ...evidence().walk, walk_low_m: 1103, walk_high_m: 1203, limit_m: 800 } })} />);
+  it('walk tile: the big number is the measured walk (walk_best_m), with the pill and margin, and no range', () => {
+    render(<AtAGlance data={evidence({ walk: { ...evidence().walk, walk_low_m: 853, walk_high_m: 1203, walk_best_m: 878, limit_m: 800 } })} />);
     const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
     expect(tile.getAttribute('href')).toBe('#walk');
-    expect(tile.textContent).toContain('1,103 to 1,203 m');
+    expect(tile.textContent).toContain('878 m');
     expect(tile.textContent).toContain('Over the 800 m limit');
-    expect(tile.textContent).toContain('Measured walk 1,128 m.');   // low 1103 + margin_low 25
-    expect(tile.textContent).toContain('Even the shortest case is 303 m over.');
-  });
-  it('walk tile: says "No range" and no invented numbers when the range is missing', () => {
-    render(<AtAGlance data={evidence({ walk: { ...evidence().walk, walk_low_m: null, walk_high_m: null, detail: 'no route found' } })} />);
-    const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
-    expect(tile.textContent).toContain('No range');
-    expect(tile.textContent).toContain('No walking range');
+    expect(tile.textContent).toContain('Shortest walk 878 m: 78 m over.');
+    expect(tile.textContent).not.toContain('low to high');
     expect(tile.textContent).not.toMatch(/\d+ to \d+ m/);
-    expect(tile.textContent).not.toContain('Measured walk');
+    expect(tile.textContent).not.toContain('853');
+    expect(tile.textContent).not.toContain('1,203');
+  });
+  it('walk tile: with no walk_best_m the figure is low plus margin_low_m (1103 + 25 = 1,128 m)', () => {
+    render(<AtAGlance data={evidence({ walk: { ...evidence().walk, walk_low_m: 1103, walk_high_m: 1203, limit_m: 800 } })} />);
+    const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
+    expect(tile.textContent).toContain('1,128 m');
+    expect(tile.textContent).toContain('Shortest walk 1,128 m: 328 m over.');
+    expect(tile.textContent).not.toMatch(/\d+ to \d+ m/);
+  });
+  it('walk tile: straddling walk says it is too close to the limit to call, with the measured walk', () => {
+    render(<AtAGlance data={evidence({ walk: { ...evidence().walk, walk_low_m: 700, walk_high_m: 900, walk_best_m: 790, limit_m: 800 } })} />);
+    const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
+    expect(tile.textContent).toContain('790 m');
+    expect(tile.textContent).toContain('Too close to the 800 m limit to call');
+    expect(tile.textContent).toContain('Shortest walk 790 m.');
+  });
+  it('walk tile: says "No walk measured" and no invented numbers when there is no best and no margin', () => {
+    const w = { ...evidence().walk, walk_best_m: null, margin_low_m: null, detail: 'no route found' };
+    render(<AtAGlance data={evidence({ walk: w })} />);
+    const tile = screen.getByText('1 · THE WALK').closest('a') as HTMLElement;
+    expect(tile.textContent).toContain('No walk measured');
+    expect(tile.textContent).not.toMatch(/\d+ to \d+ m/);
+    expect(tile.textContent).not.toContain('454');
+    expect(tile.textContent).not.toContain('754');
+    expect(tile.textContent).not.toContain('Shortest walk');
+    expect(tile.textContent).not.toContain('No range');
+    expect(walkVerdict(w).best).toBeNull();
   });
   it('checks tile: "N of M checks clear", All clear when every row is clear', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a' }), row({ para: 'b' })] })} />);
-    const tile = screen.getByText(/WHERE THE RULES/).closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
     expect(tile.getAttribute('href')).toBe('#check');
     expect(tile.textContent).toContain('2 of 2 checks clear');
     expect(tile.textContent).toContain('All clear');
   });
   it('checks tile: says how many are excluded and names the rows that need a person', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a' }), row({ para: 'b', title: 'Flood', result: 'excludes' }), row({ para: 'c', title: 'Pipelines', result: 'not_checked' })] })} />);
-    const tile = screen.getByText(/WHERE THE RULES/).closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
     expect(tile.textContent).toContain('1 of 3 checks clear');
     expect(tile.textContent).toContain('1 excluded');
     expect(tile.textContent).toContain('Flood; Pipelines.');
@@ -322,31 +352,36 @@ describe('AtAGlance', () => {
   });
   it('checks tile: with none excluded but some unsettled, says how many to check', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' }), row({ para: 'b', result: 'not_checked' })] })} />);
-    const tile = screen.getByText(/WHERE THE RULES/).closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
     expect(tile.textContent).toContain('0 of 2 checks clear');
     expect(tile.textContent).toContain('2 to check');
     expect(tile.textContent).not.toContain('excluded');
   });
-  it('controls tile: counts the rules and lists their names, with the possessive council name', () => {
-    render(<AtAGlance data={evidence({ lga: 'KU-RING-GAI' })} />);
-    const tile = screen.getByText('3 · COUNCIL BUILDING RULES').closest('a') as HTMLElement;
-    expect(tile.getAttribute('href')).toBe('#controls');
-    expect(tile.textContent).toContain('1 rules found');
-    expect(tile.textContent).toContain("Ku-ring-gai's rules for building a house on this lot");
-    expect(tile.textContent).toContain('Front setback, each with its page.');
+  it('council rules are a one-line note under the tiles, not a tile: no controls link and no "rules found" count', () => {
+    const { container } = render(<AtAGlance data={evidence({ lga: 'KU-RING-GAI' })} />);
+    expect(container.querySelectorAll('a[href="#controls"]')).toHaveLength(1);   // the jump link only
+    expect(container.querySelector('a[href="#controls"]')?.closest('nav')).not.toBeNull();
+    expect(screen.queryByText('3 · COUNCIL BUILDING RULES')).toBeNull();
+    expect(container.textContent).not.toContain('rules found');
+    expect(container.textContent).not.toContain('3 rules found');
+    expect(screen.getByText("Ku-ring-gai's own house rules (Front setback) are further down. They are not part of the walking test.")).toBeTruthy();
+    expect(container.querySelectorAll('a[href="#walk"], a[href="#check"]')).toHaveLength(4);   // two tiles, two jump links
   });
-  it('controls tile: none and unreadable say so, and show no count', () => {
-    const none = render(<AtAGlance data={evidence({ council_controls: { status: 'none', controls: [] }, lga: null })} />);
-    let tile = screen.getByText('3 · COUNCIL BUILDING RULES').closest('a') as HTMLElement;
-    expect(tile.textContent).toContain('None shown');
-    expect(tile.textContent).toContain('No current controls are held for this council.');
-    expect(tile.textContent).toContain("The council's rules");
-    expect(tile.textContent).not.toContain('rules found');
+  it('council note: lists every control name, uses the generic council when there is no name, and for none/unreadable names no controls', () => {
+    const many = render(<AtAGlance data={evidence({ lga: null, council_controls: { status: 'ok', controls: [
+      { control_type: 'a', label: 'Front setback', requirement: null, council_words: null, clause: null, clause_shown: false, page: 1 },
+      { control_type: 'rear_setback', label: null, requirement: null, council_words: null, clause: null, clause_shown: false, page: 2 },
+      { control_type: null, label: null, requirement: null, council_words: null, clause: null, clause_shown: false, page: 3 },
+    ] } })} />);
+    expect(screen.getByText("The council's own house rules (Front setback; rear_setback; Control not named) are further down. They are not part of the walking test.")).toBeTruthy();
+    many.unmount();
+    const none = render(<AtAGlance data={evidence({ council_controls: { status: 'none', controls: [] } })} />);
+    expect(screen.getByText("No current house rules are held for this council. They would not be part of the walking test.")).toBeTruthy();
+    expect(none.container.textContent).not.toContain('Front setback');
     none.unmount();
-    render(<AtAGlance data={evidence({ council_controls: { status: 'unreadable', controls: [] } })} />);
-    tile = screen.getByText('3 · COUNCIL BUILDING RULES').closest('a') as HTMLElement;
-    expect(tile.textContent).toContain('They could not be read.');
-    expect(tile.textContent).not.toContain('rules found');
+    const bad = render(<AtAGlance data={evidence({ council_controls: { status: 'unreadable', controls: [] } })} />);
+    expect(screen.getByText("The council's own house rules could not be read. They are not part of the walking test.")).toBeTruthy();
+    expect(bad.container.textContent).not.toContain('rules found');
   });
   it('bottom line: uses the verdict words, and says how many checks still need a person (singular and plural)', () => {
     const one = render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' })] })} />);
@@ -363,6 +398,7 @@ describe('AtAGlance', () => {
     render(<AtAGlance data={evidence()} />);
     const nav = screen.getByRole('navigation', { name: 'Jump to' });
     expect(Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['#walk', '#check', '#controls', '#method', '#proof']);
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['The walk', 'Land the rules leave out', 'Council rules', 'How it was measured', 'The proof']);
   });
   it('uses no colour-only verdict word', () => {
     const { container } = render(<AtAGlance data={evidence()} />);
@@ -407,12 +443,54 @@ describe('isEvidence checks the flood and pipeline fact values', () => {
 });
 
 describe('AtAGlance: excluded rows and malformed ranges', () => {
-  it('does not say an excluded row still needs a person, and shows no range for a malformed one', () => {
+  it('does not say an excluded row still needs a person, and shows no walk for a malformed range', () => {
     const data = evidence({ exclusions: [row({ para: 'a', result: 'excludes', result_words: 'Excluded' }), row({ para: 'b' })], walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: -100, walk_high_m: -50, detail: null, heuristic: null } as Evidence['walk'] });
     const { container } = render(<AtAGlance data={data} />);
     expect(container.textContent).not.toMatch(/still needs a person|still need a person/);
     expect(container.textContent).toContain('1 excluded');
-    expect(container.textContent).toContain('No range');
+    expect(container.textContent).toContain('No walk measured');
     expect(container.textContent).not.toContain('-100');
+  });
+});
+
+describe('AtAGlance walk tile: the big number is the measured walk', () => {
+  it('shows the measured walk, not the limit and not a range, as the tile figure', () => {
+    const data = evidence({ walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: 803, walk_best_m: 878, walk_high_m: 1103, detail: null, heuristic: null } as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    const big = container.querySelector('a[href="#walk"] .text-3xl') as HTMLElement;
+    expect(big.textContent).toBe('878 m');
+  });
+});
+
+describe('AtAGlance: the walk tile and the council note for unusual answers', () => {
+  it('shows the measured walk and says the test result is unavailable when the range is missing', () => {
+    const data = evidence({ walk: { clause: null, page: null, anchor: null, limit_m: 800, walk_low_m: null, walk_best_m: 479, walk_high_m: null, detail: null, heuristic: null } as unknown as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    expect((container.querySelector('a[href="#walk"] .text-3xl') as HTMLElement).textContent).toBe('479 m');
+    expect(container.textContent).toContain('Walking-test result unavailable');
+    expect(container.textContent).not.toContain('No walk measured');
+  });
+  it('says what the council note is when no house rules are held or they could not be read, not that they are further down', () => {
+    const none = render(<AtAGlance data={evidence({ council_controls: { status: 'none', as_at_line: null, controls: [] } })} />);
+    expect(none.container.textContent).toContain('No current house rules are held for this council.');
+    expect(none.container.textContent).not.toContain('further down');
+    none.unmount();
+    const bad = render(<AtAGlance data={evidence({ council_controls: { status: 'unreadable', reason: 'x', controls: [] } as unknown as Evidence['council_controls'] })} />);
+    expect(bad.container.textContent).toContain('could not be read');
+    expect(bad.container.textContent).not.toContain('further down');
+  });
+});
+
+describe('the walk is shown even when the limit is missing; an ok council list with no rules is not described as further down', () => {
+  it('walk card shows the measured walk and the unavailable message, not No walk was measured', () => {
+    const data = evidence({ walk: { clause: null, page: null, anchor: null, limit_m: null, walk_low_m: 450, walk_best_m: 479, walk_high_m: 750, detail: null, heuristic: null } as unknown as Evidence['walk'] });
+    const { container } = render(<AtAGlance data={data} />);
+    expect(container.textContent).toContain('479 m');
+    expect(container.textContent).not.toContain('No walk measured');
+  });
+  it('an ok council status with no controls says none are held', () => {
+    const { container } = render(<AtAGlance data={evidence({ council_controls: { status: 'ok', as_at_line: null, controls: [] } as unknown as Evidence['council_controls'] })} />);
+    expect(container.textContent).toContain('No current house rules are held for this council.');
+    expect(container.textContent).not.toContain('further down');
   });
 });

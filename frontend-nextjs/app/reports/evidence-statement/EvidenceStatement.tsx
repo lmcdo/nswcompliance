@@ -97,22 +97,16 @@ export default function EvidenceStatement() {
           {data.law_instrument || w.clause ? `The law (${[data.law_instrument, w.clause, w.page != null ? `page ${w.page}` : null].filter(Boolean).join(', ')}) counts` : 'The law counts'} land within{limitText || ' a set'} walking distance of a station or town centre. The walk is measured from the nearest part of the lot. Law wording: see The proof section below.
         </p>
         <div className="flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          {v.low !== null && v.high !== null ? (
+          {v.best !== null ? (
             <>
-              <p className="text-base font-semibold">Where the walk falls against the limit</p>
+              <p className="text-base font-semibold">The shortest walk against the limit</p>
               <p className="text-lg leading-snug">{words.sentence}</p>
               <RangeScale verdict={v} />
-              <p className="text-sm text-gray-700">
-                Possible walk: {fmtNum(v.low)} to {fmtNum(v.high)} m (allows for map error){v.best !== null ? `. Measured walk: ${fmtNum(v.best)} m` : ''}{v.limit !== null ? `. The limit: ${fmtNum(v.limit)} m.` : '.'}
+              <p className="text-sm leading-relaxed text-gray-700">
+                <strong>How it is measured:</strong> the shortest walk along public footpaths and crossings, in metres, from the nearest part of the lot to the station or town centre entrance. The law counts the lot if any part of it is within the distance.
               </p>
-              {w.margin_low_m != null && w.margin_high_m != null ? (
-                <p className="text-sm leading-relaxed text-gray-700">
-                  <strong>Why a range?</strong> {`A walk measured on a map can be wrong: the range runs from the measured walk less ${fmtNum(w.margin_low_m)} m to the measured walk plus ${fmtNum(w.margin_high_m)} m${w.entrance_unmapped_extra_m ? `, plus up to ${fmtNum(w.entrance_unmapped_extra_m)} m because the station entrance is not mapped` : ''}.`}
-                </p>
-              ) : null}
-              {w.heuristic ? <p className="text-sm text-gray-700">{w.heuristic}</p> : null}
             </>
-          ) : <p>{`No walking range was measured. ${w.detail ?? ''}`}</p>}
+          ) : <p>{`No walk was measured. ${w.detail ?? ''}`}</p>}
           {hasCrossings ? (
             <p className="text-sm leading-relaxed"><strong>Crossings-only walk, for information.</strong> {w.crossings_only_note ?? `Crossing busy roads only at traffic lights, zebra or marked crossings, the walk is about ${w.crossings_only_walk_m} m.`} It does not change the result above.</p>
           ) : null}

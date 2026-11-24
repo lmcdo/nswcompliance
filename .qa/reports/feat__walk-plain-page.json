@@ -1,0 +1,149 @@
+{
+  "tier": "Standard",
+  "justification": "The evidence page showed the walk as a range (the measured walk less 75 m to plus 225 m) with a paragraph about a second walking-route service. Those margins were fitted on past test lots and meant nothing to a reader. The page now shows one thing: the shortest walk along public footpaths and crossings, in metres, against the limit, with a plain how-it-is-measured line. The verdict (over, within, too close to call) still comes from the engine's own range, unchanged; only a measured walk can produce one, so a missing measured walk reads 'No walk measured', never 'within'. Also renamed the exclusions tile and section to say what they are (land the housing rules leave out), and the council's own house rules are a note under the tiles, not a tile. No data, engine or API change.",
+  "commit_hash": "fd65e6d6",
+  "files": [
+    "frontend-nextjs/lib/evidence-summary.ts",
+    "frontend-nextjs/components/reports/evidence/RangeScale.tsx",
+    "frontend-nextjs/components/reports/evidence/AtAGlance.tsx",
+    "frontend-nextjs/components/reports/evidence/CheckSection.tsx",
+    "frontend-nextjs/components/reports/evidence/ControlsSection.tsx",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/__tests__/lib/evidence-summary.test.ts",
+    "frontend-nextjs/__tests__/components/evidence-sections.test.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx ; npx tsc --noEmit -p .",
+    "expected": "143 tests pass in three files; tsc prints no errors.",
+    "fails_when": "The page prints a range, a Why-a-range box or the second-router text; the tile figure is not the measured walk; a payload with no measured walk is given a within or over verdict; the scale draws a range band or labels collide; the exclusions tile keeps the old wording.",
+    "observed_red": "Ten hand breakages each turned a test red and were restored: the no-measured-walk guard, the over-by arithmetic, the too-close wording, the scale's tick-overlap guard, the tile figure (found green at first, test added, then red), the exclusions tile title, the how-it-is-measured line, and the council heading. One breakage (a guard in the scale that buildScale already enforces) stayed green and is an equivalent mutant. Rendered with the live Pymble (878 m, 78 m over) and Penrith (529 m, 271 m under) data at desktop width and at 480 px, the smallest headless Chrome allows; nothing is cut off."
+  },
+  "pre_impl": {
+    "existing_data": "The evidence data already carries the measured walk (walk_best_m), the limit and the crossings-only walk; the live endpoint returns them for Pymble and Penrith.",
+    "assumption_mismatch": "The earlier redesign treated the engine's range as a given input and built a scale around it. The 75 and 225 are constants fitted on 248 test lots against a second router (comment in services/lmr_area_decision.py), not a property of the lot.",
+    "new_vs_existing": "Changed: the words and layout that show the walk, the scale drawing, tile and heading wording. Unchanged: the engine, the payload, the margins and how a close call is decided.",
+    "external_source_error": "A payload with no measured walk now says No walk measured and draws no scale, instead of a verdict taken from the range alone.",
+    "frontend_type": "No type change; walk_best_m was already optional.",
+    "user_failure_mode": "A planner reads one walk in metres against the limit, and a close call says so in plain words."
+  },
+  "functions": [
+    {
+      "name": "walkVerdict",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:22",
+      "input": "the walk object from the evidence payload",
+      "output": "over, within, straddles or unknown with the measured walk and the limit",
+      "if_none": "No measured walk gives unknown, never within or over."
+    },
+    {
+      "name": "verdictWords",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:34",
+      "input": "the walk verdict and its detail text",
+      "output": "the pill, sentence, margin line and bottom line naming the measured walk against the limit",
+      "if_none": "Unknown gives No walk measured and the detail text."
+    },
+    {
+      "name": "buildScale",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:70",
+      "input": "limit, low, high and best walk in metres",
+      "output": "axis and percent positions for the scale",
+      "if_none": "A missing or non-finite number gives none and the scale is not drawn."
+    },
+    {
+      "name": "RangeScale",
+      "file_line": "frontend-nextjs/components/reports/evidence/RangeScale.tsx:7",
+      "input": "the walk verdict with the measured walk",
+      "output": "a labelled number line with the limit and the measured walk",
+      "if_none": "No measured walk draws nothing."
+    },
+    {
+      "name": "AtAGlance",
+      "file_line": "frontend-nextjs/components/reports/evidence/AtAGlance.tsx:13",
+      "input": "the evidence data from the server",
+      "output": "the walk tile, the excluded-land tile and a note on the council's house rules",
+      "if_none": "No walk shows No walk measured, never a number."
+    },
+    {
+      "name": "CheckSection",
+      "file_line": "frontend-nextjs/components/reports/evidence/CheckSection.tsx:50",
+      "input": "the evidence data from the server",
+      "output": "the land-the-rules-leave-out section with a card per open check",
+      "if_none": "An empty list of checks says no checks were returned."
+    },
+    {
+      "name": "ControlsSection",
+      "file_line": "frontend-nextjs/components/reports/evidence/ControlsSection.tsx:7",
+      "input": "the evidence data from the server",
+      "output": "the council's own house rules as cards with their pages",
+      "if_none": "No controls or an unreadable source says so in words."
+    },
+    {
+      "name": "EvidenceStatement",
+      "file_line": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx:29",
+      "input": "the latitude and longitude in the address bar",
+      "output": "the full evidence page for the lot",
+      "if_none": "A failed or malformed answer shows an error line."
+    }
+  ],
+  "values": [
+    {
+      "value": "walk_best_m, limit_m and the low and high walk from the payload",
+      "read_at": "frontend-nextjs/lib/evidence-summary.ts:22",
+      "nullable": "yes, all optional",
+      "guard_at": "frontend-nextjs/lib/evidence-summary.ts:22 (finite and non-negative checks)",
+      "if_missing": "Unknown: the page says No walk measured."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A payload has a low and high walk but no measured walk.",
+      "what_happens": "The old page could say within the limit from the range alone.",
+      "mitigated": "Mitigated: a verdict needs a measured walk.",
+      "how": "Tests for the unknown case and the tile.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "The measured walk is very close to the limit.",
+      "what_happens": "A wrong over or within could be shown for a lot that is a few metres either side.",
+      "mitigated": "Mitigated: the engine's own range still decides, and a close call says too close to call and to check the route on the ground.",
+      "how": "Tests for the straddles wording.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "A reader looks for the range or the second-router text that used to be there.",
+      "what_happens": "It is gone from the page.",
+      "mitigated": "Removed on purpose at the user's request; the engine still sends the text, the page no longer prints it.",
+      "how": "A page test with the text in the payload asserts it is not shown.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "The scale labels collide on a phone.",
+      "what_happens": "The scale is hard to read.",
+      "mitigated": "Mitigated: a tick near the limit or the walk is not drawn, labels shorten on small screens.",
+      "how": "Rendered at 480 px with live data; a tick test.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "An older server answer without walk_best_m.",
+      "what_happens": "The page has no measured walk figure to show.",
+      "mitigated": "Mitigated: the measured walk falls back to the low walk plus its margin when the margin is sent; otherwise No walk measured.",
+      "how": "Tests for both cases.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    },
+    {
+      "scenario": "The council rules note is read as part of the walk test.",
+      "what_happens": "Confusion about what the box decides.",
+      "mitigated": "Mitigated: the note says the rules are further down and not part of the walking test.",
+      "how": "A test asserts no council tile and the note text.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/evidence-statement-page.test.tsx __tests__/lib/evidence-summary.test.ts __tests__/components/evidence-sections.test.tsx"
+    }
+  ],
+  "residual_risk": "1) The engine still decides close calls with margins of 75 m below and 225 m above the measured walk (fitted on past test lots against a second router). The page no longer shows them, but they still decide over, within and too-close-to-call. Replacing them with a re-test of the crossings-only walk is a separate job that changes verdicts near the limit. 2) The engine still sends the old how-the-range-is-worked-out text in its payload; the page does not print it. 3) The phone view was rendered at 480 px, not 390 px (headless Chrome's smallest). 4) The PDFs in the outreach folder still show the earlier layout until remade from the deployed page.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Vercel deploy open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543 and check the walk tile reads 878 m, over the limit, with no range."
+  }
+}
