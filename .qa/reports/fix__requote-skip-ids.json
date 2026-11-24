@@ -1,0 +1,82 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds one option to a script that can rewrite control quotes. Not Minor: it decides which controls a write touches. Not Critical: it only removes controls from a planned write; every write still asks first and keeps a backup.",
+ "commit_hash": "2d76b8f4",
+ "files": [
+  "scripts/requote_controls_from_provisions.py",
+  "tests/test_requote_controls_from_provisions.py"
+ ],
+ "pre_impl": {
+  "existing_data": "A dry run on Waverley proposes 4 quotes; control 1037 (bicycle parking) is held by a person's note and reads like a car-parking rate, and the script had no way to leave one control out.",
+  "assumption_mismatch": "I assumed all proposals would be applied together.",
+  "new_vs_existing": "The script already backs up and guards each update; --skip only shrinks the planned set before the backup and the write.",
+  "external_source_error": "A skipped id that is not planned changes nothing.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A control a person is holding gets its quote rewritten."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_requote_controls_from_provisions.py -q",
+  "fails_when": "A control named in --skip still appears in the planned writes.",
+  "observed_red": "With the skip filter switched off the new test fails.",
+  "observed_green": "26 tests pass."
+ },
+ "functions": [
+  {
+   "name": "_requote",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "a connection and the parsed arguments including skip ids",
+   "output": "the planned set minus skipped controls, then the backup and write",
+   "if_none": "no skip ids leaves the plan unchanged"
+  },
+  {
+   "name": "plan",
+   "file_line": "scripts/requote_controls_from_provisions.py",
+   "input": "controls, current rules, reader answers, other controls",
+   "output": "proposals and the reason for each control left alone",
+   "if_none": "no match leaves the control held"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "No new query; same reads as before and the write only after the owner says apply",
+   "file_line": "scripts/requote_controls_from_provisions.py _requote",
+   "where_clause": "unchanged guarded update per control id"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A skip id is not one of the planned controls.",
+   "what_happens": "It could be thought to have been skipped when it never was planned.",
+   "mitigated": true,
+   "how": "The filter only removes ids already in the plan, so an unknown id does nothing.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k skipped -q"
+  },
+  {
+   "scenario": "No skip ids are given.",
+   "what_happens": "The plan could change by mistake.",
+   "mitigated": true,
+   "how": "The default is an empty list and the test checks both proposals remain.",
+   "repro": "python -m pytest tests/test_requote_controls_from_provisions.py -k skipped -q"
+  },
+  {
+   "scenario": "The write reads the same controls as the dry run and a row changed meanwhile.",
+   "what_happens": "A stale quote could be overwritten.",
+   "mitigated": true,
+   "how": "Each update is guarded on the old values and the whole write rolls back if any row differs.",
+   "repro": "python scripts/requote_controls_from_provisions.py --council waverley"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/requote_controls_from_provisions.py --council waverley --skip 1037 (dry run), then --apply after the owner's go."
+ }
+}

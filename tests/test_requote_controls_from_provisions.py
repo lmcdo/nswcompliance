@@ -224,3 +224,30 @@ def test_cover_counts_the_share_of_the_stored_words_found_in_the_sentence():
     assert r.covers("minimum 6m rear setback applies", "A minimum 6m rear setback applies.") > 0.9
     assert r.covers("minimum 6m rear setback applies", "Awnings should extend across the footpath.") < 0.3
     assert r.covers("", "anything") == 0.0 and r.covers(None, "anything") == 0.0
+
+
+class _Cur:
+    def __init__(self):
+        self.sql = []
+
+    def cursor(self):
+        return self
+
+    def execute(self, sql, args=()):
+        self.sql.append(sql)
+
+
+def test_a_skipped_control_is_left_out_of_the_write(monkeypatch, capsys):
+    """A control a person is holding is named with --skip and never reaches the planned set."""
+    rule = {"id": 1, "page": 12, "chapter": "ch-a", "text": "# 3.2 Setbacks\nA minimum 6m rear setback applies to every dwelling house on the lot."}
+    keep = ctl(10, vmin=6, text="A minimum 6m rear setback applies to every dwelling house on the lot")
+    held = ctl(11, vmin=6, text="A minimum 6m rear setback applies to every dwelling house on the lot")
+    filler = [{"id": 100 + i, "page": i, "chapter": "ch-a", "text": f"Rule number {i} about drainage, signage and trees in the plan."} for i in range(30)]
+    monkeypatch.setattr(r, "_load", lambda cur, council: ([keep, held], [rule] + filler, []))
+    a = type("A", (), {"council": "x", "answers": None, "candidates": None, "skip": [11], "apply": False})()
+    r._requote(_Cur(), a)
+    out = capsys.readouterr().out
+    assert "proven proposals 1 " in out
+    a.skip = []
+    r._requote(_Cur(), a)
+    assert "proven proposals 2 " in capsys.readouterr().out
