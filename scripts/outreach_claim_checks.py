@@ -546,8 +546,9 @@ def unproven_citations_only_fall() -> Result:
     return (PASS if n <= DQ145_CEILING else FAIL), f"DQ-145 ratchet: {n} unproven (may not exceed {DQ145_CEILING})"
 
 
-# OC-22, added 2026-11-08 (owner: yes to a narrow claim for the housing reform area card). The claim is only as strong as the last
-# recorded run of the independent-router test on the data we serve. Missing record = FAIL: the claim is not yet true.
+# OC-22, added 2026-11-08 (owner: yes to a narrow claim for the housing reform area card). Rewritten 2026-11-24: the claim is now about SCOPE (the 10 pilot councils answer,
+# every other council says not checked) and makes no accuracy promise, because the route-finder comparison cannot say which of two routes is right.
+# area_check_accuracy_recorded below is kept (it is tested) but is no longer part of the claim.
 AREA_ACCURACY = ROOT / "data" / "lmr_area_accuracy.json"
 AREA_MIN_LOTS = 100
 
@@ -579,6 +580,34 @@ def area_check_accuracy_recorded(path: Path = AREA_ACCURACY, fingerprint: Callab
     if rec.get("data_fingerprint") != fingerprint():
         return FAIL, "the accuracy run was measured on different data than is served now: re-run the test"
     return PASS, f"area check vs independent router on {lots} lots: match {agree}/{yn}, wrong 0, range holds {holds}/{ranged}, can't-tell {ct}"
+
+
+WALK_SCOPE = ROOT / "data" / "lmr_walk_scope.json"
+BRIEF_SCOPE = ROOT / "frontend-nextjs" / "shared" / "brief-scope.json"
+DOCKERFILE = ROOT / "Dockerfile.python"
+# The pilot list names Ashfield; the walking maps and the council the portal reports for those lots are Inner West.
+PILOT_TO_WALK_KEY = {"ashfield": "inner_west"}
+
+
+def walk_scope_is_the_pilot(scope_path: Path = WALK_SCOPE, brief_path: Path = BRIEF_SCOPE, dockerfile: Path = DOCKERFILE) -> Result:
+    """OC-22 (rewritten 2026-11-24): the walking check answers yes or no only in the 10 pilot councils and says 'not checked' elsewhere. The claim is only as true as
+    the scope file: it must list exactly the pilot councils (so the claim and the card cannot drift apart) and the production image must carry it."""
+    try:
+        scope = set(json.loads(scope_path.read_text(encoding="utf-8")).get("councils") or [])
+        pilot = {PILOT_TO_WALK_KEY.get(c, c) for c in json.loads(brief_path.read_text(encoding="utf-8")).get("councils") or []}
+    except (OSError, ValueError, AttributeError) as exc:
+        return FAIL, f"could not read the walking scope or the pilot list: {exc}"
+    if not scope or not pilot:
+        return FAIL, "the walking scope or the pilot list is empty"
+    if scope != pilot:
+        return FAIL, f"the walking scope and the pilot councils differ: only in scope {sorted(scope - pilot)}, only in pilot {sorted(pilot - scope)}"
+    try:
+        image = dockerfile.read_text(encoding="utf-8")
+    except OSError as exc:
+        return FAIL, f"could not read Dockerfile.python: {exc}"
+    if "COPY data/lmr_walk_scope.json" not in image:
+        return FAIL, "Dockerfile.python does not copy data/lmr_walk_scope.json, so production would have no scope file and say not checked everywhere"
+    return PASS, f"the walking check answers in {len(scope)} councils, the same as the pilot list, and the image carries the scope file"
 
 
 CLAIMS: dict[str, list[Callable[[], Result]]] = {
@@ -691,8 +720,8 @@ CLAIMS: dict[str, list[Callable[[], Result]]] = {
         scoped.check,
     ],
     "OC-22": [
-        lambda: pytest_files("tests/test_lmr_area_decision.py", "tests/test_lmr_walk_surface.py"),
-        area_check_accuracy_recorded,
+        lambda: pytest_files("tests/test_lmr_area_decision.py", "tests/test_lmr_walk_surface.py", "tests/test_lmr_walk_scope.py"),
+        walk_scope_is_the_pilot,
     ],
     "OC-17": [
         lambda: probe("DQ-99"),

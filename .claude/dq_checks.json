@@ -1918,10 +1918,10 @@
   },
   "OC-22": {
     "kind": "outreach_claim",
-    "claim": "For an address in the five measured areas (Inner West, Georges River, Canterbury-Bankstown, Ku-ring-gai, Woollahra), the housing reform area card gives its Chapter 5 or Chapter 6 answer with the clause, the page and the law date, and in an independent test on at least 100 lots against OpenStreetMap's Valhalla walking router it matched the router's yes or no at 90% or better with no opposite answer. Outside those areas, and for flood extent, pipelines and airports other than Sydney, it says it did not check.",
+    "claim": "In the 10 pilot councils (Penrith, Wollongong, Waverley, Inner West, Ku-ring-gai, Georges River, Blacktown, Northern Beaches, Parramatta, Hornsby), the housing reform area card gives its Chapter 5 or Chapter 6 answer with the clause, the page and the law date, and its walking answer is the shortest mapped walk in metres against the law's limit. In any other council it says the walking distance is not checked. It does not check airports other than Sydney, or whether a mapped pipeline is a relevant pipeline. No accuracy rate is claimed.",
     "source": "owner yes 2026-11-08; ~/.claude/plans/ce-NEXT-PROMPT-2026-11-08-after-lmr-and-anef-live.md",
-    "declared": "false",
-   "note": "NOT HOLDING (declared false 2026-11-22). Two reasons: (1) the recorded accuracy run is tied to the walking data as of 2026-11-08 and 7 pilot walking files were added 2026-11-17 (#1645); (2) a fresh 100-lot run on current data (seed 20261122) did not pass: 1 wrong yes in 82 yes/no answers (28 Mandolong Road, Mosman: our walk 440 m, router about 1,003 m), bar is 0. Note: ce-walk-wrong-yes-mosman-NOTE-2026-11-22.md. Returns to true when a fresh run passes and is recorded.",
+    "declared": "true",
+   "note": "Rewritten 2026-11-24 (owner: the walking check is for the 10 pilot councils; ask: simple, one method, no router match rate). Before: the claim named five areas and promised a 90% match with the OpenStreetMap Valhalla router and no opposite answer. A 100-lot run on 2026-11-22 found one disagreement (28 Mandolong Road, Mosman: ours 440 m, router 1,003 m), a lot outside the five areas that the live card still answered. The router shares our map data and cannot say which route is right, so the match promise is dropped; the card now says not checked outside the 10 councils (data/lmr_walk_scope.json). Note: ce-walk-wrong-yes-mosman-NOTE-2026-11-22.md.",
     "check": [
       "python",
       "scripts/outreach_claim_checks.py",

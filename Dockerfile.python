@@ -36,6 +36,7 @@ COPY frontend-nextjs/lib/lga-slug-renames.json ./frontend-nextjs/lib/lga-slug-re
 COPY data/law/housing_sepp_lmr_facts.json ./data/law/housing_sepp_lmr_facts.json
 COPY data/law/lmr_station_entrances.json ./data/law/lmr_station_entrances.json
 COPY data/lmr_walk/ ./data/lmr_walk/
+COPY data/lmr_walk_scope.json ./data/lmr_walk_scope.json
 # The second, crossings-only walk (services/lmr_walk_surface.py SAFE_SURFACE_DIR). Without this line the image has no such folder and no second line shows.
 COPY data/lmr_walk_safe/ ./data/lmr_walk_safe/
 # The normal-rule files with route pointers, used only to draw the normal route on the evidence page (services/lmr_walk_surface.py ROUTE_SURFACE_DIR).

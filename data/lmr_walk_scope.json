@@ -1,0 +1,5 @@
+{
+  "_about": "The councils where the Low and Mid Rise walking-distance check gives a yes or no answer. Anywhere else it says the walk is not checked. Keys are services/council_key.to_council_key of the council name. Set 2026-11-24 (owner: the walking check is for the 10 pilot councils). Add a council here only after its walking map is built AND a person has checked a sample of its routes.",
+  "as_of": "2026-11-24",
+  "councils": ["penrith", "wollongong", "waverley", "ku_ring_gai", "inner_west", "blacktown", "northern_beaches", "georges_river", "parramatta", "hornsby"]
+}
