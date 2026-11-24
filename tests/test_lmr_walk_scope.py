@@ -99,8 +99,11 @@ def test_a_bad_scope_file_makes_every_lot_cant_tell(tmp_path, monkeypatch, conte
     bad = tmp_path / "scope.json"
     bad.write_text(content, encoding="utf-8")
     assert d.walk_scope(bad) is None
-    monkeypatch.setattr(d, "WALK_SCOPE_PATH", bad)
-    monkeypatch.setattr(d, "walk_scope", lambda path=bad: d.__dict__["_orig_walk_scope"](path))  # noqa: placeholder replaced below
+    real = d.walk_scope
+    monkeypatch.setattr(d, "walk_scope", lambda *a, **k: real(bad))   # the decision reads the bad file through the real reader
+    for council in ("Penrith", "Hornsby", "Mosman"):
+        step = _step(council)
+        assert step[0] == "cant_tell" and step[1]["reason_code"] == "walk_not_checked_in_this_council", council
 
 
 def test_the_council_name_variants_the_portal_uses_all_match():
