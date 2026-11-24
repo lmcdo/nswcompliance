@@ -46,23 +46,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FACTS_PATH = REPO_ROOT / "data" / "law" / "housing_sepp_lmr_facts.json"
 
 YES, NO, CANT, BORDER = "yes", "no", "cant_tell", "borderline"
-# yes / no: the whole walking range is on one side of the limit. borderline: the range straddles the limit; the answer then
-# SHOWS the range and which way the best estimate leans. cant_tell is kept only for a measurement that did not come back.
-
-# Engineering tolerance, NOT a planning figure: two independent walking routers disagreed by a median
-# of 38 m (p90 150 m, max 214 m) on the 48 lots of the 2026-11-06 test; at this margin the simulated rule
-# made 0 wrong-side answers and left 5 of 48 undecided (ce-eligible-homes-GATE-FIX-DESIGN-2026-11-07 s4).
-# Re-measure when the test sample changes.
-#
-# 2026-11-07 re-measurement, three sets of 100 lots (248 lots with both walks; 64 stations and town centres, 20+ councils; judge =
-# OpenStreetMap Valhalla pedestrian service): the judge's walk minus ours had median +29 m, 2.5th percentile -62 m, 95th percentile
-# +204 m, 97.5th percentile +231 m. Our walk is usually the shorter one, because our footpath map allows every mapped path while the
-# judge follows its own rules for crossings and access. A range of the same size on both sides covered only 88% (150 m each way);
-# 75 m below and 225 m above covers about 94% with a smaller total width. The first 150 m margin was set on one sample and covered
-# only 86% of two fresh samples, so these two numbers are set on all three samples and must be checked on lots drawn with new seeds.
+# yes / no: the measured walk is on one side of the limit. The only uncertainty left is geometric, never fitted: when the station
+# entrance is not mapped the walk is measured to the station building outline, and the real walk is somewhere between that
+# distance and that distance plus the outline's length. borderline: the limit falls inside that span. cant_tell is kept only for
+# a measurement that did not come back. (Until 2026-11-24 the walk was also padded by a fitted 75 m shorter and 225 m longer,
+# made for the many-lots home finder; it was removed so that a measured walk over the limit reads over the limit.)
 FLOOD_EDGE_M = 100.0   # noqa: regulatory-number -- margin for the flood-study copy's map detail (15 m model cell plus the coarse Figure 1-1), same value as services/lmr_map_copy.FLOOD_EDGE_M, not a planning figure
-WALK_MARGIN_LOW_M = 75    # noqa: regulatory-number -- measured router disagreement, not a planning figure
-WALK_MARGIN_HIGH_M = 225  # noqa: regulatory-number -- measured router disagreement, not a planning figure
 SANITY_MAX_M = 100000000.0  # noqa: regulatory-number -- upper sanity bound on a distance read from a chart answer (also rejects NaN and infinity); not a planning figure
 
 
@@ -71,11 +60,10 @@ NOT_DETERMINED_NEXT_STEP = ". Check this lot on the NSW Planning Portal Spatial 
 
 
 WALK_HEURISTIC = (
-    f"How the range is worked out: we measure the walk along public footpaths, then allow {WALK_MARGIN_LOW_M} m shorter and {WALK_MARGIN_HIGH_M} m longer. "
-    "The allowance is bigger on the longer side because, on test lots, our footpath map gave a shorter walk than a second walking-route "
-    "service more often than a longer one. If the station entrance is not mapped, the length of the station outline is added. "
-    "The law's route is the shortest one that may be walked using footpaths and crossings. When the limit falls inside the range, "
-    "every walk length in the range is treated as equally likely, and the share shown is the part of the range under the limit."
+    "How this is worked out: we measure the shortest walk along public footpaths and crossings from the lot to the station building. "
+    "The station entrance is not mapped, so the real walk is somewhere between that distance and that distance plus the length of the station outline. "
+    "The law's route is the shortest one that may be walked using footpaths and crossings. When the limit falls inside that span, "
+    "every walk length in it is treated as equally likely, and the share shown is the part of the span under the limit."
 )
 
 
@@ -517,24 +505,23 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
         base.update(_crossings_only(m, None))
         return CANT, {**base, "reason_code": "walking_measure_unavailable",
                       "detail": walk.get("reason") or "the walk to the nearest station or town centre could not be measured"}
-    # The walk is a RANGE, not a point. Low end: the measured walk less the measurement margin. High end: the measured walk plus
-    # the margin, plus `optimistic_by_m` when the walk was measured to a station building outline instead of a mapped entrance
-    # (the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length).
+    # The walk is a point, the measured shortest walk, unless it was measured to a station building outline instead of a mapped
+    # entrance (`optimistic_by_m`): the entrance is somewhere on that outline, so the real walk can be longer by up to the outline's length.
     opt = walk.get("optimistic_by_m") or 0
     opt = float(opt) if isinstance(opt, (int, float)) and not isinstance(opt, bool) and opt >= 0 else 0.0  # qa-ignore: opt is type-checked on this same line
-    lo_m, hi_m = max(0.0, wm - WALK_MARGIN_LOW_M), wm + opt + WALK_MARGIN_HIGH_M
+    lo_m, hi_m = wm, wm + opt
     best = wm + opt / 2
     base.update({"walk_m": round(wm), "walk_low_m": round(lo_m), "walk_high_m": round(hi_m), "walk_best_m": round(best),
-                 "margin_low_m": WALK_MARGIN_LOW_M, "margin_high_m": WALK_MARGIN_HIGH_M, "entrance_unmapped_extra_m": round(opt),
+                 "entrance_unmapped_extra_m": round(opt),
                  "anchor": walk.get("anchor"), "entrance_id": walk.get("entrance_id")})
     base.update(_crossings_only(m, wm))
     if hi_m <= outer:
-        band = "inner" if hi_m <= inner else ("outer" if lo_m >= inner else "straddles_inner_limit")
+        band = "inner" if hi_m <= inner else ("outer" if lo_m > inner else "straddles_inner_limit")
         return YES, {**base, "reason_code": "walk_range_under_limit", "band": band, "inner_limit_m": inner,
-                     "detail": f"walking range {round(lo_m)}-{round(hi_m)} m is under the {round(outer)} m limit"}
-    if lo_m >= outer:
+                     "detail": (f"the walk is {round(lo_m)} m, under the {round(outer)} m limit" if round(lo_m) == round(hi_m) else f"walking range {round(lo_m)}-{round(hi_m)} m is under the {round(outer)} m limit")}
+    if lo_m > outer:   # over means longer than the limit: a walk of exactly the limit is within it
         return NO, {**base, "reason_code": "walk_range_over_limit",
-                    "detail": f"walking range {round(lo_m)}-{round(hi_m)} m is over the {round(outer)} m limit"}
+                    "detail": (f"the walk is {round(lo_m)} m, over the {round(outer)} m limit" if round(lo_m) == round(hi_m) else f"walking range {round(lo_m)}-{round(hi_m)} m is over the {round(outer)} m limit")}
     # Transparent heuristic: treat the true walk as equally likely anywhere in [lo, hi]; the share of that range under the
     # limit is the lean. It is an assumption, stated on every borderline answer so a reader can judge it.
     p_inside = (outer - lo_m) / (hi_m - lo_m) if hi_m > lo_m else 0.5
@@ -603,11 +590,11 @@ def _decide(m: dict, facts: LawFacts) -> dict:
     elif dist_answer == YES:
         lmr = {"answer": YES, **dist,
                "figures": {k: dist.get(k) for k in ("straight_m", "limit_m", "walk_m", "walk_low_m", "walk_high_m", "walk_best_m",
-                                                    "margin_low_m", "margin_high_m", "entrance_unmapped_extra_m", "anchor", "entrance_id")}}
+                                                    "entrance_unmapped_extra_m", "anchor", "entrance_id")}}
     else:
         lmr = {"answer": dist_answer, **dist,
                "figures": {k: dist.get(k) for k in ("straight_m", "limit_m", "walk_m", "walk_low_m", "walk_high_m", "walk_best_m",
-                                                    "margin_low_m", "margin_high_m", "entrance_unmapped_extra_m", "anchor", "entrance_id")}}
+                                                    "entrance_unmapped_extra_m", "anchor", "entrance_id")}}
     # the flood rule alone also passes on its figures (distances, the margin, the copy date) for the evidence page; every other rule keeps the shape it always had
     lmr["rules"] = [{**{k: r[k] for k in ("rule", "clause", "page", "outcome", "detail")},
                      **({"figures": r.get("figures")} if r.get("rule") == "pmf_hawkesbury_nepean" and r.get("figures") else {})} for r in rules]

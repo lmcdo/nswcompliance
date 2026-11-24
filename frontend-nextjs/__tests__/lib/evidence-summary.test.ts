@@ -129,14 +129,14 @@ describe('verdictWords', () => {
     const w = verdictWords(walkVerdict(walk({ walk_low_m: 700, walk_high_m: 900, walk_best_m: 790 })), null);
     expect(w.pill).toBe('Too close to the 800 m limit to call');
     expect(w.margin).toBe('Shortest walk 790 m.');
-    expect(w.sentence).toContain('The shortest walk is 790 m against the 800 m limit.');
+    expect(w.sentence).toBe('The shortest walk is 790 m against the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.');
     expect(w.bottom).toBe('The walk is too close to the limit for this tool to say whether the lot meets the walking test.');
     expect(JSON.stringify(w).toLowerCase()).not.toContain('range');
   });
   it('straddles with no measured walk: no margin line', () => {
     const w = verdictWords({ kind: 'straddles', limit: 800, low: 700, high: 900, best: null, gapM: null }, null);
     expect(w.margin).toBeNull();
-    expect(w.sentence).toContain('The walk is close to the 800 m limit.');
+    expect(w.sentence).toBe('The walk is close to the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.');
   });
   it('unknown: uses the payload detail as the sentence when there is one, else a fixed line, and never a verdict', () => {
     const v = walkVerdict(walk({ walk_low_m: null }));

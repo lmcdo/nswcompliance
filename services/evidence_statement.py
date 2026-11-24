@@ -180,7 +180,6 @@ def walk(area: dict) -> dict:
     return {"answer": lmr.get("answer"), "clause": lmr.get("clause"), "page": lmr.get("page"),
             "anchor": f.get("anchor"), "straight_m": f.get("straight_m"), "limit_m": f.get("limit_m"),
             "walk_low_m": f.get("walk_low_m"), "walk_best_m": fig("walk_best_m"), "walk_high_m": f.get("walk_high_m"),
-            "margin_low_m": fig("margin_low_m"), "margin_high_m": fig("margin_high_m"),
             "entrance_unmapped_extra_m": fig("entrance_unmapped_extra_m"),
             "share_of_range_inside": lmr.get("share_of_range_inside"), "detail": lmr.get("detail"),
             "heuristic": lmr.get("heuristic"),
