@@ -1,0 +1,89 @@
+{
+ "tier": "standard",
+ "justification": "Standard: changes the text comparison that proves a control's quote is on its page, which gates what is served. Not Minor: it can change verdicts for other councils. Not Critical: the old comparison is kept and the better verdict wins, so no match that worked before can turn into a miss; writes happen only in a separate apply.",
+ "commit_hash": "d960cd5b",
+ "files": [
+  "scripts/dcp_quote_status.py",
+  "tests/test_dcp_quote_status.py"
+ ],
+ "pre_impl": {
+  "existing_data": "Waverley controls 1104 and 1106 hold the sentence with 25m followed by a superscript 2 and read not_found; the PDF text has 25m2. 15 controls across strathfield (13), waverley (3 incl. these), liverpool and fairfield contain a superscript sign; 11 of 13 Strathfield ones read not_found.",
+  "assumption_mismatch": "I assumed a correct quote would prove; the comparison dropped the superscript from the quote but kept the digit in the PDF text.",
+  "new_vs_existing": "norm already strips punctuation on both sides; it now also has a folding mode, and classify tries both modes and keeps the better verdict.",
+  "external_source_error": "A PDF that drops the sign entirely still matches through the old mode.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A correct council quote is held back as not found, or a quote with a different number is called proven."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dcp_quote_status.py -q",
+  "fails_when": "A superscript quote against a flattened PDF digit is not verbatim, a PDF that keeps or loses the sign stops matching, or 25 matches 35.",
+  "observed_red": "With folding off the flattened-digit test fails; with the old mode off the lost-sign test fails.",
+  "observed_green": "21 tests pass."
+ },
+ "functions": [
+  {
+   "name": "classify",
+   "file_line": "scripts/dcp_quote_status.py",
+   "input": "a stored quote, the chapter's page texts and the cited PDF page",
+   "output": "verbatim, wrong_page, not_found or no_source",
+   "if_none": "no quote, no page or unreadable PDF is no_source"
+  },
+  {
+   "name": "norm",
+   "file_line": "scripts/dcp_quote_status.py",
+   "input": "a text and whether to read superscripts as digits",
+   "output": "the lower-case letters, digits, dots and percent signs only",
+   "if_none": "an empty text gives an empty string"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "No new query; the checker reads the same controls and PDF pages as before",
+   "file_line": "scripts/dcp_quote_status.py _run",
+   "where_clause": "unchanged; writes only with --apply"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "The PDF keeps the superscript sign.",
+   "what_happens": "Folding both sides could still be expected to match.",
+   "mitigated": true,
+   "how": "Both sides fold the same way, and the old mode runs too.",
+   "repro": "python -m pytest tests/test_dcp_quote_status.py -k keeps -q"
+  },
+  {
+   "scenario": "The PDF loses the sign entirely.",
+   "what_happens": "Folding would turn the quote into 25m2 against 25m and miss.",
+   "mitigated": true,
+   "how": "The old mode runs as well and the better verdict stands.",
+   "repro": "python -m pytest tests/test_dcp_quote_status.py -k lost_the_sign -q"
+  },
+  {
+   "scenario": "A different number appears with the flattened digit.",
+   "what_happens": "35m2 could be called a match for 25m.",
+   "mitigated": true,
+   "how": "Folding changes only the sign into its own digit; the other digits still differ.",
+   "repro": "python -m pytest tests/test_dcp_quote_status.py -k different_number -q"
+  },
+  {
+   "scenario": "The checker reads the same controls and PDF pages as before and the PDF cannot be read.",
+   "what_happens": "Every control could read as not found.",
+   "mitigated": true,
+   "how": "An unreadable PDF returns no_source in both modes and never not_found.",
+   "repro": "python -m pytest tests/test_dcp_quote_status.py -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dcp_quote_status.py --council waverley (dry run) then --apply after the owner's go; 1104 and 1106 should read verbatim."
+ }
+}

@@ -44,9 +44,18 @@ VERDICTS = ("verbatim", "wrong_page", "not_found", "no_source")
 _DROP = "‘’“”–—−­"
 
 
-def norm(text: str) -> str:
-    """Lower-case and keep only letters, digits, '.' and '%'."""
+_SUPERSCRIPT = str.maketrans("²³¹", "231")
+
+
+def norm(text: str, fold_superscripts: bool = False) -> str:
+    """Lower-case and keep only letters, digits, '.' and '%'.
+
+    With ``fold_superscripts`` a superscript two, three or one counts as the plain digit: a PDF text layer often flattens "25m" + superscript 2
+    to "25m2" while the stored quote keeps the superscript, and dropping the sign on one side only made them differ (Waverley 1104/1106, 2026-11-24).
+    """
     t = text.lower()
+    if fold_superscripts:
+        t = t.translate(_SUPERSCRIPT)
     for ch in _DROP:
         t = t.replace(ch, "")
     return re.sub(r"[^a-z0-9.%]", "", t)
@@ -63,17 +72,32 @@ def _spans(q: str, a: str, b: str) -> bool:
     return False
 
 
+_RANK = {"verbatim": 0, "wrong_page": 1, "not_found": 2}
+
+
 def classify(quote: str | None, pages: list[str] | None, pdf_page: int | None) -> str:
     """Verdict for one quote against a chapter's page texts (raw, 1-based by position).
 
-    pages is None when the PDF could not be read.
+    pages is None when the PDF could not be read. The quote is compared twice, once dropping a superscript sign and once reading it as its digit;
+    the better verdict stands, so neither reading can turn a match that worked before into a miss.
     """
     if not quote or not quote.strip() or not pdf_page or pages is None:
         return "no_source"
-    np = [norm(p) for p in pages]
+    best = None
+    for fold in (False, True):
+        v = _classify_one(quote, pages, pdf_page, fold)
+        if v == "no_source":
+            return v
+        if best is None or _RANK[v] < _RANK[best]:
+            best = v
+    return best
+
+
+def _classify_one(quote: str, pages: list[str], pdf_page: int, fold: bool) -> str:
+    np = [norm(p, fold) for p in pages]
     if not any(np):
         return "no_source"
-    q = norm(quote)
+    q = norm(quote, fold)
     if not q:
         return "no_source"
     i = pdf_page - 1

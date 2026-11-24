@@ -195,3 +195,23 @@ def test_moving_a_rule_to_another_council_wipes_the_proof(temp_table):
     _put(temp_table, 12, "verbatim")
     temp_table.execute("UPDATE t_sb SET lga = 'y' WHERE id = 12")
     assert _held(temp_table, 12)[:2] == (True, None)
+
+
+def test_a_superscript_in_the_quote_matches_the_flattened_digit_in_the_pdf():
+    page = "(e) Each dwelling is to have a minimum of 25m2 of private open space capable of being used for recreation."
+    assert Q.classify("Each dwelling is to have a minimum of 25m\u00b2 of private open space", [page], 1) == "verbatim"
+
+
+def test_a_superscript_that_the_pdf_keeps_still_matches():
+    page = "Each dwelling is to have a minimum of 25m\u00b2 of private open space."
+    assert Q.classify("Each dwelling is to have a minimum of 25m\u00b2 of private open space", [page], 1) == "verbatim"
+
+
+def test_a_pdf_that_lost_the_sign_entirely_still_matches():
+    page = "Each dwelling is to have a minimum of 25m of private open space."
+    assert Q.classify("Each dwelling is to have a minimum of 25m\u00b2 of private open space", [page], 1) == "verbatim"
+
+
+def test_folding_the_sign_never_makes_a_different_number_match():
+    page = "Each dwelling is to have a minimum of 35m2 of private open space."
+    assert Q.classify("Each dwelling is to have a minimum of 25m\u00b2 of private open space", [page], 1) == "not_found"
