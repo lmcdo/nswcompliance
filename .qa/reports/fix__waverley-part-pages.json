@@ -1,0 +1,98 @@
+{
+ "tier": "standard",
+ "justification": "Standard: adds page ranges to Waverley's config and one page-based rule to the tagger that decides which development types a rule shows for. Not Minor: it changes tagging for 38 live rows once applied. Not Critical: the dry run narrows 0 served rows (the only direction that hides a control), nothing is written by this change, and the apply is a separate step that asks first and keeps a backup table.",
+ "commit_hash": "ed8a80c3",
+ "files": [
+  "enrichment/extractors/applicability_tagger.py",
+  "enrichment/config/waverley_config.py",
+  "enrichment/config/waverley_part_pages.json",
+  "tests/test_waverley_part_pages.py"
+ ],
+ "pre_impl": {
+  "existing_data": "38 served Waverley rows read no_config (DQ-33 = 38): pages 11 (contents), 181 (Annexure B8-1), 187 (general notes), 193 (Part C1), 417-418 (Annexure E1-1), 419-425 (Annexure E2-1). Their headings are numbers like 7.9 or (ix) that name no Part the config knows. Pages read from the live R2 file waverley-dcp-2022.pdf v1.2 on 2026-11-24.",
+  "assumption_mismatch": "The other chat's prompt said 498 rows and a Part that must be set first. 460 of those were fixed on 2026-11-23 by the plan's page map; the 38 left sit on pages that map names no Part for.",
+  "new_vs_existing": "northern_beaches and cumberland already use part_pages for rows with no Part. Waverley now does the same, with ranges written only where the page itself names its Part. reference_pages is new: pages that hold no control read config_all like annexure headings already do.",
+  "external_source_error": "A page in no list stays no_config and is never guessed; a row with its own valid Part keeps it.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A rule from a contents or general-notes page, or an annexure, is hidden from or shown to the wrong development type."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_waverley_part_pages.py tests/test_applicability_reference_rows.py tests/test_applicability_plan_references.py -q ; python scripts/retag_applicability_slug_docids.py --councils waverley",
+  "fails_when": "A reference page row falls to no_config, an annexure row finds no Part from its page, a page in no list is guessed, or the plan narrows a served row.",
+  "observed_red": "Two deliberate breaks (reference pages ignored, no part ranges) each failed 2 of 8 tests.",
+  "observed_green": "8 new tests and 12 related tests pass; 294 applicability, waverley and tagger tests pass. The Waverley retag dry run changes 2 values, narrows 0 served rows, and leaves 0 served dev-type no_config."
+ },
+ "functions": [
+  {
+   "name": "_on_reference_page",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "a document id and a PDF page number",
+   "output": "true only when the council's config lists that page as holding no control",
+   "if_none": "no document id or no page is never a reference page"
+  },
+  {
+   "name": "tag_with_provenance",
+   "file_line": "enrichment/extractors/applicability_tagger.py",
+   "input": "a rule's text, document id, Part and PDF page",
+   "output": "zones, development types and where each came from",
+   "if_none": "no config match keeps no_config"
+  }
+ ],
+ "values": [
+  {
+   "value": "reference and part page ranges",
+   "read_at": "enrichment/config/waverley_part_pages.json",
+   "if_missing": "the file is read at import, so a missing file stops the import rather than silently tagging nothing"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "No new query; the retag script reads the same current rows of the named council as before and writes only after the owners go with a backup table",
+   "file_line": "scripts/retag_applicability_slug_docids.py build_plan",
+   "where_clause": "unchanged: current rows of the named councils, writes only after the owner's go with a backup table"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A rule on a general-notes page really is about one development type.",
+   "what_happens": "It would read config_all and show for every type.",
+   "mitigated": true,
+   "how": "Only pages 11 and 187 are listed, each with the sentence that shows it is a contents list or general notes; showing a rule too widely is noise, hiding it is the harm.",
+   "repro": "python -m pytest tests/test_waverley_part_pages.py -k general_notes -q"
+  },
+  {
+   "scenario": "A page range is wrong by a page.",
+   "what_happens": "A row would take a neighbouring Part.",
+   "mitigated": true,
+   "how": "Each range cites the page that opens it and the page that opens the next; the test checks ranges do not overlap and each cites a page.",
+   "repro": "python -m pytest tests/test_waverley_part_pages.py -k overlap -q"
+  },
+  {
+   "scenario": "A row already carries its own valid Part.",
+   "what_happens": "The page range could overwrite it.",
+   "mitigated": true,
+   "how": "The range is used only when the row's own Part is not a valid code.",
+   "repro": "python -m pytest tests/test_waverley_part_pages.py -k already_carries -q"
+  },
+  {
+   "scenario": "A row sits on a page in no list.",
+   "what_happens": "It could be given a guessed Part.",
+   "mitigated": true,
+   "how": "It stays no_config and is counted by DQ-33.",
+   "repro": "python -m pytest tests/test_waverley_part_pages.py -k never_guessed -q"
+  },
+  {
+   "scenario": "The retag script reads the same current rows and rewrites provenance for all 11,350 Waverley rows, not only the changed ones.",
+   "what_happens": "A mistake in the plan would touch every Waverley row.",
+   "mitigated": true,
+   "how": "The dry run prints values changed (2), served rows narrowed (0) and predicted sources first; the apply makes a full backup table and aborts if the row count differs.",
+   "repro": "python scripts/retag_applicability_slug_docids.py --councils waverley"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/retag_applicability_slug_docids.py --councils waverley (dry run), then --apply after the owner's go with the printed counts; then python scripts/dq_probe_live.py --id DQ-33 reads 0 and python scripts/outreach_claim_checks.py OC-17 exits 0."
+ }
+}
