@@ -52,7 +52,8 @@ describe('evidence statement page', () => {
     }));
     render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText(/13 paragraphs of section 164\(1\): 2 not checked by this tool; 11 no exclusion found/)).toBeTruthy());
-    expect(screen.getByText(/How it is measured:/)).toBeTruthy();
+    expect(screen.getByText('How the walk is calculated')).toBeTruthy();
+    expect(screen.queryByText(/How it is measured:/)).toBeNull();
     expect(screen.queryByText(/less 25 m to the measured walk plus 75 m/)).toBeNull();
     expect(screen.getByText(/Crossings-only walk, for information/)).toBeTruthy();
     expect(screen.getByText(/about 861 m \(\+85 m compared with the normal walk\)/)).toBeTruthy();
@@ -524,5 +525,41 @@ describe('evidence statement page: a measured walk with no limit', () => {
     await waitFor(() => expect(screen.getByText('At a glance')).toBeTruthy());
     expect(screen.getByText(/The shortest walk is 479 m\. This tool could not apply the walking limit to it\./)).toBeTruthy();
     expect(screen.queryByText(/No walk was measured/)).toBeNull();
+  });
+
+  it('puts WalkMethod inside the walk card when a walk was measured, and never says the old router or tolerance words', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    mockFetch(payload());
+    const { container } = render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    const card = screen.getByText('How the walk is calculated').closest('section#walk');
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain('How sure is this?');
+    expect(card?.textContent).toContain('Before relying on it');
+    expect(card?.textContent).not.toContain('up to');
+    const text = container.textContent ?? '';
+    for (const banned of ['Valhalla', 'second router', '75 m', '225 m']) expect(text).not.toContain(banned);
+  });
+
+  it('shows the unmapped-entrance allowance on the page when the payload carries one', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, entrance_unmapped_extra_m: 120 } }));
+    render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    expect(screen.getByText(/the real walk could be up to 120 m longer\./)).toBeTruthy();
+  });
+
+  it('does not render WalkMethod when no walk was measured', async () => {
+    params = 'lat=-33.75&lng=150.70';
+    const base = payload();
+    mockFetch(payload({ walk: { ...base.walk, walk_low_m: null, walk_high_m: null, walk_best_m: null, detail: 'No footpath near the lot.' } }));
+    const { container } = render(<EvidenceStatement />);
+    await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
+    expect(screen.getByText(/No walk was measured\./)).toBeTruthy();
+    expect(screen.queryByText('How the walk is calculated')).toBeNull();
+    expect(screen.queryByText('How sure is this?')).toBeNull();
+    const text = container.textContent ?? '';
+    for (const banned of ['Valhalla', 'second router', '75 m', '225 m']) expect(text).not.toContain(banned);
   });
 });

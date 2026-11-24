@@ -11,9 +11,9 @@ import pytest
 from services import lmr_area_decision as d
 
 FACTS = d.LawFacts.load()
-# The walking range is lopsided: LO below the measured walk, HI above it. The edge tests below are written relative to these,
-# so re-measuring and changing them does not break the tests.
-LO, HI = d.WALK_MARGIN_LOW_M, d.WALK_MARGIN_HIGH_M
+# The walk is the measured walk; the only range is the unmapped-entrance span [walk, walk + optimistic_by_m]. No fitted margins.
+# Limits are the law's 800 m (outer) and 400 m (inner) as read from the facts file; asserted below so a change shows up.
+OUTER, INNER = 800.0, 400.0
 
 CLEAR = {"point": False, "lot": False}
 HIT = {"point": True, "lot": True}
@@ -141,40 +141,105 @@ def test_warning_wording_has_no_liability_words():
 
 
 # ---- walking band -------------------------------------------------------------------------------------
-@pytest.mark.parametrize("walk,expected", [
-    (800 - HI - 1, "yes"), (800 - HI, "yes"), (800 - HI + 1, "borderline"), (799, "borderline"), (800, "borderline"),
-    (800 + LO - 1, "borderline"), (800 + LO, "no"), (1500, "no"),
-])
-def test_walking_band_edges(walk, expected):
-    m = lot(straight_m=600.0, walk={"m": float(walk), "anchor": "A", "entrance_id": "e", "valid": True})
-    assert ans(m)["lmr"]["answer"] == expected
+def walk_lot(wm, opt=None, **kw):
+    w = {"m": float(wm), "anchor": "A", "entrance_id": "e", "valid": True}
+    if opt is not None:
+        w["optimistic_by_m"] = float(opt)
+    return ans(lot(straight_m=600.0, walk=w, **kw))["lmr"]
+
+
+def test_limits_are_what_the_tests_assume():
+    assert (FACTS.number("lmr_outer_distance"), FACTS.number("lmr_inner_distance")) == (OUTER, INNER)
 
 
 @pytest.mark.parametrize("walk,expected", [
-    (800.0 - HI - 160, "yes"),         # top of the range exactly at the limit
-    (800.0 - HI - 159, "borderline"),  # top of the range one metre past the limit
-    (800.0, "borderline"),
-    (800.0 + LO, "no"),                # bottom of the range exactly at the limit
+    (0, "yes"), (575, "yes"), (700, "yes"), (799, "yes"), (800, "yes"),   # exactly the limit is within it
+    (801, "no"), (850, "no"), (860, "no"), (875, "no"), (1500, "no"),
 ])
-def test_unmapped_entrance_widens_the_range_upward_only(walk, expected):
-    w = {"m": walk, "anchor": "A", "entrance_id": "station outline", "valid": True, "optimistic_by_m": 160.0}
-    assert ans(lot(straight_m=600.0, walk=w))["lmr"]["answer"] == expected
+def test_a_mapped_entrance_walk_is_yes_or_no_never_borderline(walk, expected):
+    assert walk_lot(walk)["answer"] == expected
+
+
+def test_860_m_with_a_mapped_entrance_is_no_and_says_over():
+    r = walk_lot(860)
+    assert r["answer"] == "no" and r["detail"] == "the walk is 860 m, over the 800 m limit"
+    assert (r["walk_low_m"], r["walk_high_m"], r["walk_best_m"]) == (860, 860, 860)   # a 'no' keeps its figures on the result itself
+
+
+def test_800_m_exactly_is_yes_and_says_within():
+    r = walk_lot(800)
+    assert r["answer"] == "yes" and r["detail"] == "the walk is 800 m, within the 800 m limit"
+
+
+def test_801_m_is_no():
+    assert walk_lot(801)["answer"] == "no"
+
+
+@pytest.mark.parametrize("opt", [None, 0, 0.0])
+def test_no_unmapped_span_means_no_borderline_anywhere_in_the_old_575_to_875_region(opt):
+    for wm in range(575, 880, 5):
+        assert walk_lot(wm, opt)["answer"] == ("yes" if wm <= 800 else "no"), wm
+
+
+@pytest.mark.parametrize("walk,opt,expected", [
+    (640, 160, "yes"),         # top of the span exactly at the limit
+    (641, 160, "borderline"),  # top one metre past it
+    (800, 160, "borderline"),  # bottom exactly at the limit: still within, so the limit is inside the span
+    (801, 160, "no"),          # bottom one metre past it
+    (700, 160, "borderline"),
+    (500, 160, "yes"), (900, 160, "no"),
+])
+def test_unmapped_entrance_makes_a_span_and_only_it_can_be_borderline(walk, opt, expected):
+    assert walk_lot(walk, opt)["answer"] == expected
+
+
+def test_unmapped_span_figures_and_detail_use_the_range_wording():
+    r = walk_lot(900, 160)
+    assert r["answer"] == "no" and r["detail"] == "walking range 900-1060 m is over the 800 m limit"
+    r = walk_lot(500, 160)
+    assert r["answer"] == "yes" and r["detail"] == "walking range 500-660 m is under the 800 m limit"
+    assert r["figures"]["walk_low_m"] == 500 and r["figures"]["walk_high_m"] == 660 and r["figures"]["entrance_unmapped_extra_m"] == 160
+
+
+@pytest.mark.parametrize("opt", [-5, "x", True, None, 0])
+def test_a_bad_or_zero_span_is_treated_as_a_mapped_entrance(opt):
+    w = {"m": 801.0, "anchor": "A", "entrance_id": "e", "valid": True, "optimistic_by_m": opt}
+    r = ans(lot(straight_m=600.0, walk=w))["lmr"]
+    assert r["answer"] == "no" and r["figures"]["walk_high_m"] == 801
+
+
+def test_walk_best_is_the_measured_walk_plus_half_the_span():
+    assert walk_lot(700, 160)["figures"]["walk_best_m"] == 780
+    assert walk_lot(500, 100)["figures"]["walk_best_m"] == 550
+    assert walk_lot(900, 100)["walk_best_m"] == 950   # a 'no' keeps it on the result itself
+    assert walk_lot(700)["figures"]["walk_best_m"] == 700
+
+
+def test_margin_keys_are_gone_from_the_payload_and_the_module():
+    for r in (walk_lot(700), walk_lot(900), walk_lot(700, 200)):
+        assert "margin_low_m" not in r["figures"] and "margin_high_m" not in r["figures"]
+        assert "margin_low_m" not in r and "margin_high_m" not in r
+    assert not hasattr(d, "WALK_MARGIN_LOW_M") and not hasattr(d, "WALK_MARGIN_HIGH_M")
 
 
 def test_borderline_shows_the_range_the_lean_and_the_stated_rule():
-    r = ans(lot(straight_m=600.0, walk={"m": 740.0, "anchor": "A", "entrance_id": "e", "valid": True}))["lmr"]
+    r = walk_lot(740, 100)   # span 740-840, limit 800: 60% of the span is under the limit
     f = r["figures"]
-    assert r["answer"] == "borderline" and (f["walk_low_m"], f["walk_high_m"]) == (740 - LO, 740 + HI)
-    p = round((800 - (740 - LO)) / (LO + HI), 2)
-    assert r["lean"] == ("inside" if p >= 0.5 else "outside") and r["share_of_range_inside"] == p
-    assert "equally likely" in r["heuristic"] and f"between {740 - LO} and {740 + HI} m" in r["detail"]
-    assert f"{round(100 * p)}%" in r["detail"] and "lean" not in r["detail"].lower()
-    r2 = ans(lot(straight_m=600.0, walk={"m": 860.0, "anchor": "A", "entrance_id": "e", "valid": True}))["lmr"]
-    assert r2["lean"] == "outside" and r2["share_of_range_inside"] == round((800 - (860 - LO)) / (LO + HI), 2)
+    assert r["answer"] == "borderline" and (f["walk_low_m"], f["walk_high_m"], f["walk_best_m"]) == (740, 840, 790)
+    assert r["share_of_range_inside"] == 0.6 and r["lean"] == "inside"
+    assert "equally likely" in r["heuristic"] and "between 740 and 840 m" in r["detail"]
+    assert "60%" in r["detail"] and "more likely within the limit" in r["detail"] and "lean" not in r["detail"].lower()
+    r2 = walk_lot(760, 160)  # span 760-920: 40/160 = 25% under the limit
+    assert r2["answer"] == "borderline" and r2["lean"] == "outside" and r2["share_of_range_inside"] == 0.25
+    assert "25%" in r2["detail"] and "more likely over the limit" in r2["detail"]
+    r3 = walk_lot(700, 200)  # span 700-900: exactly half; ties lean inside
+    assert r3["share_of_range_inside"] == 0.5 and r3["lean"] == "inside"
+    r4 = walk_lot(800, 100)  # limit sits at the bottom of the span
+    assert r4["answer"] == "borderline" and r4["share_of_range_inside"] == 0.0 and r4["lean"] == "outside"
 
 
 def test_borderline_headline_says_borderline_and_quotes_the_clause():
-    r = ans(lot(straight_m=600.0, walk={"m": 800.0, "anchor": "A", "entrance_id": "e", "valid": True}))
+    r = ans(lot(straight_m=600.0, walk={"m": 780.0, "anchor": "A", "entrance_id": "e", "valid": True, "optimistic_by_m": 100.0}))
     assert r["pathway"] == "borderline" and r["headline"].startswith("Borderline") and "s163" in r["headline"]
 
 
@@ -204,9 +269,20 @@ def test_missing_straight_distance_is_cant_tell():
 
 
 def test_inner_band_reported_on_a_yes():
-    assert ans(lot(walk={"m": 100.0, "valid": True}))["lmr"]["band"] == "inner"             # whole range under the inner limit
-    assert ans(lot(walk={"m": 520.0, "valid": True}))["lmr"]["band"] == "outer"             # whole range between the two limits
-    assert ans(lot(walk={"m": 400.0, "valid": True}))["lmr"]["band"] == "straddles_inner_limit"
+    def band(wm, opt=None):
+        w = {"m": float(wm), "valid": True}
+        if opt is not None:
+            w["optimistic_by_m"] = float(opt)
+        r = ans(lot(walk=w))["lmr"]
+        assert r["answer"] == "yes", (wm, opt)
+        return r["band"]
+    assert band(100) == "inner" and band(400) == "inner"            # whole span at or under the inner limit
+    assert band(401) == "outer" and band(520) == "outer" and band(800) == "outer"   # whole span past it (mapped entrance, no span)
+    assert band(350, 50) == "inner"                                  # 350-400
+    assert band(350, 51) == "straddles_inner_limit"                  # 350-401
+    assert band(400, 100) == "straddles_inner_limit"                 # bottom exactly at the limit is not past it
+    assert band(401, 100) == "outer"
+    assert band(700, 100) == "outer"
 
 
 # ---- exclusions ---------------------------------------------------------------------------------------
@@ -432,9 +508,10 @@ def test_noise_and_pipeline_wording_has_no_liability_words():
 def test_walk_method_note_is_plain_english():
     """The card prints this note to a reader. It must not use the internal words it once did."""
     from services.lmr_area_decision import WALK_HEURISTIC
-    for word in ("lopsided", "router", "straddles", "heuristic"):
+    for word in ("lopsided", "router", "straddles", "heuristic", "margin", "allow"):
         assert word not in WALK_HEURISTIC.lower()
-    assert "75 m shorter and 225 m longer" in WALK_HEURISTIC  # the figures still come from the constants
+    assert "75 m" not in WALK_HEURISTIC and "225 m" not in WALK_HEURISTIC   # the fitted figures are gone
+    assert "station outline" in WALK_HEURISTIC and "equally likely" in WALK_HEURISTIC
 
 
 def test_reader_facing_details_avoid_internal_words():
@@ -469,3 +546,16 @@ def test_failure_reply_has_every_field_the_page_requires():
         assert r["tod"]["answer"] in ("yes", "no", "borderline", "cant_tell")
         for key in ("warnings", "not_checked", "notes"):
             assert isinstance(r[key], list), key
+
+
+def test_the_answer_uses_the_same_whole_metres_the_page_shows():
+    """800.4 m displays as 800 m, so it must be answered as 800 m (within), never 'over' while the page shows 800."""
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.4, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "yes" and step[1]["walk_best_m"] == 800
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.6, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "no" and step[1]["walk_best_m"] == 801
+
+
+def test_an_infinite_station_outline_length_is_treated_as_a_mapped_entrance_not_a_crash():
+    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 700.0, "optimistic_by_m": float("inf"), "anchor": "X", "entrance_id": "e"}}, FACTS)
+    assert step[0] == "yes" and step[1]["entrance_unmapped_extra_m"] == 0

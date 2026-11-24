@@ -10,6 +10,7 @@ import CheckSection from '@/components/reports/evidence/CheckSection';
 import ControlsSection from '@/components/reports/evidence/ControlsSection';
 import ProofSection from '@/components/reports/evidence/ProofSection';
 import RangeScale from '@/components/reports/evidence/RangeScale';
+import WalkMethod from '@/components/reports/evidence/WalkMethod';
 
 // header, nav and footer are the SITE's (and this page's jump links); the page's own title block and record line are divs so they print.
 const PRINT_CSS = '@media print { header, nav, footer, .no-print { display: none !important; } .evidence-statement { max-width: none; padding: 0; } figure, svg { break-inside: avoid; } }';
@@ -102,9 +103,7 @@ export default function EvidenceStatement() {
               <p className="text-base font-semibold">The shortest walk against the limit</p>
               <p className="text-lg leading-snug">{words.sentence}</p>
               <RangeScale verdict={v} />
-              <p className="text-sm leading-relaxed text-gray-700">
-                <strong>How it is measured:</strong> the shortest walk along public footpaths and crossings, in metres, from the nearest part of the lot to the station or town centre entrance. The law counts the lot if any part of it is within the distance.
-              </p>
+              <WalkMethod walk={w} />
             </>
           ) : <p>{`No walk was measured. ${w.detail ?? ''}`}</p>}
           {hasCrossings ? (

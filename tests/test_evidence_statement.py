@@ -152,10 +152,11 @@ def test_an_exclusion_decides_before_any_walk_so_no_walk_line_is_invented():
     assert w["walk_low_m"] is None and w["crossings_only_walk_m"] is None
 
 
-def test_margins_are_kept_when_the_answer_is_no_because_the_walk_is_too_long():
+def test_walk_figures_are_kept_and_margins_are_gone_when_the_answer_is_no_because_the_walk_is_too_long():
     w = es.walk(_walked(1500.0, 1600.0))  # noqa: regulatory-number -- test fixture
     assert w["answer"] == "no" and w["walk_low_m"] is not None
-    assert w["margin_low_m"] is not None and w["margin_high_m"] is not None   # why the walk is a range, even on a 'no'
+    assert "margin_low_m" not in w and "margin_high_m" not in w   # the fitted margins no longer exist
+    assert w["walk_low_m"] == w["walk_high_m"] == w["walk_best_m"] == 1500   # mapped entrance: the walk is one number, even on a 'no'
     assert w["crossings_only_walk_m"] == 1600  # noqa: regulatory-number -- test fixture
 
 

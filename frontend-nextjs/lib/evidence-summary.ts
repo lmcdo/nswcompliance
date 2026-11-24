@@ -55,7 +55,7 @@ export function verdictWords(v: WalkVerdict, detail: string | null): { pill: str
   if (v.kind === 'straddles') {
     return {
       pill: `Too close to the ${lim} m limit to call`,
-      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m against the ${lim} m limit.` : `The walk is close to the ${lim} m limit.`} That is close enough that a small difference in the route could put the lot on the other side, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m against the ${lim} m limit.` : `The walk is close to the ${lim} m limit.`} Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.`,
       margin: has ? `Shortest walk ${fmtNum(v.best as number)} m.` : null,
       bottom: 'The walk is too close to the limit for this tool to say whether the lot meets the walking test.',
     };
