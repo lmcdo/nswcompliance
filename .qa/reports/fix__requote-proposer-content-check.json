@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: tightens the proposer in a script that can rewrite control quotes, and adds one history-table name to a read-only check. Not Minor: a wrong proposal puts an unrelated sentence behind a control. Not Critical: both scripts only propose or read; every write is a separate apply step that asks first and keeps a backup.",
- "commit_hash": "a46a7afa",
+ "commit_hash": "8b1cddf1",
  "files": [
   "scripts/requote_controls_from_provisions.py",
   "tests/test_requote_controls_from_provisions.py",
