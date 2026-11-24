@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: changes the text comparison that proves a control's quote is on its page, which gates what is served. Not Minor: it can change verdicts for other councils. Not Critical: the old comparison is kept and the better verdict wins, so no match that worked before can turn into a miss; writes happen only in a separate apply.",
- "commit_hash": "b31c55fb",
+ "commit_hash": "d960cd5b",
  "files": [
   "scripts/dcp_quote_status.py",
   "tests/test_dcp_quote_status.py"
