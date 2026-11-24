@@ -615,6 +615,20 @@ class ApplicabilityTagger:
         # Nothing matched — ALL is a fallthrough here, and says so.
         return self._from_entry(None, site_conditions=None)
 
+    @staticmethod
+    def _on_reference_page(document_id: Optional[str], pdf_page: Optional[int]) -> bool:
+        """True when the council's config lists this PDF page as holding no control (a contents list, general notes).
+
+        Such a row sets nothing that depends on the development type, so it applies to every type: a decision recorded as config_all.
+        A page the config does not list is never reference."""
+        if not document_id or not pdf_page:
+            return False
+        doc_lower = document_id.lower()
+        for council_key, cfg in COUNCIL_CONFIGS.items():
+            if council_key in doc_lower:
+                return any(r["first_page"] <= pdf_page <= r["last_page"] for r in cfg.get("reference_pages") or [])
+        return False
+
     def _get_config_driven(self, document_id: str, text: str,
                            part: Optional[str] = None,
                            pdf_page: Optional[int] = None) -> Optional[Dict[str, Any]]:
@@ -884,7 +898,7 @@ class ApplicabilityTagger:
             else:
                 # _get_config_driven returns None when no council config matched.
                 zone_source = dev_type_source = 'no_config'
-                if is_reference_row(text):
+                if is_reference_row(text) or self._on_reference_page(document_id, pdf_page):
                     # An annexure, definition or abbreviation applies to everything: a decision, not a fallthrough.
                     zone_source = dev_type_source = 'config_all'
 
@@ -893,7 +907,7 @@ class ApplicabilityTagger:
         # authoritative, and text regex produces false positives (e.g. matching
         # DCP chapter codes "B3", "E1" as zone codes).
         # A reference row's heading code ("Annexure B3-2") is a chapter code, not the B3 zone: never read zones from its text.
-        if text and not config and not is_reference_row(text):
+        if text and not config and not is_reference_row(text) and not self._on_reference_page(document_id, pdf_page):
             text_zones = self._extract_zones_from_text(text)
             text_dev_types = self._extract_dev_types_from_text(text)
 

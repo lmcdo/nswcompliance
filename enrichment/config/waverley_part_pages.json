@@ -1,0 +1,17 @@
+{
+  "source_pdf": "source-pdfs/dcps/waverley/v1.2-2026-11-10/waverley-dcp-2022.pdf",
+  "method": "Read page by page from the live R2 file with pdfplumber on 2026-11-24. A range is written only where the page itself names its Part: an Annexure title ('Annexure B8-1', 'ANNEXURE E1-1', 'ANNEXURE E2-1') or the Part's own banner ('Low Density Residential C1'). The tagger uses a range only when the row carries no Part of its own. Pages in no range stay unresolved; reference_pages are the pages that hold no control: the contents list and the general notes.",
+  "ranges": [
+    {"part": "B1", "first_page": 153, "last_page": 163, "evidence": "PDF p153 'Annexure B1-1' to p163 'Annexure B1-7'; p164 opens 'Annexure B3-1'."},
+    {"part": "B3", "first_page": 164, "last_page": 171, "evidence": "PDF p164 'Annexure B3-1 Planting List'; p172 opens 'Annexure B5-1'."},
+    {"part": "B5", "first_page": 172, "last_page": 178, "evidence": "PDF p172 'Annexure B5-1', p174 'Annexure B5-2', p177 'Annexure B5-3'; p179 opens 'Annexure B8-1'."},
+    {"part": "B8", "first_page": 179, "last_page": 185, "evidence": "PDF p179 'Annexure B8-1 Charing Cross Conservation Area', p182 'Annexure B8-2 Queens Park Conservation Area'; p186 opens 'PART C RESIDENTIAL DEVELOPMENT'."},
+    {"part": "C1", "first_page": 188, "last_page": 220, "evidence": "PDF p188 'C1 LOW DENSITY RESIDENTIAL DEVELOPMENT'; page 193 carries the banner 'Low Density Residential C1'. C2 opens at p221."},
+    {"part": "E1", "first_page": 417, "last_page": 418, "evidence": "PDF p417 'ANNEXURE E1-1 WIND TUNNEL STUDY'; p419 opens 'ANNEXURE E2-1'."},
+    {"part": "E2", "first_page": 419, "last_page": 425, "evidence": "PDF p419 'ANNEXURE E2-1 DESIGN GUIDELINES' (the Bondi Beachfront Area)."}
+  ],
+  "reference_pages": [
+    {"first_page": 11, "last_page": 11, "evidence": "PDF p11 is part of the plan's contents list ('8.9 Architectural style 94' ... 'B12 SUBDIVISION'): a list of headings, no control."},
+    {"first_page": 187, "last_page": 187, "evidence": "PDF p187 is headed 'GENERAL NOTES': it says how Part C reads against State legislation and other Parts; it sets no control for a development type."}
+  ]
+}
