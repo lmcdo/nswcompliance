@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Outreach claim OC-22 named five areas and promised a 90% match with the OpenStreetMap Valhalla router and no opposite answer. A 2026-11-22 run found one disagreement in a council outside the five areas (28 Mandolong Road, Mosman) that the live card still answered, and the router shares our map data so it cannot say which route is right. The walking answer now applies only in the 10 pilot councils, listed in data/lmr_walk_scope.json; any other council, or a lot whose council did not answer, gets cant_tell with the reason walk_not_checked_in_this_council. A lot whose straight line is already over the limit still answers no anywhere, because a walk cannot be shorter than a straight line. The claim is rewritten to that scope with no accuracy rate, and its check now proves the scope file equals the pilot list and the production image copies it.",
-  "commit_hash": "af7ced84",
+  "commit_hash": "dc2c7d9c",
   "files": [
     "services/lmr_area_decision.py",
     "scripts/outreach_claim_checks.py",
