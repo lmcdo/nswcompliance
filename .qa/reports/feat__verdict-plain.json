@@ -1,0 +1,129 @@
+{
+  "tier": "Standard",
+  "justification": "The walking-distance answer was decided on a padded range (the measured walk less 75 m to plus 225 m), fitted on past test lots against a second router for the many-lots home finder. For one address that made a walk of 860 m read 'too close to call' and 878 m read 'over' only because it cleared 875 m. The answer now follows the measured walk: over the limit is over, a walk of exactly the limit is within. The only uncertainty kept is geometric and not fitted: when the station entrance is not mapped the walk is measured to the station building and the real walk can be longer by up to the building's length, so the answer is borderline only when the limit falls inside that span. The evidence page also gets a plain 'How the walk is calculated' box (route, start, finish, distance, checks, how sure, what to do before relying on it). The accuracy record behind outreach claim OC-22 was measured under the old rule and must be re-run or the claim withdrawn.",
+  "commit_hash": "561bb58e",
+  "files": [
+    "services/lmr_area_decision.py",
+    "services/evidence_statement.py",
+    "frontend-nextjs/lib/evidence-summary.ts",
+    "frontend-nextjs/components/reports/evidence/WalkMethod.tsx",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "tests/test_lmr_area_decision.py",
+    "tests/test_evidence_statement.py",
+    "frontend-nextjs/__tests__/lib/evidence-summary.test.ts",
+    "frontend-nextjs/__tests__/components/walk-method.test.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_area_decision.py tests/test_evidence_statement.py -q -o addopts= ; cd frontend-nextjs && npx jest __tests__/components __tests__/lib",
+    "expected": "1,169 backend tests (the lmr, evidence and area selection) and 2,016 frontend component and lib tests pass.",
+    "fails_when": "A mapped-entrance walk just over the limit reads borderline or within; a walk of exactly the limit reads over; the old 75 m and 225 m padding comes back; an unmapped entrance span that holds the limit reads yes or no; the best walk is not the walk plus half the span; the page prints a range or the second-router text; the method box shows a figure that is not in the data.",
+    "observed_red": "Five hand breakages of the engine each turned a test red and were restored: over at exactly the limit, the old padding restored, the best-walk arithmetic, the inner-band boundary and the within boundary; a sixth swaps two equal values in a message and is an equivalent mutant. Earlier on the page side, ten breakages turned tests red. The merged plain-walk page was rendered with live Pymble (878 m, 78 m over) and Penrith (529 m, 271 m under) data."
+  },
+  "pre_impl": {
+    "existing_data": "The engine already returns the measured walk, the station-outline allowance (optimistic_by_m) and the limit from the saved law; no new data.",
+    "assumption_mismatch": "The padding was designed on 2026-11-06 to 08 for a many-lots finder where a wrong yes is costly (zero wrong-side answers against a second router) and was reused unchanged for a single-address page.",
+    "new_vs_existing": "Changed: how the distance answer is decided and the walk figures it returns (the margin fields are gone). Unchanged: the law facts, the walking data, the crossings-only walk and every other rule.",
+    "external_source_error": "A walk that did not come back is still cant_tell, never a guessed yes or no.",
+    "frontend_type": "margin_low_m and margin_high_m were already optional; the page no longer reads them except as an old-server fallback.",
+    "user_failure_mode": "A planner reads one measured walk against the limit; a borderline answer now only appears when the station entrance is not mapped."
+  },
+  "functions": [
+    {
+      "name": "_distance_step",
+      "file_line": "services/lmr_area_decision.py:491",
+      "input": "the lot measurements and the law facts",
+      "output": "yes, no, borderline or cant_tell with the measured walk and its figures",
+      "if_none": "A walk that did not come back gives cant_tell with the reason, never a guess."
+    },
+    {
+      "name": "walkVerdict",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:22",
+      "input": "the walk object from the evidence payload",
+      "output": "over, within, straddles or unknown with the measured walk and the limit",
+      "if_none": "No measured walk gives unknown."
+    },
+    {
+      "name": "verdictWords",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:35",
+      "input": "the walk verdict and its detail text",
+      "output": "the pill, sentence and margin line naming the measured walk against the limit",
+      "if_none": "Unknown with a walk gives the unavailable wording; with none, No walk measured."
+    },
+    {
+      "name": "WalkMethod",
+      "file_line": "frontend-nextjs/components/reports/evidence/WalkMethod.tsx:9",
+      "input": "the walk object from the evidence payload",
+      "output": "the plain how-it-is-calculated box, with the entrance allowance only when the data has one",
+      "if_none": "No allowance in the data shows no allowance line."
+    },
+    {
+      "name": "EvidenceStatement",
+      "file_line": "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx:30",
+      "input": "the latitude and longitude in the address bar",
+      "output": "the full evidence page for the lot",
+      "if_none": "A failed or malformed answer shows an error line."
+    }
+  ],
+  "values": [
+    {
+      "value": "optimistic_by_m (station outline allowance) from the walking result",
+      "read_at": "services/lmr_area_decision.py:491",
+      "nullable": "yes",
+      "guard_at": "services/lmr_area_decision.py:491 (type, bool and sign checks)",
+      "if_missing": "Treated as a mapped entrance: zero allowance."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A walk just over the limit on a mapped entrance.",
+      "what_happens": "It could read borderline or within.",
+      "mitigated": "Mitigated: over the limit is over; tests at 800, 801, 860 and across 575 to 875 m.",
+      "how": "Boundary tests.",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "An unmapped station entrance with the limit inside the span.",
+      "what_happens": "A yes or no would claim more than the data shows.",
+      "mitigated": "Mitigated: borderline, with the lean and share worked out and stated.",
+      "how": "Span edge tests (641, 800, 801 on a span of 160).",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "A walk that did not come back.",
+      "what_happens": "The answer would be a guess, not a measurement.",
+      "mitigated": "Mitigated: cant_tell with the reason.",
+      "how": "Existing failure tests.",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "Outreach claim OC-22 is read as still holding.",
+      "what_happens": "It was measured under the old padded rule; the stored result no longer describes the engine.",
+      "mitigated": "Not mitigated here: the claim check now fails with measured on different data; it must be re-run or withdrawn by the owner.",
+      "how": "python scripts/outreach_claim_checks.py OC-22 prints FAILS.",
+      "repro": "python scripts/outreach_claim_checks.py OC-22"
+    },
+    {
+      "scenario": "A lot a few metres each side of the limit.",
+      "what_happens": "A map walk can differ from the real walk, so the answer there is a map answer.",
+      "mitigated": "Mitigated in words: the page says it is a map measurement and to check on the ground before relying on it.",
+      "how": "WalkMethod tests.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components __tests__/lib"
+    },
+    {
+      "scenario": "The home finder uses this answer.",
+      "what_happens": "More yes answers near the limit than before.",
+      "mitigated": "Not mitigated: the finder's tolerance for wrong yes answers is a separate decision.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    }
+  ],
+  "residual_risk": "1) OC-22 fails until its accuracy record is re-run under the new rule or the claim is withdrawn; under a plain rule some answers near the limit will sit on the other side of the second router's walk, so the old zero-wrong-side result will probably not hold. 2) The many-lots home finder and the public area check card now get the plain answer too; whether the finder wants a tolerance is a separate decision. 3) The benchmark scripts still report the range holds measure, which is now trivial. 4) The PDFs in the outreach folder show the earlier layout until remade.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After both deploys open /reports/evidence-statement?lat=-33.735496841364196&lng=151.13852529738543: the walk reads 878 m, 78 m over, and the evidence data has no margin_low_m."
+  }
+}
