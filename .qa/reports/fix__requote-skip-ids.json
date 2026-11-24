@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: adds one option to a script that can rewrite control quotes. Not Minor: it decides which controls a write touches. Not Critical: it only removes controls from a planned write; every write still asks first and keeps a backup.",
- "commit_hash": "2d76b8f4",
+ "commit_hash": "a349c1d9",
  "files": [
   "scripts/requote_controls_from_provisions.py",
   "tests/test_requote_controls_from_provisions.py"
