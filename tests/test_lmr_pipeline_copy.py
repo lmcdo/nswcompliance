@@ -298,7 +298,7 @@ def test_gather_uses_the_live_service_when_the_copy_says_near_edge(monkeypatch):
 def test_real_layer_nearest_pipeline_for_a_known_point():
     """Measured 2026-11-26 from data/law/maps/gas_pipelines.geojson.gz (14294 m, re-checked by a brute-force distance over every feature; the brief said 9333, which this file does not give). If that layer is refreshed these two numbers must be re-measured and updated here."""
     out = mc.MapCopy(mc.MAPS_DIR).pipeline(-33.7587, 150.7004, None, 200, today=date(2026, 11, 26))
-    assert out is not None and out["as_of"] == "2026-11-26"
+    assert out is not None and out["as_of"] == "2026-11-25"
     assert out["nearest_m"] == 14294 and out["nearest_name"] == "Sydney to Newcastle Pipeline"
     assert out["hit"] is False and out["names"] == [] and out["near_edge"] is False
 
@@ -319,3 +319,36 @@ def test_the_two_metre_scales_are_not_mixed_up_a_pipeline_190_m_east_and_one_190
     for feature in (east(190), north(190)):
         got = _pl(_copy(_sub(tmp_path, "d" + feature["properties"]["feature_name"][:1]), [feature]))
         assert got["hit"] is True and got["near_edge"] is False and got["nearest_m"] == 190, feature["properties"]
+
+
+# ---- review points (Sol, 2026-11-26): a long lot, a non-line shape, bad nearest fields, a date in the future ----
+def test_a_pipeline_beside_the_far_end_of_a_very_long_lot_is_a_hit_even_when_it_is_over_60_km_from_the_point(tmp_path):
+    far_east_deg = 70000.0 / MX                                   # the lot's far end is 70 km east of the reference point
+    end_x = LNG + far_east_deg
+    pipeline = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[end_x + 100.0 / MX, LAT - 0.01], [end_x + 100.0 / MX, LAT + 0.01]]}, "properties": {"feature_name": "Far Line"}}
+    h = 20.0 / MY
+    outline = [[LNG, LAT - h], [end_x, LAT - h], [end_x, LAT + h], [LNG, LAT + h], [LNG, LAT - h]]
+    got = _pl(_copy(tmp_path, [pipeline]), rings=outline)
+    assert got is not None and got["hit"] is True and got["names"] == ["Far Line"]
+
+
+def test_a_layer_holding_a_polygon_gives_no_answer_at_all(tmp_path):
+    poly = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[LNG - 0.01, LAT - 0.01], [LNG + 0.01, LAT - 0.01], [LNG + 0.01, LAT + 0.01], [LNG - 0.01, LAT - 0.01]]]}, "properties": {"feature_name": "Not a pipeline"}}
+    assert _pl(_copy(tmp_path, [east(500), poly])) is None
+
+
+@pytest.mark.parametrize("change", [{"nearest_m": float("nan")}, {"nearest_m": float("inf")}, {"nearest_name": 42}, {"nearest_m": None, "searched_m": "60000"}, {"nearest_m": None, "searched_m": float("nan")},
+                                    {"nearest_m": None, "searched_m": None}, {"nearest_m": None, "searched_m": -1}])
+def test_a_wrong_typed_nearest_field_sends_the_lookup_to_the_live_service(change):
+    good = {"hit": False, "names": [], "nearest_m": 1500, "nearest_name": "X", "searched_m": 60000, "near_edge": False, "as_of": "2026-11-25"}
+    assert inp._pipeline_from_copy(lambda *a: dict(good), LAT, LNG, None, 200.0) is not None
+    assert inp._pipeline_from_copy(lambda *a: {**good, **change}, LAT, LNG, None, 200.0) is None
+
+
+def test_the_committed_layer_is_not_dated_in_the_future_in_utc():
+    """The service runs on UTC: a copy dated by a local date ahead of UTC would be refused as dated in the future until UTC caught up."""
+    from datetime import datetime, timezone
+
+    man = json.loads((Path(__file__).resolve().parents[1] / "data" / "law" / "maps" / "manifest.json").read_text(encoding="utf-8"))
+    read_on = datetime.strptime(man["layers"]["gas_pipelines"]["read_on"], "%Y-%m-%d").date()
+    assert read_on <= datetime.now(timezone.utc).date()

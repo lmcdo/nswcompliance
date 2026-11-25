@@ -261,8 +261,13 @@ class MapCopy:
             except Exception as exc:  # noqa: BLE001 -- an unusable outline falls back to the point
                 logger.warning("map copy: lot outline unusable: %s", exc)
         mx, my = 111320.0 * math.cos(math.radians(lat)), 110540.0   # metres per degree here (the same flat scale as the live lookup and the walking maps)
+        if not bool(np.isin(shapely.get_type_id(lay.geoms_arr), (1, 5)).all()):   # a refreshed layer holding anything but lines is not a pipeline map: no answer for the whole layer
+            logger.warning("map copy: gas_pipelines holds a shape that is not a line")
+            return None
         reach_deg = PIPELINE_SEARCH_M / min(mx, my) * 1.01
-        cand = np.asarray(lay.tree.query(Point(lng, lat).buffer(reach_deg)), dtype=int)
+        near_deg = metres / min(mx, my) * 1.01
+        # the nearest-pipeline search is round the point; the hit test is against the whole lot, so a long lot also looks round its own outline (a pipeline beside its far end counts)
+        cand = np.union1d(np.asarray(lay.tree.query(Point(lng, lat).buffer(reach_deg)), dtype=int), np.asarray(lay.tree.query(target.buffer(near_deg)), dtype=int))
         out: dict = {"hit": False, "names": [], "nearest_m": None, "nearest_name": None, "searched_m": int(PIPELINE_SEARCH_M), "near_edge": False, "as_of": lay.as_of.isoformat()}
         if not len(cand):
             return out

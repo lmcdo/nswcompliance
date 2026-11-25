@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import time
 from pathlib import Path
@@ -380,7 +381,12 @@ def _pipeline_from_copy(fn: Optional[Any], lat: float, lng: float, rings: Option
     names, nearest = got.get("names"), got.get("nearest_m")
     if not isinstance(names, list) or not all(n is None or isinstance(n, str) for n in names):
         return None
-    if nearest is not None and (not isinstance(nearest, (int, float)) or isinstance(nearest, bool) or nearest < 0):
+    searched = got.get("searched_m")
+    if nearest is not None and (not isinstance(nearest, (int, float)) or isinstance(nearest, bool) or not math.isfinite(nearest) or nearest < 0):
+        return None
+    if nearest is not None and got.get("nearest_name") is not None and not isinstance(got.get("nearest_name"), str):
+        return None
+    if nearest is None and (not isinstance(searched, (int, float)) or isinstance(searched, bool) or not math.isfinite(searched) or searched < 0):
         return None
     as_of = got.get("as_of")
     if not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of):   # an answer with no date could not be disclosed, so it is not used
@@ -389,7 +395,7 @@ def _pipeline_from_copy(fn: Optional[Any], lat: float, lng: float, rings: Option
     if nearest is not None:
         out.update({"nearest_m": int(round(nearest)), "nearest_name": got.get("nearest_name")})
     else:
-        out.update({"nearest_m": None, "searched_m": got.get("searched_m")})
+        out.update({"nearest_m": None, "searched_m": searched})
     return out
 
 

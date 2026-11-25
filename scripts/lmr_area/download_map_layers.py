@@ -45,6 +45,13 @@ LAYERS = {
 }
 
 
+def _today_utc() -> date:
+    """The date in UTC, which is the date the service (Railway, UTC) will compare a copy against: a copy dated by a local date ahead of UTC would read as dated in the future and be refused for hours."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).date()
+
+
 def get(url: str, params: dict, tries: int = 4) -> Optional[dict]:
     """JSON from a state map service, patient (60 s, 4 tries): this runs once, not per user request. None after the last failure."""
     for i in range(tries):
@@ -110,7 +117,7 @@ def main(argv: list[str]) -> int:
         if only not in LAYERS:
             print(f"--only needs one of {sorted(LAYERS)}")
             return 2
-    manifest: dict[str, Any] = {"read_on": date.today().isoformat(), "note": "Our copy of state map layers; read_on is the date they were downloaded.", "layers": {}}
+    manifest: dict[str, Any] = {"read_on": _today_utc().isoformat(), "note": "Our copy of state map layers; read_on is the date they were downloaded.", "layers": {}}
     failed, too_big = [], []
     pending: list[tuple[str, bytes]] = []
     for name, (url, use) in LAYERS.items():
@@ -139,7 +146,7 @@ def main(argv: list[str]) -> int:
         manifest["layers"][name] = {"source": url, "use": use, "features": len(feats), "files": [
             {"file": nm, "features": len(c), "bytes": len(g), "sha256": hashlib.sha256(g).hexdigest()} for nm, c, g in zip(names, chunks, gzs)]}
         if only is not None:
-            manifest["layers"][name]["read_on"] = date.today().isoformat()   # a one-layer refresh dates only that layer
+            manifest["layers"][name]["read_on"] = _today_utc().isoformat()   # a one-layer refresh dates only that layer
         pending += list(zip(names, gzs))   # written only after EVERY layer has been read and checked
     if apply and not failed and not too_big:
         kept: dict[str, Any] = {}   # layers this script does not own (the flood-study copy from export_flood_copy.py) stay exactly as they are

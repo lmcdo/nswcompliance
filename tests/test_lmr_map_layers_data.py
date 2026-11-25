@@ -229,7 +229,7 @@ def test_only_one_layer_refreshes_just_that_layer_and_dates_it_alone(tmp_path, m
         if name != "gas_pipelines":
             assert after["layers"][name] == entry, name
     assert after["read_on"] == src["read_on"] and after["note"] == src["note"]
-    assert after["layers"]["gas_pipelines"]["features"] == 1 and after["layers"]["gas_pipelines"]["read_on"] == dl.date.today().isoformat()
+    assert after["layers"]["gas_pipelines"]["features"] == 1 and after["layers"]["gas_pipelines"]["read_on"] == dl._today_utc().isoformat()
     assert [p.name for p in out.iterdir()] == sorted(["gas_pipelines.geojson.gz", "manifest.json"])   # no other layer file was written
 
 
@@ -251,3 +251,9 @@ def test_a_one_layer_refresh_that_fails_leaves_the_manifest_alone(tmp_path, monk
     monkeypatch.setattr(dl, "fetch_layer", lambda url: None)
     assert dl.main(["--only", "gas_pipelines", "--apply"]) == 1
     assert (out / "manifest.json").read_text(encoding="utf-8") == before
+
+
+def test_the_downloader_dates_a_copy_by_the_utc_date_the_service_compares_against(monkeypatch):
+    from datetime import datetime, timezone
+
+    assert dl._today_utc() == datetime.now(timezone.utc).date()
