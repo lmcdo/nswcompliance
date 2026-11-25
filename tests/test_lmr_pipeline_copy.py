@@ -352,3 +352,21 @@ def test_the_committed_layer_is_not_dated_in_the_future_in_utc():
     man = json.loads((Path(__file__).resolve().parents[1] / "data" / "law" / "maps" / "manifest.json").read_text(encoding="utf-8"))
     read_on = datetime.strptime(man["layers"]["gas_pipelines"]["read_on"], "%Y-%m-%d").date()
     assert read_on <= datetime.now(timezone.utc).date()
+
+
+def test_a_pipeline_just_past_the_threshold_beside_the_far_end_of_a_very_long_lot_flags_near_edge(tmp_path):
+    end_x = LNG + 70000.0 / MX
+    pipeline = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[end_x + 203.0 / MX, LAT - 0.01], [end_x + 203.0 / MX, LAT + 0.01]]}, "properties": {"feature_name": "Edge Line"}}
+    h = 20.0 / MY
+    outline = [[LNG, LAT - h], [end_x, LAT - h], [end_x, LAT + h], [LNG, LAT + h], [LNG, LAT - h]]
+    got = _pl(_copy(tmp_path, [pipeline]), rings=outline)
+    assert got is not None and got["hit"] is False and got["near_edge"] is True    # 203 m is within 5 m of 200 m: the live service decides
+
+
+def test_a_zero_area_shape_in_a_polygon_layer_is_still_counted_as_skipped(tmp_path):
+    """Only gas_pipelines may be lines: a polygon layer that arrives as lines must not load as complete."""
+    line = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[LNG, LAT], [LNG + 0.001, LAT]]}, "properties": {}}
+    poly = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[LNG, LAT], [LNG + 0.01, LAT], [LNG + 0.01, LAT + 0.01], [LNG, LAT]]]}, "properties": {}}
+    c = _copy(tmp_path, [poly, line], name="tod_sites")
+    lay = c.layer("tod_sites", today=TODAY)
+    assert lay is not None and lay.skipped == 1 and len(lay.geoms) == 1   # the line is counted as skipped, as for any polygon layer (the flood check refuses a layer with a skipped shape)

@@ -34,6 +34,7 @@ MAX_AGE_DAYS = 45      # noqa: regulatory-number -- owner-approved staleness lim
 EDGE_M = 5.0           # noqa: regulatory-number -- engineering tolerance for "close enough to an edge to ask the live map", not a planning figure
 _DEG_PER_M = 1.0 / 111000.0
 LINE_TYPES = ('LineString', 'MultiLineString')
+LINE_LAYER = 'gas_pipelines'   # the one saved layer made of lines; every other layer is polygons and a zero-area shape in it is still counted as skipped
 PIPELINE_SEARCH_M = 60000.0   # the same widest search the live nearest-pipeline lookup makes (5, 20 then 60 km); a pipeline farther than this is reported as none
 
 
@@ -120,7 +121,7 @@ class MapCopy:
                     s = shape(g)
                     if not s.is_valid:
                         s = s.buffer(0)
-                    if s.is_empty or (s.area == 0 and s.geom_type not in LINE_TYPES):   # a zero-area polygon can never contain a point; counted, not guessed at (a line has no area by nature)
+                    if s.is_empty or (s.area == 0 and not (name == LINE_LAYER and s.geom_type in LINE_TYPES)):   # a zero-area polygon can never contain a point; counted, not guessed at (only the pipeline layer is lines, which have no area by nature)
                         skipped += 1
                         continue
                     geoms.append(s)
@@ -265,7 +266,7 @@ class MapCopy:
             logger.warning("map copy: gas_pipelines holds a shape that is not a line")
             return None
         reach_deg = PIPELINE_SEARCH_M / min(mx, my) * 1.01
-        near_deg = metres / min(mx, my) * 1.01
+        near_deg = (metres + 2 * EDGE_M) / min(mx, my) * 1.01   # the threshold plus the edge tolerance each side, so a pipeline just past the threshold is still seen and flags near_edge
         # the nearest-pipeline search is round the point; the hit test is against the whole lot, so a long lot also looks round its own outline (a pipeline beside its far end counts)
         cand = np.union1d(np.asarray(lay.tree.query(Point(lng, lat).buffer(reach_deg)), dtype=int), np.asarray(lay.tree.query(target.buffer(near_deg)), dtype=int))
         out: dict = {"hit": False, "names": [], "nearest_m": None, "nearest_name": None, "searched_m": int(PIPELINE_SEARCH_M), "near_edge": False, "as_of": lay.as_of.isoformat()}
