@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: replaces or retires the last served SEPP rows holding removed wording, clears the last four review flags and flips two ledger rows that gate claims. Not Minor: wrong text would be shown as current law. Not Critical: every row is guarded on its exact stored text, history is kept, each replacement was checked to sit word for word inside the whole law in force, and the migration asserts the flagged count before and after.",
- "commit_hash": "309ebbb7",
+ "commit_hash": "80f5e8a1",
  "files": [
   "migrations/130_dq88_clear_last_four_seps.sql",
   "data/dq88_law_refresh_plan2_2026-11-25.json",
