@@ -1,0 +1,83 @@
+{
+ "tier": "standard",
+ "justification": "Standard: clears review flags on 12 instruments that gate whether citations read as current. Not Minor: a wrong clear would show stale law as current. Not Critical: the migration guards on the exact flagged count, the version dates reviewed and the instrument keys, and checks the remaining count; the 6 SEPPs with stale served rows stay flagged.",
+ "commit_hash": "7db871c7",
+ "files": [
+  "migrations/128_dq88_clear_twelve_leps.sql",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "On 2026-11-25 DQ-88 read 18. Paragraph diffs of all 18 in-force texts against their baselines: no land use table paragraph changed in the 12 LEPs; stored LEP-document rows holding changed wording: 6, none served; 6 SEPPs have 35 served rows holding changed wording.",
+  "assumption_mismatch": "I expected most flags to need row refreshes; for LEPs we store only the land use table, so the flags clear on evidence and the SEPPs do not.",
+  "new_vs_existing": "Same pattern as migrations 096 and 099: guarded clear with the evidence in the header, count asserted before and after.",
+  "external_source_error": "The law site refuses this PC, so diffs ran inside Chrome on the site; a missing diff would leave the instrument flagged, never cleared.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A citation reads as current while the stored text is behind the law."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/apply_migration_dry_run.py migrations/128_dq88_clear_twelve_leps.sql --check \"SELECT count(*) FROM instrument_registry WHERE is_active AND needs_review AND check_failures=0\"; python scripts/dq_probe_live.py --id DQ-88",
+  "fails_when": "The flagged count is not 18 before, not 6 after, or a SEPP with stale served rows is cleared.",
+  "observed_red": "The guard raises if the count before is not 18.",
+  "observed_green": "Dry run checked 18 to 6; applied; the live probe reads 6."
+ },
+ "functions": [
+  {
+   "name": "migration 128 update",
+   "file_line": "migrations/128_dq88_clear_twelve_leps.sql",
+   "input": "instrument_registry rows flagged for review",
+   "output": "needs_review false for the 12 listed LEP keys at reviewed versions",
+   "if_none": "an unlisted or newer-version instrument stays flagged"
+  },
+  {
+   "name": "count guards",
+   "file_line": "migrations/128_dq88_clear_twelve_leps.sql",
+   "input": "the flagged count before and after",
+   "output": "raises unless it is 18 before and 6 after",
+   "if_none": "any other count aborts the transaction"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Clear the review flag for 12 named LEP instruments only",
+   "file_line": "migrations/128_dq88_clear_twelve_leps.sql",
+   "where_clause": "is_active and needs_review, version_date on or before 2026-11-17, instrument_key in the 12 listed keys"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "An instrument is amended again before the migration runs.",
+   "what_happens": "Its newer version_date would be cleared without review.",
+   "mitigated": true,
+   "how": "The update only matches version_date on or before 2026-11-17 and the count guard aborts on any other total.",
+   "repro": "python scripts/apply_migration_dry_run.py migrations/128_dq88_clear_twelve_leps.sql"
+  },
+  {
+   "scenario": "A stored LEP row holds wording the law removed.",
+   "what_happens": "The flag would hide a stale served rule.",
+   "mitigated": true,
+   "how": "All current rows of LEP documents were scanned for the removed paragraphs: 6 hits, none served.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-88"
+  },
+  {
+   "scenario": "One of the 6 SEPPs is cleared by mistake.",
+   "what_happens": "Stale served rules would read as current.",
+   "mitigated": true,
+   "how": "The instrument key list names only LEPs and the final guard requires exactly 6 left.",
+   "repro": "python scripts/apply_migration_dry_run.py migrations/128_dq88_clear_twelve_leps.sql"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_probe_live.py --id DQ-88 reads 6 (the migration is already applied to production)."
+ }
+}
