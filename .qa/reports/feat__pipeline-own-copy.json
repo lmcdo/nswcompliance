@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "The evidence call asked Geoscience Australia's pipeline map live twice (is a pipeline within the law's 200 m, and how far is the nearest one). Stage timings read from the live service log on 2026-11-26 showed those two lookups took 22 s of a 27 s call (6.5 s and 14.7 s) and about 1.4 s of a 9.4 s call: the outside service is slow and varies widely. The national layer is 1,425 lines (554 KB zipped), so it is now saved in the repo like the other state map layers and read by the map-copy reader: lines are kept on load, and a new pipeline() method answers hit, names and the nearest distance from the saved lines in milliseconds. A lot whose nearest pipeline is within 5 m of the 200 m threshold, a copy that is missing, unproven, older than 45 days or has an unreadable line, or any wrong-shaped answer still asks the live service, exactly as before. The public check keeps the answer it always had (no distance fields). The downloader gains an --only mode that refreshes one layer and dates it alone, so the other layers' dates cannot be refreshed by accident.",
-  "commit_hash": "5735d33f",
+  "commit_hash": "7df47ffb",
   "files": [
     "services/lmr_map_copy.py",
     "services/lmr_area_inputs.py",
@@ -31,21 +31,21 @@
   "functions": [
     {
       "name": "pipeline",
-      "file_line": "services/lmr_map_copy.py:316",
+      "file_line": "services/lmr_map_copy.py:321",
       "input": "a latitude and longitude, an optional lot outline and the law's distance in metres",
       "output": "whether a pipeline is within the distance, their names, the nearest distance from the point and whether the lot is near the threshold",
       "if_none": "A missing, old, unproven or partly unreadable copy, or a bad distance, gives none and the live service is asked."
     },
     {
       "name": "_pipeline_from_copy",
-      "file_line": "services/lmr_area_inputs.py:367",
+      "file_line": "services/lmr_area_inputs.py:368",
       "input": "the copy function, the point, the outline and the law's distance",
       "output": "the pipeline answer in the shape the area check uses, with the copy's date",
       "if_none": "Any doubt gives none, so the live lookup runs as before."
     },
     {
       "name": "main",
-      "file_line": "scripts/lmr_area/download_map_layers.py:104",
+      "file_line": "scripts/lmr_area/download_map_layers.py:111",
       "input": "the command line arguments including an optional single layer name",
       "output": "the saved layer files and manifest, with a one-layer refresh dating only that layer",
       "if_none": "A failed read writes nothing."
@@ -61,9 +61,9 @@
   "values": [
     {
       "value": "the layer's lines and names from the manifest-proven file",
-      "read_at": "services/lmr_map_copy.py:316",
+      "read_at": "services/lmr_map_copy.py:321",
       "nullable": "no",
-      "guard_at": "services/lmr_map_copy.py:316 (proven, fresh, none skipped)",
+      "guard_at": "services/lmr_map_copy.py:321 (proven, fresh, none skipped)",
       "if_missing": "No answer: the live service is asked."
     }
   ],
