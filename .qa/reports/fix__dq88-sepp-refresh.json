@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Standard: rewrites or retires served SEPP rows that gate what users are shown as current law. Not Minor: a wrong replacement shows wrong law. Not Critical: every row is guarded on its exact stored text, history is kept (nothing deleted), the dry run rolls back, and only rows with a strict word-for-word match are in the plan.",
+ "commit_hash": "f512ef54",
+ "files": [
+  "scripts/dq88_apply_law_refresh.py",
+  "scripts/dq88_refresh_2026_10_10.py",
+  "tests/test_dq88_apply_law_refresh.py",
+  "tests/test_dq88_apply_law_refresh_real_db.py",
+  "data/dq88_law_refresh_plan_2026-11-25.json"
+ ],
+ "pre_impl": {
+  "existing_data": "After the legislation monitor re-flagged 18 instruments on 2026-11-23, an 8-word-run comparison of the old law against the whole of today's law found 39 served rows (and 80 unserved) across 6 SEPPs holding wording the law has removed. 25 served rows can be placed safely: 16 replaced with today's text, 9 retired because at most 30 percent of their wording is anywhere in today's law; 14 need a person.",
+  "assumption_mismatch": "My first count (35) used the first 36 characters of a removed paragraph, which matched common openings and missed mid-paragraph changes; the whole-law run test is the exact definition.",
+  "new_vs_existing": "Reuses version() from the 10 October refresh and its guards; version() now continues an existing history instead of failing on rows refreshed before, and takes its own note.",
+  "external_source_error": "Today's law text was read in Chrome from legislation.nsw.gov.au and the site's own bot wait passed unaided; a row that cannot be placed is left alone.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A user is shown tree-clearing or authority rules that the law no longer contains."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dq88_apply_law_refresh.py -q ; python scripts/dq88_apply_law_refresh.py",
+  "fails_when": "A changed stored text is accepted, an unknown action runs, a dry run commits, or a row with earlier history is numbered v1 again.",
+  "observed_red": "With the version numbering reverted the history test fails.",
+  "observed_green": "7 tests pass; the dry run reports 25 rows (16 REPLACE, 9 RETIRE) and rolls back."
+ },
+ "functions": [
+  {
+   "name": "run",
+   "file_line": "scripts/dq88_apply_law_refresh.py",
+   "input": "a connection, an apply flag and a plan file",
+   "output": "history rows and updated or retired provisions, committed only on apply",
+   "if_none": "a plan row whose stored text differs stops the whole run"
+  },
+  {
+   "name": "version",
+   "file_line": "scripts/dq88_refresh_2026_10_10.py",
+   "input": "a row id, the new text or none, source, reference, reason",
+   "output": "a new provision version, a change log row and the updated row",
+   "if_none": "no new text retires the row and keeps it in history"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Read each planned row's stored text and current flag, then write its history and new text",
+   "file_line": "scripts/dq88_apply_law_refresh.py run",
+   "where_clause": "by provision id, only when is_current and the stored text equals the plan's old text"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone edits a planned row between the plan and the apply.",
+   "what_happens": "The replacement would overwrite their edit.",
+   "mitigated": true,
+   "how": "The run refuses the row and stops before committing.",
+   "repro": "python -m pytest tests/test_dq88_apply_law_refresh.py -k changed -q"
+  },
+  {
+   "scenario": "A row already has version history from the 15 September refresh.",
+   "what_happens": "Writing v1 again fails on the unique key or loses history.",
+   "mitigated": true,
+   "how": "version() continues the numbering and links the change log to the last version.",
+   "repro": "python -m pytest tests/test_dq88_apply_law_refresh.py -k history -q"
+  },
+  {
+   "scenario": "The plan wrongly retires a row whose law still exists in a new place.",
+   "what_happens": "A user would lose a real rule from the page.",
+   "mitigated": true,
+   "how": "Only rows with at most 30 percent of their wording anywhere in today's whole law are retired, the row is kept in history, and the 14 uncertain rows are left for a person.",
+   "repro": "python scripts/dq88_apply_law_refresh.py"
+  },
+  {
+   "scenario": "The plan is applied twice.",
+   "what_happens": "The second run could duplicate history.",
+   "mitigated": true,
+   "how": "After an apply the stored text no longer equals the plan's old text, so the second run refuses.",
+   "repro": "python -m pytest tests/test_dq88_apply_law_refresh_real_db.py -o addopts= -m database"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq88_apply_law_refresh.py --apply (after the owner's go), then python scripts/dq_probe_live.py --id DQ-88."
+ }
+}

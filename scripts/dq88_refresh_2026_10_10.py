@@ -84,7 +84,8 @@ def sha(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
-def version(cur, pid: int, text_after: str | None, src: str, ref: str, why: str, now: datetime) -> None:
+def version(cur, pid: int, text_after: str | None, src: str, ref: str, why: str, now: datetime,
+            before_note: str = "Text as stored before the 2026-10-10 refresh from the law in force.", detected: str | None = None) -> None:
     """Record v1 (as stored) and v2 (after), the change log row, and update the provision."""
     cur.execute("SELECT provision_text, created_at, text_hash FROM regulatory_provisions "
                 "WHERE id = %s FOR UPDATE", (pid,))
@@ -92,33 +93,39 @@ def version(cur, pid: int, text_after: str | None, src: str, ref: str, why: str,
     if row is None:
         sys.exit(f"{pid}: row vanished -- refusing")
     old, created, md5_set = row
-    # created_at is TEXT and NULL on some rows; effective_from is NOT NULL.
-    cur.execute("INSERT INTO provision_versions (provision_id, version_number, provision_text, effective_from, "
-                "effective_to, change_type, change_summary, text_hash, extraction_date) "
-                "VALUES (%s, 1, %s, COALESCE(%s::timestamptz, %s), %s, 'created', "
-                "'Text as stored before the 2026-10-10 refresh from the law in force.', %s, "
-                "COALESCE(%s::timestamptz, %s)) RETURNING id",
-                (pid, old, created, now, now, sha(old), created, now))
-    v1 = cur.fetchone()[0]
+    # A row refreshed before already has its own history: continue it instead of writing v1 again.
+    cur.execute("SELECT id, version_number FROM provision_versions WHERE provision_id = %s ORDER BY version_number DESC LIMIT 1", (pid,))
+    last = cur.fetchone()
+    if last is None:
+        # created_at is TEXT and NULL on some rows; effective_from is NOT NULL.
+        cur.execute("INSERT INTO provision_versions (provision_id, version_number, provision_text, effective_from, "
+                    "effective_to, change_type, change_summary, text_hash, extraction_date) "
+                    "VALUES (%s, 1, %s, COALESCE(%s::timestamptz, %s), %s, 'created', "
+                    "%s, %s, "
+                    "COALESCE(%s::timestamptz, %s)) RETURNING id",
+                    (pid, old, created, now, now, before_note, sha(old), created, now))
+        v1, vnum = cur.fetchone()[0], 2
+    else:
+        v1, vnum = last[0], last[1] + 1
     kind = "deleted" if text_after is None else "modified"
     body = old if text_after is None else text_after
     cur.execute("INSERT INTO provision_versions (provision_id, version_number, provision_text, effective_from, "
                 "change_type, change_summary, text_hash, extracted_from_document, extraction_date, extraction_method) "
-                "VALUES (%s, 2, %s, %s, %s, %s, %s, %s, %s, 'legislation.nsw.gov.au in-force HTML, verbatim') "
-                "RETURNING id", (pid, body, now, kind, why, sha(body), src, now))
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'legislation.nsw.gov.au in-force HTML, verbatim') "
+                "RETURNING id", (pid, vnum, body, now, kind, why, sha(body), src, now))
     v2 = cur.fetchone()[0]
     cur.execute("INSERT INTO provision_change_log (provision_id, version_from, version_to, change_type, fields_changed, "
                 "changed_at, triggered_by_document, amendment_reference, change_reason, detected_by) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (pid, v1, v2, kind, ["is_current"] if text_after is None else ["provision_text"], now, src, ref, why,
-                 DETECTED))
+                 detected or DETECTED))
     if text_after is None:
-        cur.execute("UPDATE regulatory_provisions SET is_current = FALSE, current_version_id = %s, version_count = 2 "
-                    "WHERE id = %s", (v2, pid))
+        cur.execute("UPDATE regulatory_provisions SET is_current = FALSE, current_version_id = %s, version_count = %s "
+                    "WHERE id = %s", (v2, vnum, pid))
     else:
-        cur.execute("UPDATE regulatory_provisions SET provision_text = %s, current_version_id = %s, version_count = 2, "
+        cur.execute("UPDATE regulatory_provisions SET provision_text = %s, current_version_id = %s, version_count = %s, "
                     "text_hash_current = %s, text_hash = %s WHERE id = %s",
-                    (text_after, v2, sha(text_after),
+                    (text_after, v2, vnum, sha(text_after),
                      hashlib.md5(text_after.encode("utf-8")).hexdigest() if md5_set else None, pid))
 
 
