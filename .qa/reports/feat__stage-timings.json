@@ -1,0 +1,108 @@
+{
+  "tier": "Standard",
+  "justification": "After the flood-distance speed-up the live evidence call still takes a median 14.6 s on 34 real pilot-council lots, while the same call takes 2 to 3 s on a developer PC and the live area check alone takes about 5 s. The service log shows no warnings, so the extra time cannot be read from it. This change logs how long each stage of the evidence call takes (the lot outline, the map layers, the pipeline lookups, the flood study, the walks, the route map, the council controls and files) as 'lmr stage <name> <seconds>' lines through uvicorn's logger. It changes no answer and no response field; every stage call passes its result and its exceptions straight through.",
+  "commit_hash": "f5287e45",
+  "files": [
+    "services/lmr_area_inputs.py",
+    "services/housing_sepp_gates_api.py",
+    "tests/test_lmr_stage_timings.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_stage_timings.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts=",
+    "expected": "158 pass, 1 skipped.",
+    "fails_when": "The timer changes a stage's return value or swallows its exception, or the line goes to a logger the service log does not show.",
+    "observed_red": "Not measured by hand breakage: the helper is a 6-line pass-through. The three tests assert the value and exception pass through, the stage line is logged for success and for failure, and the logger is uvicorn's. The existing 155 area-check and evidence tests, which call every wrapped stage, still pass."
+  },
+  "pre_impl": {
+    "existing_data": "No stage timings exist; the service log carries only uvicorn access lines. uvicorn.error is configured at INFO by uvicorn, the module's own logger has no setup so its INFO lines are dropped.",
+    "assumption_mismatch": "An earlier belief that the live lookups ran one after another was wrong: fetch_layers already runs them in parallel. The remaining time on the live service is not visible from outside.",
+    "new_vs_existing": "New: a pass-through timer at about twelve call sites and one test file. Unchanged: every answer, every response field and the order of the calls.",
+    "external_source_error": "Not applicable: the timer only measures.",
+    "frontend_type": "None.",
+    "user_failure_mode": "A planner waits about 15 seconds for the evidence page and nobody can say which stage causes it."
+  },
+  "functions": [
+    {
+      "name": "_stage",
+      "file_line": "services/lmr_area_inputs.py:43",
+      "input": "a stage name, a function and its arguments",
+      "output": "exactly what the function returns, after logging its duration",
+      "if_none": "A function that returns none gives none; an exception passes through unchanged."
+    },
+    {
+      "name": "housing_sepp_evidence",
+      "file_line": "services/housing_sepp_gates_api.py:140",
+      "input": "a latitude and longitude in New South Wales",
+      "output": "the evidence data for the lot, built from the same stages as before",
+      "if_none": "A lot outside New South Wales is refused with 422."
+    },
+    {
+      "name": "test_it_returns_what_the_function_returns_and_logs_the_stage_and_seconds",
+      "file_line": "tests/test_lmr_stage_timings.py:10",
+      "input": "a small function and its arguments",
+      "output": "passes only when the value is returned and the line is logged",
+      "if_none": "Not applicable to a test that always runs."
+    }
+  ],
+  "values": [
+    {
+      "value": "the stage durations",
+      "read_at": "services/lmr_area_inputs.py:43",
+      "nullable": "no",
+      "guard_at": "services/lmr_area_inputs.py:43 (try and finally)",
+      "if_missing": "Not applicable: a duration is always measured."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A wrapped stage raises an error.",
+      "what_happens": "The error could be swallowed and a wrong answer given.",
+      "mitigated": "Mitigated: the timer uses finally and re-raises; a test asserts it.",
+      "how": "The failing-stage test.",
+      "repro": "python -m pytest tests/test_lmr_stage_timings.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "A stage returns a different value after wrapping.",
+      "what_happens": "An answer given to a planner would change.",
+      "mitigated": "Mitigated: the value is returned untouched; the 155 existing tests exercise every wrapped stage.",
+      "how": "The pass-through test and the existing suite.",
+      "repro": "python -m pytest tests/test_lmr_stage_timings.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "The log lines are dropped.",
+      "what_happens": "The change would tell us nothing.",
+      "mitigated": "Mitigated: the lines use uvicorn's logger, which the service log already shows.",
+      "how": "A test checks the logger name; the effect is read from the service log after the deploy.",
+      "repro": "python -m pytest tests/test_lmr_stage_timings.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "The lines add log volume.",
+      "what_happens": "About twelve short lines per evidence call.",
+      "mitigated": "Accepted for now and removable once the slow stage is found.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    },
+    {
+      "scenario": "A lot's location appears in the log.",
+      "what_happens": "Only stage names and seconds are logged, no coordinates.",
+      "mitigated": "Mitigated: the line carries no address or coordinates.",
+      "how": "Read the format string.",
+      "repro": "python -m pytest tests/test_lmr_stage_timings.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts="
+    },
+    {
+      "scenario": "The timings show nothing unusual.",
+      "what_happens": "The slowness stays unexplained for now.",
+      "mitigated": "Not mitigated here: the next step would be profiling inside the service.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    }
+  ],
+  "residual_risk": "1) This measures; it does not make anything faster. 2) The lines need a deploy and a few real calls to read. 3) The stage names are for this investigation and can be removed once the slow stage is fixed.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy call the evidence data for one fresh lot and read the 'lmr stage' lines with railway logs."
+  }
+}
