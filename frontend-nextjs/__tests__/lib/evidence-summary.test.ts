@@ -105,38 +105,38 @@ describe('verdictWords', () => {
     const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 853, walk_high_m: 1203, walk_best_m: 878 })), null);
     expect(w.pill).toBe('Over the 800 m limit');
     expect(w.margin).toBe('Shortest walk 878 m: 78 m over.');
-    expect(w.sentence).toBe('The shortest walk is 878 m, which is 78 m over the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.');
-    expect(w.bottom).toBe('On this measure the lot does not meet the walking test.');
+    expect(w.sentence).toBe('The shortest walk is 878 m, which is 78 m over the 800 m limit the Low and Mid Rise housing rules use. On this measure the walk is over the limit.');
+    expect(w.bottom).toBe('On this measure the walk is over the limit.');
   });
   it('over with no measured walk: says the walk is longer than the limit and gives no metre figure or margin', () => {
     const w = verdictWords({ kind: 'over', limit: 800, low: 1103, high: 1203, best: null, gapM: 303 }, null);
     expect(w.margin).toBeNull();
-    expect(w.sentence).toBe('The walk is longer than the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.');
+    expect(w.sentence).toBe('The walk is longer than the 800 m limit the Low and Mid Rise housing rules use. On this measure the walk is over the limit.');
   });
   it('within: names the measured walk, the limit and the gap under it', () => {
     const w = verdictWords(walkVerdict(walk({ limit_m: 800, walk_low_m: 454, walk_high_m: 754, walk_best_m: 479 })), null);
     expect(w.pill).toBe('Within the 800 m limit');
     expect(w.margin).toBe('Shortest walk 479 m: 321 m under.');
-    expect(w.sentence).toBe('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.');
-    expect(w.bottom).toBe('On this measure the lot meets the walking test.');
+    expect(w.sentence).toBe('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the walk is within the limit.');
+    expect(w.bottom).toBe('On this measure the walk is within the limit.');
   });
   it('within with no measured walk: says the walk is shorter than the limit and gives no margin', () => {
     const w = verdictWords({ kind: 'within', limit: 800, low: 454, high: 754, best: null, gapM: 46 }, null);
     expect(w.margin).toBeNull();
-    expect(w.sentence).toBe('The walk is shorter than the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.');
+    expect(w.sentence).toBe('The walk is shorter than the 800 m limit the Low and Mid Rise housing rules use. On this measure the walk is within the limit.');
   });
   it('straddles: gives the shortest walk against the limit and says the tool cannot say; no range wording', () => {
     const w = verdictWords(walkVerdict(walk({ walk_low_m: 700, walk_high_m: 900, walk_best_m: 790 })), null);
     expect(w.pill).toBe('Too close to the 800 m limit to call');
     expect(w.margin).toBe('Shortest walk 790 m.');
-    expect(w.sentence).toBe('The shortest walk is 790 m against the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.');
-    expect(w.bottom).toBe('The walk is too close to the limit for this tool to say whether the lot meets the walking test.');
+    expect(w.sentence).toBe('The shortest walk is 790 m against the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the walk is within the limit. Check the route on the ground.');
+    expect(w.bottom).toBe('The walk is too close to the limit for this tool to say whether the walk is within the limit.');
     expect(JSON.stringify(w).toLowerCase()).not.toContain('range');
   });
   it('straddles with no measured walk: no margin line', () => {
     const w = verdictWords({ kind: 'straddles', limit: 800, low: 700, high: 900, best: null, gapM: null }, null);
     expect(w.margin).toBeNull();
-    expect(w.sentence).toBe('The walk is close to the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.');
+    expect(w.sentence).toBe('The walk is close to the 800 m limit. Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the walk is within the limit. Check the route on the ground.');
   });
   it('unknown: uses the payload detail as the sentence when there is one, else a fixed line, and never a verdict', () => {
     const v = walkVerdict(walk({ walk_low_m: null }));

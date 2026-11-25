@@ -1,0 +1,69 @@
+{
+  "tier": "standard",
+  "justification": "Five files of evidence-page wording only (walk method box and the walking-test sentences); standard because the file count is over the minor limit, not because of logic.",
+  "commit_hash": "6243a9df",
+  "files": [
+    "frontend-nextjs/lib/evidence-summary.ts",
+    "frontend-nextjs/components/reports/evidence/WalkMethod.tsx",
+    "frontend-nextjs/__tests__/lib/evidence-summary.test.ts",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx",
+    "frontend-nextjs/__tests__/components/evidence-sections.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "none: static component text and a pure function of the walk verdict",
+    "assumption_mismatch": "If a test still asserts the old sentence it fails visibly in jest; no data is involved",
+    "new_vs_existing": "Every evidence page render uses the new sentences; nothing is stored"
+  },
+  "functions": [
+    {
+      "name": "walkWords",
+      "file_line": "frontend-nextjs/lib/evidence-summary.ts:40",
+      "input": "the walk verdict object with kind, best walk and limit",
+      "output": "pill, sentence, margin and bottom-line strings for the walk",
+      "if_none": "a missing best walk keeps the existing 'walk is shorter than the limit' wording; only the verdict phrase changed"
+    },
+    {
+      "name": "WalkMethod",
+      "file_line": "frontend-nextjs/components/reports/evidence/WalkMethod.tsx:8",
+      "input": "the walk object from the evidence data",
+      "output": "the how-the-walk-is-calculated box with its numbered steps and text",
+      "if_none": "unchanged: optional fields are guarded as before"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A verdict sentence changes in the function but a test or the page still shows the old one",
+      "what_happens": "A reader sees 'meets the walking test' in one place and 'within the limit' in another",
+      "mitigated": true,
+      "how": "git grep for 'meets the walking' returns nothing; evidence-summary.test.ts asserts every verdict string",
+      "repro": "git grep -n \"meets the walking\" -- frontend-nextjs"
+    },
+    {
+      "scenario": "The route bullet claims the main walk only uses marked crossings",
+      "what_happens": "A planner believes the headline walk already avoids unsignalled crossings",
+      "mitigated": true,
+      "how": "WalkMethod.tsx route bullet now says the route may cross wherever the map shows a crossing or junction and that the crossings-only walk is the restricted one",
+      "repro": "npx jest --testPathPatterns=walk-method"
+    },
+    {
+      "scenario": "Straddle wording still says the lot meets the test",
+      "what_happens": "A close-to-limit lot reads like a compliance finding",
+      "mitigated": true,
+      "how": "both straddle strings now say 'whether the walk is within the limit'; asserted in evidence-summary.test.ts:133,139",
+      "repro": "npx jest --testPathPatterns=evidence-summary"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPatterns=\"evidence|walk-method|area-check\"",
+    "fails_when": "any walk sentence differs from the text the tests assert, or the old 'meets the walking test' wording is rendered",
+    "observed_red": "Before the test strings were updated, evidence-summary.test.ts asserted 'On this measure the lot meets the walking test.' while the function now returns 'the walk is within the limit', which fails on string equality; after updating, 198 passed"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}

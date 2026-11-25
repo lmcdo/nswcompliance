@@ -39,25 +39,25 @@ export function verdictWords(v: WalkVerdict, detail: string | null): { pill: str
   if (v.kind === 'over') {
     return {
       pill: `Over the ${lim} m limit`,
-      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m over the ${lim} m limit` : `The walk is longer than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the lot does not meet the walking test.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m over the ${lim} m limit` : `The walk is longer than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the walk is over the limit.`,
       margin: has ? `Shortest walk ${fmtNum(v.best as number)} m: ${fmtNum(diff)} m over.` : null,
-      bottom: 'On this measure the lot does not meet the walking test.',
+      bottom: 'On this measure the walk is over the limit.',
     };
   }
   if (v.kind === 'within') {
     return {
       pill: `Within the ${lim} m limit`,
-      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m under the ${lim} m limit` : `The walk is shorter than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m, which is ${fmtNum(diff)} m under the ${lim} m limit` : `The walk is shorter than the ${lim} m limit`} the Low and Mid Rise housing rules use. On this measure the walk is within the limit.`,
       margin: has ? `Shortest walk ${fmtNum(v.best as number)} m: ${fmtNum(diff)} m under.` : null,
-      bottom: 'On this measure the lot meets the walking test.',
+      bottom: 'On this measure the walk is within the limit.',
     };
   }
   if (v.kind === 'straddles') {
     return {
       pill: `Too close to the ${lim} m limit to call`,
-      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m against the ${lim} m limit.` : `The walk is close to the ${lim} m limit.`} Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the lot meets the walking test. Check the route on the ground.`,
+      sentence: `${has ? `The shortest walk is ${fmtNum(v.best as number)} m against the ${lim} m limit.` : `The walk is close to the ${lim} m limit.`} Depending on exactly where the station entrance is, the walk could fall on either side of the limit, so this tool cannot say whether the walk is within the limit. Check the route on the ground.`,
       margin: has ? `Shortest walk ${fmtNum(v.best as number)} m.` : null,
-      bottom: 'The walk is too close to the limit for this tool to say whether the lot meets the walking test.',
+      bottom: 'The walk is too close to the limit for this tool to say whether the walk is within the limit.',
     };
   }
   if (v.best !== null) {   // a measured walk with no usable verdict: show the walk, say the test could not be applied
