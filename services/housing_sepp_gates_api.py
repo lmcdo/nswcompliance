@@ -136,6 +136,19 @@ def _run_area_check(lat: float, lng: float, **extra) -> dict:
     return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot, copy_fn=lmr_map_copy.check, flood_study_fn=lmr_map_copy.flood_distance, **extra)
 
 
+def _timed(name: str, fn, *args, **kwargs):
+    """Call fn and log how long it took ("lmr stage <name> <seconds>", through uvicorn's logger so the service log shows it). The same line format as services/lmr_area_inputs._stage;
+    kept here so this endpoint does not import from that module (tests stand a stub in for it). Nothing about the answer changes; an exception passes through."""
+    import logging
+    import time
+
+    t0 = time.perf_counter()
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        logging.getLogger("uvicorn.error").info("lmr stage %s %.2fs", name, time.perf_counter() - t0)
+
+
 @router.get("/housing-sepp/evidence")
 def housing_sepp_evidence(lat: float, lng: float) -> dict:
     """GET /pipeline/housing-sepp/evidence?lat=&lng=
@@ -148,6 +161,8 @@ def housing_sepp_evidence(lat: float, lng: float) -> dict:
     if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
         raise HTTPException(status_code=422, detail="lat/lng outside NSW")
     from services import evidence_council, evidence_statement
-    area = _run_area_check(lat, lng, want_route=True, want_distances=True)
+    area = _timed("area_check_total", _run_area_check, lat, lng, want_route=True, want_distances=True)
     lga = (area.get("measured") or {}).get("lga")
-    return evidence_statement.build(area, evidence_council.council_controls(lga), evidence_council.council_files(lga))
+    controls = _timed("council_controls", evidence_council.council_controls, lga)
+    files = _timed("council_files", evidence_council.council_files, lga)
+    return _timed("evidence_build", evidence_statement.build, area, controls, files)

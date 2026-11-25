@@ -36,6 +36,18 @@ from services import sydney_anef
 
 logger = logging.getLogger(__name__)
 
+
+_STAGE_LOG = logging.getLogger("uvicorn.error")   # uvicorn configures this one at INFO, so the lines reach the service log (this module has no logging setup of its own)
+
+
+def _stage(name: str, fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Call fn and log how long it took ("lmr stage <name> <seconds>"), so the time of a slow evidence call can be read from the service log. Nothing about the answer changes; an exception passes through."""
+    t0 = time.perf_counter()
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        _STAGE_LOG.info("lmr stage %s %.2fs", name, time.perf_counter() - t0)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATIONS_PATH = REPO_ROOT / "data" / "law" / "lmr_station_entrances.json"
 
@@ -496,17 +508,17 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     lot_source = None
     if rings is None and lot_fn is not None:   # our own copy of the lot outline first: no wait on the state property service
         try:
-            got = lot_fn(lat, lng)
+            got = _stage("lot_outline_db", lot_fn, lat, lng)
             if isinstance(got, (tuple, list)) and len(got) == 2 and got[0]:
                 rings, lot_source = got[0], {"source": "snapshot", "as_of": str(got[1]) if got[1] else None}
         except Exception as exc:  # noqa: BLE001
             logger.warning("lmr inputs: own lot outline failed: %s", exc)
     if rings is None:
-        rings = fetch_lot_rings(lat, lng)
+        rings = _stage("lot_outline_live", fetch_lot_rings, lat, lng)
     # prior-art-checked: the heritage/bushfire readers found by the guard are TypeScript pages and PDF code; this is the same
     # Python block moved into a function so its result can be saved and passed back in (no new source, no new query).
     # `layers` may be passed in (saved from an earlier call) so that a re-run after the walking files change needs no map calls.
-    m: dict[str, Any] = dict(layers) if layers is not None else fetch_layers(lat, lng, rings, lga_fallback, lga_guess, bushfire_fn, **({"copy_fn": copy_fn} if copy_fn is not None else {}))
+    m: dict[str, Any] = dict(layers) if layers is not None else _stage("layers", fetch_layers, lat, lng, rings, lga_fallback, lga_guess, bushfire_fn, **({"copy_fn": copy_fn} if copy_fn is not None else {}))
     m["lot_outline"] = bool(rings) and len(rings) >= 4
     if lot_source:
         m["lot_source"] = lot_source  # noqa: bracket-access -- assignment into our own dict   # fewer than 4 points is not an outline (services/sydney_anef.py ignores it too)
@@ -518,16 +530,16 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
             m["sydney_anef"] = "error"
     if "pipeline" not in m:
         try:   # the distance is the law's (s164(1)(i)), read from the saved facts, never typed here
-            m["pipeline"] = _pipeline_near(lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))
+            m["pipeline"] = _stage("pipeline_near", _pipeline_near, lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))
         except dec.LawFactsError:
             m["pipeline"] = {"hit": None, "names": []}
     if flood_study_fn is not None and "flood_study" not in m:
-        m["flood_study"] = _flood_study(lat, lng, rings, flood_study_fn, all_layers=want_distances)
+        m["flood_study"] = _stage("flood_study", _flood_study, lat, lng, rings, flood_study_fn, all_layers=want_distances)
     pl = m.get("pipeline")
     if want_distances and isinstance(pl, dict) and pl.get("hit") is False and "nearest_m" not in pl:   # only the evidence page asks: the public check stays one query
-        m["pipeline"] = {**pl, **_pipeline_nearest(lat, lng)}
+        m["pipeline"] = {**pl, **_stage("pipeline_nearest", _pipeline_nearest, lat, lng)}
     if flood_fn is not None and "flood_planning" not in m:
-        m["flood_planning"] = _flood_answer(m.get("lga"), rings, flood_fn)
+        m["flood_planning"] = _stage("flood_planning_db", _flood_answer, m.get("lga"), rings, flood_fn)
 
     # Distances need a lot outline and the station file; without either they stay None (cant_tell), never a number.
     m["straight_m"] = None
@@ -535,7 +547,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     m["walk"] = None
     m["walk_safe"] = None   # the walk that crosses busy roads only at signals, zebra or marked crossings; shown beside the normal walk, never decides
     stations = stations if stations is not None else load_stations()
-    tcs = town_centre_polygons()
+    tcs = _stage("town_centres", town_centre_polygons)
     if not rings or not stations or tcs is None:
         m["distance_note"] = ("no lot outline" if not rings else "station file unreadable" if not stations
                               else "Town Centres Map did not answer")
@@ -574,12 +586,12 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
     ring_m = [to_m(x, y) for x, y in rings]
     # The walk is the MINIMUM over every anchor within reach, so every such anchor must have a built surface:
     # otherwise a farther anchor's longer walk would be taken as the answer (a wrong "no").
-    m["walk"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, walk_surfaces,  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
+    m["walk"] = _stage("walk", walk_mod.walk_from_lot, ring_m, _epsg_for(lng), m["straight_m"], touches, walk_surfaces,  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
                                        required_anchors=near_anchors)
     try:   # the second walk must never break the first: any failure here is a reason string, not an exception
         safe_list = safe_surfaces if safe_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.SAFE_SURFACE_DIR)]
         if safe_list:
-            m["walk_safe"] = walk_mod.walk_from_lot_safe(ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors,  # noqa: bracket-access -- set above in this function
+            m["walk_safe"] = _stage("walk_safe", walk_mod.walk_from_lot_safe, ring_m, _epsg_for(lng), m["straight_m"], touches, safe_list, required_anchors=near_anchors,  # noqa: bracket-access -- set above in this function
                                                          want_route=want_route)
     except Exception as exc:  # noqa: BLE001
         logger.warning("crossings-only walk failed: %s", exc)
@@ -588,7 +600,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
         try:   # the normal route is drawn from its own set; a failure here is a missing route, never a change to the walk or the answer
             rl = route_surfaces if route_surfaces is not None else [walk_mod.load_surface(str(p)) for p in walk_mod.available_surfaces(walk_mod.ROUTE_SURFACE_DIR)]
             if rl:
-                m["route_normal"] = walk_mod.walk_from_lot(ring_m, _epsg_for(lng), m["straight_m"], touches, rl, required_anchors=near_anchors, want_route=True)  # noqa: bracket-access -- set above in this function
+                m["route_normal"] = _stage("route_normal", walk_mod.walk_from_lot, ring_m, _epsg_for(lng), m["straight_m"], touches, rl, required_anchors=near_anchors, want_route=True)  # noqa: bracket-access -- set above in this function
         except Exception as exc:  # noqa: BLE001
             logger.warning("normal route failed: %s", exc)
             m["route_normal"] = {"m": None, "valid": False, "reason": f"the route map could not be read ({type(exc).__name__})"}
@@ -607,7 +619,7 @@ def area_check(lat: float, lng: float, **kw) -> dict:
     if kw.get("want_route"):
         try:   # the route map is extra: whatever happens here, the answer above is already complete
             from services import lmr_route_map
-            r["route_map"] = lmr_route_map.build(m, kw.get("stations") if kw.get("stations") is not None else load_stations())
+            r["route_map"] = _stage("route_map", lmr_route_map.build, m, kw.get("stations") if kw.get("stations") is not None else load_stations())
         except Exception as exc:  # noqa: BLE001
             logger.warning("route map failed: %s", exc)
             r["route_map"] = {"status": "unavailable", "reason": f"the route map could not be built ({type(exc).__name__})"}
