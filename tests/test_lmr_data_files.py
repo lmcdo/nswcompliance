@@ -242,20 +242,27 @@ def test_the_files_that_decide_the_answer_still_have_no_route_pointers():
         assert ws.load_surface(str(f)).parent is None, f.name
 
 
-def test_every_file_the_manifest_lists_for_the_flood_layers_is_copied_into_the_image_and_no_other_saved_map_is():
-    """The flood check needs every file of its three layers (a re-export may split a layer into parts); the other saved maps stay out on purpose (PR 1672's six-layer path is off in production)."""
+def test_every_file_of_every_layer_the_area_check_reads_is_copied_into_the_image_and_no_unused_map_is():
+    """The flood check and the six-layer own-copy reader need every file of their layers (a re-export may split a layer into parts); the airport and
+    State Heritage Register copies have no reader yet and stay out of the image."""
     import fnmatch
     import json
+
+    from services import lmr_area_inputs as inp
+    from services import lmr_map_copy as mc
 
     docker = (REPO / "Dockerfile.python").read_text(encoding="utf-8")
     sources = [line.split()[1] for line in docker.splitlines() if line.startswith("COPY data/law/maps/")]
     assert sources, "no COPY line for data/law/maps"
     man = json.loads((REPO / "data" / "law" / "maps" / "manifest.json").read_text(encoding="utf-8"))
-    shipped = {f["file"] for name, meta in man["layers"].items() if name.startswith("hn_") and name != "hn_catchment" for f in meta["files"]}
-    assert shipped, "the manifest lists no flood file"
+    used = {"hn_pmf", "hn_500aep", "hn_100aep"} | {mc.COPY_KEYS[k] for k in inp.COPY_LAYERS}   # the layers a reader actually uses
+    assert len(inp.COPY_LAYERS) == 6, "the area check no longer reads six layers from our copy: revisit this test"
+    shipped = {f["file"] for name, meta in man["layers"].items() if name in used for f in meta["files"]}
+    assert shipped and {n for n in used} <= set(man["layers"]), "a layer the reader uses is missing from the manifest"
     for name in shipped:
         assert any(fnmatch.fnmatch("data/law/maps/" + name, pat) for pat in sources), name
-    others = {f["file"] for name, meta in man["layers"].items() if name not in ("hn_pmf", "hn_500aep", "hn_100aep") for f in meta["files"]}
-    for name in others:
-        assert not any(fnmatch.fnmatch("data/law/maps/" + name, pat) for pat in sources if not pat.endswith("manifest.json")), f"{name} is copied by accident"
+    unused = {f["file"] for name, meta in man["layers"].items() if name not in used for f in meta["files"]}
+    assert unused, "expected the airport and State Heritage Register files to be listed and unused"
+    for name in unused:
+        assert not any(fnmatch.fnmatch("data/law/maps/" + name, pat) for pat in sources if not pat.endswith("manifest.json")), f"{name} is copied but no reader uses it"
     assert any(pat.endswith("manifest.json") for pat in sources)
