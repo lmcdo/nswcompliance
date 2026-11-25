@@ -1,0 +1,122 @@
+{
+  "tier": "Standard",
+  "justification": "The evidence call asked Geoscience Australia's pipeline map live twice (is a pipeline within the law's 200 m, and how far is the nearest one). Stage timings read from the live service log on 2026-11-26 showed those two lookups took 22 s of a 27 s call (6.5 s and 14.7 s) and about 1.4 s of a 9.4 s call: the outside service is slow and varies widely. The national layer is 1,425 lines (554 KB zipped), so it is now saved in the repo like the other state map layers and read by the map-copy reader: lines are kept on load, and a new pipeline() method answers hit, names and the nearest distance from the saved lines in milliseconds. A lot whose nearest pipeline is within 5 m of the 200 m threshold, a copy that is missing, unproven, older than 45 days or has an unreadable line, or any wrong-shaped answer still asks the live service, exactly as before. The public check keeps the answer it always had (no distance fields). The downloader gains an --only mode that refreshes one layer and dates it alone, so the other layers' dates cannot be refreshed by accident.",
+  "commit_hash": "5735d33f",
+  "files": [
+    "services/lmr_map_copy.py",
+    "services/lmr_area_inputs.py",
+    "scripts/lmr_area/download_map_layers.py",
+    "services/housing_sepp_gates_api.py",
+    "Dockerfile.python",
+    "data/law/maps/gas_pipelines.geojson.gz",
+    "data/law/maps/manifest.json",
+    "tests/test_lmr_pipeline_copy.py",
+    "tests/test_lmr_map_layers_data.py",
+    "tests/test_lmr_data_files.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py",
+    "expected": "371 pass, 1 skipped; the copy checker prints all 12 layers load, hash and count match, and PASS.",
+    "fails_when": "A pipeline within 200 m is missed or invented; the nearest distance or name differs from the live service; the east-west and north-south scales are mixed; skipped lines are ignored; a wrong-shaped copy answer is used; the public check gets distance fields; the image does not copy the file; a one-layer refresh restamps other layers.",
+    "observed_red": "Nine hand breakages of the reader and inputs and three of the downloader each turned a test red and were restored: near-edge never flagged, skipped lines ignored, nearest measured from the lot not the point, lines dropped on load, the copy answer's shape not checked, the public check given distance fields, the image copy line removed, scales swapped (found green at first, a 190 m east or north case added, then red), and for the downloader no own date, other layers dropped and the file-wide date restamped. One breakage (a hit at exactly the threshold counted as a miss) stays green: anything within 5 m of the threshold is sent to the live service, so it can never reach the output. Against the live Geoscience Australia service, 120 comparisons (60 points, with and without a lot outline; points at 0 to 1,500 m from NSW pipelines and random points) gave 0 mismatches, 67 of them real hits, 1 sent to the live service as too near the threshold; the live lookups took 40.9 s in total and the copy 0.08 s."
+  },
+  "pre_impl": {
+    "existing_data": "The layer is Geoscience Australia's national gas pipelines, already queried live by services/lmr_area_inputs.py; the map-copy reader, manifest, hash proof, freshness alarm and downloader already exist for six polygon layers.",
+    "assumption_mismatch": "The reader dropped any shape of zero area, which would have discarded every line; a layer's own read_on already existed for the flood study but the downloader always dated every layer it owns.",
+    "new_vs_existing": "New: one layer file, the pipeline() method, the copy-first path in the inputs, one COPY line, an --only downloader mode. Unchanged: the answers when the copy asks the live service, every other layer, the law's distance (read from the saved law).",
+    "external_source_error": "A missing, unproven, old or partly unreadable copy, or an answer within 5 m of the threshold, asks the live service as before; if that does not answer the result stays unknown, never a clear.",
+    "frontend_type": "None.",
+    "user_failure_mode": "A planner waits up to 27 seconds for the evidence page because the pipeline map is slow."
+  },
+  "functions": [
+    {
+      "name": "pipeline",
+      "file_line": "services/lmr_map_copy.py:316",
+      "input": "a latitude and longitude, an optional lot outline and the law's distance in metres",
+      "output": "whether a pipeline is within the distance, their names, the nearest distance from the point and whether the lot is near the threshold",
+      "if_none": "A missing, old, unproven or partly unreadable copy, or a bad distance, gives none and the live service is asked."
+    },
+    {
+      "name": "_pipeline_from_copy",
+      "file_line": "services/lmr_area_inputs.py:367",
+      "input": "the copy function, the point, the outline and the law's distance",
+      "output": "the pipeline answer in the shape the area check uses, with the copy's date",
+      "if_none": "Any doubt gives none, so the live lookup runs as before."
+    },
+    {
+      "name": "main",
+      "file_line": "scripts/lmr_area/download_map_layers.py:104",
+      "input": "the command line arguments including an optional single layer name",
+      "output": "the saved layer files and manifest, with a one-layer refresh dating only that layer",
+      "if_none": "A failed read writes nothing."
+    },
+    {
+      "name": "test_the_two_metre_scales_are_not_mixed_up_a_pipeline_190_m_east_and_one_190_m_north_are_both_inside_200_m",
+      "file_line": "tests/test_lmr_pipeline_copy.py:317",
+      "input": "two synthetic pipelines, one east and one north of a point",
+      "output": "passes only when both are hits at 190 m",
+      "if_none": "Not applicable to a test that always runs."
+    }
+  ],
+  "values": [
+    {
+      "value": "the layer's lines and names from the manifest-proven file",
+      "read_at": "services/lmr_map_copy.py:316",
+      "nullable": "no",
+      "guard_at": "services/lmr_map_copy.py:316 (proven, fresh, none skipped)",
+      "if_missing": "No answer: the live service is asked."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A pipeline lies within a few metres of the 200 m threshold.",
+      "what_happens": "The copy and the live service could disagree by a few metres.",
+      "mitigated": "Mitigated: within 5 m of the threshold the copy gives no answer and the live service decides.",
+      "how": "Tests at 196 and 207 m and the live comparison.",
+      "repro": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "A line in the layer cannot be read.",
+      "what_happens": "A pipeline near a lot could be missed.",
+      "mitigated": "Mitigated: any skipped line makes the layer unavailable.",
+      "how": "A test with an empty geometry.",
+      "repro": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "The copy is older than 45 days.",
+      "what_happens": "A new pipeline would be missed.",
+      "mitigated": "Mitigated: the reader refuses it and the checker reminds 15 days before; the one-layer refresh is one command.",
+      "how": "A test for an old copy and the existing freshness check.",
+      "repro": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "A refresh of one layer restamps the others.",
+      "what_happens": "Old copies would look fresh.",
+      "mitigated": "Mitigated: --only dates that layer alone and keeps the file-wide date.",
+      "how": "Three downloader tests, each with a breakage.",
+      "repro": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "The public check shows evidence-only distance fields.",
+      "what_happens": "The public answer would change shape.",
+      "mitigated": "Mitigated: distance fields are removed unless the evidence page asks.",
+      "how": "A test with a breakage.",
+      "repro": "python -m pytest tests/test_lmr_pipeline_copy.py tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_lmr_map_layers_data.py tests/test_check_map_copy.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "The copy differs from the live layer after Geoscience Australia changes it.",
+      "what_happens": "A new or moved pipeline would be missed until the next refresh.",
+      "mitigated": "Not mitigated beyond the 45-day limit: the pipeline paragraph stays not checked and never reads clear, whatever the distance.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    }
+  ],
+  "residual_risk": "1) The live speed-up is measured after the Railway deploy, not here. 2) The copy is dated 2026-11-26 and stops being used after 45 days unless refreshed with python scripts/lmr_area/download_map_layers.py --only gas_pipelines --apply. 3) The comparison covered 60 points; it is not every lot. 4) Council controls (about 2.5 s) and the lot outline (about 0.8 s) from the database remain in the evidence call. 5) The pipeline row still never reads clear: the law's licence list is not all on the map, and the page says so.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy repeat the 34 real pilot-council lots and read the lmr stage lines: pipeline_near and pipeline_nearest should be near zero."
+  }
+}
