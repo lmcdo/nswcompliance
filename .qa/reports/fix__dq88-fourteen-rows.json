@@ -1,0 +1,92 @@
+{
+ "tier": "standard",
+ "justification": "Standard: replaces or retires the last served SEPP rows holding removed wording, clears the last four review flags and flips two ledger rows that gate claims. Not Minor: wrong text would be shown as current law. Not Critical: every row is guarded on its exact stored text, history is kept, each replacement was checked to sit word for word inside the whole law in force, and the migration asserts the flagged count before and after.",
+ "commit_hash": "309ebbb7",
+ "files": [
+  "migrations/130_dq88_clear_last_four_seps.sql",
+  "data/dq88_law_refresh_plan2_2026-11-25.json",
+  "data/dq88_law_refresh_plan3_2026-11-25.json",
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "After PR 1707 the whole-law comparison still showed 14 served rows holding removed wording (Exempt 2, Industry 1, Transport 9, Biodiversity 2) and 94 unserved rows. The 14 were placed by hand against today's text and each new text was proven to sit inside the whole instrument; the strict method placed 42 of the unserved rows.",
+  "assumption_mismatch": "I had asked for a person to decide the 14; the user ruled that the work is mine to decide.",
+  "new_vs_existing": "Same script and guards as PR 1707 (scripts/dq88_apply_law_refresh.py); this adds two plans and the last clearing migration, as 096, 099, 128 and 129 did.",
+  "external_source_error": "Today's law was read in Chrome from legislation.nsw.gov.au; a row that could not be placed stays flagged-as-left in the ledger note.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A citation reads as current while the stored text is behind the law."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_probe_live.py --id DQ-88 ; python scripts/outreach_claim_checks.py OC-17",
+  "fails_when": "A flagged instrument is left or a cleared SEPP still has a served row holding removed wording.",
+  "observed_red": "The migration raises unless 4 instruments are flagged before and none after.",
+  "observed_green": "DQ-88 reads 0 and OC-17 exits 0 after the applies and migration 130."
+ },
+ "functions": [
+  {
+   "name": "run",
+   "file_line": "scripts/dq88_apply_law_refresh.py",
+   "input": "a connection, an apply flag and a plan file",
+   "output": "history rows and updated or retired provisions, committed only on apply",
+   "if_none": "a plan row whose stored text differs stops the whole run"
+  },
+  {
+   "name": "migration 130 update",
+   "file_line": "migrations/130_dq88_clear_last_four_seps.sql",
+   "input": "instrument_registry rows flagged for review",
+   "output": "needs_review false for the four listed SEPP keys",
+   "if_none": "any other flagged count aborts the transaction"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Clear the review flag for the last four SEPP instruments only",
+   "file_line": "migrations/130_dq88_clear_last_four_seps.sql",
+   "where_clause": "is_active and needs_review, version_date on or before 2026-11-25, instrument_key in the four listed keys"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A hand-placed replacement is not the law's own wording.",
+   "what_happens": "Wrong text would be served as proven.",
+   "mitigated": true,
+   "how": "Each new text was checked to sit word for word, letters and digits only, inside the whole instrument in force, and the plan carries that check as a flag the script requires.",
+   "repro": "python scripts/dq88_apply_law_refresh.py data/dq88_law_refresh_plan2_2026-11-25.json"
+  },
+  {
+   "scenario": "The migration runs before row 37984 is refreshed.",
+   "what_happens": "A flag clears while a served row is stale.",
+   "mitigated": true,
+   "how": "The migration raises unless row 37984 already holds today's 3BA.11 text.",
+   "repro": "python scripts/apply_migration_dry_run.py migrations/130_dq88_clear_last_four_seps.sql"
+  },
+  {
+   "scenario": "Unserved rows still hold removed wording.",
+   "what_happens": "They could be served later by a re-extraction.",
+   "mitigated": true,
+   "how": "They are counted in the ledger note (about 52) and the whole-law comparison is the check to rerun after any re-extraction.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-88"
+  },
+  {
+   "scenario": "The plan is applied twice.",
+   "what_happens": "A second run could duplicate history.",
+   "mitigated": true,
+   "how": "After an apply the stored text no longer equals the plan's old text, so the second run refuses.",
+   "repro": "python -m pytest tests/test_dq88_apply_law_refresh.py -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Already applied 2026-11-25: plan2 (14 rows), plan3 (42 rows) and migration 130; python scripts/dq_probe_live.py --id DQ-88 reads 0 and outreach_claim_checks.py OC-17 exits 0."
+ }
+}
