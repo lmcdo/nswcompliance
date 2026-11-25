@@ -45,6 +45,7 @@ from typing import Any, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FACTS_PATH = REPO_ROOT / "data" / "law" / "housing_sepp_lmr_facts.json"
+WALK_SCOPE_PATH = REPO_ROOT / "data" / "lmr_walk_scope.json"   # the councils where the walking check answers yes or no; everywhere else it says not checked
 
 YES, NO, CANT, BORDER = "yes", "no", "cant_tell", "borderline"
 # yes / no: the measured walk is on one side of the limit. The only uncertainty left is geometric, never fitted: when the station
@@ -136,6 +137,20 @@ class LawFacts:
                 return {"clause": p["clause"], "page": p["page"], "words": p["words"],  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
                         "law_version_date": self.version_date}
         raise LawFactsError(f"s164(1)({para}) not in the saved law")
+
+
+def walk_scope(path: Path = WALK_SCOPE_PATH) -> Optional[frozenset]:
+    """The council keys the walking check answers for, from data/lmr_walk_scope.json. None when the file is missing or malformed: the caller then says
+    the walk could not be checked, never answers for a council it cannot place."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        names = doc.get("councils") if isinstance(doc, dict) else None
+        if not isinstance(names, list) or not names or not all(isinstance(n, str) for n in names):
+            return None
+        keys = {norm_lga(n) for n in names}   # the same comparison key the exclusion rule uses: 'Hornsby Shire', 'HORNSBY' and 'hornsby' are one council
+        return frozenset(k for k in keys if k)
+    except (OSError, ValueError):
+        return None
 
 
 def norm_lga(name: Optional[str]) -> Optional[str]:
@@ -501,6 +516,12 @@ def _distance_step(m: dict, facts: LawFacts) -> tuple[str, dict]:
     if straight > outer:
         # A walk can never be shorter than the straight line, so this "no" does not depend on the walking measure.
         return NO, {**base, "reason_code": "beyond_straight_line", "detail": "the straight line to the nearest station or town centre is longer than the walking limit"}
+    scope = walk_scope()
+    lga_key = norm_lga(m.get("lga"))
+    if scope is None or lga_key is None or lga_key not in scope:
+        # Not a council whose routes the walking check covers (or the council did not answer): say so, never answer yes or no from a map nobody has checked here.
+        why = "the council for this lot did not answer" if lga_key is None else f"{m.get('lga')} is not one of the councils the walking check covers"
+        return CANT, {**base, "reason_code": "walk_not_checked_in_this_council", "detail": f"the walking distance is not checked here: {why}"}
     wm = walk.get("m")
     if walk.get("valid") is not True or not isinstance(wm, (int, float)) or isinstance(wm, bool):
         base.update(_crossings_only(m, None))

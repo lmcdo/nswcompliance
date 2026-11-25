@@ -1,0 +1,114 @@
+{
+  "tier": "Standard",
+  "justification": "Outreach claim OC-22 named five areas and promised a 90% match with the OpenStreetMap Valhalla router and no opposite answer. A 2026-11-22 run found one disagreement in a council outside the five areas (28 Mandolong Road, Mosman) that the live card still answered, and the router shares our map data so it cannot say which route is right. The walking answer now applies only in the 10 pilot councils, listed in data/lmr_walk_scope.json; any other council, or a lot whose council did not answer, gets cant_tell with the reason walk_not_checked_in_this_council. A lot whose straight line is already over the limit still answers no anywhere, because a walk cannot be shorter than a straight line. The claim is rewritten to that scope with no accuracy rate, and its check now proves the scope file equals the pilot list and the production image copies it.",
+  "commit_hash": "dc2c7d9c",
+  "files": [
+    "services/lmr_area_decision.py",
+    "scripts/outreach_claim_checks.py",
+    "data/lmr_walk_scope.json",
+    "Dockerfile.python",
+    ".claude/dq_checks.json",
+    "tests/test_lmr_walk_scope.py",
+    "tests/test_lmr_area_decision.py",
+    "tests/test_lmr_area_inputs.py",
+    "tests/test_outreach_claim_checks_oc22.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22",
+    "expected": "Tests pass and OC-22 prints HOLDS.",
+    "fails_when": "A council outside the pilot gets a walking yes or no; a council name variant such as Hornsby Shire is treated as outside; a missing or malformed scope file lets an answer through; the scope file and the pilot list differ; the image does not copy the scope file.",
+    "observed_red": "Five hand breakages each turned a test red and were restored: the scope gate removed, the gate that ignores an unplaced council, the name normalisation removed, the scope-equals-pilot check removed, and the image-copy check removed. One of the new tests failed on its own at first because it reused a folder; it was fixed."
+  },
+  "pre_impl": {
+    "existing_data": "The pilot list is frontend-nextjs/shared/brief-scope.json (10 councils); the engine already compares council names with norm_lga for the exclusion rule.",
+    "assumption_mismatch": "OC-22 was written when five areas had walking maps; the other pilot walking maps were built on 2026-11-17 and the claim was never widened. The five-area names (Canterbury-Bankstown, Woollahra) are not pilot councils.",
+    "new_vs_existing": "New: the scope file, the gate in the distance step, the scope check. Changed: the claim text and its pass condition. Unchanged: the walk, the law facts and every other rule.",
+    "external_source_error": "If the council lookup does not answer, the walking check says not checked instead of guessing.",
+    "frontend_type": "No type change: cant_tell with a detail already renders.",
+    "user_failure_mode": "A house outside the 10 councils sees the walking distance is not checked here, not a yes or no from a map nobody has checked there."
+  },
+  "functions": [
+    {
+      "name": "walk_scope",
+      "file_line": "services/lmr_area_decision.py:142",
+      "input": "the path of the walking scope file",
+      "output": "the set of council keys the walking check answers for",
+      "if_none": "A missing, empty or malformed file gives none and every lot says not checked."
+    },
+    {
+      "name": "_distance_step",
+      "file_line": "services/lmr_area_decision.py:507",
+      "input": "the lot measurements and the law facts",
+      "output": "yes, no, borderline or cant_tell with the measured walk",
+      "if_none": "A council outside the scope or one that did not answer gives cant_tell with the reason."
+    },
+    {
+      "name": "walk_scope_is_the_pilot",
+      "file_line": "scripts/outreach_claim_checks.py:592",
+      "input": "the scope file, the pilot list and the Dockerfile paths",
+      "output": "pass or fail with the councils that differ",
+      "if_none": "An unreadable or empty input fails, never passes."
+    }
+  ],
+  "values": [
+    {
+      "value": "lga (the council of the lot) from the area measurements",
+      "read_at": "services/lmr_area_decision.py:507",
+      "nullable": "yes",
+      "guard_at": "services/lmr_area_decision.py:507 (norm_lga type check)",
+      "if_missing": "cant_tell: the council did not answer."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A lot in a council outside the pilot such as Mosman.",
+      "what_happens": "It could get a walking yes or no from an overlapping map.",
+      "mitigated": "Mitigated: the gate returns cant_tell with the reason.",
+      "how": "Tests for Mosman, Canterbury-Bankstown and Woollahra.",
+      "repro": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22"
+    },
+    {
+      "scenario": "The portal names a pilot council with Shire or Council in the name.",
+      "what_happens": "A covered council would read as outside.",
+      "mitigated": "Mitigated: names are compared with norm_lga, which drops those words.",
+      "how": "A test over eleven spellings.",
+      "repro": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22"
+    },
+    {
+      "scenario": "The scope file is missing in production.",
+      "what_happens": "Every lot would say not checked.",
+      "mitigated": "Mitigated: the claim check fails unless the Dockerfile copies the file, and a missing file fails closed.",
+      "how": "Tests for the image line and for bad files.",
+      "repro": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22"
+    },
+    {
+      "scenario": "The pilot list changes and the scope file does not.",
+      "what_happens": "The claim and the card would drift apart.",
+      "mitigated": "Mitigated: OC-22 compares the two lists exactly.",
+      "how": "Tests for a council in one list only.",
+      "repro": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22"
+    },
+    {
+      "scenario": "A wrong walk inside a pilot council.",
+      "what_happens": "A path on the map that is not walkable gives a short walk.",
+      "mitigated": "Not mitigated: only a person checking routes on the ground finds these; the page says to check on the ground.",
+      "how": "Not applicable.",
+      "repro": "Not applicable."
+    },
+    {
+      "scenario": "A lot with a straight line over the limit outside the pilot.",
+      "what_happens": "It still gets a definite no answer.",
+      "mitigated": "Mitigated on purpose: a walk cannot be shorter than a straight line, so no is certain.",
+      "how": "A test in Mosman.",
+      "repro": "python -m pytest tests/test_lmr_walk_scope.py tests/test_lmr_area_decision.py tests/test_outreach_claim_checks_oc22.py tests/test_lmr_area_inputs.py tests/test_evidence_statement.py -q -o addopts= ; python scripts/outreach_claim_checks.py OC-22"
+    }
+  ],
+  "residual_risk": "1) The claim no longer promises an accuracy rate; none is quoted anywhere. 2) A wrong short walk inside a pilot council (a map path that cannot be walked) is not caught by this change; only on-the-ground checks find it. 3) Councils outside the pilot lose the walking answer on the live card. 4) The Ashfield pilot name maps to Inner West in the scope file because that is the council the portal reports.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy, check a Mosman address returns cant_tell with the not-checked reason and a Penrith address still returns a walk."
+  }
+}

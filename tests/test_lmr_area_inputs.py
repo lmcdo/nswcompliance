@@ -211,7 +211,9 @@ def test_flood_function_failures_and_odd_answers_are_unknown_never_clear():
     assert r["value"] is None and "failed" in r["reason"]
 
 
-def test_a_newcastle_lot_is_a_yes_only_when_flood_says_clear():
+def test_a_newcastle_lot_is_a_yes_only_when_flood_says_clear(monkeypatch):
+    # Newcastle is not a pilot council, so the walking check would say not checked; this test is about the flood rule, so put Newcastle in the walking scope for it only.
+    monkeypatch.setattr(dec, "walk_scope", lambda *a, **k: frozenset({dec.norm_lga("CITY OF NEWCASTLE")}))
     lay = {"tod_map": CLEAR_L, "accelerated": CLEAR_L, "exclusion": CLEAR_L, "bushfire": CLEAR_L, "lga": "CITY OF NEWCASTLE",
            "heritage": {"item": False, "conservation_area": False, "state_register": False},
            **{k: CLEAR_L for k in NEW_LAYER_KEYS}}

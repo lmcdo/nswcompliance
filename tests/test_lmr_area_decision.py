@@ -19,6 +19,18 @@ CLEAR = {"point": False, "lot": False}
 HIT = {"point": True, "lot": True}
 
 
+class _EveryCouncil:
+    def __contains__(self, key):
+        return True
+
+
+@pytest.fixture(autouse=True)
+def _walk_scope_is_not_the_subject_here(monkeypatch):
+    """These tests are about the law's own council lists (flood, catchments, TOD), so the pilot walking scope is switched wide open.
+    The scope itself is tested against the real file in tests/test_lmr_walk_scope.py."""
+    monkeypatch.setattr(d, "walk_scope", lambda *a, **k: _EveryCouncil())
+
+
 def lot(**over):
     """A lot that is clear on every rule and 450 m from a station: the answer is YES until a test breaks it."""
     base = {
@@ -550,12 +562,12 @@ def test_failure_reply_has_every_field_the_page_requires():
 
 def test_the_answer_uses_the_same_whole_metres_the_page_shows():
     """800.4 m displays as 800 m, so it must be answered as 800 m (within), never 'over' while the page shows 800."""
-    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.4, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    step = d._distance_step({"lga": "Penrith", "straight_m": 300.0, "walk": {"valid": True, "m": 800.4, "anchor": "X", "entrance_id": "e"}}, FACTS)
     assert step[0] == "yes" and step[1]["walk_best_m"] == 800
-    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 800.6, "anchor": "X", "entrance_id": "e"}}, FACTS)
+    step = d._distance_step({"lga": "Penrith", "straight_m": 300.0, "walk": {"valid": True, "m": 800.6, "anchor": "X", "entrance_id": "e"}}, FACTS)
     assert step[0] == "no" and step[1]["walk_best_m"] == 801
 
 
 def test_an_infinite_station_outline_length_is_treated_as_a_mapped_entrance_not_a_crash():
-    step = d._distance_step({"straight_m": 300.0, "walk": {"valid": True, "m": 700.0, "optimistic_by_m": float("inf"), "anchor": "X", "entrance_id": "e"}}, FACTS)
+    step = d._distance_step({"lga": "Penrith", "straight_m": 300.0, "walk": {"valid": True, "m": 700.0, "optimistic_by_m": float("inf"), "anchor": "X", "entrance_id": "e"}}, FACTS)
     assert step[0] == "yes" and step[1]["entrance_unmapped_extra_m"] == 0

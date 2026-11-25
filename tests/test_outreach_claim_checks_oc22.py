@@ -80,3 +80,52 @@ def test_the_fingerprint_changes_when_a_walking_file_changes(tmp_path):
     assert before == data_fingerprint(tmp_path)
     (tmp_path / "data" / "lmr_walk" / "a.npz").write_bytes(b"two")
     assert data_fingerprint(tmp_path) != before
+
+
+# ---- OC-22 rewritten 2026-11-24: the claim is the scope (10 pilot councils answer, others say not checked), checked by walk_scope_is_the_pilot.
+PILOT_KEYS = ["penrith", "wollongong", "waverley", "ku_ring_gai", "inner_west", "blacktown", "northern_beaches", "georges_river", "parramatta", "hornsby"]
+PILOT_BRIEF = ["penrith", "wollongong", "waverley", "ku_ring_gai", "ashfield", "blacktown", "northern_beaches", "georges_river", "parramatta", "hornsby"]
+
+
+def scope_run(tmp_path, scope=PILOT_KEYS, brief=PILOT_BRIEF, image="COPY data/lmr_walk_scope.json ./data/lmr_walk_scope.json\n", scope_text=None):
+    sp, bp, dp = tmp_path / "scope.json", tmp_path / "brief.json", tmp_path / "Dockerfile.python"
+    sp.write_text(scope_text if scope_text is not None else json.dumps({"councils": scope}), encoding="utf-8")
+    bp.write_text(json.dumps({"councils": brief}), encoding="utf-8")
+    if image is not None:
+        dp.write_text(image, encoding="utf-8")
+    return occ.walk_scope_is_the_pilot(sp, bp, dp)
+
+
+def test_scope_equal_to_the_pilot_list_with_the_image_line_holds(tmp_path):
+    assert scope_run(tmp_path)[0] == occ.PASS
+
+
+def test_a_council_in_scope_but_not_in_the_pilot_fails_and_is_named(tmp_path):
+    r = scope_run(tmp_path, scope=PILOT_KEYS + ["mosman"])
+    assert r[0] == occ.FAIL and "mosman" in r[1]
+
+
+def test_a_pilot_council_missing_from_scope_fails_and_is_named(tmp_path):
+    r = scope_run(tmp_path, scope=PILOT_KEYS[:-1])
+    assert r[0] == occ.FAIL and "hornsby" in r[1]
+
+
+def test_ashfield_in_the_pilot_list_is_matched_by_inner_west_in_scope(tmp_path):
+    assert scope_run(tmp_path, scope=[k for k in PILOT_KEYS if k != "inner_west"] + ["ashfield"])[0] == occ.FAIL
+
+
+def test_the_image_must_copy_the_scope_file(tmp_path):
+    r = scope_run(tmp_path, image="COPY data/lmr_walk/ ./data/lmr_walk/\n")
+    assert r[0] == occ.FAIL and "Dockerfile.python" in r[1]
+
+
+def test_unreadable_missing_or_empty_inputs_fail_never_pass(tmp_path):
+    assert scope_run(tmp_path, scope_text="{not json")[0] == occ.FAIL
+    assert scope_run(tmp_path, scope=[])[0] == occ.FAIL
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    assert scope_run(fresh, image=None)[0] == occ.FAIL   # no Dockerfile in this folder
+
+
+def test_the_real_files_hold_today():
+    assert occ.walk_scope_is_the_pilot()[0] == occ.PASS
