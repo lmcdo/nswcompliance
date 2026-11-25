@@ -64,7 +64,7 @@ describe('evidence statement page', () => {
     expect(screen.getByText(/1 to check/)).toBeTruthy();
     expect(screen.getByText(/controls that apply only to part of a council area, are not shown here/)).toBeTruthy();
     expect(screen.getAllByText(/It is not a planning certificate/)).toHaveLength(2);   // the method box and the record line
-    expect(screen.getByText(/Section 164 exclusions \(law version dated 2026-10-23\)/)).toBeTruthy();
+    expect(screen.getByText(/Is this lot excluded\? Section 164 \(law version dated 2026-10-23\)/)).toBeTruthy();
   });
 
   it('never prints a range, a range reason or the engine heuristic, even when the payload carries them', async () => {

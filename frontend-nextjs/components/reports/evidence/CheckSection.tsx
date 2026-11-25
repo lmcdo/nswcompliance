@@ -58,13 +58,13 @@ export default function CheckSection({ data }: { data: Evidence }) {
       <h2 id="check-h" className="text-2xl font-bold tracking-tight">2 · Is this lot in an area the housing rules exclude?</h2>
       <p className="max-w-3xl text-base leading-relaxed text-gray-600">
         Whatever the walk, the Low and Mid Rise housing rules do not apply to some land, such as flood-prone land. The law lists {t.total} kinds, in section 164(1){instrument}. {t.clear} did not apply to this lot.
-        {t.excludes > 0 ? ` ${t.excludes === 1 ? 'One' : t.excludes} ${t.excludes === 1 ? 'was' : 'were'} found to apply to this lot.` : ''}{t.other.length - t.excludes > 0 ? ` ${t.other.length - t.excludes === 1 ? 'One' : t.other.length - t.excludes} could not be settled by this tool and ${t.other.length - t.excludes === 1 ? 'needs' : 'need'} a person.` : ''} Law wording for all {t.total}: see The proof section below.
+        {t.excludes > 0 ? ` ${t.excludes === 1 ? 'One' : t.excludes} ${t.excludes === 1 ? 'was' : 'were'} found to apply to this lot.` : ''}{t.other.length - t.excludes > 0 ? ` ${t.other.length - t.excludes === 1 ? 'One' : t.other.length - t.excludes} could not be settled by this tool and ${t.other.length - t.excludes === 1 ? 'needs' : 'need'} a person.` : ''} Law wording for all {t.total}: see the Law wording section below.
       </p>
       {data.summary?.line ? <p className="text-sm font-semibold">{data.summary.line}</p> : null}
       <div className="flex flex-wrap gap-4">{cards.map((r) => <Card key={r.para} r={r} />)}</div>
       {rest.length > 0 ? (
         <details className="rounded-2xl border border-gray-200 bg-white">
-          <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-5 py-4"><span><span className="block text-base font-semibold">{rest.length === 1 ? 'The other check, clear' : `The other ${rest.length} checks, all clear`}</span><span className="block text-sm text-gray-600">One line each. The law&apos;s wording and the map checked are in The proof below.</span></span><span aria-hidden="true" className="text-xl text-gray-600">›</span></summary>
+          <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-5 py-4"><span><span className="block text-base font-semibold">{rest.length === 1 ? 'The other check, clear' : `The other ${rest.length} checks, all clear`}</span><span className="block text-sm text-gray-600">One line each. The law&apos;s wording and the map checked are in the Law wording section below.</span></span><span aria-hidden="true" className="text-xl text-gray-600">›</span></summary>
           <ul className="grid gap-x-6 gap-y-2 border-t border-gray-200 px-5 py-4 text-sm sm:grid-cols-2">{rest.map((r) => <li key={r.para}>✓ {rowTitle(r)} <span className="text-gray-600">({r.para})</span></li>)}</ul>
         </details>
       ) : null}
