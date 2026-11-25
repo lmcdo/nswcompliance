@@ -68,7 +68,7 @@ def run(conn, apply: bool, path: str = PLAN) -> int:
             version(cur, p["id"], p["new_text"], src, ref, "Replaced with the text in force, word for word.", now, note, DETECTED)
             # Migration 113 (DQ-145): new state-law text is served only with its proof, in the same transaction. The text was checked
             # to be inside the whole instrument in force; a new source path and time are required or the proof is voided.
-            cur.execute("UPDATE regulatory_provisions SET citation_status = 'proven', citation_source_path = %s, citation_checked_at = %s WHERE id = %s",
+            cur.execute("UPDATE regulatory_provisions SET citation_status = 'proven', citation_source_path = %s, citation_checked_at = %s WHERE id = %s AND is_current",
                         (src + "#in-force-2026-11-25", now, p["id"]))
         done[p["action"]] += 1
     print(f"{len(plan)} rows: {done}")
