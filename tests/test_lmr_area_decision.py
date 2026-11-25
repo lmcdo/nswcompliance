@@ -57,6 +57,18 @@ def test_baseline_is_yes_with_clause_page_and_figures():
     assert r["law_version_date"] == "2026-10-23"
 
 
+def test_a_single_measured_walk_is_worded_as_a_walk_not_a_range():
+    # One measured walk means low == high: the headline must not print "range 450-450 m".
+    h = ans(lot())["headline"]
+    assert "the walk is 450 m from Ashfield station" in h and "range" not in h
+
+
+def test_a_missing_walk_figure_is_said_not_printed_as_none():
+    f = {"walk_low_m": None, "walk_high_m": None, "anchor": "Ashfield station", "limit_m": 800}
+    h = d._headline("lmr", {"figures": f, "clause": "s163", "page": 77}, {})
+    assert "no walk figure is available" in h and "None" not in h
+
+
 def test_every_yes_prints_what_was_not_checked():
     # lot(): bush fire wired; the coastal and Hawkesbury-Nepean maps are not; Inner West is outside the (f1) and (g) council lists
     r = ans(lot())

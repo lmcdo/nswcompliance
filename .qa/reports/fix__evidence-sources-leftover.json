@@ -1,0 +1,60 @@
+{
+  "tier": "standard",
+  "justification": "One Python headline string used by the evidence page and the area check, plus one sentence on the evidence page; above minor because it changes a served string.",
+  "commit_hash": "cf32134f",
+  "files": [
+    "services/lmr_area_decision.py",
+    "tests/test_lmr_area_decision.py",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "none: the headline is built per request from the area decision, nothing stored",
+    "assumption_mismatch": "If walk_low_m differs from walk_high_m (an old range answer) the original range wording is still printed, so older shapes are unchanged",
+    "new_vs_existing": "Applies to every new area-check response; cached responses keep the old headline until they expire"
+  },
+  "functions": [
+    {
+      "name": "_headline",
+      "file_line": "services/lmr_area_decision.py:693",
+      "input": "pathway string plus the lmr and tod result dicts",
+      "output": "headline string shown on the evidence page and the area-check card",
+      "if_none": "both figures None prints 'no walk figure is available' instead of 'None m' (tested)"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "low and high both None on the lmr pathway",
+      "what_happens": "headline reads 'no walk figure is available', not 'None m'",
+      "mitigated": true,
+      "how": "services/lmr_area_decision.py _headline None branch; test_a_missing_walk_figure_is_said_not_printed_as_none",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -q -o addopts="
+    },
+    {
+      "scenario": "an older range answer (low 900, high 1060) hits the same builder",
+      "what_happens": "it must still print the range wording",
+      "mitigated": true,
+      "how": "the else branch keeps 'walking range lo-hi m'; test_unmapped_span_figures_and_detail_use_the_range_wording covers the detail text",
+      "repro": "python -m pytest tests/test_lmr_area_decision.py -q -o addopts="
+    },
+    {
+      "scenario": "the frontend card parses the headline text",
+      "what_happens": "a card could lose its range display",
+      "mitigated": true,
+      "how": "area-check-card.test.tsx uses a fixed headline string and passes (190 evidence and area-check jest tests)",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=area-check"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_area_decision.py -q -o addopts=",
+    "fails_when": "the headline prints 'walking range N-N m' for a single measured walk",
+    "observed_red": "Reverting the headline change makes test_a_single_measured_walk_is_worded_as_a_walk_not_a_range assert on 'range' in the string; with the change, 105 passed"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: open the Penrith evidence page after the Railway deploy and read 'How this was measured'"
+  }
+}

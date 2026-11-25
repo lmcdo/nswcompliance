@@ -695,7 +695,12 @@ def _headline(pathway: str, lmr: dict, tod: dict) -> str:
         return f"Chapter 5 (Transport Oriented Development) applies to this lot ({tod['clause']}, p{tod['page']}). Chapter 6 does not."
     if pathway == "lmr":
         f = lmr["figures"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
-        return (f"Within the Chapter 6 walking limit: walking range {f.get('walk_low_m')}-{f.get('walk_high_m')} m from {f.get('anchor')}, "
+        lo, hi = f.get("walk_low_m"), f.get("walk_high_m")
+        if lo is None or hi is None:
+            walk = "no walk figure is available"  # a lmr answer without a measured walk must say so, never print 'None m'
+        else:
+            walk = f"the walk is {lo} m" if lo == hi else f"walking range {lo}-{hi} m"
+        return (f"Within the Chapter 6 walking limit: {walk} from {f.get('anchor')}, "
                 f"limit {f.get('limit_m')} m ({lmr['clause']}, p{lmr['page']}). Not every exclusion was checked; see the list.")
     if pathway == "borderline":
         return (f"Borderline: {lmr['detail']} ({lmr['clause']}, p{lmr['page']}). The walking route is measured from public footpath "
