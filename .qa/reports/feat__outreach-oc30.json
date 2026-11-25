@@ -1,0 +1,42 @@
+{
+  "tier": "minor",
+  "justification": "Minor: one claim row in .claude/dq_checks.json changes from false to true. The data change behind it (164 brief rows dropped via load_project_brief.py --replace-cells) was applied live with owner go and a backup; OC-24 now exits 0 and OC-30 still holds.",
+  "commit_hash": "e055736b",
+  "files": [
+    ".claude/dq_checks.json"
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/outreach_claim_checks.py OC-24",
+    "fails_when": "Prints FAILS: a brief row points at a stale, hidden or other-council clause, or the plan-brief jest test fails.",
+    "observed_red": "Before the load it printed FAIL: 102 of 8698 rows. After, 0 of 8533 and the jest test passes."
+  },
+  "break_it": [
+    {
+      "scenario": "Dropping rows lowers proven-rule recall.",
+      "what_happens": "OC-30 falls under 90%.",
+      "mitigated": true,
+      "how": "Tested offline first, then re-run after the load: 43/44 overall, 17/17 hold-out, unchanged.",
+      "repro": "python scripts/outreach_claim_checks.py OC-30 prints HOLDS."
+    },
+    {
+      "scenario": "A later hide leaves the brief pointing at an unserved rule again.",
+      "what_happens": "OC-24 fails again.",
+      "mitigated": true,
+      "how": "OC-24 now fails visibly when that happens.",
+      "repro": "python scripts/outreach_claim_checks.py OC-24"
+    },
+    {
+      "scenario": "The drop is wrong and needs undoing.",
+      "what_happens": "Some brief cells lose a row.",
+      "mitigated": true,
+      "how": "The loader saved the 650 old rows in a backup.",
+      "repro": "load_project_brief.py --restore-from data/db_rollback_backups/brief_drop_unserved_pre_2026-11-24.json"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  }
+}
