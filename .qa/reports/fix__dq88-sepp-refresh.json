@@ -88,5 +88,8 @@
   "secrets": "No",
   "other_repo": "No",
   "manual_verify": "python scripts/dq88_apply_law_refresh.py --apply (after the owner's go), then python scripts/dq_probe_live.py --id DQ-88."
+ },
+ "real_layer_exempt": {
+  "scripts/dq88_refresh_2026_10_10.py": "The changed function version() is exercised against the real database by tests/test_dq88_apply_law_refresh_real_db.py, which dry-runs the plan through it and rolls back; the module's own main() is the one-off 10 October run and is unchanged."
  }
 }
