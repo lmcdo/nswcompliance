@@ -31,7 +31,7 @@ export default function ProofSection({ data, showRoadRules }: { data: Evidence; 
               <span className="block text-sm text-gray-600">{data.law_instrument ? `${data.law_instrument}. ` : ''}Each paragraph with the law&apos;s words, the map or list checked and the result.</span></span><span aria-hidden="true" className="text-xl text-gray-600">›</span></summary>
             <div className="overflow-x-auto px-6 pb-6">
               <table className="w-full border-collapse text-sm">
-                <thead><tr className="text-left"><th className="border p-1">Clause</th><th className="border p-1">Sources</th><th className="border p-1">Checked against</th><th className="border p-1">Result</th></tr></thead>
+                <thead><tr className="text-left"><th className="border p-1">Clause</th><th className="border p-1">What the law says</th><th className="border p-1">Checked against</th><th className="border p-1">Result</th></tr></thead>
                 <tbody>
                   {data.exclusions.map((x) => (
                     <tr key={x.para} className="align-top">
