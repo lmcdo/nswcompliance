@@ -133,7 +133,7 @@ def _run_area_check(lat: float, lng: float, **extra) -> dict:
     from services import lmr_map_copy
     from services.lmr_area_inputs import area_check
     from services.lmr_area_lga import bushfire_from_snapshot, lga_best_guess, lga_from_snapshot, lot_outline_from_snapshot
-    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot, copy_fn=lmr_map_copy.check, flood_study_fn=lmr_map_copy.flood_distance, **extra)
+    return area_check(lat, lng, flood_fn=_flood_answer_for(lat, lng), lga_fallback=lga_from_snapshot, lga_guess=lga_best_guess, bushfire_fn=bushfire_from_snapshot, lot_fn=lot_outline_from_snapshot, copy_fn=lmr_map_copy.check, flood_study_fn=lmr_map_copy.flood_distance, pipeline_fn=lmr_map_copy.pipeline, **extra)
 
 
 def _timed(name: str, fn, *args, **kwargs):

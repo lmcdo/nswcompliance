@@ -33,6 +33,9 @@ MAPS_DIR = Path(__file__).resolve().parent.parent / "data" / "law" / "maps"
 MAX_AGE_DAYS = 45      # noqa: regulatory-number -- owner-approved staleness limit for our own copy, not a planning figure
 EDGE_M = 5.0           # noqa: regulatory-number -- engineering tolerance for "close enough to an edge to ask the live map", not a planning figure
 _DEG_PER_M = 1.0 / 111000.0
+LINE_TYPES = ('LineString', 'MultiLineString')
+LINE_LAYER = 'gas_pipelines'   # the one saved layer made of lines; every other layer is polygons and a zero-area shape in it is still counted as skipped
+PIPELINE_SEARCH_M = 60000.0   # the same widest search the live nearest-pipeline lookup makes (5, 20 then 60 km); a pipeline farther than this is reported as none
 
 
 def _edge_deg(lat: float) -> float:
@@ -46,6 +49,8 @@ COPY_KEYS = {
     "georges_catchment": "georges_catchment", "coastal_vuln": "coastal_vuln", "airport_noise": "airport_noise", "heritage_shr": "heritage_shr",
     # the 2024 Hawkesbury-Nepean River Flood Study extents (see flood_distance); a study, so each layer carries its own read_on and age limit in the manifest
     "hn_pmf": "hn_pmf", "hn_500aep": "hn_500aep", "hn_100aep": "hn_100aep",
+    # the gas pipeline lines (read by MapCopy.pipeline); listed so the copy checker proves its hash and count and raises the freshness reminder for it too
+    "gas_pipelines": "gas_pipelines",
 }
 FLOOD_EDGE_M = 100.0   # noqa: regulatory-number -- engineering margin: 15 m flood-model cell plus the coarse scale of the law's Figure 1-1, not a planning figure
 FLOOD_SEARCH_DEG = 0.3   # about 30 km: a flood area farther than this is reported as "none within the search distance"
@@ -116,7 +121,7 @@ class MapCopy:
                     s = shape(g)
                     if not s.is_valid:
                         s = s.buffer(0)
-                    if s.is_empty or s.area == 0:   # a zero-area polygon can never contain a point; counted, not guessed at
+                    if s.is_empty or (s.area == 0 and not (name == LINE_LAYER and s.geom_type in LINE_TYPES)):   # a zero-area polygon can never contain a point; counted, not guessed at (only the pipeline layer is lines, which have no area by nature)
                         skipped += 1
                         continue
                     geoms.append(s)
@@ -231,6 +236,58 @@ class MapCopy:
         return {"inside": inside, "edge_m": None if edge is None else round(edge, 1), "nearest_m": None if nearest is None else round(nearest, 1),
                 "within_box": within_box, "used_outline": used_outline, "as_of": lay.as_of.isoformat(), "polygons": int(len(all_cand))}
 
+    def pipeline(self, lat: float, lng: float, rings: Optional[list], metres: float, today: Optional[date] = None) -> Optional[dict]:
+        """Gas pipelines (Geoscience Australia's national layer, our saved copy: data/law/maps/gas_pipelines.geojson.gz, listed in manifest.json) against a lot, or None (no answer: ask the live service).
+
+        {"hit": a pipeline is within `metres` of the lot (its outline when given, else the point), "names": feature_name of each such pipeline,
+         "nearest_m": whole metres from the POINT to the nearest pipeline within 60 km (None when there is none), "nearest_name": its name,
+         "searched_m": the widest search, "near_edge": a pipeline lies within EDGE_M of `metres` from the lot (the live service buffers on the ground, so a lot this close
+         can differ and the live answer is used), "as_of": date the copy was read}"""
+        from shapely.geometry import Point, Polygon
+        import numpy as np
+        import shapely
+
+        lay = self.layer("gas_pipelines", today)
+        if lay is None or lay.skipped:   # a layer with an unreadable pipeline could miss one near the lot, so it gives no answer
+            return None
+        if not isinstance(metres, (int, float)) or isinstance(metres, bool) or not math.isfinite(metres) or metres <= 0:
+            return None
+        target: Any = Point(lng, lat)
+        if rings and len(rings) >= 4:
+            try:
+                p = Polygon(rings)
+                p = p if p.is_valid else p.buffer(0)
+                if not p.is_empty:   # a degenerate outline repairs to nothing: fall back to the point, never to "nothing found"
+                    target = p
+            except Exception as exc:  # noqa: BLE001 -- an unusable outline falls back to the point
+                logger.warning("map copy: lot outline unusable: %s", exc)
+        mx, my = 111320.0 * math.cos(math.radians(lat)), 110540.0   # metres per degree here (the same flat scale as the live lookup and the walking maps)
+        if not bool(np.isin(shapely.get_type_id(lay.geoms_arr), (1, 5)).all()):   # a refreshed layer holding anything but lines is not a pipeline map: no answer for the whole layer
+            logger.warning("map copy: gas_pipelines holds a shape that is not a line")
+            return None
+        reach_deg = PIPELINE_SEARCH_M / min(mx, my) * 1.01
+        near_deg = (metres + 2 * EDGE_M) / min(mx, my) * 1.01   # the threshold plus the edge tolerance each side, so a pipeline just past the threshold is still seen and flags near_edge
+        # the nearest-pipeline search is round the point; the hit test is against the whole lot, so a long lot also looks round its own outline (a pipeline beside its far end counts)
+        cand = np.union1d(np.asarray(lay.tree.query(Point(lng, lat).buffer(reach_deg)), dtype=int), np.asarray(lay.tree.query(target.buffer(near_deg)), dtype=int))
+        out: dict = {"hit": False, "names": [], "nearest_m": None, "nearest_name": None, "searched_m": int(PIPELINE_SEARCH_M), "near_edge": False, "as_of": lay.as_of.isoformat()}
+        if not len(cand):
+            return out
+
+        def metric(geoms: Any) -> Any:
+            return shapely.transform(geoms, lambda xy: (xy - np.array([lng, lat])) * np.array([mx, my]))
+
+        g_m = metric(lay.geoms_arr[cand])
+        d_lot = shapely.distance(metric(np.array([target], dtype=object))[0], g_m)
+        d_pt = shapely.distance(shapely.Point(0.0, 0.0), g_m)
+        out["hit"] = bool((d_lot <= metres).any())
+        out["names"] = [lay.props[k].get("feature_name") for k in cand[d_lot <= metres].tolist()]
+        out["near_edge"] = bool((np.abs(d_lot - metres) <= EDGE_M).any())
+        j = int(d_pt.argmin())
+        if float(d_pt[j]) <= PIPELINE_SEARCH_M:
+            out["nearest_m"] = int(round(float(d_pt[j])))
+            out["nearest_name"] = lay.props[int(cand[j])].get("feature_name")
+        return out
+
     def noise_bands(self, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[list]:
         """Every airport-noise band the lot (or the point) touches, as the live reader returns them; None = no answer."""
         from shapely.geometry import Point, Polygon
@@ -260,6 +317,10 @@ def check(key: str, lat: float, lng: float, rings: Optional[list] = None, today:
 
 def noise_bands(lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[list]:
     return _default.noise_bands(lat, lng, rings, today)
+
+
+def pipeline(lat: float, lng: float, rings: Optional[list], metres: float, today: Optional[date] = None) -> Optional[dict]:
+    return _default.pipeline(lat, lng, rings, metres, today)
 
 
 def flood_distance(key: str, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[dict]:

@@ -6,6 +6,7 @@
 
     python scripts/lmr_area/download_map_layers.py            # dry run: counts and sizes, writes nothing
     python scripts/lmr_area/download_map_layers.py --apply    # writes data/law/maps/<name>.geojson.gz and data/law/maps/manifest.json
+    python scripts/lmr_area/download_map_layers.py --only gas_pipelines [--apply]   # one layer: its file and its own manifest entry (with its own read_on); no other layer and not the file-wide date is touched
 
 Each file is the layer's features as GeoJSON in WGS84 (6 decimal places, about 0.1 m), gzipped (the repo refuses files over 2 MB; a bigger layer is split into numbered parts). The manifest records for each:
 source URL, feature count, the date it was read, and the sha256 of the saved file. Nothing is written to the database. Bush fire, heritage items and the
@@ -39,7 +40,16 @@ LAYERS = {
     "coastal_vuln": (f"{_EPL}/Planning_Portal_SEPP/MapServer/251", "Coastal vulnerability areas (s164(1)(b))"),
     "airport_noise": (f"{_EPL}/Planning_Portal_Protection/MapServer/235", "Airport noise contour bands (s164(1)(h))"),
     "heritage_shr": (f"{_EPL}/Planning_Portal_Principal_Planning/MapServer/221", "State Heritage Register (s164(1)(d))"),
+    # Geoscience Australia national gas pipelines (lines, 1,425 features Australia-wide on 2026-11-26): the live lookup of the pipeline distance took 1 to 15 s from the service.
+    "gas_pipelines": ("https://services.ga.gov.au/gis/rest/services/Oil_Gas_Pipelines/MapServer/1", "National gas pipelines (s164(1)(i) distance, evidence page)"),
 }
+
+
+def _today_utc() -> date:
+    """The date in UTC, which is the date the service (Railway, UTC) will compare a copy against: a copy dated by a local date ahead of UTC would read as dated in the future and be refused for hours."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).date()
 
 
 def get(url: str, params: dict, tries: int = 4) -> Optional[dict]:
@@ -100,10 +110,19 @@ def fetch_layer(url: str) -> Optional[dict]:
 
 def main(argv: list[str]) -> int:
     apply = "--apply" in argv
-    manifest: dict[str, Any] = {"read_on": date.today().isoformat(), "note": "Our copy of state map layers; read_on is the date they were downloaded.", "layers": {}}
+    only: Optional[str] = None
+    if "--only" in argv:
+        i = argv.index("--only")
+        only = argv[i + 1] if i + 1 < len(argv) else None
+        if only not in LAYERS:
+            print(f"--only needs one of {sorted(LAYERS)}")
+            return 2
+    manifest: dict[str, Any] = {"read_on": _today_utc().isoformat(), "note": "Our copy of state map layers; read_on is the date they were downloaded.", "layers": {}}
     failed, too_big = [], []
     pending: list[tuple[str, bytes]] = []
     for name, (url, use) in LAYERS.items():
+        if only is not None and name != only:
+            continue
         print(f"{name}: {use}", flush=True)
         fc = fetch_layer(url)
         if fc is None:
@@ -126,6 +145,8 @@ def main(argv: list[str]) -> int:
         print(f"  {len(feats)} features, {sum(len(g) for g in gzs):,} bytes gzipped in {len(gzs)} file(s)")
         manifest["layers"][name] = {"source": url, "use": use, "features": len(feats), "files": [
             {"file": nm, "features": len(c), "bytes": len(g), "sha256": hashlib.sha256(g).hexdigest()} for nm, c, g in zip(names, chunks, gzs)]}
+        if only is not None:
+            manifest["layers"][name]["read_on"] = _today_utc().isoformat()   # a one-layer refresh dates only that layer
         pending += list(zip(names, gzs))   # written only after EVERY layer has been read and checked
     if apply and not failed and not too_big:
         kept: dict[str, Any] = {}   # layers this script does not own (the flood-study copy from export_flood_copy.py) stay exactly as they are
@@ -139,11 +160,15 @@ def main(argv: list[str]) -> int:
             if not isinstance(old_layers, dict):
                 print(f"STOPPED: the existing manifest has no 'layers' table; fix or restore {mf} first. Nothing was written.")
                 return 1
-            kept = {k: v for k, v in old_layers.items() if k not in LAYERS}
+            kept = {k: v for k, v in old_layers.items() if (k not in LAYERS if only is None else k != only)}   # --only keeps every other layer exactly as it is
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         for nm, g in pending:
             (OUT_DIR / nm).write_bytes(g)
         manifest["layers"] = {**manifest["layers"], **kept}
+        if only is not None:   # the file-wide date and note stay as they were: the other layers were not read today
+            old = json.loads(mf.read_text(encoding="utf-8")) if mf.exists() else {}
+            manifest["read_on"] = old.get("read_on", manifest["read_on"])
+            manifest["note"] = old.get("note", manifest["note"])
         (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"wrote {len(manifest['layers'])} files and manifest.json to {OUT_DIR}")
     elif not apply:

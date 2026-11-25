@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import time
 from pathlib import Path
@@ -364,6 +365,40 @@ def _pipeline_nearest(lat: float, lng: float) -> dict:
     return {"nearest_m": None, "searched_m": PIPELINE_LADDER_M[-1]}
 
 
+def _pipeline_from_copy(fn: Optional[Any], lat: float, lng: float, rings: Optional[list], metres: float) -> Optional[dict]:
+    """The pipeline answer (hit, names, nearest distance) from our own copy of Geoscience Australia's layer, or None to ask the live service. Used only when the copy is proven and fresh
+    (fn gives None otherwise), when no pipeline lies within a few metres of the law's distance (the copy and the live service can differ there), and when every field has the right type.
+    Any doubt asks the live service, exactly as before."""
+    if fn is None:
+        return None
+    try:
+        got = fn(lat, lng, rings, metres)
+    except Exception as exc:  # noqa: BLE001 -- a failing copy asks the live service, never answers
+        logger.warning("lmr inputs: pipeline copy failed: %s", exc)
+        return None
+    if not isinstance(got, dict) or got.get("near_edge") is not False or not isinstance(got.get("hit"), bool):
+        return None
+    names, nearest = got.get("names"), got.get("nearest_m")
+    if not isinstance(names, list) or not all(n is None or isinstance(n, str) for n in names):
+        return None
+    searched = got.get("searched_m")
+    if nearest is not None and (not isinstance(nearest, (int, float)) or isinstance(nearest, bool) or not math.isfinite(nearest) or nearest < 0):
+        return None
+    if nearest is not None and got.get("nearest_name") is not None and not isinstance(got.get("nearest_name"), str):
+        return None
+    if nearest is None and (not isinstance(searched, (int, float)) or isinstance(searched, bool) or not math.isfinite(searched) or searched < 0):
+        return None
+    as_of = got.get("as_of")
+    if not isinstance(as_of, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of):   # an answer with no date could not be disclosed, so it is not used
+        return None
+    out: dict[str, Any] = {"hit": got.get("hit"), "names": names, "copy_as_of": as_of}
+    if nearest is not None:
+        out.update({"nearest_m": int(round(nearest)), "nearest_name": got.get("nearest_name")})
+    else:
+        out.update({"nearest_m": None, "searched_m": searched})
+    return out
+
+
 def _pipeline_near(lat: float, lng: float, rings: Optional[list], metres: float) -> dict:
     """Is a gas pipeline on Geoscience Australia's national map within `metres` of the lot? hit True / False, or None when the service did not answer."""
     extra = {"distance": str(metres), "units": "esriSRUnit_Meter"}
@@ -491,7 +526,7 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
            flood_fn: Optional[Any] = None, lga_fallback: Optional[Any] = None, lga_guess: Optional[Any] = None,
            bushfire_fn: Optional[Any] = None, lot_fn: Optional[Any] = None, copy_fn: Optional[Any] = None,
            want_route: bool = False, route_surfaces: Optional[list] = None,
-           flood_study_fn: Optional[Any] = None, want_distances: bool = False) -> dict:
+           flood_study_fn: Optional[Any] = None, want_distances: bool = False, pipeline_fn: Optional[Any] = None) -> dict:
     """Measurements for decide(): layer hits (point and lot outline), council, distances, walking.
 
     `want_route` (the evidence page only) also keeps the route each walk followed: a "route" entry on the crossings-only walk (from its own
@@ -530,7 +565,11 @@ def gather(lat: float, lng: float, *, rings: Optional[list] = None, stations: Op
             m["sydney_anef"] = "error"
     if "pipeline" not in m:
         try:   # the distance is the law's (s164(1)(i)), read from the saved facts, never typed here
-            m["pipeline"] = _stage("pipeline_near", _pipeline_near, lat, lng, rings, dec.LawFacts.load().number("s164_i_distance"))
+            metres = dec.LawFacts.load().number("s164_i_distance")
+            own = _pipeline_from_copy(pipeline_fn, lat, lng, rings, metres)
+            if own is not None and not want_distances:   # only the evidence page asks for distances: the public check keeps the answer it always had
+                own = {k: v for k, v in own.items() if k not in ("nearest_m", "nearest_name", "searched_m")}
+            m["pipeline"] = own if own is not None else _stage("pipeline_near", _pipeline_near, lat, lng, rings, metres)
         except dec.LawFactsError:
             m["pipeline"] = {"hit": None, "names": []}
     if flood_study_fn is not None and "flood_study" not in m:
