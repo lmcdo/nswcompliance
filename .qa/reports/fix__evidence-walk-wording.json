@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Five files of evidence-page wording only (walk method box and the walking-test sentences); standard because the file count is over the minor limit, not because of logic.",
-  "commit_hash": "bf952a63",
+  "commit_hash": "e54694c4",
   "files": [
     "frontend-nextjs/lib/evidence-summary.ts",
     "frontend-nextjs/components/reports/evidence/WalkMethod.tsx",
