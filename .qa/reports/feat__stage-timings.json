@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "After the flood-distance speed-up the live evidence call still takes a median 14.6 s on 34 real pilot-council lots, while the same call takes 2 to 3 s on a developer PC and the live area check alone takes about 5 s. The service log shows no warnings, so the extra time cannot be read from it. This change logs how long each stage of the evidence call takes (the lot outline, the map layers, the pipeline lookups, the flood study, the walks, the route map, the council controls and files) as 'lmr stage <name> <seconds>' lines through uvicorn's logger. It changes no answer and no response field; every stage call passes its result and its exceptions straight through.",
-  "commit_hash": "f5287e45",
+  "commit_hash": "abda03e5",
   "files": [
     "services/lmr_area_inputs.py",
     "services/housing_sepp_gates_api.py",
@@ -31,7 +31,7 @@
     },
     {
       "name": "housing_sepp_evidence",
-      "file_line": "services/housing_sepp_gates_api.py:140",
+      "file_line": "services/housing_sepp_gates_api.py:153",
       "input": "a latitude and longitude in New South Wales",
       "output": "the evidence data for the lot, built from the same stages as before",
       "if_none": "A lot outside New South Wales is refused with 422."

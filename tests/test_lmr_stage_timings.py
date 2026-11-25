@@ -25,3 +25,14 @@ def test_an_exception_passes_through_and_the_stage_is_still_logged(caplog):
 
 def test_the_logger_is_uvicorns_so_the_line_reaches_the_service_log():
     assert inp._STAGE_LOG.name == "uvicorn.error"
+
+
+def test_the_evidence_endpoints_own_timer_passes_values_and_errors_through_and_logs(caplog):
+    from services import housing_sepp_gates_api as api
+
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        assert api._timed("demo_api", lambda a: a * 2, 4) == 8
+        with pytest.raises(KeyError):
+            api._timed("failing_api", lambda: {}["x"])
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any(m.startswith("lmr stage demo_api ") for m in msgs) and any(m.startswith("lmr stage failing_api ") for m in msgs)
