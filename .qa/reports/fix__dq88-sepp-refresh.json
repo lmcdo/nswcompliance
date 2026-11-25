@@ -1,13 +1,14 @@
 {
  "tier": "standard",
  "justification": "Standard: rewrites or retires served SEPP rows that gate what users are shown as current law. Not Minor: a wrong replacement shows wrong law. Not Critical: every row is guarded on its exact stored text, history is kept (nothing deleted), the dry run rolls back, and only rows with a strict word-for-word match are in the plan.",
- "commit_hash": "c7d70243",
+ "commit_hash": "3d8c6571",
  "files": [
   "scripts/dq88_apply_law_refresh.py",
   "scripts/dq88_refresh_2026_10_10.py",
   "tests/test_dq88_apply_law_refresh.py",
   "tests/test_dq88_apply_law_refresh_real_db.py",
-  "data/dq88_law_refresh_plan_2026-11-25.json"
+  "data/dq88_law_refresh_plan_2026-11-25.json",
+  "migrations/129_dq88_clear_housing_planning_systems.sql"
  ],
  "pre_impl": {
   "existing_data": "After the legislation monitor re-flagged 18 instruments on 2026-11-23, an 8-word-run comparison of the old law against the whole of today's law found 39 served rows (and 80 unserved) across 6 SEPPs holding wording the law has removed. 25 served rows can be placed safely: 16 replaced with today's text, 9 retired because at most 30 percent of their wording is anywhere in today's law; 14 need a person.",
@@ -51,6 +52,11 @@
    "purpose": "Read each planned row's stored text and current flag, then write its history and new text",
    "file_line": "scripts/dq88_apply_law_refresh.py run",
    "where_clause": "by provision id, only when is_current and the stored text equals the plan's old text"
+  },
+  {
+   "purpose": "Clear the review flag for the Housing and Planning Systems SEPPs only",
+   "file_line": "migrations/129_dq88_clear_housing_planning_systems.sql",
+   "where_clause": "is_active and needs_review, version_date on or before 2026-11-25, instrument_key in the two listed keys"
   }
  ],
  "break_it": [
@@ -81,13 +87,20 @@
    "mitigated": true,
    "how": "After an apply the stored text no longer equals the plan's old text, so the second run refuses.",
    "repro": "python -m pytest tests/test_dq88_apply_law_refresh_real_db.py -o addopts= -m database"
+  },
+  {
+   "scenario": "Migration 129 runs before the refresh has been applied.",
+   "what_happens": "The Planning Systems flag would clear while its served stale row still holds removed wording.",
+   "mitigated": true,
+   "how": "The migration raises unless row 42041 already holds today's wording and the flagged count is exactly 6, and ends by requiring exactly 4.",
+   "repro": "python scripts/apply_migration_dry_run.py migrations/129_dq88_clear_housing_planning_systems.sql"
   }
  ],
  "post_merge": {
   "db_reset": "No",
   "secrets": "No",
   "other_repo": "No",
-  "manual_verify": "python scripts/dq88_apply_law_refresh.py --apply (after the owner's go), then python scripts/dq_probe_live.py --id DQ-88."
+  "manual_verify": "Applied 2026-11-25: dq88_apply_law_refresh.py --apply (16 replaced and proved, 9 retired) and migration 129; python scripts/dq_probe_live.py --id DQ-88 reads 4."
  },
  "real_layer_exempt": {
   "scripts/dq88_refresh_2026_10_10.py": "The changed function version() is exercised against the real database by tests/test_dq88_apply_law_refresh_real_db.py, which dry-runs the plan through it and rolls back; the module's own main() is the one-off 10 October run and is unchanged."

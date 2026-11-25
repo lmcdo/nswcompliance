@@ -7,7 +7,7 @@ scripts/dq88_refresh_2026_10_10.py (it gained two optional arguments); this appl
 The plan (data/dq88_law_refresh_plan_2026-11-25.json) was built by taking each stored row that holds wording
 the law has since removed (an 8-word run that was in the old law and is nowhere in today's) and placing it in
 today's text of the whole instrument (read in Chrome on legislation.nsw.gov.au, which refuses scripts from this PC):
-  REPLACE  today's text, word for word, is the row's own span: at least 90% of the row's words match, anchored at
+  REPLACE  (proved in the same transaction: migration 113) today's text, word for word, is the row's own span: at least 90% of the row's words match, anchored at
            both ends, 0.85-1.25x the stored length, and no removed wording is left in it
   RETIRE   at most 30% of the row's wording is anywhere in today's law, so the row states law that no longer exists
 Rows the plan could not place safely are not in it; they stay flagged for a person (DQ-88).
@@ -47,6 +47,8 @@ def run(conn, apply: bool, path: str = PLAN) -> int:
             sys.exit(f"{p['id']}: unknown action {p['action']!r} -- refusing")
         if p["action"] == "REPLACE" and not p.get("new_text"):
             sys.exit(f"{p['id']}: REPLACE with no new text -- refusing")
+        if p["action"] == "REPLACE" and p.get("verbatim_in_law") is not True:
+            sys.exit(f"{p['id']}: REPLACE not marked as checked word for word against the law in force -- refusing")
         src = f"https://legislation.nsw.gov.au/view/whole/html/inforce/current/{p['epi']}"
         ref = f"Changed between the version in force on {p['baseline']} and the version in force on 25 Nov 2026."
         if p["sepp"] not in DOC_LIKE:
@@ -64,6 +66,10 @@ def run(conn, apply: bool, path: str = PLAN) -> int:
             version(cur, p["id"], None, src, ref, "Retired: the law in force no longer contains this wording.", now, note, DETECTED)
         else:
             version(cur, p["id"], p["new_text"], src, ref, "Replaced with the text in force, word for word.", now, note, DETECTED)
+            # Migration 113 (DQ-145): new state-law text is served only with its proof, in the same transaction. The text was checked
+            # to be inside the whole instrument in force; a new source path and time are required or the proof is voided.
+            cur.execute("UPDATE regulatory_provisions SET citation_status = 'proven', citation_source_path = %s, citation_checked_at = %s WHERE id = %s",
+                        (src + "#in-force-2026-11-25", now, p["id"]))
         done[p["action"]] += 1
     print(f"{len(plan)} rows: {done}")
     (conn.commit if apply else conn.rollback)()

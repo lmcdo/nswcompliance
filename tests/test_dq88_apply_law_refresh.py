@@ -48,7 +48,8 @@ class Conn:
 
 
 def plan(tmp_path, **kw):
-    row = {"id": 5, "sepp": "housing", "epi": "epi-x", "baseline": "2026-09-15", "action": "REPLACE", "old_text": "old text", "new_text": "new text"}
+    row = {"id": 5, "sepp": "housing", "epi": "epi-x", "baseline": "2026-09-15", "action": "REPLACE", "old_text": "old text", "new_text": "new text",
+           "verbatim_in_law": True}
     row.update(kw)
     p = tmp_path / "plan.json"
     p.write_text(json.dumps([row]), encoding="utf-8")
@@ -90,6 +91,18 @@ def test_a_row_with_earlier_history_continues_its_version_numbers():
     assert updates[0][2] == 3                                  # version_count follows
 
 
+def test_a_replacement_not_checked_against_the_law_is_refused_and_a_checked_one_is_proved(tmp_path):
+    with pytest.raises(SystemExit):
+        ap.run(Conn(Cur()), True, plan(tmp_path, verbatim_in_law=False))
+    cur = Cur()
+    ap.run(Conn(cur), True, plan(tmp_path))
+    proofs = [a for s, a in cur.sql if "citation_status = 'proven'" in s]
+    assert len(proofs) == 1 and proofs[0][0].endswith("#in-force-2026-11-25") and proofs[0][2] == 5
+    cur = Cur()
+    ap.run(Conn(cur), True, plan(tmp_path, action="RETIRE"))
+    assert not [1 for s, a in cur.sql if "citation_status" in s]          # a retired row needs no proof
+
+
 def test_a_row_that_belongs_to_another_instrument_is_refused(tmp_path):
     with pytest.raises(SystemExit):
         ap.run(Conn(Cur(row=("old text", True, False))), True, plan(tmp_path))
@@ -113,6 +126,6 @@ def test_a_row_with_no_history_gets_v1_and_v2():
 def test_the_shipped_plan_is_well_formed():
     plan_rows = json.load(open(ap.PLAN, encoding="utf-8"))
     assert plan_rows and all(r["action"] in ap.ACTIONS for r in plan_rows)
-    assert all(r.get("new_text") for r in plan_rows if r["action"] == "REPLACE")
+    assert all(r.get("new_text") and r.get("verbatim_in_law") is True for r in plan_rows if r["action"] == "REPLACE")
     assert len({r["id"] for r in plan_rows}) == len(plan_rows)
     assert all(r["new_text"] != r["old_text"] for r in plan_rows if r["action"] == "REPLACE")
