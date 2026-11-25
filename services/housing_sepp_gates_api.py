@@ -148,6 +148,9 @@ def housing_sepp_evidence(lat: float, lng: float) -> dict:
     if not (_NSW_LAT[0] <= lat <= _NSW_LAT[1] and _NSW_LNG[0] <= lng <= _NSW_LNG[1]):
         raise HTTPException(status_code=422, detail="lat/lng outside NSW")
     from services import evidence_council, evidence_statement
-    area = _run_area_check(lat, lng, want_route=True, want_distances=True)
+    from services.lmr_area_inputs import _stage
+    area = _stage("area_check_total", _run_area_check, lat, lng, want_route=True, want_distances=True)
     lga = (area.get("measured") or {}).get("lga")
-    return evidence_statement.build(area, evidence_council.council_controls(lga), evidence_council.council_files(lga))
+    controls = _stage("council_controls", evidence_council.council_controls, lga)
+    files = _stage("council_files", evidence_council.council_files, lga)
+    return _stage("evidence_build", evidence_statement.build, area, controls, files)
