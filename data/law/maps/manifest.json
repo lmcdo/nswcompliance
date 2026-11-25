@@ -2,6 +2,20 @@
  "read_on": "2026-11-18",
  "note": "Our copy of state map layers; read_on is the date they were downloaded.",
  "layers": {
+  "gas_pipelines": {
+   "source": "https://services.ga.gov.au/gis/rest/services/Oil_Gas_Pipelines/MapServer/1",
+   "use": "National gas pipelines (s164(1)(i) distance, evidence page)",
+   "features": 1425,
+   "files": [
+    {
+     "file": "gas_pipelines.geojson.gz",
+     "features": 1425,
+     "bytes": 553796,
+     "sha256": "a4dea5f269c80df90d92d2223f020c98cac85766d2eb27af590e4c9dc10a2ea2"
+    }
+   ],
+   "read_on": "2026-11-26"
+  },
   "tod_sites": {
    "source": "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/752",
    "use": "TOD Sites Map (s164(1)(c))",

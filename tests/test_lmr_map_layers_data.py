@@ -17,7 +17,7 @@ import download_map_layers as dl  # noqa: E402
 
 MAPS = REPO / "data" / "law" / "maps"
 EXPECTED = {"tod_sites": 9597, "accelerated_tod": 8, "lmr_exclusion": 4, "hn_catchment": 11, "georges_catchment": 1,
-            "coastal_vuln": 10, "airport_noise": 29, "heritage_shr": 1825}
+            "coastal_vuln": 10, "airport_noise": 29, "heritage_shr": 1825, "gas_pipelines": 1425}
 # The flood-study copy (scripts/lmr_area/export_flood_copy.py) shares the manifest but is NOT made by download_map_layers.py: the downloader must leave it exactly as it is.
 FLOOD_STUDY = {"hn_pmf": 430, "hn_500aep": 393, "hn_100aep": 1607}
 LIMIT = 2 * 1024 * 1024
@@ -212,3 +212,42 @@ def test_the_downloader_may_initialise_when_there_is_no_manifest_yet(tmp_path, m
     monkeypatch.setattr(dl, "fetch_layer", lambda url: json.loads(json.dumps(fc)))
     assert dl.main(["--apply"]) == 0
     assert set(json.loads((out / "manifest.json").read_text(encoding="utf-8"))["layers"]) == set(EXPECTED)
+
+
+def test_only_one_layer_refreshes_just_that_layer_and_dates_it_alone(tmp_path, monkeypatch):
+    """--only NAME rewrites that layer's file and manifest entry (with its own read_on) and leaves every other layer, the file-wide read_on and the note exactly as they were."""
+    src = manifest()
+    out = tmp_path / "maps"
+    out.mkdir()
+    (out / "manifest.json").write_text(json.dumps(src), encoding="utf-8")
+    monkeypatch.setattr(dl, "OUT_DIR", out)
+    fc = {"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"OBJECTID": 1, "feature_name": "X"}, "geometry": {"type": "LineString", "coordinates": [[151.0, -33.0], [151.1, -33.1]]}}]}
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: json.loads(json.dumps(fc)))
+    assert dl.main(["--only", "gas_pipelines", "--apply"]) == 0
+    after = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    for name, entry in src["layers"].items():
+        if name != "gas_pipelines":
+            assert after["layers"][name] == entry, name
+    assert after["read_on"] == src["read_on"] and after["note"] == src["note"]
+    assert after["layers"]["gas_pipelines"]["features"] == 1 and after["layers"]["gas_pipelines"]["read_on"] == dl.date.today().isoformat()
+    assert [p.name for p in out.iterdir()] == sorted(["gas_pipelines.geojson.gz", "manifest.json"])   # no other layer file was written
+
+
+def test_only_with_an_unknown_layer_name_or_no_name_writes_nothing_and_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(dl, "OUT_DIR", tmp_path)
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: (_ for _ in ()).throw(AssertionError("no layer should be fetched")))
+    assert dl.main(["--only", "nope", "--apply"]) == 2
+    assert dl.main(["--only"]) == 2
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_one_layer_refresh_that_fails_leaves_the_manifest_alone(tmp_path, monkeypatch):
+    src = manifest()
+    out = tmp_path / "maps"
+    out.mkdir()
+    (out / "manifest.json").write_text(json.dumps(src), encoding="utf-8")
+    before = (out / "manifest.json").read_text(encoding="utf-8")
+    monkeypatch.setattr(dl, "OUT_DIR", out)
+    monkeypatch.setattr(dl, "fetch_layer", lambda url: None)
+    assert dl.main(["--only", "gas_pipelines", "--apply"]) == 1
+    assert (out / "manifest.json").read_text(encoding="utf-8") == before

@@ -63,6 +63,8 @@ COPY data/law/maps/lmr_exclusion*.geojson.gz ./data/law/maps/
 COPY data/law/maps/hn_catchment*.geojson.gz ./data/law/maps/
 COPY data/law/maps/georges_catchment*.geojson.gz ./data/law/maps/
 COPY data/law/maps/coastal_vuln*.geojson.gz ./data/law/maps/
+# The gas pipeline lines (services/lmr_map_copy.py pipeline): the live Geoscience Australia lookup took 1 to 15 s, 22 s in one measured call; our copy answers in milliseconds and is the same data.
+COPY data/law/maps/gas_pipelines*.geojson.gz ./data/law/maps/
 COPY data/law/pipeline_route_coverage.json ./data/law/pipeline_route_coverage.json
 # Sydney Airport's endorsed 2045 ANEF contours (services/sydney_anef.py reads this one file; without it every lot near the airport would answer "chart could not be read").
 COPY data/anef/sydney_anef_2045.json ./data/anef/sydney_anef_2045.json

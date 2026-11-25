@@ -255,7 +255,7 @@ def test_every_file_of_every_layer_the_area_check_reads_is_copied_into_the_image
     sources = [line.split()[1] for line in docker.splitlines() if line.startswith("COPY data/law/maps/")]
     assert sources, "no COPY line for data/law/maps"
     man = json.loads((REPO / "data" / "law" / "maps" / "manifest.json").read_text(encoding="utf-8"))
-    used = {"hn_pmf", "hn_500aep", "hn_100aep"} | {mc.COPY_KEYS[k] for k in inp.COPY_LAYERS}   # the layers a reader actually uses
+    used = {"hn_pmf", "hn_500aep", "hn_100aep", "gas_pipelines"} | {mc.COPY_KEYS[k] for k in inp.COPY_LAYERS}   # the layers a reader actually uses
     assert len(inp.COPY_LAYERS) == 6, "the area check no longer reads six layers from our copy: revisit this test"
     shipped = {f["file"] for name, meta in man["layers"].items() if name in used for f in meta["files"]}
     assert shipped and {n for n in used} <= set(man["layers"]), "a layer the reader uses is missing from the manifest"
