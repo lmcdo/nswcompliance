@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: flips a ledger row that gates claims from open to fixed. Not Minor: a wrong flip hides a live problem. Not Critical: no code or data changes; the row reads from a live probe that must read 0 for the flip to be true.",
- "commit_hash": "a5bae05a",
+ "commit_hash": "cf0ffadd",
  "files": [
   ".claude/dq_checks.json",
   ".claude/DATA_QUALITY_TRACKER.md"
