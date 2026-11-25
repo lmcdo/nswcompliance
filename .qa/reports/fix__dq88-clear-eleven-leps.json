@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: clears review flags on 12 instruments that gate whether citations read as current. Not Minor: a wrong clear would show stale law as current. Not Critical: the migration guards on the exact flagged count, the version dates reviewed and the instrument keys, and checks the remaining count; the 6 SEPPs with stale served rows stay flagged.",
- "commit_hash": "f512ef54",
+ "commit_hash": "7db871c7",
  "files": [
   "migrations/128_dq88_clear_twelve_leps.sql",
   ".claude/dq_checks.json",
