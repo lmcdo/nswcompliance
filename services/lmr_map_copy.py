@@ -274,7 +274,7 @@ class MapCopy:
         d_lot = shapely.distance(metric(np.array([target], dtype=object))[0], g_m)
         d_pt = shapely.distance(shapely.Point(0.0, 0.0), g_m)
         out["hit"] = bool((d_lot <= metres).any())
-        out["names"] = [lay.props[int(i)].get("feature_name") for i, d in zip(cand, d_lot) if d <= metres]
+        out["names"] = [lay.props[k].get("feature_name") for k in cand[d_lot <= metres].tolist()]
         out["near_edge"] = bool((np.abs(d_lot - metres) <= EDGE_M).any())
         j = int(d_pt.argmin())
         if float(d_pt[j]) <= PIPELINE_SEARCH_M:
