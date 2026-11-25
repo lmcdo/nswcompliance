@@ -1,0 +1,82 @@
+{
+ "tier": "standard",
+ "justification": "Standard: flips a ledger row that gates claims from open to fixed. Not Minor: a wrong flip hides a live problem. Not Critical: no code or data changes; the row reads from a live probe that must read 0 for the flip to be true.",
+ "commit_hash": "cf0ffadd",
+ "files": [
+  ".claude/dq_checks.json",
+  ".claude/DATA_QUALITY_TRACKER.md"
+ ],
+ "pre_impl": {
+  "existing_data": "On 2026-11-24 python scripts/dq_probe_live.py --id DQ-33 reads 0 after PR #1699 and the Waverley retag apply (11,350 rows rewritten, 2 values changed, 0 narrowed).",
+  "assumption_mismatch": "The row read 498 on 2026-11-23 and I expected a Part to be set by hand; 460 were fixed by the page map and 38 by page ranges.",
+  "new_vs_existing": "Same two files the ledger already uses; the tracker row and dq_checks.json must agree, and both now say fixed.",
+  "external_source_error": "If the probe is not 0 the ledger check fails, so the flip cannot hide a regression.",
+  "frontend_type": "Not applicable: no frontend change.",
+  "user_failure_mode": "A claim passes while Waverley rules apply to every development type."
+ },
+ "falsifiable_check": {
+  "command": "python scripts/dq_probe_live.py --id DQ-33 ; python scripts/dq_check.py",
+  "fails_when": "DQ-33 reads above 0 or the tracker and dq_checks.json disagree.",
+  "observed_red": "Before the retag apply the probe read 38.",
+  "observed_green": "After it the probe reads 0 and prints CLEAN."
+ },
+ "functions": [
+  {
+   "name": "dq_probe_live DQ-33",
+   "file_line": "scripts/dq_probe_live.py",
+   "input": "no input; a live count of served council rows whose development-type source is no_config",
+   "output": "a count and CLEAN or red",
+   "if_none": "a count of zero is clean, never an error"
+  },
+  {
+   "name": "dq_check ledger agreement",
+   "file_line": "scripts/dq_check.py",
+   "input": "dq_checks.json and the tracker table",
+   "output": "pass when both agree on the status",
+   "if_none": "a missing ledger row fails the whole check"
+  }
+ ],
+ "values": [
+  {
+   "value": "coverage share",
+   "read_at": "the stored control text and the best matching sentence",
+   "if_missing": "scores 0 and the control stays held"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "No new query; the existing DQ-33 probe counts served non-Parramatta council rows with no_config",
+   "file_line": "scripts/dq_probe_live.py DQ-33",
+   "where_clause": "is_current and v2_is_actionable, source_council not null and not parramatta, v2_dev_type_source no_config"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A later republish leaves rows with no Part again.",
+   "what_happens": "DQ-33 reads above 0 and the row would be false.",
+   "mitigated": true,
+   "how": "The ledger row keeps its live check, so it goes red again by itself.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-33"
+  },
+  {
+   "scenario": "The tracker table and dq_checks.json disagree.",
+   "what_happens": "The ledger check fails and blocks the merge.",
+   "mitigated": true,
+   "how": "Both were edited together and dq_check.py compares them.",
+   "repro": "python scripts/dq_check.py"
+  },
+  {
+   "scenario": "The probe counts only no_config and misses other undecided scopes.",
+   "what_happens": "A council could still have undecided scope that this row does not count.",
+   "mitigated": true,
+   "how": "DQ-114 and DQ-115 count the other undecided sources and both read 0 on 2026-11-24.",
+   "repro": "python scripts/dq_probe_live.py --id DQ-114"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "python scripts/dq_probe_live.py --id DQ-33 reads 0."
+ }
+}
