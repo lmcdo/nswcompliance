@@ -31,7 +31,7 @@ export default function AtAGlance({ data }: { data: Evidence }) {
           <span className="text-sm leading-snug text-gray-800">{words.margin ?? ''}</span>
         </a>
         <a href="#check" className={TILE}>
-          <span className={LABEL}>2 · EXCLUDED LAND</span>
+          <span className={LABEL}>2 · IS THIS LOT EXCLUDED?</span>
           <span className={BIG}>{t.clear} of {t.total} checks clear</span>
           <span className="text-sm text-gray-600">Flood, bushfire, heritage, pipelines and other land the housing law excludes, whatever the walk.</span>
           {t.total === 0 ? <span className={`${PILL} border-2 border-gray-900 text-gray-900`}><span aria-hidden="true">◐</span>No checks were returned</span>
@@ -44,7 +44,7 @@ export default function AtAGlance({ data }: { data: Evidence }) {
         <p className="text-base leading-relaxed"><strong>Bottom line.</strong> {words.bottom}{excluded > 0 ? ` ${excluded === 1 ? 'One check' : `${excluded} checks`} found land where the rules don't apply.` : ''}{needPerson > 0 ? ` ${needPerson === 1 ? 'One check' : `${needPerson} checks`} for land where the rules don't apply still ${needPerson === 1 ? 'needs' : 'need'} a person.` : ''} This tool shows what it checked; the planner or the council decides.</p>
         <p className="text-sm text-gray-700">{cc.status === 'ok' && cc.controls.length > 0 ? `${lgaName(data.lga) ? `${lgaName(data.lga)}'s` : 'The council\'s'} own house rules (${ccLabels.join('; ')}) are further down. They are not part of the walking test.` : cc.status === 'none' || cc.status === 'ok' ? 'No current house rules are held for this council. They would not be part of the walking test.' : 'The council\'s own house rules could not be read. They are not part of the walking test.'}</p>
         <nav aria-label="Jump to" className="flex flex-wrap gap-x-5 gap-y-2 text-sm"><span className="text-gray-600">Jump to:</span>
-          <a className="text-blue-700 underline" href="#walk">The walk</a><a className="text-blue-700 underline" href="#check">Excluded land</a>
+          <a className="text-blue-700 underline" href="#walk">The walk</a><a className="text-blue-700 underline" href="#check">Is this lot excluded?</a>
           <a className="text-blue-700 underline" href="#controls">Council rules</a><a className="text-blue-700 underline" href="#method">How it was measured</a><a className="text-blue-700 underline" href="#proof">The proof</a>
         </nav>
       </div>
