@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "One Python headline string used by the evidence page and the area check, plus one sentence on the evidence page; above minor because it changes a served string.",
-  "commit_hash": "0643b662",
+  "commit_hash": "a09874bc",
   "files": [
     "services/lmr_area_decision.py",
     "tests/test_lmr_area_decision.py",
@@ -18,7 +18,7 @@
       "file_line": "services/lmr_area_decision.py:693",
       "input": "pathway string plus the lmr and tod result dicts",
       "output": "headline string shown on the evidence page and the area-check card",
-      "if_none": "missing walk_low_m or walk_high_m both read None, so they are equal and it prints 'the walk is None m'; unreachable because the lmr pathway only exists when figures are set"
+      "if_none": "both figures None prints 'no walk figure is available' instead of 'None m' (tested)"
     }
   ],
   "values": [],
@@ -26,9 +26,9 @@
   "break_it": [
     {
       "scenario": "low and high both None on the lmr pathway",
-      "what_happens": "headline would read 'the walk is None m'",
+      "what_happens": "headline reads 'no walk figure is available', not 'None m'",
       "mitigated": true,
-      "how": "the lmr pathway is only returned when a walk was measured (lmr_area_decision.py answer yes); tests/test_lmr_area_decision.py baseline asserts walk_m 450",
+      "how": "services/lmr_area_decision.py _headline None branch; test_a_missing_walk_figure_is_said_not_printed_as_none",
       "repro": "python -m pytest tests/test_lmr_area_decision.py -q -o addopts="
     },
     {

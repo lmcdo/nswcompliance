@@ -696,7 +696,10 @@ def _headline(pathway: str, lmr: dict, tod: dict) -> str:
     if pathway == "lmr":
         f = lmr["figures"]  # noqa: bracket-access -- own dict or committed file; a missing key must fail closed (cant_tell)
         lo, hi = f.get("walk_low_m"), f.get("walk_high_m")
-        walk = f"the walk is {lo} m" if lo == hi else f"walking range {lo}-{hi} m"
+        if lo is None or hi is None:
+            walk = "no walk figure is available"  # a lmr answer without a measured walk must say so, never print 'None m'
+        else:
+            walk = f"the walk is {lo} m" if lo == hi else f"walking range {lo}-{hi} m"
         return (f"Within the Chapter 6 walking limit: {walk} from {f.get('anchor')}, "
                 f"limit {f.get('limit_m')} m ({lmr['clause']}, p{lmr['page']}). Not every exclusion was checked; see the list.")
     if pathway == "borderline":
