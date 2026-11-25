@@ -14,7 +14,7 @@ import dq88_refresh_2026_10_10 as base  # noqa: E402
 class Cur:
     """A recording cursor: `row` is what the SELECT of the stored text returns, `versions` the existing history."""
 
-    def __init__(self, row=("old text", True), versions=None):
+    def __init__(self, row=("old text", True, True), versions=None):
         self.row, self.versions, self.sql, self._last = row, versions, [], None
 
     def execute(self, sql, args=()):
@@ -24,6 +24,7 @@ class Cur:
     def fetchone(self):
         q = self._last
         if "SELECT provision_text, is_current" in q:
+            assert "FOR UPDATE" in q          # the guard must lock the row it checks
             return self.row
         if "SELECT provision_text, created_at" in q:
             return ("old text", None, None)
@@ -87,6 +88,20 @@ def test_a_row_with_earlier_history_continues_its_version_numbers():
     assert len(inserts) == 1 and inserts[0][1] == 3          # only the new version, numbered 3
     updates = [a for s, a in cur.sql if s.startswith("UPDATE regulatory_provisions")]
     assert updates[0][2] == 3                                  # version_count follows
+
+
+def test_a_row_that_belongs_to_another_instrument_is_refused(tmp_path):
+    with pytest.raises(SystemExit):
+        ap.run(Conn(Cur(row=("old text", True, False))), True, plan(tmp_path))
+    with pytest.raises(SystemExit):
+        ap.run(Conn(Cur()), True, plan(tmp_path, sepp="not_a_sepp"))
+
+
+def test_continuing_history_closes_the_previous_version():
+    cur = Cur(versions=(41, 2))
+    base.version(cur, 5, "new", "src", "ref", "why", __import__("datetime").datetime.now(), "note", "det")
+    closes = [a for s, a in cur.sql if s.startswith("UPDATE provision_versions SET effective_to")]
+    assert len(closes) == 1 and closes[0][1] == 41
 
 
 def test_a_row_with_no_history_gets_v1_and_v2():

@@ -32,6 +32,9 @@ from dq88_refresh_2026_10_10 import version  # noqa: E402
 PLAN = os.path.join(os.path.dirname(__file__), "..", "data", "dq88_law_refresh_plan_2026-11-25.json")
 DETECTED = "paragraph comparison of in-force text on legislation.nsw.gov.au, placed by word alignment (scripts/dq88_apply_law_refresh.py)"
 ACTIONS = ("REPLACE", "RETIRE")
+# The document_id of each instrument's stored rows: a plan row whose id belongs to another instrument is refused.
+DOC_LIKE = {"housing": "%Housing%", "exempt": "%Exempt%Complying%", "industry": "%Industry%Employment%", "planning": "%Planning%Systems%",
+            "transport": "%Transport%Infrastructure%", "biodiversity": "%Biodiversity%"}
 
 
 def run(conn, apply: bool, path: str = PLAN) -> int:
@@ -46,10 +49,16 @@ def run(conn, apply: bool, path: str = PLAN) -> int:
             sys.exit(f"{p['id']}: REPLACE with no new text -- refusing")
         src = f"https://legislation.nsw.gov.au/view/whole/html/inforce/current/{p['epi']}"
         ref = f"Changed between the version in force on {p['baseline']} and the version in force on 25 Nov 2026."
-        cur.execute("SELECT provision_text, is_current FROM regulatory_provisions WHERE id = %s", (p["id"],))
+        if p["sepp"] not in DOC_LIKE:
+            sys.exit(f"{p['id']}: unknown instrument {p['sepp']!r} -- refusing")
+        # FOR UPDATE: the row stays locked from this check through version(), so nobody can edit it in between.
+        cur.execute("SELECT provision_text, is_current, document_id ILIKE %s FROM regulatory_provisions WHERE id = %s FOR UPDATE",
+                    (DOC_LIKE[p["sepp"]], p["id"]))
         row = cur.fetchone()
         if row is None or not row[1] or row[0] != p["old_text"]:
             sys.exit(f"{p['id']}: stored text is not what the plan was built from -- refusing")
+        if not row[2]:
+            sys.exit(f"{p['id']}: the row does not belong to {p['sepp']} -- refusing")
         note = "Text as stored before the 2026-11-25 refresh from the law in force."
         if p["action"] == "RETIRE":
             version(cur, p["id"], None, src, ref, "Retired: the law in force no longer contains this wording.", now, note, DETECTED)

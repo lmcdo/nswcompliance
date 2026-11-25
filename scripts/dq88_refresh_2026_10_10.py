@@ -107,6 +107,8 @@ def version(cur, pid: int, text_after: str | None, src: str, ref: str, why: str,
         v1, vnum = cur.fetchone()[0], 2
     else:
         v1, vnum = last[0], last[1] + 1
+        # close the version that was current, so two versions are never open-ended at once
+        cur.execute("UPDATE provision_versions SET effective_to = %s WHERE id = %s AND effective_to IS NULL", (now, v1))
     kind = "deleted" if text_after is None else "modified"
     body = old if text_after is None else text_after
     cur.execute("INSERT INTO provision_versions (provision_id, version_number, provision_text, effective_from, "
