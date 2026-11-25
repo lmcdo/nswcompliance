@@ -48,12 +48,21 @@ COPY data/law/road_rules_2014_pedestrian_facts.json ./data/law/road_rules_2014_p
 COPY data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt ./data/law/road-rules-2014-regs-231-232-234-copied-2026-11-20.txt
 # The 2024 Hawkesbury-Nepean flood study copy (services/lmr_map_copy.py flood_distance reads data/law/maps/manifest.json and these three files; without them the flood check keeps its older
 # catchment rule and the evidence page shows no flood distance) and the list of the law's pipelines that have no published route (services/evidence_statement.py).
-# ONLY these files are copied on purpose: the other saved state maps in data/law/maps are not in the image, so the six-layer own-copy path of PR 1672 stays off here; turning it on is a separate decision.
+# The six state map layers the area check reads from our own copy first (services/lmr_map_copy.py COPY_KEYS: TOD sites, accelerated TOD, LMR exclusion, both flood catchments, coastal vulnerability) are copied too
+# (2026-11-25, owner: yes). Without them every lot asked the NSW map service live, which stalls in waves: 9 of 20 random pilot-council addresses came back with a rule that did not answer. Airport noise and the State Heritage
+# Register copy are NOT copied: no reader uses them yet.
 COPY data/law/maps/manifest.json ./data/law/maps/manifest.json
 # Each flood layer by its own pattern, so a layer a later export splits into numbered parts (hn_pmf.part1of2.geojson.gz) is still copied; deliberately NOT hn_*, which would also copy the catchment copy.
 COPY data/law/maps/hn_pmf*.geojson.gz ./data/law/maps/
 COPY data/law/maps/hn_500aep*.geojson.gz ./data/law/maps/
 COPY data/law/maps/hn_100aep*.geojson.gz ./data/law/maps/
+# One pattern per layer, so a layer a later export splits into parts is still copied. hn_catchment* does not match the flood files above (hn_pmf, hn_500aep, hn_100aep).
+COPY data/law/maps/tod_sites*.geojson.gz ./data/law/maps/
+COPY data/law/maps/accelerated_tod*.geojson.gz ./data/law/maps/
+COPY data/law/maps/lmr_exclusion*.geojson.gz ./data/law/maps/
+COPY data/law/maps/hn_catchment*.geojson.gz ./data/law/maps/
+COPY data/law/maps/georges_catchment*.geojson.gz ./data/law/maps/
+COPY data/law/maps/coastal_vuln*.geojson.gz ./data/law/maps/
 COPY data/law/pipeline_route_coverage.json ./data/law/pipeline_route_coverage.json
 # Sydney Airport's endorsed 2045 ANEF contours (services/sydney_anef.py reads this one file; without it every lot near the airport would answer "chart could not be read").
 COPY data/anef/sydney_anef_2045.json ./data/anef/sydney_anef_2045.json
