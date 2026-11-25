@@ -1,0 +1,93 @@
+{
+  "tier": "Standard",
+  "justification": "The area check reads six state map layers (TOD sites, accelerated TOD, LMR exclusion, both flood catchments, coastal vulnerability) from our own saved copy first, but Dockerfile.python copied only the flood files, so in production every lot asked the NSW map service live. That service stalls in waves: on 2026-11-25, 9 of 20 random addresses in five pilot councils returned at least one rule that did not answer, and the median call took 11 seconds. This change copies the six layers' files into the image. No code or data changes; the reader already falls back to the live service when a copy is missing, stale or near a layer edge.",
+  "commit_hash": "fdd2a5d2",
+  "files": [
+    "Dockerfile.python",
+    "tests/test_lmr_data_files.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_check_map_copy.py -q -o addopts=",
+    "expected": "All pass; with the six COPY lines in place the image test finds every file of every used layer copied.",
+    "fails_when": "A layer the area check reads from our copy has a file the image does not copy, or an unused copy such as airport noise or the State Heritage Register is copied.",
+    "observed_red": "Three hand breakages each turned the image test red and were restored: dropping the TOD sites COPY line, dropping the Georges catchment COPY line, and adding a COPY line for the unused airport copy. With all six layers loaded from the repo files, each answered from the copy (as of 2026-11-18) in 0.7 s in total and added 69 MB of memory."
+  },
+  "pre_impl": {
+    "existing_data": "The six layers' files and the manifest are already committed under data/law/maps and the reader (services/lmr_map_copy.py) is already wired into the public area check and the evidence data.",
+    "assumption_mismatch": "The earlier PR that added the six-layer copy left the files out of the image on purpose, pending a decision; the owner has now said yes.",
+    "new_vs_existing": "New: six COPY lines and a stricter image test. Unchanged: the reader, the data files, every answer except that the live service is asked far less often.",
+    "external_source_error": "A copy that is missing, fails its hash, is older than 45 days or sits near a layer edge still asks the live service, exactly as before.",
+    "frontend_type": "None.",
+    "user_failure_mode": "An address stops coming back can't-tell because the NSW map service stalled on a layer our own copy can answer."
+  },
+  "functions": [
+    {
+      "name": "test_every_file_of_every_layer_the_area_check_reads_is_copied_into_the_image_and_no_unused_map_is",
+      "file_line": "tests/test_lmr_data_files.py:245",
+      "input": "the Dockerfile, the manifest and the reader's layer list",
+      "output": "passes only when every used layer's files are copied and no unused copy is",
+      "if_none": "An empty list of COPY lines or an empty manifest fails the test."
+    }
+  ],
+  "values": [
+    {
+      "value": "the manifest's file list for each layer",
+      "read_at": "tests/test_lmr_data_files.py:245",
+      "nullable": "no",
+      "guard_at": "tests/test_lmr_data_files.py:245 (asserts the layers and files exist)",
+      "if_missing": "The test fails."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A layer is split into numbered parts by a later export.",
+      "what_happens": "A fixed file name would miss the new parts.",
+      "mitigated": "Mitigated: each COPY uses a pattern ending in a star.",
+      "how": "The test matches every manifest file against the patterns.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_check_map_copy.py -q -o addopts="
+    },
+    {
+      "scenario": "A COPY line is removed or mistyped.",
+      "what_happens": "The layer would silently go back to the live service.",
+      "mitigated": "Mitigated: the test names the missing file.",
+      "how": "Two hand breakages went red.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_check_map_copy.py -q -o addopts="
+    },
+    {
+      "scenario": "An unused copy is added to the image.",
+      "what_happens": "Memory and image size grow for nothing.",
+      "mitigated": "Mitigated: the test rejects copies no reader uses.",
+      "how": "One hand breakage went red.",
+      "repro": "python -m pytest tests/test_lmr_data_files.py tests/test_lmr_map_copy.py tests/test_check_map_copy.py -q -o addopts="
+    },
+    {
+      "scenario": "The copies pass their 45-day age limit.",
+      "what_happens": "The reader stops using them and asks the live service again.",
+      "mitigated": "Mitigated: the freshness check raises an alarm 15 days before; refreshing is a separate step.",
+      "how": "The existing freshness check.",
+      "repro": "python scripts/lmr_area/check_map_copy.py"
+    },
+    {
+      "scenario": "The service has less memory than the extra 69 MB.",
+      "what_happens": "The service could be restarted by the platform.",
+      "mitigated": "Mitigated: layers load on first use and the flood copy already loads this way; the deploy is watched.",
+      "how": "Measured 89 MB after loading all six.",
+      "repro": "Not applicable."
+    },
+    {
+      "scenario": "A copy differs from the live map.",
+      "what_happens": "A lot near a changed polygon would get an old answer.",
+      "mitigated": "Mitigated: a lot near a layer edge asks the live service, and a 200-lot side-by-side on 2026-11-21 found no difference.",
+      "how": "Existing edge tests and the recorded comparison.",
+      "repro": "python scripts/lmr_area/check_map_copy.py"
+    }
+  ],
+  "residual_risk": "1) The copies are dated 2026-11-18 and stop being used on 2027-01-02 unless refreshed; the refresh job is a separate PR. 2) Heritage is still read live, so a heritage lookup can still fail; that is the next PR. 3) About 69 MB more memory once all six layers are loaded. 4) Not measured here: the effect in production, which needs the Railway deploy and a repeat of the 20-address run.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy, repeat the 20 random pilot-council addresses on the live evidence data: TOD and exclusion should never come back unknown, and the median time should fall."
+  }
+}
