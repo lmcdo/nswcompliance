@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Six files changed, all heading, link and table-header text; standard because the file count is over the minor limit, not because of any logic change.",
-  "commit_hash": "adb63e05",
+  "commit_hash": "2e432fc9",
   "files": [
     "frontend-nextjs/components/reports/evidence/AtAGlance.tsx",
     "frontend-nextjs/components/reports/evidence/CheckSection.tsx",
