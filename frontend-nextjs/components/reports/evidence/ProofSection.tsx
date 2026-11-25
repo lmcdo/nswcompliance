@@ -5,7 +5,7 @@ import type { Evidence } from '@/lib/evidence-statement';
 
 const SUMMARY = 'flex min-h-11 cursor-pointer items-center justify-between gap-4 px-6 py-5';
 
-/** Section 4 (how it was measured) and section 5 (the proof): the notes the check returned, then the law's own wording folded away. */
+/** Section 4 (how it was measured) and section 5 (sources): the notes the check returned, then the law's own wording folded away. */
 export default function ProofSection({ data, showRoadRules }: { data: Evidence; showRoadRules: boolean }) {
   const date = data.law_version_date ?? 'not given';
   return (
@@ -22,16 +22,16 @@ export default function ProofSection({ data, showRoadRules }: { data: Evidence; 
 
       <section id="proof" aria-labelledby="proof-h" className="flex flex-col gap-3 scroll-mt-6">
         <div className="flex flex-col gap-1">
-          <h2 id="proof-h" className="text-2xl font-bold tracking-tight">The proof</h2>
-          <p className="max-w-3xl text-base text-gray-600">The law&apos;s own words behind every line above. Open any section.</p>
+          <h2 id="proof-h" className="text-2xl font-bold tracking-tight">Sources</h2>
+          <p className="max-w-3xl text-base text-gray-600">The law&apos;s own words for each line above. Open any section.</p>
         </div>
         <div className="divide-y divide-gray-200 overflow-hidden rounded-2xl border border-gray-200 bg-white">
           <details>
-            <summary className={SUMMARY}><span><span className="block text-lg font-semibold">Section 164 exclusions (law version dated {date})</span>
+            <summary className={SUMMARY}><span><span className="block text-lg font-semibold">Is this lot excluded? Section 164 (law version dated {date})</span>
               <span className="block text-sm text-gray-600">{data.law_instrument ? `${data.law_instrument}. ` : ''}Each paragraph with the law&apos;s words, the map or list checked and the result.</span></span><span aria-hidden="true" className="text-xl text-gray-600">›</span></summary>
             <div className="overflow-x-auto px-6 pb-6">
               <table className="w-full border-collapse text-sm">
-                <thead><tr className="text-left"><th className="border p-1">Clause</th><th className="border p-1">Law wording</th><th className="border p-1">Source checked</th><th className="border p-1">Result</th></tr></thead>
+                <thead><tr className="text-left"><th className="border p-1">Clause</th><th className="border p-1">What the law says</th><th className="border p-1">Checked against</th><th className="border p-1">Result</th></tr></thead>
                 <tbody>
                   {data.exclusions.map((x) => (
                     <tr key={x.para} className="align-top">

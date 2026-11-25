@@ -1,0 +1,77 @@
+{
+  "tier": "standard",
+  "justification": "Six files changed, all heading, link and table-header text; standard because the file count is over the minor limit, not because of any logic change.",
+  "commit_hash": "2e432fc9",
+  "files": [
+    "frontend-nextjs/components/reports/evidence/AtAGlance.tsx",
+    "frontend-nextjs/components/reports/evidence/CheckSection.tsx",
+    "frontend-nextjs/components/reports/evidence/ProofSection.tsx",
+    "frontend-nextjs/app/reports/evidence-statement/EvidenceStatement.tsx",
+    "frontend-nextjs/__tests__/components/evidence-sections.test.tsx",
+    "frontend-nextjs/__tests__/components/evidence-statement-page.test.tsx"
+  ],
+  "pre_impl": {
+    "existing_data": "none: the evidence page text is static in the components",
+    "assumption_mismatch": "If a test or jump link still names the old heading, the suite fails visibly; no data is involved",
+    "new_vs_existing": "Every evidence page render uses the new text; no stored rows are affected"
+  },
+  "functions": [
+    {
+      "name": "AtAGlance",
+      "file_line": "frontend-nextjs/components/reports/evidence/AtAGlance.tsx:34",
+      "input": "the evidence data object passed in as props",
+      "output": "summary tiles and jump links with the new section 2 and Sources labels",
+      "if_none": "unchanged: the tile already renders 'No checks were returned' when there are zero checks"
+    },
+    {
+      "name": "CheckSection",
+      "file_line": "frontend-nextjs/components/reports/evidence/CheckSection.tsx:58",
+      "input": "the evidence data object passed in as props",
+      "output": "section 2 heading and intro sentence",
+      "if_none": "unchanged: counts fall back to zero and the intro still renders"
+    },
+    {
+      "name": "ProofSection",
+      "file_line": "frontend-nextjs/components/reports/evidence/ProofSection.tsx:25",
+      "input": "the evidence data object passed in as props",
+      "output": "Sources heading and the section 164 accordion with its table headers",
+      "if_none": "unchanged: an empty exclusions list renders an empty table body"
+    }
+  ],
+  "values": [],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A heading and its jump link drift apart",
+      "what_happens": "The jump link names a section that no longer exists",
+      "mitigated": true,
+      "how": "evidence-sections.test.tsx:400-401 asserts both the hrefs and the link text",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=evidence-sections"
+    },
+    {
+      "scenario": "A table header is mislabelled so a quote appears under a source heading",
+      "what_happens": "Users misread which column is the law's words and which is the map checked",
+      "mitigated": true,
+      "how": "ProofSection.tsx:34 headers are 'What the law says' for the quoted text and 'Checked against' for the source; found by the Sol cross-review",
+      "repro": "npx jest --testPathPatterns=evidence-statement-page"
+    },
+    {
+      "scenario": "Old wording left behind in another file",
+      "what_happens": "A reader sees 'Land the rules leave out' or 'The proof' in one place and the new text in another",
+      "mitigated": true,
+      "how": "grep over components, app/reports and __tests__ for the old strings returns no matches",
+      "repro": "git grep -n \"The proof\\|rules leave out\" -- frontend-nextjs/components frontend-nextjs/app/reports"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "No"
+  },
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest --testPathPatterns=evidence",
+    "fails_when": "A heading, jump link or accordion title in the evidence page differs from the text the tests assert, or the old wording is rendered",
+    "observed_red": "After renaming the section 164 accordion title and before updating its assertion, the same jest command printed 'Tests: 1 failed, 174 passed, 175 total' (evidence-statement-page.test.tsx); after the assertion was updated it printed 175 passed."
+  }
+}

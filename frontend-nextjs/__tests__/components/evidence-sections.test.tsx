@@ -337,14 +337,14 @@ describe('AtAGlance', () => {
   });
   it('checks tile: "N of M checks clear", All clear when every row is clear', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a' }), row({ para: 'b' })] })} />);
-    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · IS THIS LOT EXCLUDED?').closest('a') as HTMLElement;
     expect(tile.getAttribute('href')).toBe('#check');
     expect(tile.textContent).toContain('2 of 2 checks clear');
     expect(tile.textContent).toContain('All clear');
   });
   it('checks tile: says how many are excluded and names the rows that need a person', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a' }), row({ para: 'b', title: 'Flood', result: 'excludes' }), row({ para: 'c', title: 'Pipelines', result: 'not_checked' })] })} />);
-    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · IS THIS LOT EXCLUDED?').closest('a') as HTMLElement;
     expect(tile.textContent).toContain('1 of 3 checks clear');
     expect(tile.textContent).toContain('1 excluded');
     expect(tile.textContent).toContain('Flood; Pipelines.');
@@ -352,7 +352,7 @@ describe('AtAGlance', () => {
   });
   it('checks tile: with none excluded but some unsettled, says how many to check', () => {
     render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' }), row({ para: 'b', result: 'not_checked' })] })} />);
-    const tile = screen.getByText('2 · LAND THE RULES LEAVE OUT').closest('a') as HTMLElement;
+    const tile = screen.getByText('2 · IS THIS LOT EXCLUDED?').closest('a') as HTMLElement;
     expect(tile.textContent).toContain('0 of 2 checks clear');
     expect(tile.textContent).toContain('2 to check');
     expect(tile.textContent).not.toContain('excluded');
@@ -398,7 +398,7 @@ describe('AtAGlance', () => {
     render(<AtAGlance data={evidence()} />);
     const nav = screen.getByRole('navigation', { name: 'Jump to' });
     expect(Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['#walk', '#check', '#controls', '#method', '#proof']);
-    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['The walk', 'Land the rules leave out', 'Council rules', 'How it was measured', 'The proof']);
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['The walk', 'Is this lot excluded?', 'Council rules', 'How it was measured', 'Sources']);
   });
   it('uses no colour-only verdict word', () => {
     const { container } = render(<AtAGlance data={evidence()} />);
