@@ -58,6 +58,8 @@ class _Layer:
         self.geoms, self.props, self.as_of, self.skipped = geoms, props, as_of, skipped
         self.max_age_days = max_age_days
         self.tree = STRtree(geoms)
+        import numpy as np
+        self.geoms_arr = np.array(geoms, dtype=object)   # for vectorised distance work (flood_distance)
         bs = [g.bounds for g in geoms]
         self.bounds = (min(b[0] for b in bs), min(b[1] for b in bs), max(b[2] for b in bs), max(b[3] for b in bs))   # lng/lat box the layer covers
 
@@ -197,22 +199,37 @@ class MapCopy:
             except Exception as exc:  # noqa: BLE001 -- an unusable outline falls back to the point
                 logger.warning("map copy: lot outline unusable: %s", exc)
         mx, my = 111320.0 * math.cos(math.radians(lat)), 110540.0   # metres per degree here (the same flat scale the walking maps use)
-
-        def metric(g: Any) -> Any:
-            return transform(lambda x, y, z=None: ((x - lng) * mx, (y - lat) * my), g)
-
         minx, miny, maxx, maxy = lay.bounds
         tb = target.bounds
         within_box = tb[0] >= minx and tb[2] <= maxx and tb[1] >= miny and tb[3] <= maxy
-        cand = list(lay.tree.query(target.buffer(FLOOD_SEARCH_DEG)))
-        inside = any(lay.geoms[i].intersects(target) for i in cand)
+        import numpy as np
+        import shapely
+
+        def metric(geoms: Any) -> Any:   # every vertex to metres from the lot, in one numpy call (the same flat scale as above)
+            return shapely.transform(geoms, lambda xy: (xy - np.array([lng, lat])) * np.array([mx, my]))
+
+        all_cand = np.asarray(lay.tree.query(target.buffer(FLOOD_SEARCH_DEG)), dtype=int)
+        inside = bool(len(all_cand)) and bool(shapely.intersects(lay.geoms_arr[all_cand], target).any())
         nearest = edge = None
-        if cand:
-            t_m = metric(target)
-            nearest = 0.0 if inside else min(t_m.distance(metric(lay.geoms[i])) for i in cand)
-            edge = min(t_m.distance(metric(lay.geoms[i].boundary)) for i in cand)
+        if len(all_cand):
+            t_m = metric(np.array([target], dtype=object))[0]
+            # Look near the lot first and widen only when the nearest thing found is farther than the box searched: a flood area closer than
+            # the box (in metres, at the smaller of the two degree scales) cannot be missed by it, so the answer is the same as searching all of it.
+            for radius in (0.01, 0.05, FLOOD_SEARCH_DEG):
+                cand = all_cand if radius >= FLOOD_SEARCH_DEG else np.asarray(lay.tree.query(target.buffer(radius)), dtype=int)
+                if not len(cand):
+                    continue
+                g_m = metric(lay.geoms_arr[cand])
+                d_area = shapely.distance(t_m, g_m)
+                d_edge = shapely.distance(t_m, shapely.boundary(g_m))
+                n_m, e_m = float(d_area.min()), float(d_edge.min())
+                reach_m = radius * min(mx, my)
+                if radius >= FLOOD_SEARCH_DEG or (n_m <= reach_m and e_m <= reach_m):
+                    nearest = 0.0 if inside else n_m
+                    edge = e_m
+                    break
         return {"inside": inside, "edge_m": None if edge is None else round(edge, 1), "nearest_m": None if nearest is None else round(nearest, 1),
-                "within_box": within_box, "used_outline": used_outline, "as_of": lay.as_of.isoformat(), "polygons": len(cand)}
+                "within_box": within_box, "used_outline": used_outline, "as_of": lay.as_of.isoformat(), "polygons": int(len(all_cand))}
 
     def noise_bands(self, lat: float, lng: float, rings: Optional[list] = None, today: Optional[date] = None) -> Optional[list]:
         """Every airport-noise band the lot (or the point) touches, as the live reader returns them; None = no answer."""
