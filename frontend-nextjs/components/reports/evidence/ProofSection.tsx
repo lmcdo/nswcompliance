@@ -5,7 +5,7 @@ import type { Evidence } from '@/lib/evidence-statement';
 
 const SUMMARY = 'flex min-h-11 cursor-pointer items-center justify-between gap-4 px-6 py-5';
 
-/** Section 4 (how it was measured) and section 5 (the law wording): the notes the check returned, then the law's own wording folded away. */
+/** Section 4 (how it was measured) and section 5 (sources): the notes the check returned, then the law's own wording folded away. */
 export default function ProofSection({ data, showRoadRules }: { data: Evidence; showRoadRules: boolean }) {
   const date = data.law_version_date ?? 'not given';
   return (
@@ -22,7 +22,7 @@ export default function ProofSection({ data, showRoadRules }: { data: Evidence; 
 
       <section id="proof" aria-labelledby="proof-h" className="flex flex-col gap-3 scroll-mt-6">
         <div className="flex flex-col gap-1">
-          <h2 id="proof-h" className="text-2xl font-bold tracking-tight">Law wording</h2>
+          <h2 id="proof-h" className="text-2xl font-bold tracking-tight">Sources</h2>
           <p className="max-w-3xl text-base text-gray-600">The law&apos;s own words for each line above. Open any section.</p>
         </div>
         <div className="divide-y divide-gray-200 overflow-hidden rounded-2xl border border-gray-200 bg-white">

@@ -95,7 +95,7 @@ export default function EvidenceStatement() {
       <section id="walk" aria-labelledby="walk-h" className="flex flex-col gap-5 scroll-mt-6">
         <h2 id="walk-h" className="text-2xl font-bold tracking-tight">1 · The walk</h2>
         <p className="max-w-3xl text-base leading-relaxed text-gray-600">
-          {data.law_instrument || w.clause ? `The law (${[data.law_instrument, w.clause, w.page != null ? `page ${w.page}` : null].filter(Boolean).join(', ')}) counts` : 'The law counts'} land within{limitText || ' a set'} walking distance of a station or town centre. The walk is measured from the nearest part of the lot. Law wording: see the Law wording section below.
+          {data.law_instrument || w.clause ? `The law (${[data.law_instrument, w.clause, w.page != null ? `page ${w.page}` : null].filter(Boolean).join(', ')}) counts` : 'The law counts'} land within{limitText || ' a set'} walking distance of a station or town centre. The walk is measured from the nearest part of the lot. Law wording: see Sources below.
         </p>
         <div className="flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
           {v.best !== null ? (

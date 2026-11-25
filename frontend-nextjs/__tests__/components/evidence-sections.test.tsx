@@ -398,7 +398,7 @@ describe('AtAGlance', () => {
     render(<AtAGlance data={evidence()} />);
     const nav = screen.getByRole('navigation', { name: 'Jump to' });
     expect(Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(['#walk', '#check', '#controls', '#method', '#proof']);
-    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['The walk', 'Is this lot excluded?', 'Council rules', 'How it was measured', 'Law wording']);
+    expect(Array.from(nav.querySelectorAll('a')).map((a) => a.textContent)).toEqual(['The walk', 'Is this lot excluded?', 'Council rules', 'How it was measured', 'Sources']);
   });
   it('uses no colour-only verdict word', () => {
     const { container } = render(<AtAGlance data={evidence()} />);

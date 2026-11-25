@@ -45,7 +45,7 @@ export default function AtAGlance({ data }: { data: Evidence }) {
         <p className="text-sm text-gray-700">{cc.status === 'ok' && cc.controls.length > 0 ? `${lgaName(data.lga) ? `${lgaName(data.lga)}'s` : 'The council\'s'} own house rules (${ccLabels.join('; ')}) are further down. They are not part of the walking test.` : cc.status === 'none' || cc.status === 'ok' ? 'No current house rules are held for this council. They would not be part of the walking test.' : 'The council\'s own house rules could not be read. They are not part of the walking test.'}</p>
         <nav aria-label="Jump to" className="flex flex-wrap gap-x-5 gap-y-2 text-sm"><span className="text-gray-600">Jump to:</span>
           <a className="text-blue-700 underline" href="#walk">The walk</a><a className="text-blue-700 underline" href="#check">Is this lot excluded?</a>
-          <a className="text-blue-700 underline" href="#controls">Council rules</a><a className="text-blue-700 underline" href="#method">How it was measured</a><a className="text-blue-700 underline" href="#proof">Law wording</a>
+          <a className="text-blue-700 underline" href="#controls">Council rules</a><a className="text-blue-700 underline" href="#method">How it was measured</a><a className="text-blue-700 underline" href="#proof">Sources</a>
         </nav>
       </div>
     </section>
