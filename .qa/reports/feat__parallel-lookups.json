@@ -1,0 +1,100 @@
+{
+  "tier": "Standard",
+  "justification": "flood_distance (added in PR 1678) projected every flood area near a lot to metres one vertex at a time in Python and measured each one, up to 3,387 areas per call; for a lot in the Hawkesbury-Nepean basin the evidence call spent 7 to 11 seconds there on a warm service, and the live evidence data took a median 7.7 s on 34 real lots. It now projects and measures all areas in one numpy and shapely call and looks near the lot first, widening only when the nearest area found is farther than the box searched (a closer area cannot be missed by the box, at the smaller of the two degree scales). The figures are unchanged: 156 comparisons against the old method (14 inside a flood area, 112 near one, 30 with none within the search distance, with and without a lot outline, three layers) gave 0 differences; the old method took 95.6 s in total, the new 1.4 s.",
+  "commit_hash": "e20955a6",
+  "files": [
+    "services/lmr_map_copy.py",
+    "tests/test_lmr_flood_distance_equivalence.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts=",
+    "expected": "100 tests pass.",
+    "fails_when": "The fast distances differ from the plain method on real or synthetic layers; a nearer flood area just outside the first search box is missed; a nearer edge beyond the box is missed; the polygon count shrinks to the first box; the metre scale axes are swapped.",
+    "observed_red": "Six of seven hand breakages turned the new test red and were restored: accepting the first box always, ignoring the edge distance in the widening rule, an over-generous reach, a reach at the larger scale, swapped east-west and north-south scales, and the polygon count taken from the first box. The seventh (not forcing nearest to zero when inside) changes nothing because a containing area is at distance zero anyway. Synthetic layers use the east-west versus north-south scale difference to make the first-box case happen, which the real-data sample did not."
+  },
+  "pre_impl": {
+    "existing_data": "The same saved flood layers (hn_pmf, hn_500aep, hn_100aep) and the same flat metre scale the walking maps use; nothing new is read.",
+    "assumption_mismatch": "The first version assumed a per-vertex Python projection was cheap enough; on the basin's 1,695 areas per layer it was not.",
+    "new_vs_existing": "Changed: how the distances are computed. Unchanged: every figure returned, the 100 m margin rule, the search distance and the shape of the answer.",
+    "external_source_error": "A missing, unproven or too-old copy still gives no answer; a flood layer with a skipped area still gives no answer.",
+    "frontend_type": "None.",
+    "user_failure_mode": "A planner waits about 8 seconds for the evidence page for a lot in the Hawkesbury-Nepean basin."
+  },
+  "functions": [
+    {
+      "name": "flood_distance",
+      "file_line": "services/lmr_map_copy.py:265",
+      "input": "a flood layer key, a latitude and longitude and an optional lot outline",
+      "output": "inside or not, metres to the nearest flood edge and area, the box check and the number of areas searched",
+      "if_none": "A missing, unproven or too-old copy gives none; no area within the search distance gives none distances."
+    },
+    {
+      "name": "test_the_fast_flood_distance_equals_the_plain_method",
+      "file_line": "tests/test_lmr_flood_distance_equivalence.py:60",
+      "input": "seven real-data sample points with and without a lot outline",
+      "output": "passes only when the fast and plain figures are equal",
+      "if_none": "A layer that does not load fails the test."
+    }
+  ],
+  "values": [
+    {
+      "value": "flood polygons and their projected distances",
+      "read_at": "services/lmr_map_copy.py:265",
+      "nullable": "no",
+      "guard_at": "services/lmr_map_copy.py:265 (copy proven and no skipped area)",
+      "if_missing": "No answer, never a clear."
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "A nearer flood area lies just outside the first search box.",
+      "what_happens": "The nearest distance would be too large.",
+      "mitigated": "Mitigated: the search widens unless the nearest found is within the box's reach at the smaller scale.",
+      "how": "A synthetic layer where the east-west scale makes the outside area nearer.",
+      "repro": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts="
+    },
+    {
+      "scenario": "The nearest edge is farther than the nearest area.",
+      "what_happens": "The edge distance would be too large.",
+      "mitigated": "Mitigated: the widening rule checks the edge distance too.",
+      "how": "A synthetic lot inside a big area with a small area beyond the first box.",
+      "repro": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts="
+    },
+    {
+      "scenario": "The two metre scales are swapped.",
+      "what_happens": "Every distance would be wrong.",
+      "mitigated": "Mitigated: the equivalence test compares against the plain method.",
+      "how": "A hand breakage went red.",
+      "repro": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts="
+    },
+    {
+      "scenario": "No flood area within the search distance.",
+      "what_happens": "A zero would read as flooded.",
+      "mitigated": "Mitigated: the distances stay none and a test asserts it.",
+      "how": "A synthetic far layer.",
+      "repro": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts="
+    },
+    {
+      "scenario": "The layer has an area that cannot be read.",
+      "what_happens": "A lot in that area would read as clear.",
+      "mitigated": "Mitigated: unchanged, the layer gives no answer if any area was skipped.",
+      "how": "Existing tests.",
+      "repro": "python -m pytest tests/test_lmr_flood_distance_equivalence.py tests/test_lmr_map_copy.py tests/test_lmr_flood_study.py -q -o addopts="
+    },
+    {
+      "scenario": "The speed-up is smaller on the live service than on this PC.",
+      "what_happens": "The evidence page stays slow for a planner.",
+      "mitigated": "Not mitigated here: the effect is measured after the deploy on 34 real lots.",
+      "how": "A repeat of the real-lot run.",
+      "repro": "Not applicable."
+    }
+  ],
+  "residual_risk": "1) The 68-times figure is measured on this PC; the live effect is measured after the Railway deploy. 2) Other costs remain in the evidence call: about 0.6 s of database connections for the council controls and files, about 1 s of pipeline lookups, and the live map lookups; they are separate. 3) The equivalence run used 26 points per layer, not every lot in the basin.",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy repeat the 34 real pilot-council lots; the median call should fall well below 7.7 s."
+  }
+}
