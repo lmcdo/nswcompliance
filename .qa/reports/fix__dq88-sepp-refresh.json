@@ -1,7 +1,7 @@
 {
  "tier": "standard",
  "justification": "Standard: rewrites or retires served SEPP rows that gate what users are shown as current law. Not Minor: a wrong replacement shows wrong law. Not Critical: every row is guarded on its exact stored text, history is kept (nothing deleted), the dry run rolls back, and only rows with a strict word-for-word match are in the plan.",
- "commit_hash": "f512ef54",
+ "commit_hash": "c7d70243",
  "files": [
   "scripts/dq88_apply_law_refresh.py",
   "scripts/dq88_refresh_2026_10_10.py",
