@@ -1,0 +1,129 @@
+{
+  "tier": "Standard",
+  "justification": "Stage timings in the service log show a normal evidence call spends about 3 of its 5 seconds in database stages (lot outline 0.8 s, council controls 1.7 to 2.4 s, council files 0.7 s), each of which opened and closed its own connection. services/db_reuse.py keeps a small pool (up to 8) of read-only connections; the two modules' _connect() now call it, and the stages' existing close() hands the connection back instead of ending it. While checking the pool's safety I found that the stages' read-only and short-timeout settings were never in effect in production: they were passed as connection options, which the Supabase pooler silently ignores, and the service's DATABASE_URL is the postgres role. Measured 2026-11-26 with that role through the pooler: the same options gave read_only=off and statement_timeout=30min. The pool therefore sets both with SET commands after connecting and verifies them with SHOW; a connection that is not read-only is never handed out. This also applies to the direct (non-pooled) path and DB_REUSE=0. The intended limits are the modules' own: 3 s per statement for the lot, council and bush fire lookups, 8 s for the council controls.",
+  "commit_hash": "ac7b542c",
+  "files": [
+    "services/db_reuse.py",
+    "services/lmr_area_lga.py",
+    "services/evidence_council.py",
+    "tests/test_db_reuse.py"
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts=",
+    "expected": "Tests pass; with the postgres role through the pooler a pooled and a direct connection both report read_only on and the statement timeout, and a CREATE TABLE is refused.",
+    "fails_when": "A connection is handed out that is not read-only or lacks the timeout; a stage's transaction or autocommit state leaks into the next stage; a dropped connection is reused; a closed lease returns to the pool twice; an exhausted or failing pool breaks a stage instead of falling back; DB_REUSE=0 skips the read-only check.",
+    "observed_red": "Eleven hand breakages of the pool each turned a test red and were restored: read-only never verified, no rollback on return, autocommit not reset, a closed connection reused, a recent connection never trusted, an idle connection never checked, the SET not committed, the off switch ignored, a changed setting or process ignored, a pooled connection never configured, and the pool keeping nothing or only one connection (found on the real database: psycopg2 closes a returned connection unless minconn is raised, so with the first design nothing was ever reused). The last two need the real driver (tests/conftest_mocks.py stubs it by default) and run with PYTEST_REAL_DB=1, which also runs a real-database test. A reviewer-style check of the timeout comparison found an empty SHOW result would pass for a non-whole-second timeout; fixed. Measured on the real database as the postgres role through the pooler: pooled and direct connections report read_only=on, statement_timeout=3s and refuse a write (ReadOnlySqlTransaction); before this change the same role and options gave read_only=off, statement_timeout=30min."
+  },
+  "pre_impl": {
+    "existing_data": "Run through /pre-impl: no table, query or schema changes. Session pooler on port 5432; max_connections 90 with 17 in use; no idle session timeouts; a new connection costs 0.12 s from a developer PC and a warm query 32 ms.",
+    "assumption_mismatch": "The modules' docstrings say the connection is read-only with a short timeout; connection options do not do that through the pooler. The service uses the postgres role (DATABASE_URL), not the read-only role.",
+    "new_vs_existing": "New: the pool, the SET and SHOW check. Changed: two _connect() functions. Unchanged: every query, every stage's own logic and its fallbacks.",
+    "external_source_error": "If the database cannot be made read-only the stage reports no answer (unreadable), as for any database error; the live services are then used where a stage has one.",
+    "frontend_type": "None.",
+    "user_failure_mode": "A planner waits seconds longer than needed for the evidence page, and a public request could in principle run a runaway statement as a writer."
+  },
+  "functions": [
+    {
+      "name": "connect",
+      "file_line": "services/db_reuse.py:154",
+      "input": "a connect timeout and a statement timeout in the stage's own units",
+      "output": "a read-only connection with the statement timeout, from the pool or an ordinary one",
+      "if_none": "No DATABASE_URL gives none and the stage reports no answer."
+    },
+    {
+      "name": "_configure",
+      "file_line": "services/db_reuse.py:43",
+      "input": "a connection and the statement timeout in milliseconds",
+      "output": "nothing; the session is read-only with the timeout, proven by SHOW",
+      "if_none": "A session that does not report both raises and is never used."
+    },
+    {
+      "name": "_usable",
+      "file_line": "services/db_reuse.py:94",
+      "input": "a connection taken from the pool",
+      "output": "whether it is open and, if it sat idle, answers SELECT 1",
+      "if_none": "A closed or silent connection is not usable and is replaced."
+    },
+    {
+      "name": "_connect",
+      "file_line": "services/lmr_area_lga.py:34",
+      "input": "nothing: the module's own timeouts",
+      "output": "the connection from the pool for the lot, council and bush fire lookups",
+      "if_none": "No DATABASE_URL set gives none and the stage reports no answer."
+    },
+    {
+      "name": "_connect",
+      "file_line": "services/evidence_council.py:42",
+      "input": "nothing: the module's own timeouts",
+      "output": "the connection from the pool for the council controls and files",
+      "if_none": "No DATABASE_URL set gives none and the stage reports no answer."
+    }
+  ],
+  "values": [
+    {
+      "value": "DATABASE_URL and DB_REUSE",
+      "read_at": "services/db_reuse.py:154",
+      "nullable": "yes",
+      "guard_at": "services/db_reuse.py:154 (none and the off switch)",
+      "if_missing": "No connection: the stage reports no answer."
+    }
+  ],
+  "queries": [
+    {
+      "purpose": "Check a connection that sat idle; set and verify the read-only session and the timeout",
+      "file_line": "services/db_reuse.py:43",
+      "where_clause": "SELECT 1; SET default_transaction_read_only = on; SET statement_timeout = <int>; SHOW both; no table is read or written"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "The pooler ignores the session settings.",
+      "what_happens": "A writer-role connection could run writes or runaway statements.",
+      "mitigated": "Mitigated: the settings are set with SET and proven with SHOW; a session that does not report them is refused.",
+      "how": "Tests on SHOW read-only off and a timeout mismatch; the real-database test.",
+      "repro": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts="
+    },
+    {
+      "scenario": "The database drops an idle pooled connection.",
+      "what_happens": "A stage would fail on a dead connection.",
+      "mitigated": "Mitigated: a connection idle for over 20 seconds is checked with SELECT 1 and replaced if dead.",
+      "how": "Tests with a failing SELECT 1 and a closed connection.",
+      "repro": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts="
+    },
+    {
+      "scenario": "A stage leaves a transaction or autocommit on.",
+      "what_happens": "The next stage would inherit it.",
+      "mitigated": "Mitigated: close() rolls back and resets autocommit; a connection that cannot be reset is closed.",
+      "how": "Tests on rollback, autocommit and a failing rollback.",
+      "repro": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts="
+    },
+    {
+      "scenario": "All pooled connections are in use or the pool cannot be made.",
+      "what_happens": "A stage could wait or fail.",
+      "mitigated": "Mitigated: the stage gets an ordinary connection that really closes, as before.",
+      "how": "Tests for an exhausted pool and a failing pool.",
+      "repro": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts="
+    },
+    {
+      "scenario": "The new 3 s statement limit cancels a slow statement under load.",
+      "what_happens": "That stage reports no answer or falls back to the live service.",
+      "mitigated": "Accepted and watched: the limit is the modules' own designed value; the lot-outline stage has a live fallback; the evidence page shows unreadable, never empty.",
+      "how": "Stage times after the deploy.",
+      "repro": "Not applicable."
+    },
+    {
+      "scenario": "The pool holds database connections open.",
+      "what_happens": "Up to 8 of the database's 90 connections.",
+      "mitigated": "Mitigated: 17 of 90 are in use; the pool opens none until used and DB_REUSE=0 turns it off.",
+      "how": "Measured connections before the change.",
+      "repro": "Not applicable."
+    }
+  ],
+  "residual_risk": "1) The speed-up could not be measured on a developer PC (a connection costs 0.12 s here, median 2.31 s without the pool and 2.51 s with it, within noise); the effect is measured on the live service after deploy, and the pool can be turned off with DB_REUSE=0. 2) The statement limits (3 s and 8 s) now actually apply; before, the postgres role had 30 minutes. A statement that took longer would now fail, which the modules' own design expects. 3) Other database users of the service (the flood answer, the conveyancing report, the CDC lot requirements) still open their own connections and are not changed; whether their connections are read-only is not checked here. 4) The connection check relies on the session pooler (port 5432); a transaction-mode pooler would refuse every connection (fail closed).",
+  "post_merge": {
+    "db_reset": "None.",
+    "secrets": "None.",
+    "other_repo": "None.",
+    "manual_verify": "After the Railway deploy repeat the 34 real pilot-council lots and read the lmr stage lines: lot_outline_db, council_controls and council_files should drop and no stage should newly time out."
+  }
+}
