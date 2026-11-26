@@ -1,0 +1,23 @@
+{
+ "tier": "minor",
+ "justification": "One CLAUDE.md section added; no code, data, hook or CI path touched. Tier floor counts 0 substantive files.",
+ "commit_hash": "4ab5b780",
+ "files": [
+  "CLAUDE.md"
+ ],
+ "break_it": [
+  {
+   "scenario": "The section is read as permission to publish claims the claims sheet forbids, or to present a hand-read as product output.",
+   "what_happens": "A prospect is told something the product does not do.",
+   "mitigated": true,
+   "how": "The section points to the claims sheet for wording limits and says a hand-read of an unloaded council is labelled as such.",
+   "repro": "grep -n -A8 'Engagement and Value Partner' CLAUDE.md"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No"
+ }
+}
