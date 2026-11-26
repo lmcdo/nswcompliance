@@ -2402,6 +2402,691 @@
       "reason": "Hornsby DCP 2024 Part 3 section 3.5 (pages 84 to 99): each of these controls is headed or worded as applying to the Pound Road, Hornsby Precinct (for example 'Setback Encroachments (Pound Road, Hornsby Precinct)', page 90). They were served to every Hornsby house. The precinct has no outline in our data, so the rows are withheld and listed. Rows for the rest of the area ('excluding Pound Road') are untouched. Withheld 2026-11-20 (owner yes).",
       "title": "Hornsby DCP 2024 Part 3.5: Pound Road, Hornsby Precinct controls",
       "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-ashfield-chapter-a-miscellaneous",
+      "council": "ashfield",
+      "chapter_key": "chapter-a-miscellaneous",
+      "expect": 3,
+      "ids": [
+        250480,
+        250542,
+        250569
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Land Application Map - Sheet LAP-#; Ashfield Town Centre core area; Ashfield Town Centre & Croydon Urban Village). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Ashfield chapter-a-miscellaneous: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-ashfield-chapter-c-sustainability",
+      "council": "ashfield",
+      "chapter_key": "chapter-c-sustainability",
+      "expect": 5,
+      "ids": [
+        183930,
+        183954,
+        183963,
+        184162,
+        184164
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Ashfield West; Hurlstone Park Enterprise Zone; Parramatta Road Enterprise Corridor; GreenWay (Haberfield and Summer Hill, Figure #); GreenWay (Hawthorne Canal)). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Ashfield chapter-c-sustainability: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-ashfield-chapter-f-dev-category",
+      "council": "ashfield",
+      "chapter_key": "chapter-f-dev-category",
+      "expect": 4,
+      "ids": [
+        240980,
+        241234,
+        241280,
+        241310
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: #-# Smith Street, Summer Hill; Ashfield Town Centre; Sites shown as Code M on Height Maps). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Ashfield chapter-f-dev-category: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-blacktown-blacktown-dcp-2015-part-c",
+      "council": "blacktown",
+      "chapter_key": "blacktown-dcp-2015-part-c",
+      "expect": 6,
+      "ids": [
+        202409,
+        202411,
+        202430,
+        202482,
+        202484,
+        202532
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Stanhope Gardens; Stanhope Gardens masterplanned estate). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Blacktown blacktown-dcp-2015-part-c: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-canterbury-bankstown-chapter-10-2-schools",
+      "council": "canterbury_bankstown",
+      "chapter_key": "chapter-10-2-schools",
+      "expect": 1,
+      "ids": [
+        164614
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Hume Highway). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Canterbury Bankstown chapter-10-2-schools: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-canterbury-bankstown-chapter-10-4-non-residential-land-uses",
+      "council": "canterbury_bankstown",
+      "chapter_key": "chapter-10-4-non-residential-land-uses",
+      "expect": 4,
+      "ids": [
+        161844,
+        161856,
+        161879,
+        161895
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: former Bankstown Local Government Area; Ruse Park, Bankstown; former Canterbury Local Government Area). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Canterbury Bankstown chapter-10-4-non-residential-land-uses: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-canterbury-bankstown-chapter-3-2-parking",
+      "council": "canterbury_bankstown",
+      "chapter_key": "chapter-3-2-parking",
+      "expect": 2,
+      "ids": [
+        162237,
+        162268
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Bankstown City Centre; E# zone in former Bankstown LGA; Canterbury Road, Beamish Street (Campsie), Homer Street (Undercliffe Precinct)). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Canterbury Bankstown chapter-3-2-parking: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-canterbury-bankstown-chapter-3-6-signs",
+      "council": "canterbury_bankstown",
+      "chapter_key": "chapter-3-6-signs",
+      "expect": 1,
+      "ids": [
+        159357
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Potts Hill Reservoir). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Canterbury Bankstown chapter-3-6-signs: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-canterbury-bankstown-chapter-8-1-general-requirements",
+      "council": "canterbury_bankstown",
+      "chapter_key": "chapter-8-1-general-requirements",
+      "expect": 4,
+      "ids": [
+        159728,
+        159742,
+        159756,
+        159782
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Potts Hill Reservoir (Site E, Site A); former Potts Hill Reservoirs site). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Canterbury Bankstown chapter-8-1-general-requirements: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-city-of-sydney-schedules",
+      "council": "city_of_sydney",
+      "chapter_key": "schedules",
+      "expect": 30,
+      "ids": [
+        255882,
+        255890,
+        255891,
+        255892,
+        255893,
+        255894,
+        255898,
+        255899,
+        255900,
+        255901,
+        255902,
+        255903,
+        255906,
+        255911,
+        255931,
+        256018,
+        256061,
+        256071,
+        256072,
+        256080,
+        256081,
+        256553,
+        256612,
+        256613,
+        256614,
+        256615,
+        256616,
+        256617,
+        256618,
+        256619
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Green Square; Oxford Street Cultural and Creative Precinct; City Living Area; Special Character Area; Late Night Management Areas (North Alexandria heritage area); Late Night Management Areas). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "City Of Sydney schedules: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-city-of-sydney-section-1-introduction",
+      "council": "city_of_sydney",
+      "chapter_key": "section-1-introduction",
+      "expect": 29,
+      "ids": [
+        255224,
+        255225,
+        255226,
+        255227,
+        255228,
+        255229,
+        255230,
+        255231,
+        255232,
+        255233,
+        255234,
+        255235,
+        255236,
+        255237,
+        255239,
+        255283,
+        255284,
+        255297,
+        255304,
+        255306,
+        255310,
+        255311,
+        255313,
+        255315,
+        255322,
+        255331,
+        255332,
+        255342,
+        255350
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Bays Precinct/ Wentworth Park; Various Sites (Southern Sydney); Green Square Town Centre (#); Redfern/Waterloo; Ultimo and Pyrmont areas; Western Precinct, Southern Precinct, Eastern Precinct). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "City Of Sydney section-1-introduction: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-city-of-sydney-section-3-general-provisions",
+      "council": "city_of_sydney",
+      "chapter_key": "section-3-general-provisions",
+      "expect": 19,
+      "ids": [
+        189491,
+        189543,
+        189552,
+        189672,
+        189720,
+        190167,
+        190168,
+        190276,
+        190284,
+        190285,
+        190286,
+        190294,
+        190318,
+        190417,
+        190469,
+        190541,
+        190547,
+        190552,
+        190559
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Tower Cluster Area; Proposed streets and lanes map; Central Sydney; Entertainment Sound Management Map areas; King Street, Newtown; Pedestrian priority map areas). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "City Of Sydney section-3-general-provisions: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-city-of-sydney-section-4-development-types",
+      "council": "city_of_sydney",
+      "chapter_key": "section-4-development-types",
+      "expect": 2,
+      "ids": [
+        178852,
+        179070
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Darlinghurst Road precinct; Rosebery Estate). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "City Of Sydney section-4-development-types: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-georges-river-grdcp-part-6-1-low-density",
+      "council": "georges_river",
+      "chapter_key": "grdcp-part-6-1-low-density",
+      "expect": 16,
+      "ids": [
+        170720,
+        170721,
+        170730,
+        170741,
+        170758,
+        170759,
+        170838,
+        170839,
+        170840,
+        170841,
+        170842,
+        170843,
+        170844,
+        170846,
+        170848,
+        170850
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Bellevue Estate; Kemps Estate; Kemps Estate, Mortdale). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Georges River grdcp-part-6-1-low-density: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-georges-river-part-3-general-planning-considerations",
+      "council": "georges_river",
+      "chapter_key": "part-3-general-planning-considerations",
+      "expect": 10,
+      "ids": [
+        181800,
+        181805,
+        181808,
+        181812,
+        181814,
+        182744,
+        182746,
+        182751,
+        182973,
+        183023
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Hurstville and Kogarah Strategic Centres; McCready Lane, Beverly Hills lots; Woniora Road, Hurstville; Finney Lane, Hurstville; No. # Penshurst Avenue and #-# Rocky Point Road; Penshurst, Kogarah South, O’Brien’s Estate HCAs). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Georges River part-3-general-planning-considerations: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-hornsby-hornsby-dcp-2024-part3-residential",
+      "council": "hornsby",
+      "chapter_key": "hornsby-dcp-2024-part3-residential",
+      "expect": 67,
+      "ids": [
+        262379,
+        262380,
+        262381,
+        262382,
+        262383,
+        262386,
+        262529,
+        262573,
+        262575,
+        262582,
+        262583,
+        262584,
+        262585,
+        262604,
+        262605,
+        262606,
+        262612,
+        262631,
+        262632,
+        262658,
+        262698,
+        262699,
+        262712,
+        262713,
+        262714,
+        262717,
+        262720,
+        262721,
+        262723,
+        262774,
+        262913,
+        262915,
+        262916,
+        262917,
+        262918,
+        262921,
+        262971,
+        262977,
+        262978,
+        262979,
+        262985,
+        262986,
+        262987,
+        262990,
+        262992,
+        262993,
+        262994,
+        262995,
+        262996,
+        263006,
+        263009,
+        263010,
+        263011,
+        263012,
+        263013,
+        263024,
+        263025,
+        263028,
+        263029,
+        263033,
+        263034,
+        263044,
+        263045,
+        263046,
+        263049,
+        263050,
+        263051
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Beecroft Heritage Precinct; Pound Road, Hornsby precinct; Key Development Principles localities (Mount Colah/Asquith/Hornsby precincts); Park Avenue, Waitara Precinct; Pound Road, Hornsby Precinct; Pacific Highway, Mount Colah and Asquith Precinct; Jersey Street Nth, Asquith precinct). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Hornsby hornsby-dcp-2024-part3-residential: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-hornsby-part-1-general",
+      "council": "hornsby",
+      "chapter_key": "part-1-general",
+      "expect": 3,
+      "ids": [
+        244792,
+        244802,
+        244865
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Hornsby Town Centre; West Pennant Hills commercial centre; Housing Strategy Precincts (R# Zone, Area P on Height Map)). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Hornsby part-1-general: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-ku-ring-gai-section-a-part-7-residential-flat-buildings",
+      "council": "ku_ring_gai",
+      "chapter_key": "section-a-part-7-residential-flat-buildings",
+      "expect": 4,
+      "ids": [
+        196585,
+        196586,
+        196587,
+        196588
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: sites identified in Part # Urban Precincts and Sites). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Ku Ring Gai section-a-part-7-residential-flat-buildings: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-leichhardt-amendment-7-licensed-premises",
+      "council": "leichhardt",
+      "chapter_key": "amendment-7-licensed-premises",
+      "expect": 5,
+      "ids": [
+        204746,
+        204747,
+        204748,
+        204749,
+        204755
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Recognised Shopping Street; Recognised shopping streets). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Leichhardt amendment-7-licensed-premises: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-leichhardt-part-c-s1-general",
+      "council": "leichhardt",
+      "chapter_key": "part-c-s1-general",
+      "expect": 10,
+      "ids": [
+        186058,
+        186059,
+        186071,
+        186255,
+        186256,
+        186257,
+        186258,
+        186259,
+        186269,
+        186270
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: GreenWay; recognised shopping streets; Recognised shopping streets; recognised shopping strip). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Leichhardt part-c-s1-general: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-leichhardt-part-c-s2-urban-character",
+      "council": "leichhardt",
+      "chapter_key": "part-c-s2-urban-character",
+      "expect": 5,
+      "ids": [
+        155259,
+        155260,
+        155261,
+        155262,
+        155263
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: West Leichhardt Distinctive Neighbourhood; Leichhardt Commercial Distinctive Neighbourhood). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Leichhardt part-c-s2-urban-character: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-leichhardt-part-c-s3-residential",
+      "council": "leichhardt",
+      "chapter_key": "part-c-s3-residential",
+      "expect": 1,
+      "ids": [
+        204971
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Sydney Port lands). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Leichhardt part-c-s3-residential: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-leichhardt-part-e-water",
+      "council": "leichhardt",
+      "chapter_key": "part-e-water",
+      "expect": 3,
+      "ids": [
+        109134,
+        109136,
+        109137
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Parramatta River and Sydney Harbour foreshore). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Leichhardt part-e-water: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-marrickville-part2-s13-biodiversity",
+      "council": "marrickville",
+      "chapter_key": "part2-s13-biodiversity",
+      "expect": 1,
+      "ids": [
+        161160
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Bandicoot Protection Area). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Marrickville part2-s13-biodiversity: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-northern-beaches-warringah-dcp-2011-full",
+      "council": "northern_beaches",
+      "chapter_key": "warringah-dcp-2011-full",
+      "expect": 29,
+      "ids": [
+        190710,
+        190817,
+        190818,
+        190824,
+        190836,
+        190990,
+        191019,
+        191036,
+        191140,
+        191177,
+        191185,
+        191191,
+        191238,
+        191773,
+        191792,
+        191963,
+        191971,
+        192203,
+        192213,
+        192243,
+        192279,
+        192283,
+        192291,
+        192299,
+        192303,
+        192304,
+        192308,
+        192309,
+        192310
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Main Roads Setback map land; coastal cliffs building line; DCP Map Number of Storeys; DCP Map Side Boundary Envelopes; The Greenway, Duffy's Forest; Belrose Corridor). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Northern Beaches warringah-dcp-2011-full: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-parramatta-parramatta-dcp-2023-full",
+      "council": "parramatta",
+      "chapter_key": "parramatta-dcp-2023-full",
+      "expect": 9,
+      "ids": [
+        211968,
+        211970,
+        213041,
+        213826,
+        213827,
+        213839,
+        213896,
+        213902,
+        221233
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Parramatta City Centre, Epping, Westmead, Granville, Harris Park town centres; Epping, Ermington, Granville, Harris Park, Westmead, Parramatta City Centre; Granville; Silverwater Road; Parramatta, Epping, Westmead, Granville and Harris Park town centres; Granville and Harris Park Town Centres). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Parramatta parramatta-dcp-2023-full: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-penrith-c10-transport-access-parking",
+      "council": "penrith",
+      "chapter_key": "c10-transport-access-parking",
+      "expect": 7,
+      "ids": [
+        261908,
+        261909,
+        261912,
+        262019,
+        262022,
+        262042,
+        262109
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Key transport corridors (listed roads); Oakdale South Industrial Estate; Mulgoa Road; Penrith City Centre; M# Western Motorway). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Penrith c10-transport-access-parking: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-penrith-penrith-dcp-2014-part-d2",
+      "council": "penrith",
+      "chapter_key": "penrith-dcp-2014-part-d2",
+      "expect": 5,
+      "ids": [
+        261851,
+        261852,
+        261854,
+        261855,
+        261862
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Land abutting proposed roads (Figures #-#); specified sites with proposed roads (Figures #-#); Proposed road pattern areas (Figures #-#)). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Penrith penrith-dcp-2014-part-d2: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-waverley-waverley-dcp-2022",
+      "council": "waverley",
+      "chapter_key": "waverley-dcp-2022",
+      "expect": 16,
+      "ids": [
+        225372,
+        225374,
+        225375,
+        225376,
+        225377,
+        225496,
+        226932,
+        226933,
+        226934,
+        226936,
+        226937,
+        226938,
+        226941,
+        226942,
+        226944,
+        226945
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Campbell Parade; Oxford Street Mall, Bondi Junction; Wairoa Avenue in the vicinity of Wallis Parade; Bronte Road, Bronte Beach; Bondi Junction; centres identified in Part E). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Waverley waverley-dcp-2022: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-wollongong-chapter-e3-car-parking",
+      "council": "wollongong",
+      "chapter_key": "chapter-e3-car-parking",
+      "expect": 2,
+      "ids": [
+        249183,
+        249346
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Wollongong City Centre). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Wollongong chapter-e3-car-parking: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-woollahra-chapter-b4-housing-accessible-areas",
+      "council": "woollahra",
+      "chapter_key": "chapter-b4-housing-accessible-areas",
+      "expect": 2,
+      "ids": [
+        116683,
+        116684
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: land within #m walking distance of Edgecliff, Double Bay, Oxford Street, Kings Cross, Bondi Junction and Rose Bay town centres/stations; within #m of named town centres (Edgecliff, Double Bay, Oxford Street, Bondi Junction, Rose Bay, Kings Cross)). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Woollahra chapter-b4-housing-accessible-areas: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-woollahra-chapter-e2-stormwater-flood",
+      "council": "woollahra",
+      "chapter_key": "chapter-e2-stormwater-flood",
+      "expect": 4,
+      "ids": [
+        180792,
+        180794,
+        180838,
+        180841
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Double Bay settlement area; Rose Bay settlement area). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Woollahra chapter-e2-stormwater-flood: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-woollahra-chapter-e5-waste-management",
+      "council": "woollahra",
+      "chapter_key": "chapter-e5-waste-management",
+      "expect": 1,
+      "ids": [
+        162064
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: Paddington or West Woollahra). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Woollahra chapter-e5-waste-management: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
+    },
+    {
+      "name": "placegroup-woollahra-chapter-e7-signage",
+      "council": "woollahra",
+      "chapter_key": "chapter-e7-signage",
+      "expect": 1,
+      "ids": [
+        162747
+      ],
+      "reason": "The council's own text limits these rules to named places that have no outline in our data (for example: William Street, Paddington). Each row was read against the council's page and its limiting words found verbatim in the supplied text. Withheld 2026-11-22 (owner yes), same ruling as 2026-10-15: hidden and listed as not covered yet.",
+      "title": "Woollahra chapter-e7-signage: rules limited to named places",
+      "reason_code": "DRAWING_NOT_MATCHED"
     }
   ],
   "unmapped_precinct_chapters": "rules in these chapters are already shown to no house (DQ-146) until a map exists: C-B 11.14 Riverwood, 11.6 Potts Hill, 8.3 Hume Hwy (S1-3, S5, S7), 6.3 Campsie, 11.2 Undercliffe, 8.2 Canterbury Rd (outside Area 9), KRG 14C/14G if refused, Parramatta 16",
