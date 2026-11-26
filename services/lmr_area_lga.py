@@ -16,7 +16,6 @@ Measured 2026-11-18 (before the 100 m rule): lookups 11-38 ms; 60 of 60 random l
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -33,13 +32,10 @@ _SQL = (
 
 
 def _connect() -> Any:
-    import psycopg2
+    """The same read-only, short-timeout connection as before, from services/db_reuse (which reuses connections: close() hands it back instead of ending it). None when DATABASE_URL is not set."""
+    from services import db_reuse
 
-    dsn = os.environ.get("DATABASE_URL")
-    if not dsn:
-        return None
-    return psycopg2.connect(dsn, connect_timeout=CONNECT_TIMEOUT_S,
-                            options=f"-c statement_timeout={STATEMENT_TIMEOUT_MS} -c default_transaction_read_only=on")
+    return db_reuse.connect(CONNECT_TIMEOUT_S, STATEMENT_TIMEOUT_MS)
 
 
 def _date(at: Any) -> Optional[str]:

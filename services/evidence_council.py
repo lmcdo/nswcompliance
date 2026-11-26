@@ -10,7 +10,6 @@ ratchet, scripts/page_integrity/lint_producers.py, forbids one). lmr_area_lga._c
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Callable, Optional
 
 from services.council_key import to_council_key
@@ -41,13 +40,10 @@ _FILES_SQL = (
 
 
 def _connect() -> Any:
-    import psycopg2
+    """The same read-only, short-timeout connection as before, from services/db_reuse (which reuses connections: close() hands it back instead of ending it). None when DATABASE_URL is not set."""
+    from services import db_reuse
 
-    dsn = os.environ.get("DATABASE_URL")
-    if not dsn:
-        return None
-    return psycopg2.connect(dsn, connect_timeout=CONNECT_TIMEOUT_S,
-                            options=f"-c statement_timeout={STATEMENT_TIMEOUT_MS} -c default_transaction_read_only=on")
+    return db_reuse.connect(CONNECT_TIMEOUT_S, STATEMENT_TIMEOUT_MS)
 
 
 def _iso(v: Any) -> Optional[str]:
