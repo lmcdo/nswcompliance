@@ -4,16 +4,18 @@
 """Reuse read-only database connections for the area check and the evidence call.
 
 A stage calls connect() exactly where it used to call psycopg2.connect(), and close() exactly where it used to close: close() hands the connection back to a small pool instead of ending it, so the next
-stage (and the next request) skips the connection set-up. Nothing else about a stage changes: the connection is the same read-only, short-timeout connection it always was.
+stage (and the next request) skips the connection set-up. The stage's connection is the same read-only, short-timeout connection it always was, and once it has called close() it can no longer be used.
 
 Read-only and the statement timeout are set with SET commands after connecting and then checked with SHOW. Passing them as connection options (what the stages did before) does nothing through the Supabase
 pooler: measured 2026-11-26, a connection made that way as the service's database role was read-write with a 30-minute statement timeout. If the SETs do not take effect the connection is refused, never used.
 
-Safety:
+Design:
+  * one pool per (database, connect timeout, statement timeout, process): the two callers ask for different statement timeouts and each keeps its own pool; a forked process never uses its parent's pool;
+  * what is known about each pooled connection (set up already, when last used) is kept with the pool, keyed by the connection object itself, so it can never be attached to a different connection;
   * a connection that sat idle for a while is checked with SELECT 1 when it is taken from the pool; one the database has dropped is thrown away and a new one is made;
   * a connection is rolled back when it comes back (a read leaves a transaction open) and its autocommit setting is reset, so one stage cannot affect the next;
   * if every pooled connection is in use, or the pool cannot be made, the stage gets an ordinary connection that really closes, exactly as before;
-  * DB_REUSE=0 turns the pool off (every stage gets an ordinary connection).
+  * DB_REUSE=0 turns the pool off (every stage gets an ordinary connection, still made read-only and checked).
 """
 from __future__ import annotations
 
@@ -21,19 +23,19 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-POOL_MAX = 8            # noqa: regulatory-number -- engineering limit on pooled connections per service process (the area check runs at most four stages at once), not a planning figure
+POOL_MAX = 8            # noqa: regulatory-number -- engineering limit on pooled connections per pool (the area check runs at most four stages at once), not a planning figure
 RECENT_S = 20.0         # noqa: regulatory-number -- a connection used this recently is trusted without a SELECT 1 (the database's idle limits are minutes), not a planning figure
 
 _lock = threading.Lock()
-_pool: Any = None
-_pool_key: Optional[tuple] = None
-_pool_pid: Optional[int] = None
-_last_used: dict[int, float] = {}   # id(connection) -> time it was last handed back
-_configured: set[int] = set()       # id(connection) of pooled connections already made read-only with the timeout
+_states: dict[tuple, "_PoolState"] = {}
+
+
+class ClosedLeaseError(RuntimeError):
+    """A stage used its connection after calling close()."""
 
 
 def _options(statement_timeout_ms: int) -> str:
@@ -77,80 +79,108 @@ def _make_pool(dsn: str, connect_timeout_s: int, statement_timeout_ms: int) -> A
 
     pool = ThreadedConnectionPool(1, POOL_MAX, dsn, connect_timeout=connect_timeout_s, options=_options(statement_timeout_ms))   # opens one connection now
     # psycopg2 keeps a returned connection only while fewer than `minconn` are idle, and closes it otherwise (with a minimum of 0 nothing would ever be reused). It opens `minconn` connections when the pool is made,
-    # so the pool is made with 1 and the retention limit is raised afterwards: connections are opened as stages ask, and up to POOL_MAX are kept for the next stage. tests/test_db_reuse.py checks this on the real database.
+    # so the pool is made with 1 and the retention limit is raised afterwards: connections are opened as stages ask, and up to POOL_MAX are kept for the next stage. tests/test_db_reuse.py checks this.
     pool.minconn = POOL_MAX
     return pool
 
 
-def _get_pool(dsn: str, connect_timeout_s: int, statement_timeout_ms: int) -> Any:
-    global _pool, _pool_key, _pool_pid
-    key = (dsn, connect_timeout_s, statement_timeout_ms)
+class _PoolState:
+    """One pool and what is known about its connections. `meta` is keyed by the connection object (held, so its identity cannot be reused) and is only ever written for that connection."""
+
+    def __init__(self, pool: Any, statement_timeout_ms: int):
+        self.pool = pool
+        self.statement_timeout_ms = statement_timeout_ms
+        self.meta: dict[Any, dict] = {}
+
+    def discard(self, conn: Any) -> None:
+        self.meta.pop(conn, None)
+        try:
+            self.pool.putconn(conn, close=True)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def usable(self, conn: Any) -> bool:
+        """False for a closed connection, and for one that has sat idle long enough that the database may have dropped it and that does not answer SELECT 1."""
+        if getattr(conn, "closed", 1):
+            return False
+        last = self.meta.get(conn, {}).get("last")
+        if last is not None and time.monotonic() - last <= RECENT_S:
+            return True
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.fetchone()
+            cur.close()
+            conn.rollback()
+            return True
+        except Exception:  # noqa: BLE001 -- a dropped or broken connection is replaced, never reused
+            return False
+
+    def checkout(self) -> Any:
+        """A usable connection, set up read-only with the timeout, or raise (the connection is then discarded)."""
+        conn = self.pool.getconn()
+        try:
+            if not self.usable(conn):
+                raise RuntimeError("pooled connection is closed or does not answer")
+            meta = self.meta.setdefault(conn, {"configured": False, "last": None})
+            if not meta.get("configured"):
+                _configure(conn, self.statement_timeout_ms)
+                meta["configured"] = True
+            return conn
+        except Exception:
+            self.discard(conn)
+            raise
+
+
+def _get_state(dsn: str, connect_timeout_s: int, statement_timeout_ms: int) -> _PoolState:
+    key = (dsn, connect_timeout_s, statement_timeout_ms, os.getpid())   # the process is part of the key: a forked process never shares its parent's pool
     with _lock:
-        if _pool is None or _pool_key != key or _pool_pid != os.getpid():   # a different setting or a forked process never shares the old pool
-            _pool, _pool_key, _pool_pid = _make_pool(dsn, connect_timeout_s, statement_timeout_ms), key, os.getpid()
-            _last_used.clear()
-            _configured.clear()
-        return _pool
-
-
-def _usable(conn: Any) -> bool:
-    """False for a closed connection, and for one that has sat idle long enough that the database may have dropped it and that does not answer SELECT 1."""
-    if getattr(conn, "closed", 1):
-        return False
-    last = _last_used.get(id(conn))
-    if last is not None and time.monotonic() - last <= RECENT_S:
-        return True
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT 1")
-        cur.fetchone()
-        cur.close()
-        conn.rollback()
-        return True
-    except Exception:  # noqa: BLE001 -- a dropped or broken connection is replaced, never reused
-        return False
+        state = _states.get(key)
+        if state is None:
+            state = _states[key] = _PoolState(_make_pool(dsn, connect_timeout_s, statement_timeout_ms), statement_timeout_ms)
+        return state
 
 
 class _Lease:
-    """What a stage holds: the pooled connection itself for every use (cursor, rollback, autocommit and so on), except that close() returns it to the pool."""
+    """What a stage holds: the pooled connection for every use (cursor, rollback, autocommit and so on), except that close() returns it to the pool, after which any use raises."""
 
-    def __init__(self, conn: Any, pool: Any):
+    def __init__(self, conn: Any, state: _PoolState):
         object.__setattr__(self, "_conn", conn)
-        object.__setattr__(self, "_pool", pool)
+        object.__setattr__(self, "_state", state)
         object.__setattr__(self, "_open", True)
 
+    def _live(self) -> Any:
+        if not object.__getattribute__(self, "_open"):
+            raise ClosedLeaseError("this connection was already closed: it has been returned to the pool and may be in use by another stage")
+        return object.__getattribute__(self, "_conn")
+
     def __getattr__(self, name: str) -> Any:
-        return getattr(object.__getattribute__(self, "_conn"), name)
+        return getattr(self._live(), name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        setattr(object.__getattribute__(self, "_conn"), name, value)
+        setattr(self._live(), name, value)
 
     def __enter__(self) -> Any:
-        object.__getattribute__(self, "_conn").__enter__()
+        self._live().__enter__()
         return self
 
     def __exit__(self, *exc: Any) -> Any:
-        return object.__getattribute__(self, "_conn").__exit__(*exc)
+        return self._live().__exit__(*exc)
 
     def close(self) -> None:
         if not object.__getattribute__(self, "_open"):
             return
-        object.__setattr__(self, "_open", False)
-        conn, pool = object.__getattribute__(self, "_conn"), object.__getattribute__(self, "_pool")
+        conn, state = object.__getattribute__(self, "_conn"), object.__getattribute__(self, "_state")
+        object.__setattr__(self, "_open", False)   # from here on this lease cannot touch the connection, whatever happens next
         try:
             if getattr(conn, "autocommit", False):
                 conn.autocommit = False
             conn.rollback()
-            _last_used[id(conn)] = time.monotonic()
-            pool.putconn(conn)
+            state.meta.setdefault(conn, {"configured": True, "last": None})["last"] = time.monotonic()
+            state.pool.putconn(conn)
         except Exception as exc:  # noqa: BLE001 -- a connection that cannot be reset is closed, never handed to the next stage
             logger.warning("db reuse: closing a connection that could not be reset: %s", exc)
-            _last_used.pop(id(conn), None)
-            _configured.discard(id(conn))
-            try:
-                pool.putconn(conn, close=True)
-            except Exception:  # noqa: BLE001
-                pass
+            state.discard(conn)
 
 
 def connect(connect_timeout_s: int, statement_timeout_ms: int) -> Any:
@@ -161,23 +191,12 @@ def connect(connect_timeout_s: int, statement_timeout_ms: int) -> Any:
     if os.environ.get("DB_REUSE", "1") == "0":
         return _direct(dsn, connect_timeout_s, statement_timeout_ms)
     try:
-        pool = _get_pool(dsn, connect_timeout_s, statement_timeout_ms)
+        state = _get_state(dsn, connect_timeout_s, statement_timeout_ms)
         for _ in range(2):   # the first connection taken may be one the database dropped while it sat idle: replace it once
-            conn = pool.getconn()
-            if _usable(conn):
-                try:
-                    if id(conn) not in _configured:
-                        _configure(conn, statement_timeout_ms)
-                        _configured.add(id(conn))
-                    return _Lease(conn, pool)
-                except Exception as exc:  # noqa: BLE001 -- not read-only or not configurable: never used; the ordinary path below tries (and checks) once more
-                    logger.warning("db reuse: a pooled connection could not be made read-only: %s", exc)
-            _last_used.pop(id(conn), None)
-            _configured.discard(id(conn))
             try:
-                pool.putconn(conn, close=True)
-            except Exception:  # noqa: BLE001
-                pass
+                return _Lease(state.checkout(), state)
+            except Exception as exc:  # noqa: BLE001 -- a dropped or not-read-only connection was discarded; try once more, then the ordinary path
+                logger.warning("db reuse: a pooled connection was not usable: %s", exc)
     except Exception as exc:  # noqa: BLE001 -- pool exhausted or not possible: an ordinary connection, exactly as before
         logger.warning("db reuse: using an ordinary connection (%s)", exc)
     return _direct(dsn, connect_timeout_s, statement_timeout_ms)

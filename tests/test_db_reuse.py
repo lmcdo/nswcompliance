@@ -120,15 +120,19 @@ class FakePool:
 
 
 def _reset():
-    db_reuse._pool = None
-    db_reuse._pool_key = None
-    db_reuse._pool_pid = None
-    db_reuse._last_used.clear()
-    db_reuse._configured.clear()
+    db_reuse._states.clear()
 
 
 def selects(c):
     return c.executed.count("SELECT 1")
+
+
+def meta_of(conn):
+    """The bookkeeping dict for a connection object, from whichever pool state holds it (None when none does)."""
+    for st in db_reuse._states.values():
+        if conn in st.meta:
+            return st.meta[conn]
+    return None
 
 
 @pytest.fixture(autouse=True)
@@ -239,7 +243,7 @@ def test_close_rolls_back_and_returns_once_and_is_idempotent(fakes):
     lease.close()
     lease.close()
     assert conn.rollbacks == r0 + 1 and len(pool.puts) == 1
-    assert id(conn) in db_reuse._last_used
+    assert meta_of(conn)["last"] is not None
 
 
 def test_close_records_last_used_time(fakes):
@@ -247,7 +251,7 @@ def test_close_records_last_used_time(fakes):
     conn = under(lease)
     before = time.monotonic()
     lease.close()
-    assert before <= db_reuse._last_used[id(conn)] <= time.monotonic()
+    assert before <= meta_of(conn)["last"] <= time.monotonic()
 
 
 def test_autocommit_passes_through_and_is_reset_on_close(fakes):
@@ -311,7 +315,7 @@ def test_idle_connection_is_checked_with_select_1(fakes):
     a = db_reuse.connect(3, 3000)
     conn = under(a)
     a.close()
-    db_reuse._last_used[id(conn)] = time.monotonic() - (db_reuse.RECENT_S + 5)
+    meta_of(conn)["last"] = time.monotonic() - (db_reuse.RECENT_S + 5)
     executed_before = list(conn.executed)
     b = db_reuse.connect(3, 3000)
     assert under(b) is conn
@@ -324,12 +328,12 @@ def test_recent_window_boundary(fakes, monkeypatch):
     conn = under(a)
     a.close()
     n = len(conn.executed)
-    t0 = db_reuse._last_used[id(conn)]
+    t0 = meta_of(conn)["last"]
     monkeypatch.setattr(db_reuse.time, "monotonic", lambda: t0 + db_reuse.RECENT_S - 0.5)
     b = db_reuse.connect(3, 3000)
     assert len(conn.executed) == n and under(b) is conn
     b.close()
-    t1 = db_reuse._last_used[id(conn)]
+    t1 = meta_of(conn)["last"]
     monkeypatch.setattr(db_reuse.time, "monotonic", lambda: t1 + db_reuse.RECENT_S + 0.5)
     db_reuse.connect(3, 3000)
     assert len(conn.executed) == n + 1
@@ -350,7 +354,7 @@ def test_closed_connection_is_discarded_and_replaced(fakes):
     b = db_reuse.connect(3, 3000)
     assert under(b) is not conn
     assert (conn, True) in pool.puts
-    assert id(conn) not in db_reuse._last_used
+    assert meta_of(conn) is None
     assert fakes.directs == []
     assert len(pool.made) == 2
 
@@ -369,12 +373,12 @@ def test_connection_whose_select_1_fails_is_discarded_and_replaced(fakes):
     a = db_reuse.connect(3, 3000)
     conn = under(a)
     a.close()
-    db_reuse._last_used[id(conn)] = time.monotonic() - 1000
+    meta_of(conn)["last"] = time.monotonic() - 1000
     conn.fail_execute = True
     b = db_reuse.connect(3, 3000)
     assert under(b) is not conn
     assert (conn, True) in fakes.pools[0].puts and conn.closed == 1
-    assert id(conn) not in db_reuse._last_used
+    assert meta_of(conn) is None
     assert fakes.directs == []
 
 
@@ -416,12 +420,12 @@ def test_pool_creation_failure_gives_a_direct_connection(fakes):
 def test_rollback_failure_on_close_closes_the_connection(fakes):
     lease = db_reuse.connect(3, 3000)
     conn = under(lease)
-    db_reuse._last_used[id(conn)] = time.monotonic()
+    meta_of(conn)["last"] = time.monotonic()
     conn.fail_rollback = True
     lease.close()
     assert fakes.pools[0].puts == [(conn, True)]
     assert conn.closed == 1
-    assert id(conn) not in db_reuse._last_used
+    assert meta_of(conn) is None
     nxt = db_reuse.connect(3, 3000)
     assert under(nxt) is not conn
 
@@ -454,13 +458,15 @@ def test_different_dsn_makes_a_new_pool(fakes, monkeypatch):
     assert len(fakes.pools) == 2 and fakes.pools[1].args[0] == "postgresql://other/db"
 
 
-def test_changing_settings_forgets_old_last_used(fakes):
+def test_changing_settings_keeps_old_connection_bookkeeping_in_the_old_state_only(fakes):
     a = db_reuse.connect(3, 3000)
+    conn = under(a)
     a.close()
-    old = id(under(a))
-    assert old in db_reuse._last_used
+    old_state = db_reuse._states[(DSN, 3, 3000, os.getpid())]
     db_reuse.connect(3, 8000)
-    assert old not in db_reuse._last_used
+    new_state = db_reuse._states[(DSN, 3, 8000, os.getpid())]
+    assert conn in old_state.meta and old_state.meta[conn]["last"] is not None
+    assert conn not in new_state.meta
 
 
 def test_different_process_makes_a_new_pool(fakes, monkeypatch):
@@ -592,7 +598,7 @@ def test_new_pooled_connection_is_configured_with_exact_sql_and_commit_before_sh
     i = ev.index(SETS[0])
     assert ev[i:i + 6] == [SETS[0], SETS[1], "COMMIT", "SHOW default_transaction_read_only", "SHOW statement_timeout", "ROLLBACK"]
     assert conn.commits == 1 and conn.last_timeout_ms == 3000
-    assert id(conn) in db_reuse._configured
+    assert meta_of(conn)["configured"] is True
 
 
 def test_timeout_set_is_the_one_passed(fakes):
@@ -617,7 +623,7 @@ def test_idle_recheck_does_not_reconfigure(fakes):
     a = db_reuse.connect(3, 3000)
     conn = under(a)
     a.close()
-    db_reuse._last_used[id(conn)] = time.monotonic() - 1000
+    meta_of(conn)["last"] = time.monotonic() - 1000
     db_reuse.connect(3, 3000)
     assert selects(conn) == 2 and conn.executed.count(SETS[0]) == 1
 
@@ -626,7 +632,7 @@ def test_each_new_connection_is_configured(fakes):
     a = db_reuse.connect(3, 3000)
     b = db_reuse.connect(3, 3000)
     for lease in (a, b):
-        assert under(lease).executed.count(SETS[0]) == 1 and id(under(lease)) in db_reuse._configured
+        assert under(lease).executed.count(SETS[0]) == 1 and meta_of(under(lease))["configured"] is True
 
 
 def test_pooled_connection_not_read_only_is_never_handed_out(fakes):
@@ -636,7 +642,7 @@ def test_pooled_connection_not_read_only_is_never_handed_out(fakes):
     pool = fakes.pools[0]
     assert len(pool.made) == 2 and [close for _c, close in pool.puts] == [True, True]
     assert all(m.closed == 1 for m in pool.made)
-    assert db_reuse._configured == set()
+    assert all(not st.meta for st in db_reuse._states.values())
 
 
 def test_refused_everywhere_raises_and_closes_the_direct_connection(fakes):
@@ -703,31 +709,35 @@ def test_reuse_off_path_refuses_a_session_that_is_not_read_only(fakes, monkeypat
     assert fakes.directs[0].closed == 1 and fakes.pools == []
 
 
-def test_configured_cleared_when_a_new_pool_is_made(fakes):
+def test_a_connection_configured_for_one_pool_is_not_configured_for_another(fakes):
     a = db_reuse.connect(3, 3000)
-    assert id(under(a)) in db_reuse._configured
+    ca = under(a)
     a.close()
-    db_reuse.connect(3, 8000)
-    assert id(under(a)) not in db_reuse._configured
+    b = db_reuse.connect(3, 8000)
+    cb = under(b)
+    assert cb is not ca
+    assert cb.executed.count("SET statement_timeout = 8000") == 1 and cb.last_timeout_ms == 8000
+    assert ca.last_timeout_ms == 3000
+    assert ca not in db_reuse._states[(DSN, 3, 8000, os.getpid())].meta
 
 
 def test_configured_forgotten_when_connection_is_discarded(fakes):
     a = db_reuse.connect(3, 3000)
     conn = under(a)
     a.close()
-    db_reuse._last_used[id(conn)] = time.monotonic() - 1000
+    meta_of(conn)["last"] = time.monotonic() - 1000
     conn.fail_execute = True
     db_reuse.connect(3, 3000)
-    assert id(conn) not in db_reuse._configured
+    assert meta_of(conn) is None
 
 
 def test_configured_forgotten_when_reset_fails_on_close(fakes):
     a = db_reuse.connect(3, 3000)
     conn = under(a)
-    assert id(conn) in db_reuse._configured
+    assert meta_of(conn)["configured"] is True
     conn.fail_rollback = True
     a.close()
-    assert id(conn) not in db_reuse._configured
+    assert meta_of(conn) is None
 
 
 def test_configure_failure_on_a_pooled_connection_discards_it_and_tries_again(fakes):
@@ -741,7 +751,7 @@ def test_configure_failure_on_a_pooled_connection_discards_it_and_tries_again(fa
     fakes.pool_factory = lambda: FakePool(factory=factory)
     lease = db_reuse.connect(3, 3000)
     assert isinstance(lease, db_reuse._Lease) and under(lease) is made[1]
-    assert made[0].closed == 1 and id(made[0]) not in db_reuse._configured and fakes.directs == []
+    assert made[0].closed == 1 and meta_of(made[0]) is None and fakes.directs == []
 
 
 # ---- psycopg2's own pool class, with a fake connection: the fakes above cannot show whether the real pool KEEPS a returned connection ----
@@ -797,3 +807,193 @@ def test_a_statement_timeout_that_is_not_a_positive_whole_number_is_refused_befo
     with pytest.raises(ValueError):
         db_reuse._configure(conn, bad)
     assert conn.events == [] and conn.cursors == 0   # no SQL was issued and no cursor was opened
+
+
+# -- pool states, closed leases, per-connection bookkeeping --------------------------------
+
+def test_two_callers_with_different_timeouts_alternating_make_exactly_two_pools(fakes):
+    for _ in range(10):
+        a = db_reuse.connect(3, 3000)
+        a.close()
+        b = db_reuse.connect(3, 8000)
+        b.close()
+    assert len(fakes.pools) == 2
+    assert [p.args for p in fakes.pools] == [(DSN, 3, 3000), (DSN, 3, 8000)]
+    assert [len(p.made) for p in fakes.pools] == [1, 1]            # each pool made one connection and reused it 10 times
+    assert all(close is False for p in fakes.pools for _c, close in p.puts) and [len(p.puts) for p in fakes.pools] == [10, 10]
+    assert len(db_reuse._states) == 2
+    assert {st.statement_timeout_ms: st.pool for st in db_reuse._states.values()} == {3000: fakes.pools[0], 8000: fakes.pools[1]}
+    assert fakes.pools[0].made[0].last_timeout_ms == 3000 and fakes.pools[1].made[0].last_timeout_ms == 8000
+    assert fakes.directs == []
+
+
+def test_get_state_returns_the_same_state_for_the_same_key_and_a_new_one_for_another(fakes):
+    s1 = db_reuse._get_state(DSN, 3, 3000)
+    assert db_reuse._get_state(DSN, 3, 3000) is s1
+    s2 = db_reuse._get_state(DSN, 3, 8000)
+    assert s2 is not s1 and s2.pool is not s1.pool and s2.statement_timeout_ms == 8000
+    assert len(fakes.pools) == 2
+
+
+def _snapshot(c):
+    return (c.cursors, c.rollbacks, c.commits, list(c.events), c.autocommit, c.entered, list(c.exited), c.closed)
+
+
+@pytest.mark.parametrize("fail_rollback", [False, True])
+def test_a_closed_lease_refuses_every_use_and_does_not_touch_the_connection(fakes, fail_rollback):
+    lease = db_reuse.connect(3, 3000)
+    conn = under(lease)
+    pool = fakes.pools[0]
+    conn.fail_rollback = fail_rollback
+    lease.close()
+    assert pool.puts == [(conn, fail_rollback)]                     # discarded when the reset failed, kept otherwise
+    before = _snapshot(conn)
+    assert issubclass(db_reuse.ClosedLeaseError, RuntimeError)
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.cursor()
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.rollback()
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.commit()
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.autocommit
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.autocommit = True
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        lease.anything_else = 1
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        with lease:
+            pass
+    assert _snapshot(conn) == before
+    assert not hasattr(conn, "anything_else")
+    lease.close()
+    lease.close()
+    assert pool.puts == [(conn, fail_rollback)]                     # put back (or discarded) exactly once
+
+
+def test_closed_lease_use_does_not_reach_the_next_holder_of_the_same_connection(fakes):
+    a = db_reuse.connect(3, 3000)
+    conn = under(a)
+    a.close()
+    b = db_reuse.connect(3, 3000)
+    assert under(b) is conn
+    n = conn.cursors
+    with pytest.raises(db_reuse.ClosedLeaseError):
+        a.cursor()
+    assert conn.cursors == n
+    assert b.cursor().conn is conn                                  # the new holder is unaffected
+
+
+def test_close_marks_the_lease_closed_before_resetting_the_connection(fakes):
+    lease = db_reuse.connect(3, 3000)
+    conn = under(lease)
+    seen = []
+    real_rollback = conn.rollback
+
+    def rollback():
+        try:
+            lease.cursor()
+        except db_reuse.ClosedLeaseError:
+            seen.append("closed")
+        real_rollback()
+
+    conn.rollback = rollback
+    lease.close()
+    assert seen == ["closed"]
+
+
+def test_meta_is_keyed_by_the_connection_object(fakes):
+    lease = db_reuse.connect(3, 3000)
+    conn = under(lease)
+    state = db_reuse._states[(DSN, 3, 3000, os.getpid())]
+    assert list(state.meta) == [conn] and list(state.meta)[0] is conn
+    assert not any(isinstance(k, int) for k in state.meta)
+    assert state.meta[conn] == {"configured": True, "last": None}   # checked out: configured, not yet handed back
+    lease.close()
+    assert state.meta[conn]["configured"] is True and state.meta[conn]["last"] is not None
+
+
+def test_a_discarded_connection_loses_its_meta(fakes):
+    lease = db_reuse.connect(3, 3000)
+    conn = under(lease)
+    state = db_reuse._states[(DSN, 3, 3000, os.getpid())]
+    assert conn in state.meta
+    state.discard(conn)
+    assert conn not in state.meta and (conn, True) in fakes.pools[0].puts and conn.closed == 1
+
+
+def test_a_new_connection_is_always_configured_whatever_the_bookkeeping_says_about_another(fakes):
+    old, fresh = FakeConn(), FakeConn()
+    fakes.pool_factory = lambda: FakePool(factory=lambda: fresh)
+    state = db_reuse._get_state(DSN, 3, 3000)
+    state.meta[old] = {"configured": True, "last": time.monotonic()}   # an earlier connection, already set up
+    lease = db_reuse.connect(3, 3000)
+    assert under(lease) is fresh
+    assert fresh.executed.count(SETS[0]) == 1 and fresh.commits == 1
+    assert state.meta[fresh]["configured"] is True
+    assert state.meta[old]["configured"] is True and old.executed == []   # the other one is untouched
+
+
+def test_a_connection_with_no_meta_is_checked_and_configured(fakes):
+    state = db_reuse._get_state(DSN, 3, 3000)
+    conn = FakeConn()
+    state.pool.idle.append(conn)
+    lease = db_reuse.connect(3, 3000)
+    assert under(lease) is conn and selects(conn) == 1 and conn.executed.count(SETS[0]) == 1
+
+
+def test_a_connection_discarded_from_one_state_never_appears_in_another(fakes):
+    a = db_reuse.connect(3, 3000)
+    conn = under(a)
+    a.close()
+    meta_of(conn)["last"] = time.monotonic() - 1000
+    conn.fail_execute = True
+    b = db_reuse.connect(3, 3000)                                   # conn fails its check: discarded from the 3000 state
+    assert under(b) is not conn
+    c = db_reuse.connect(3, 8000)                                   # another state
+    s3000 = db_reuse._states[(DSN, 3, 3000, os.getpid())]
+    s8000 = db_reuse._states[(DSN, 3, 8000, os.getpid())]
+    assert conn not in s3000.meta and conn not in s8000.meta and meta_of(conn) is None
+    assert set(s3000.meta) == {under(b)} and set(s8000.meta) == {under(c)}
+    assert set(s3000.meta) <= set(fakes.pools[0].made) and set(s8000.meta) <= set(fakes.pools[1].made)
+
+
+def test_a_different_pid_makes_a_new_state_and_leaves_the_old_one_untouched(fakes, monkeypatch):
+    pid = os.getpid()
+    a = db_reuse.connect(3, 3000)
+    conn = under(a)
+    a.close()
+    old_state = db_reuse._states[(DSN, 3, 3000, pid)]
+    snap = {k: dict(v) for k, v in old_state.meta.items()}
+    puts, made = list(old_state.pool.puts), list(old_state.pool.made)
+    ev = list(conn.events)
+    monkeypatch.setattr(os, "getpid", lambda: pid + 1)
+    child = db_reuse.connect(3, 3000)
+    new_state = db_reuse._states[(DSN, 3, 3000, pid + 1)]
+    assert new_state is not old_state and new_state.pool is not old_state.pool and len(fakes.pools) == 2
+    assert under(child) is not conn
+    assert db_reuse._states[(DSN, 3, 3000, pid)] is old_state
+    assert old_state.meta == snap and old_state.pool.puts == puts and old_state.pool.made == made and conn.events == ev
+    assert conn not in new_state.meta and under(child) in new_state.meta
+    child.close()
+    monkeypatch.setattr(os, "getpid", lambda: pid)
+    again = db_reuse.connect(3, 3000)
+    assert under(again) is conn and len(fakes.pools) == 2           # back in the parent: its own pool and connection
+
+
+def test_checkout_failure_in_configure_discards_the_connection_and_its_meta(fakes):
+    fakes.pool_factory = lambda: FakePool(factory=lambda: FakeConn(read_only="off"))
+    state = db_reuse._get_state(DSN, 3, 3000)
+    with pytest.raises(RuntimeError):
+        state.checkout()
+    assert state.meta == {} and len(state.pool.puts) == 1 and state.pool.puts[0][1] is True and state.pool.puts[0][0].closed == 1
+
+
+def test_checkout_failure_when_not_usable_discards_the_connection(fakes):
+    state = db_reuse._get_state(DSN, 3, 3000)
+    conn = FakeConn()
+    conn.closed = 2
+    state.pool.idle.append(conn)
+    with pytest.raises(RuntimeError):
+        state.checkout()
+    assert state.pool.puts == [(conn, True)] and conn not in state.meta and conn.executed == []
