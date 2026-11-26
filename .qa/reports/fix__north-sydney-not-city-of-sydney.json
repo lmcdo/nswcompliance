@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "One matching condition in the function that picks which council's DCP a lot gets; it changes served data for North Sydney lots, so standard not minor.",
-  "commit_hash": "c90d90c7",
+  "commit_hash": "8b8104d6",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "tests/test_conveyancing_data_integrity.py"
