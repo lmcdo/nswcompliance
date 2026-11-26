@@ -1,15 +1,15 @@
 {
   "tier": "standard",
   "justification": "On a phone the Generate button took most of the search bar and hid the typed address; the satellite option was a small unchecked box. The search row now stacks below the sm breakpoint (address field full width, button under it) and the satellite option is a visible on/off switch used in both places on the site facts page. LandingHero is shared by 7 report pages, so the layout change reaches all of them.",
-  "commit_hash": "a245f2fb",
+  "commit_hash": "f58fa648",
   "files": [
-    "frontend-nextjs/components/reports/landing/LandingHero.tsx",
+    "frontend-nextjs/CLAUDE.md",
+    "frontend-nextjs/COMPONENT_MAP.md",
+    "frontend-nextjs/__tests__/components/reports/mobile-search-and-satellite.test.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
     "frontend-nextjs/components/reports/AddressAutocomplete.tsx",
     "frontend-nextjs/components/reports/SatelliteToggle.tsx",
-    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
-    "frontend-nextjs/__tests__/components/reports/mobile-search-and-satellite.test.tsx",
-    "frontend-nextjs/CLAUDE.md",
-    "frontend-nextjs/COMPONENT_MAP.md"
+    "frontend-nextjs/components/reports/landing/LandingHero.tsx"
   ],
   "falsifiable_check": {
     "command": "cd frontend-nextjs && npx jest __tests__/components/reports/mobile-search-and-satellite.test.tsx --ci",
@@ -62,7 +62,7 @@
     }
   ],
   "mutation_analysis": "Two layout-class mutations were run and each turned exactly one test red, so the class assertions are not decorative. The switch tests would fail if onChange stopped receiving the opposite value (return-nothing mutation not run separately; the two switch tests assert the value passed).",
-  "residual_risk": "Not tested on a real phone browser, only a 390 and 360 px frame on a local dev server. The 360 px placeholder text is clipped. The other unlisted report pages that share LandingHero were not viewed.",
+  "residual_risk": "Not tested on a real phone browser, only a 390 and 360 px frame on a local dev server. The 360 px placeholder text is clipped. The other unlisted report pages that share LandingHero were not viewed. The switch was restyled (teal card, real switch, On/Off words) after the first phone view; the restyle was not viewed on a phone, only type-checked and covered by the 6 behaviour tests.",
   "post_merge": {
     "db_reset": "No. UI only.",
     "secrets": "None written. A copy of .env.local was used for the local check and deleted before commit; it is gitignored.",
