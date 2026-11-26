@@ -495,3 +495,9 @@ class TestEpiNameMatchesOnlyItsOwnCouncil:
             assert detect_former_council("1 Test St", zone_epi=f"{key} 2020") == slug, key
             assert detect_former_council("1 Test St", zone_epi=f"NORTH {key} 2020") != slug, f"NORTH {key} matched {slug}"
 
+    def test_a_generic_or_partial_plan_name_resolves_to_no_council(self):
+        from generate_conveyancing_report import detect_former_council
+
+        for epi in ("LOCAL ENVIRONMENTAL PLAN", "Local Environmental Plan 2013", "SYDNEY", ""):
+            assert detect_former_council("1 Test St", zone_epi=epi) is None, epi
+

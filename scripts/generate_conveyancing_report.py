@@ -622,7 +622,7 @@ def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
     for epi_key, lga_slug in ZONE_EPI_TO_LGA_SLUG.items():
         # startswith, not 'in': the City of Sydney key 'SYDNEY LOCAL ENVIRONMENTAL PLAN' is a substring of
         # 'NORTH SYDNEY LOCAL ENVIRONMENTAL PLAN 2013', which served City of Sydney's DCP for every North Sydney lot.
-        if epi_upper.startswith(epi_key) or (epi_upper and epi_upper in epi_key):
+        if epi_upper.startswith(epi_key):
             slug = lga_slug
             break
     if not slug:

@@ -1,14 +1,14 @@
 {
   "tier": "standard",
   "justification": "One matching condition in the function that picks which council's DCP a lot gets; it changes served data for North Sydney lots, so standard not minor.",
-  "commit_hash": "f4ac7abf",
+  "commit_hash": "c90d90c7",
   "files": [
     "scripts/generate_conveyancing_report.py",
     "tests/test_conveyancing_data_integrity.py"
   ],
   "pre_impl": {
     "existing_data": "dcp_setback_controls rows keyed by lga slug; no rows are changed",
-    "assumption_mismatch": "A council whose plan name starts with a different key than expected would now resolve to None and show 'DCP not onboarded' instead of controls",
+    "assumption_mismatch": "A truncated plan name that used to match by containment now resolves to None and shows 'DCP not onboarded' instead of controls, which is visible and safe",
     "new_vs_existing": "Applies to every new brief, conveyancing and upzoning call; cached reports keep the old controls until regenerated"
   },
   "functions": [
@@ -38,16 +38,16 @@
       "repro": "python -m pytest tests/test_conveyancing_data_integrity.py -q -o addopts="
     },
     {
-      "scenario": "A truncated EPI name relied on the old reverse-containment rule",
-      "what_happens": "That council could stop matching and show no controls",
+      "scenario": "A generic or partial plan name (LOCAL ENVIRONMENTAL PLAN, SYDNEY) is contained in many keys",
+      "what_happens": "The first council in the table would be served for the lot",
       "mitigated": true,
-      "how": "the reverse rule (epi_upper in epi_key) is kept for non-empty strings, so truncated names behave as before",
-      "repro": "python -m pytest tests/test_conveyancing_data_integrity.py tests/test_brief_followups.py -q -o addopts="
+      "how": "the old 'name contained in key' fallback is removed; only startswith matches; test_a_generic_or_partial_plan_name_resolves_to_no_council (found by the Sol cross-review)",
+      "repro": "python -m pytest tests/test_conveyancing_data_integrity.py -q -o addopts="
     }
   ],
   "falsifiable_check": {
     "command": "python -m pytest tests/test_conveyancing_data_integrity.py -q -o addopts=",
-    "fails_when": "North Sydney's plan name resolves to city_of_sydney, or any table key matches when another name precedes it",
+    "fails_when": "North Sydney's plan name, or a generic or partial name, resolves to any council, or a table key stops matching its own council",
     "observed_red": "With the original function restored, 2 of the new tests failed (north sydney and the every-key test) and 32 passed; with the fix, 34 passed"
   },
   "post_merge": {
