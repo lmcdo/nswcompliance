@@ -1,0 +1,74 @@
+{
+ "tier": "standard",
+ "justification": "Retires the write path of a production one-off that rewrote live setback values. Not Critical: no data written by this PR. Not Minor: removes a prod write path.",
+ "commit_hash": "5dd9a5de",
+ "files": [
+  "scripts/update_needs_review_controls.py",
+  "tests/test_fail_closed_writers.py"
+ ],
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_fail_closed_writers.py -k NeedsReview",
+  "fails_when": "Fails if the script can write, or connects at all when --apply is passed.",
+  "external_authority": "Harness hardening plan item 0 (2026-10-31): plain-run writers must back up and need --apply.",
+  "observed_red": "The first version (guarded --apply) was rejected by cross-review: a reopened row passed the needs_review guard."
+ },
+ "pre_impl": {
+  "existing_data": "All 8 rows were resolved on 2026-05-22, so a dry run today should report 0 of 8 still to write.",
+  "assumption_mismatch": "The old script re-wrote rows regardless of later edits; reviewed_at moved on every run.",
+  "new_vs_existing": "No new file; pattern copied from scripts/_clean_krg_reversed.py (#1571).",
+  "external_source_error": "Not applicable: values are in the script, no external source is read."
+ },
+ "functions": [
+  {
+   "name": "main",
+   "file_line": "scripts/update_needs_review_controls.py",
+   "what": "Read-only report of how each row compares with the 2026-05-22 values; --apply is refused.",
+   "input": "command line flags and the eight hand-typed rows in UPDATES",
+   "output": "exit code zero for the report, one when --apply is refused",
+   "if_none": "A row not found or not current is skipped with a message",
+   "edge_cases": "--apply exits before any connection is opened",
+   "failure_mode": "None for data: the script holds no write statement"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "Someone runs it with --apply",
+   "what_happens": "Refused before connecting; nothing written",
+   "mitigated": true,
+   "how": "argv check before connect",
+   "repro": "pytest -k apply_is_refused"
+  },
+  {
+   "scenario": "A row was reopened for a new defect",
+   "what_happens": "Report shows it differs; nothing is overwritten",
+   "mitigated": true,
+   "how": "no write path",
+   "repro": "pytest -k read_only"
+  },
+  {
+   "scenario": "A row moved to another DCP instrument",
+   "what_happens": "Report shows the difference; nothing is overwritten",
+   "mitigated": true,
+   "how": "no write path",
+   "repro": "read main()"
+  }
+ ],
+ "verified": [
+  "tests/test_fail_closed_writers.py 18 passed",
+  "no UPDATE statement remains in the script"
+ ],
+ "gaps": [
+  "build_cdc_lot_link.py still writes on a plain run; left because it only inserts with ON CONFLICT DO NOTHING",
+  "dcp_fidelity_gate.py checked: already leaves unreadable PDFs unchecked"
+ ],
+ "post_merge": {
+  "action": "None; script is not scheduled",
+  "db_reset": "None",
+  "secrets": "None",
+  "other_repo": "None",
+  "manual_verify": "python scripts/update_needs_review_controls.py prints a read-only comparison"
+ },
+ "real_layer_exempt": {
+  "scripts/update_needs_review_controls.py": "Mocked cursor in tests; a dry run against the live DB writes nothing by design"
+ }
+}

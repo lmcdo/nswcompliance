@@ -14,8 +14,8 @@ Results:
 
 import os
 import sys
+
 import psycopg2
-from datetime import date
 
 ENV_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -38,7 +38,6 @@ if not DATABASE_URL:
     print("ERROR: DATABASE_URL not found")
     sys.exit(1)
 
-TODAY = date.today().isoformat()
 
 # ── Updates ──────────────────────────────────────────────────────────────────
 
@@ -191,68 +190,44 @@ UPDATES = [
 ]
 
 
-def main():
+COLS = ("value_min", "value_max", "needs_review", "condition", "section_ref")
+
+
+def main() -> int:
+    """Read-only. This one-off was applied on 2026-05-22 and no longer writes.
+
+    Its values are hand-typed from the DCPs as they stood in May. Writing them again
+    could overwrite a row that was reopened, re-sourced or corrected since, and no
+    guard on this script's side can prove a row is still the one it was written for.
+    It now reports how each row compares with those May values; a change to a
+    setback row goes through the current review pipeline instead.
+    """
+    if "--apply" in sys.argv:
+        print("[REFUSED] applied 2026-05-22; this script no longer writes. Nothing written.")
+        return 1
     conn = psycopg2.connect(DATABASE_URL)
+    conn.set_session(readonly=True)
     cur = conn.cursor()
-
-    print(f"Updating {len(UPDATES)} needs_review rows...\n")
-
+    differ = 0
     for u in UPDATES:
-        # Verify row exists and matches expected lga/control_type
         cur.execute(
-            "SELECT lga, control_type FROM dcp_setback_controls WHERE id = %s AND is_current = true",
+            f"SELECT lga, control_type, {', '.join(COLS)} FROM dcp_setback_controls "
+            "WHERE id = %s AND is_current = true",
             (u["id"],),
         )
         row = cur.fetchone()
         if not row:
-            print(f"  SKIP id={u['id']}: not found or not current")
+            print(f"  id={u['id']}: not found or not current")
+            differ += 1
             continue
-        if row[0] != u["lga"] or row[1] != u["control_type"]:
-            print(f"  SKIP id={u['id']}: mismatch — DB has {row[0]}/{row[1]}, expected {u['lga']}/{u['control_type']}")
-            continue
-
-        cur.execute(
-            """
-            UPDATE dcp_setback_controls SET
-                value_min = %s,
-                value_max = %s,
-                needs_review = %s,
-                condition = %s,
-                source_text = %s,
-                section_ref = %s,
-                review_reason = %s,
-                reviewed_at = NOW(),
-                last_verified_at = %s,
-                extraction_method = 'text_extraction'
-            WHERE id = %s
-            """,
-            (
-                u["value_min"],
-                u["value_max"],
-                u["needs_review"],
-                u["condition"],
-                u["source_text"],
-                u["section_ref"],
-                u["review_reason"],
-                TODAY,
-                u["id"],
-            ),
-        )
-        status = "numeric" if u["value_min"] is not None else "not_applicable"
-        print(f"  OK id={u['id']}: {u['lga']}/{u['control_type']} -> {status}")
-
-    conn.commit()
-    print(f"\nCommitted {len(UPDATES)} updates.")
-
-    # Verify
-    cur.execute(
-        "SELECT COUNT(*) FROM dcp_setback_controls WHERE needs_review = true AND is_current = true"
-    )
-    remaining = cur.fetchone()[0]
-    print(f"Remaining needs_review rows: {remaining}")
-
+        now = dict(zip(("lga", "control_type", *COLS), row))
+        diffs = [k for k in ("lga", "control_type", *COLS) if now[k] != u.get(k)]
+        differ += bool(diffs)
+        print(f"  id={u['id']}: {'differs on ' + ', '.join(diffs) if diffs else 'matches the 2026-05-22 values'}")
+    print(f"{differ} of {len(UPDATES)} rows differ from the 2026-05-22 values. Nothing written.")
     conn.close()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
