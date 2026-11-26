@@ -1,250 +1,80 @@
-# PlotDetect Features & Capabilities
+# PlotDetect: what it is and what it does (rewritten 2026-11-26)
 
-*Last Updated: 2026-01-30*
+This file replaces the January 2026 feature list, which was out of date (it said three councils, 47,818 provisions and version tracking that never held data).
+It states what the product is and where each piece lives. **Every number is in section 4 with the query that produces it; re-run the query, do not copy the number.**
+What may be said to outsiders is in `PlotDetect Outreach/CLAIMS - what you can and cannot say.md`, not here.
 
-Quick reference for what PlotDetect can and cannot do.
+## 1. Value proposition
 
----
+For one NSW address, PlotDetect gives the rules that apply to that property and nothing else, in the council's own words, with the page or clause they are printed on.
+It adds the new housing-reform tests (including a walking distance measured along real footpaths), site limits such as flood and gas pipelines shown as limits, and a short evidence statement.
+When it cannot tell, it says "can't tell". It does not guess, and it does not call anything compliant: the planner or certifier decides.
+The difference from a search or a chatbot is that every answer can be traced to a council document we hold, with the date we stored it.
+It is a private pilot (10 councils named in the claims sheet), with no price, and no proof that anyone relies on it or would pay for it (the claims sheet says to agree with that).
 
-## ✅ **What Users Can Do Now**
+## 2. What it does (surfaces on main; a route existing is not proof it is good today)
 
-### 1. Property Lookup & Context
-- **Enter any NSW address** → Get zone, heritage status, flood/bushfire overlays
-- **Auto-detect precinct** (90 precincts mapped with GeoJSON boundaries)
-- **Former council determination** (Ashfield/Marrickville/Leichhardt)
-- **Lot geometry** (polygon coordinates from NSW Planning Portal)
+**A. Council rules for a property.** Address in, only that property's rules out: the council's chapters filtered to the zone and development type, each rule with its source page.
+Where: `/assessment`, `/property`, `/canibuildit/check`, `/dcp-browse`; API `provisions/for-property`, `dcp/structured-controls`, `dcp/coverage`.
 
-### 2. DCP Provisions (4-Layer Filtering)
-- **View relevant DCP provisions** for selected property
-- **Filter by:**
-  - Topic (parking, setbacks, landscaping, heritage, etc.)
-  - Development type (13 types: dwelling_house, dual_occupancy, etc.)
-  - Assessment type (CDC = quantitative only, DA = all)
-- **Group by:** Topic OR Table of Contents structure
-- **Click through** to PDF page screenshots
-- **Total:** 47,818 provisions across 3 councils
+**B. Project brief ("Your project").** For a house in a given zone and a development type, the council's own rules ranked, each with a verdict word that is only "indicative", or "not found, open the plan" when nothing is found.
+Where: `YourProjectSummary` component; API `brief/for-property`, `brief-overlay`. Claims OC-22 to OC-30 govern what can be said.
 
-### 3. AI Chat Assistant
-- **Ask questions** in natural language
-- **8 question categories:**
-  1. Definitions - "What is a habitable room?" ✅
-  2. Procedural - "CDC vs DA difference?" ✅
-  3. Factual lookup - "What's the height limit?" ✅
-  4. Permissibility - "Can I build a duplex?" ✅
-  5. Housing SEPP - "Am I eligible for manor house?" ✅
-  6. Constraints - "Is this heritage listed?" ✅
-  7. Synthesis - "What can I build here?" ⚠️ Limited
-  8. Interpretation - REFUSED (requires professional judgment) ❌
-- **No content generation** - All responses from precomputed data
-- **Citations included** (basic sources, no PDF pages yet)
+**C. Housing reform (low and mid-rise, transport-oriented areas).** Eligibility, exclusions clause by clause, and the walking distance to the station or town centre.
+Where: API `housing-sepp/eligibility`, `housing-sepp/gates`, `housing-sepp/area-check`, `housing-sepp/evidence`; page `reports/evidence-statement`; `duplex-check`; `tools/upzoning-check`.
 
-### 4. Permissibility Checks
-- **Check LEP land use table** - "Can I build X in this zone?"
-- **Shows alternatives** if development type prohibited
-- **Zone description** + LEP clause references
-- **Development types:** 20+ types supported
+**D. Site limits.** Flood (our own copy of studies), bushfire, heritage and conservation areas, nearest gas pipeline, shadow, solar, granny-flat site, climate risk, aircraft noise (ANEF), nearby development applications.
+Where: `reports/flood`, `reports/bushfire`, `reports/shadow`, `reports/solar-yield`, `reports/granny-flat`, `reports/threat-radar`, `climate-risk`, API `environmental/anef`, `heritage/hca-check`, `compliance/constraints`.
 
-### 5. Compliance Overview
-- **Height/FSR limits** from NSW Planning Portal spatial layers
-- **Constraint overlay** - Heritage, flood, bushfire
-- **BASIX climate/water zones**
-- **TOD precinct** identification (SEPP Housing 2021)
-- **Local provisions** (Part 6 LEP)
+**E. Permitted uses and standards.** Permitted uses by zone from the LEP land use tables; pattern-book and CDC checks; setback and parking numbers from plans.
+Where: API `lep/permissibility`, `permissibility/check`, `pathway/pattern-book-eligibility`, `cdc/preliminary-check`, `cdc/setback-check`, `compliance/parking`; `tools/zoning-check`, `tools/subdivision-check`.
 
-### 6. Pre-DA Site History Report
-- **Site development history** for any NSW address (paid $49 report)
-- **Data sources:** ePlanning DAs + PCCs (paginated, capped at 10 pages), Sentinel-2 NDVI/NDBI change detection (via Element84 STAC, CRS-aware sampling), heritage overlay (spatial_overlays PostGIS), council zoning
-- **Payment:** Stripe Checkout with idempotency key, `is_paid` gate on generate route, webhook sets paid flag before PDF generation
-- **PDF report** with DA timeline, vegetation/built change, heritage flag, zoning context
-- **Poll-based status** with 60-poll timeout on frontend
+**F. Reports.** Evidence statement, conveyancing, pre-DA site history, intelligence brief, flood, bushfire, shadow, solar, granny-flat, threat-radar.
+Where: `/reports/*`.
 
-### 7. Flood Truth Engine
-- **Multi-source flood assessment** for any NSW address
-- **Data sources:** NSW EPI WFS (71 LGAs), Sentinel-1 SAR, Copernicus EMS, JRC surface water, BOM gauges, SES/council spatial overlays (100+ LGAs)
-- **Council flood study rasters:** Hawkesbury (9 AEPs), Tweed (5 AEPs + 4 historical events), Wollongong (6 AEPs) — depth and water level per AEP event
-- **NSW 5m DEM ground elevation** via SIX Maps ImageServer (full NSW, no auth)
-- **100-year flood zone headline** derived from EPI + SES + study rasters
-- **Flood depth calculation:** flood level minus ground elevation per AEP
-- **PDF report** with full AEP depth/level tables (paid), historical event data, aerial imagery
-- **Flood signal classification:** none / low / moderate / elevated (multi-source convergence)
+**G. DA response workflow.** Saved sessions that hold a user's answers to the requirements for a DA. Where: API `da-sessions/*`.
 
----
+**H. Currency and honesty machinery.** Dated copies of council plan files; a monitor that flags changed state laws until a person has compared them; a ledger of checks that decides which claims may be made (`.claude/dq_checks.json`, `python scripts/dq_check.py`).
 
-## ❌ **What PlotDetect Cannot Do (Yet)**
+**I. Audiences with their own pages.** `/for/planners`, `/for/builders`, `/for/buyers-agents`, `/for/conveyancers`, `/for/councils`, `/for/homebuyers`, `/for/students`.
 
-### 1. Multi-Source Synthesis
-- **Cannot combine** LEP + DCP + SEPP into one answer
-- **Example:** "Can I build a granny flat?"
-  - ✅ Tells you: Permitted in R2 zone (LEP)
-  - ❌ Doesn't tell you: DCP setbacks, lot size requirements, parking
+**Not checked today (do not claim either way):** the January list said these were not supported: checking a user's own design against the rules, a parking calculator, version tracking of rules, lot size from the polygon, existing-structure detection from imagery, a climate score. Routes such as `cdc/compliance-check` and `compliance/parking` now exist, so open the code before saying a thing is or is not built.
 
-### 2. Compliance Verification
-- **Cannot verify** if your design complies with requirements
-- **Example:** "Does my 5m rear setback comply?"
-  - ✅ Tells you: Rear setback requirement is 6m
-  - ❌ Cannot say: "Your 5m fails the requirement"
-- **Missing:** Design input interface + compliance logic
+## 3. Principles the product holds
 
-### 3. PDF Citations in AI Chat
-- **AI chat doesn't link to PDF pages**
-- **Example:** AI says "Check setbacks requirement"
-  - ✅ User can see provision in DCP tab
-  - ❌ AI doesn't cite "Marrickville DCP Part 2.3 page 87"
+- Rules come from council documents or the NSW Planning Portal, never typed in by hand. No regulatory table is hardcoded.
+- Missing data is stated as missing. A "no" is shown only when it was computed.
+- Nothing is called compliant, eligible, approved, safe or guaranteed.
+- A rule is served only if its page link was checked against the council's current PDF; state-law text is served only when proven in the same transaction (migration 113).
 
-### 4. Lot Size Calculation
-- **NSW Planning Portal returns polygon geometry but not lot size (m²)**
-- **Workaround:** User must know their lot size
-- **Fix needed:** Calculate area from polygon coordinates
+## 4. Measured 2026-11-26 (run the query; do not trust the number)
 
-### 5. Version Tracking
-- **No tracking of DCP/LEP/SEPP changes over time**
-- **Cannot answer:** "What changed in the 2024 LEP update?"
-- **Database has:** `version_count` column but not populated
+| Fact | Value | Query |
+|---|---|---|
+| Rules served | 61,225 | `SELECT count(*) FROM regulatory_provisions WHERE is_current AND v2_is_actionable` |
+| ...council rules / councils with some | 57,784 / 18 | `... AND source_council IS NOT NULL` ; `count(DISTINCT source_council)` |
+| ...state-law rules | 3,441 | `... AND source_council IS NULL` |
+| Council rules whose page link was checked against the current PDF | 57,076 of 57,784 | `count(*) FILTER (WHERE page_check IN ('on_page','moved'))` on the council set |
+| Served rules with no decided scope (zone/type) | 5,452 (mostly state law, which has no council config) | `v2_zone_source IN ('no_config','config_silent','filtered_to_all') OR v2_zone_source IS NULL` |
+| Served rules whose scope was read from the plan as "all" | 41,286 | `v2_zone_source = 'config_all'` |
+| Numeric controls (setbacks, parking, landscaping) served / held | 307 / 829 | `dcp_setback_controls WHERE is_current` split on `needs_review` |
+| Project brief rows / councils | 8,533 / 17 | `SELECT count(*), count(DISTINCT council) FROM project_brief_rows` |
+| Land use table rows | 19,551 | `SELECT count(*) FROM lep_land_use_table` |
+| Dated council plan copies | 806 | `SELECT count(*) FROM dcp_source_versions_dated` |
+| Review flags on state law (DQ-88) | 0 | `python scripts/dq_probe_live.py --id DQ-88` |
 
-### 6. Professional Email Capture
-- **Registration prompt** on assessment page — captures email + role (planner/certifier/architect/conveyancer/agent/developer)
-- **Non-blocking:** dismissable per session, not a login gate
-- **Demand signals:** records council name and address for prioritising DCP expansion
-- **Table:** `verify_interest` (email, role, council_name, address, source)
-- **Notification:** Resend email to info@plotdetect.com.au on each registration
+**Older documents said otherwise, and were wrong or out of date:** "93.7% of served rows are tagged zone ALL" (August; the scope work since has made most of that a decision read from the plan);
+"3 councils" (January); "47,818 provisions" (a backup table's row count); "the page-checked share is 6.8%" (August).
 
-### 7. Complete Coverage
-- **Council coverage:** Marrickville (100%), Leichhardt (100%), Ashfield (partial)
-- **Missing:** 31 other Inner West LGA councils
-- **SEPP provisions:** Only 241 provisions (vs 47,818 DCP provisions)
+## 5. Known weak spots (so nobody is surprised)
 
-### 6. Satellite Property Intelligence Reports
-- **Bushfire Pre-Screen** (`/reports/bushfire`) — RFS Bush Fire Prone Land lookup, BAL estimation, s4.14 referral triggers, 10/50 clearing entitlements, CDC pathway gating. Free PDF with composite map (aerial + BFPL overlay + lot boundary) and ~200m neighbour BFPL context. Shareable result URL with OG meta tags. NSW only.
-- **Flood Truth Engine** (`/reports/flood`) — EPI flood planning overlays (71 LGAs), SAR change detection, JRC water occurrence, BoM gauge history.
-- **Solar Yield Underwriter** (`/reports/solar-yield`) — Rooftop solar potential assessment.
-- **Shadow Ambush Detector** (`/reports/shadow`) — Neighbouring development shadow impact. Includes AerialTile with lot boundary overlay.
-- **Threat Radar** (`/reports/threat-radar`) — Nearby DA/CDC activity monitoring.
-- **Pre-DA Site History** (`/reports/pre-da-history`) — 8-year satellite change detection + DA history + heritage overlay.
-- **Granny Flat Yield Predictor** (`/reports/granny-flat`) — Planning-rule eligibility + yield calculation. **Structure detection is NOT a capability**: measured 2026-08-10 against human labels on 56 lots, it found 14 of 38 visible secondary structures (recall 0.368) against a pre-committed floor of 0.70, and failed in all four councils tested. Existing structures are user-confirmed from the aerial tile, not detected. See `docs/CONFIGURATION.md` under `MODAL_STRUCTURES_URL`.
+- 18 councils have served rules, but only the 10 pilot councils are described to outsiders. Never quote a flat council count.
+- 829 numeric controls are held back for review. For Waverley the reasons are car-parking table cells, deep soil and tree canopy values that the council's own words do not state as a number; other councils have other reasons (`dcp_setback_controls.review_reason`).
+- The walking distance has no agreement figure yet: the earlier ones were measured on the old answer.
+- About 52 stored state-law rows that are not served still hold wording the law has removed (DQ-88 note).
+- The walk and its check both use OpenStreetMap; a missing footpath would affect both.
+- No proof of reliance and no known buyer; the claims sheet tells you to agree when someone says nobody pays for this.
 
-### 7. Product Landing Pages
-Each satellite product has a composable landing page with: hero (address input + satellite aerial background), verified data source badges, feature grid, free-vs-paid pricing comparison, methodology section, and optional coverage section (flood). Hero address input dispatches to tool component via custom event for seamless search flow.
+## 6. Keeping this true
 
-### 8. Property Profile Hub
-Homepage address input navigates to `/property?address=...` — a lightweight property profile showing zone, height, FSR, heritage, flood, lot polygon, and aerial map from free NSW Planning Portal data only (no satellite pipelines, near-zero cost). Below the profile, 7 tool cards link to `/reports/{tool}?address=...` for auto-run. All tools now read `?address=` from URL on mount and auto-submit.
-
----
-
-## 🔧 **In Progress / Partially Working**
-
-### 1. Granny Flat Questions (80% Complete)
-**Current:**
-- ✅ "Can I build a granny flat?" → "Yes, permitted in R2"
-- ❌ Missing: DCP requirements, lot size check, CDC pathway
-
-**What's Needed:**
-- Multi-endpoint synthesis (combine LEP + DCP + SEPP)
-- Citation infrastructure (PDF page links)
-- Lot size calculation
-
-**Estimate:** 1 day for basic, 7-10 days for full solution
-
-### 2. Factual Lookups (Partial)
-**Current:**
-- ✅ Height/FSR from NSW Planning Portal
-- ⚠️ Setbacks: Generic only (not DCP-specific)
-- ❌ Parking: Can find provisions but doesn't calculate spaces
-
-### 3. Synthesis Questions (Limited)
-**Current:**
-- ✅ "What can I build here?" → Returns capacity + constraints separately
-- ❌ Doesn't combine into "You can build up to 2 storeys, X dwellings, here's why"
-
----
-
-## 📊 **Data Quality & Coverage**
-
-### Database Statistics
-| Table | Rows | Coverage |
-|-------|------|----------|
-| **regulatory_provisions** | 47,818 | Marrickville, Leichhardt, Ashfield DCPs |
-| **regulatory_definitions** | 465+ | DCP, LEP, SEPP terms |
-| **lep_land_use_table** | ~500 | All NSW zones × development types |
-| **housing_sepp_standards** | 33 | SEPP Housing 2021 standards |
-| **dcp_precinct_boundaries** | 90 | GeoJSON boundaries for 102 precincts |
-| **dcp_general_requirements** | 3,158 | Structured general requirements |
-
-### Data Completeness
-**Strengths:**
-- ✅ DCP text extraction (MinerU + manual enrichment)
-- ✅ 4-layer filtering model implemented
-- ✅ Heritage provisions categorized (907 rows)
-- ✅ Precinct boundaries mapped
-
-**Gaps:**
-- ⚠️ SEPP Housing 2021: Only 241 provisions (incomplete)
-- ⚠️ Ashfield DCP: Partial coverage (some sections missing)
-- ⚠️ Lot size: Not available from NSW Planning Portal
-- ⚠️ Version tracking: Column exists but not populated
-
----
-
-## 🎯 **Use Cases: Can PlotDetect Handle It?**
-
-### ✅ **Fully Supported**
-
-| Question | Works? | Data Source |
-|----------|--------|-------------|
-| "What is a habitable room?" | ✅ YES | 465+ definitions |
-| "Should I use CDC or DA?" | ✅ YES | Procedural guidance + checklists |
-| "Is this property heritage listed?" | ✅ YES | NSW Planning Portal |
-| "Can I build a duplex in R2?" | ✅ YES | LEP land use table |
-| "What's the maximum building height?" | ✅ YES | NSW Planning Portal spatial layers |
-| "Show me parking requirements" | ✅ YES | DCP provisions (text only) |
-
-### ⚠️ **Partially Supported**
-
-| Question | Works? | Limitation |
-|----------|--------|------------|
-| "Can I build a granny flat?" | ⚠️ 80% | Permissibility only, no DCP synthesis |
-| "What are the setback requirements?" | ⚠️ 70% | Shows provisions, no specific numbers |
-| "Am I eligible for manor house?" | ⚠️ 60% | SEPP check only, no DCP integration |
-| "What can I build here?" | ⚠️ 50% | Separate data, no synthesis |
-
-### ❌ **Not Supported**
-
-| Question | Works? | What's Needed |
-|----------|--------|---------------|
-| "Does my design comply?" | ❌ NO | Compliance verification endpoint |
-| "How many parking spaces do I need for 4 units?" | ❌ NO | Calculation logic |
-| "What's my maximum dwelling yield?" | ❌ NO | Lot size + density calculation |
-| "What changed in the 2024 DCP?" | ❌ NO | Version tracking |
-| "Can I get a CDC?" | ❌ NO | CDC eligibility checker |
-
----
-
-## 🚀 **Improvement Priority**
-
-### High Priority (User-facing)
-1. **Granny flat synthesis** (80% complete) - 1 day for basic
-2. **PDF citations in AI chat** - 1 day
-3. **Lot size calculation** - 1 day
-
-### Medium Priority (Reliability)
-4. **Compliance verification** - 3-5 days
-5. **CDC eligibility checker** - 2-3 days
-6. **Parking space calculator** - 2 days
-
-### Low Priority (Nice-to-have)
-7. **Version tracking** - 5-7 days
-8. **Remaining SEPP provisions** - 3-5 days
-9. **Ashfield DCP completion** - 2-3 days
-
----
-
-## 📝 **For Developers**
-
-When asked "Can PlotDetect do X?":
-
-1. **Check this doc first**
-2. **Verify against ARCHITECTURE.md** for technical details
-3. **Test with actual API** if unsure
-4. **Update this doc** when features change
-
-**Last verified:** 2026-01-30
-**Next review:** After major feature release
+If a number changes, change the query's result here, not the prose. If a surface is removed, remove it from section 2. Outreach wording lives only in the claims sheet.
