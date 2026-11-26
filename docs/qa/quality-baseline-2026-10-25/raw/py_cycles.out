@@ -1,0 +1,4 @@
+# files 1862 cycles 3
+5 scripts/brief_contract_drift.py | scripts/generate_conveyancing_report.py | services/compound_constraints.py | services/constraint_arithmetic.py | services/intelligence_brief.py
+3 scripts/dcp_extract_changed.py | scripts/dcp_fidelity_gate.py | scripts/verify_extraction_fidelity.py
+2 scripts/build_site_boundaries.py | scripts/site_addresses.py

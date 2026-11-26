@@ -1,0 +1,121 @@
+live files scored: 856
+
+## ruff_default_try2
+  all=9273  live=2669
+    ('services/intelligence_brief.py', 464)
+    ('scripts/generate_conveyancing_report.py', 150)
+    ('scripts/dq_probe_live.py', 145)
+    ('services/granny_flat.py', 130)
+    ('services/constraint_arithmetic.py', 86)
+
+## ruff_swallowed_try2
+  all=926  live=336
+    ('services/granny_flat.py', 28)
+    ('scripts/conveyancing_db.py', 26)
+    ('scripts/generate_conveyancing_report.py', 22)
+    ('scripts/dcp_extract_changed.py', 21)
+    ('services/conveyancing.py', 21)
+
+## functions cc>20 (D-F)
+  all=275  live=114
+    ('scripts/generate_conveyancing_report.py:generate_pdf', 313)
+    ('services/constraint_arithmetic.py:compute_constraint_arithmetic', 139)
+    ('services/intelligence_brief.py:_generate_brief_sse', 111)
+    ('scripts/dcp_extract_changed.py:extract_chapter', 101)
+    ('scripts/r2_monitor.py:run_monitor', 93)
+
+## files MI grade C
+  all=23  live=11
+    ('scripts/dcp_extract_changed.py', 0.0)
+    ('scripts/generate_conveyancing_report.py', 0.0)
+    ('services/constraint_arithmetic.py', 0.0)
+    ('services/flood_truth.py', 0.0)
+    ('services/granny_flat.py', 0.0)
+
+## vulture dead code (80%+)
+  all=60  live=11
+    ('services/db_config.py', 2)
+    ('services/shadow_detector.py', 2)
+    ('services/version_manager.py', 2)
+    ('tests/test_granny_flat_mutation.py', 2)
+    ('scripts/generate_conveyancing_report.py', 1)
+
+## bandit HIGH
+  all=34  live=10
+    ('scripts/council_quote.py B324', 2)
+    ('scripts/pdf_picture_labels.py B324', 2)
+    ('enrichment/rule_extraction_pipeline.py B324', 1)
+    ('scripts/download_tweed_wollongong_rasters.py B324', 1)
+    ('scripts/dq_probe_column_splice.py B324', 1)
+
+## bandit MEDIUM
+  all=381  live=76
+    ('B608', 56)
+    ('B108', 11)
+    ('B310', 7)
+    ('B301', 1)
+    ('B104', 1)
+
+## pip_audit_api pkgs w/ CVE
+  all=1  live=1
+    ('pillow', '12.3.0', 37, ['13.0.0'])
+
+## pip_audit_monitors pkgs w/ CVE
+  all=0  live=0
+
+## eslint errors
+  all=0  live=0
+
+## eslint warnings
+  all=64  live=32
+    ('frontend-nextjs/components/compliance/ProvisionsByTocStructure.tsx', 4)
+    ('frontend-nextjs/app/api/og/granny-flat/route.tsx', 2)
+    ('frontend-nextjs/hooks/useCrossReferences.ts', 2)
+    ('frontend-nextjs/lib/pdf/shadow-report.tsx', 2)
+    ('frontend-nextjs/lib/pdf/shared-components.tsx', 2)
+
+## npm audit (high, critical)
+  all=(15, 3)  live=n/a (package level)
+
+## knip unused files
+  all=307  live=2
+    frontend-nextjs/lib/database/prp-k7-client.ts
+    frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts
+
+## knip unused exports
+  all=258  live=236
+    ('frontend-nextjs/lib/lga-configs/index.ts', 12)
+    ('frontend-nextjs/lib/disclaimers.ts', 11)
+    ('frontend-nextjs/lib/schemas/index.ts', 8)
+    ('frontend-nextjs/lib/regulatory-constants.ts', 7)
+    ('frontend-nextjs/lib/pdf-url-builder.ts', 7)
+
+## TS import cycles (madge)
+  all=2  live=1
+    ['lib/council-quote.ts', 'lib/page-citation.ts']
+    ['components/compliance/ComplianceDashboard.tsx', 'lib/compliance/constraint-dedup.ts']
+
+## Python import cycles
+  all=3  live=2
+    ['scripts/brief_contract_drift.py', 'scripts/generate_conveyancing_report.py', 'services/compound_constraints.py', 'services/constraint_arithmetic.py', 'services/intelligence_brief.py']
+    ['scripts/dcp_extract_changed.py', 'scripts/dcp_fidelity_gate.py', 'scripts/verify_extraction_fidelity.py']
+    ['scripts/build_site_boundaries.py', 'scripts/site_addresses.py']
+
+## jscpd duplicated lines %
+  all=7.03  live=see live calc
+
+## jscpd dup lines in live files
+  all=90998  live=21544 of 252360 (8.5%, upper bound)
+    ('scripts/legislation_monitor.py', 950)
+    ('frontend-nextjs/components/tools/FloodTool.tsx', 513)
+    ('frontend-nextjs/lib/pdf/flood-truth-report.tsx', 504)
+    ('frontend-nextjs/app/api/provisions/for-property/route_RELEVANCE_DRAFT.ts', 502)
+    ('tests/test_granny_flat_mutation.py', 447)
+
+## files > 500 lines
+  all=232  live=129
+    ('scripts/dcp_extract_changed.py', 6207)
+    ('scripts/generate_conveyancing_report.py', 5968)
+    ('services/intelligence_brief.py', 4482)
+    ('frontend-nextjs/app/reports/intelligence-brief/page.tsx', 3297)
+    ('scripts/dq_probe_live.py', 3053)

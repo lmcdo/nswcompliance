@@ -1,0 +1,2 @@
+ERROR: Error loading jest.config.js (Cannot find module 'next/jest')
+ERROR: Please fix or visit https://knip.dev/reference/known-issues

@@ -1,0 +1,3 @@
+{ "minTokens": 50, "gitignore": false, "silent": true, "reporters": ["json"],
+  "format": ["python", "typescript", "tsx", "javascript"],
+  "ignore": ["**/node_modules/**", "**/.git/**", "**/.next/**"] }

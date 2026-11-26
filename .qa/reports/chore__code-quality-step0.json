@@ -1,0 +1,40 @@
+{
+  "tier": "minor",
+  "justification": "Documentation of a code-quality review plus one read-only script (scripts/qa_live_files.py) that reads files and prints a list. No served code, no database, no workflow changes. Nothing the app serves changes.",
+  "commit_hash": "e43c6176",
+  "files": [
+    "scripts/qa_live_files.py",
+    "docs/qa/review-protocol.md",
+    "docs/qa/known-tradeoffs.md",
+    "docs/qa/quality-baseline-2026-10-25/",
+    "docs/qa/codex-bench/",
+    "docs/qa/codex-briefs/",
+    "docs/qa/defence/served-rules.md",
+    "docs/qa/diagrams/",
+    "docs/qa/html/",
+    "docs/qa/quality-baseline-2026-10-25/how/py_cycles.py",
+    "docs/qa/quality-baseline-2026-10-25/how/summarise.py"
+  ],
+  "break_it": [
+    {
+      "scenario": "The live-file list calls a used file 'unreached', so the review never scores it.",
+      "what_happens": "A bad file escapes the scorecard. Checked by hand on 6 random unreached frontend files: each was imported only by other unreached files.",
+      "mitigated": true,
+      "how": "Entry points are read from Dockerfiles, railway tomls, run_monitors.MONITORS and workflows, not typed. Limits (computed-name imports, npm packages) are printed in the output header. Re-run on an exact copy of a6d2e378 gave an identical list.",
+      "repro": "python scripts/qa_live_files.py | tail -1"
+    },
+    {
+      "scenario": "A tool skips files and the baseline undercounts.",
+      "what_happens": "This happened: ruff and jscpd skipped gitignored-but-tracked enrichment/extractors/. Caught by recounting ruff live hits a second way (2,471 vs 2,669). Re-run without the skip; both recounts now agree.",
+      "mitigated": true,
+      "how": "Recorded in docs/qa/quality-baseline-2026-10-25/README.md; failed attempts kept in raw/_runs.tsv.",
+      "repro": "awk -F'\t' '{print $1, $2}' docs/qa/quality-baseline-2026-10-25/raw/_runs.tsv"
+    }
+  ],
+  "post_merge": {
+    "db_reset": "None. No database change.",
+    "secrets": "None. No secret or env var added or read.",
+    "other_repo": "None. No other repo or deploy touched.",
+    "manual_verify": "None needed: docs and a read-only script; nothing served changes."
+  }
+}
