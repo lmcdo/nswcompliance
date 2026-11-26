@@ -789,3 +789,11 @@ def test_the_real_psycopg2_pool_keeps_returned_connections_so_the_next_stage_get
     for c in taken:
         pool.putconn(c)
     assert all(c.closed == 0 for c in taken)   # up to POOL_MAX are kept for later stages
+
+
+@pytest.mark.parametrize("bad", [None, 0, -5, True, "3000", 3.5])
+def test_a_statement_timeout_that_is_not_a_positive_whole_number_is_refused_before_anything_is_sent(bad):
+    conn = FakeConn()
+    with pytest.raises(ValueError):
+        db_reuse._configure(conn, bad)
+    assert conn.events == [] and conn.cursors == 0   # no SQL was issued and no cursor was opened

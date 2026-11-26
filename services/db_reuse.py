@@ -42,9 +42,11 @@ def _options(statement_timeout_ms: int) -> str:
 
 def _configure(conn: Any, statement_timeout_ms: int) -> None:
     """Make the session read-only with the statement timeout, then prove it. Raises if the database does not report both: a connection that is not read-only is never handed out."""
+    if not isinstance(statement_timeout_ms, int) or isinstance(statement_timeout_ms, bool) or statement_timeout_ms <= 0:
+        raise ValueError(f"the statement timeout must be a positive whole number of milliseconds, got {statement_timeout_ms!r}")
     cur = conn.cursor()
     cur.execute("SET default_transaction_read_only = on")
-    cur.execute("SET statement_timeout = %d" % int(statement_timeout_ms))
+    cur.execute("SET statement_timeout = %d" % statement_timeout_ms)
     conn.commit()   # a SET inside a transaction is undone by a rollback: commit so it holds for the whole session
     cur.execute("SHOW default_transaction_read_only")
     read_only = cur.fetchone()[0]
@@ -52,7 +54,7 @@ def _configure(conn: Any, statement_timeout_ms: int) -> None:
     timeout = cur.fetchone()[0]
     cur.close()
     conn.rollback()
-    ms = int(statement_timeout_ms)
+    ms = statement_timeout_ms
     accepted = {f"{ms}ms"} | ({f"{ms // 1000}s"} if ms % 1000 == 0 else set())   # Postgres prints whole seconds as '3s' and the rest in milliseconds
     if read_only != "on" or timeout not in accepted:
         raise RuntimeError(f"database session is not read-only with the statement timeout (read_only={read_only}, statement_timeout={timeout})")
