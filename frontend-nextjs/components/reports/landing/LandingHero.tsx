@@ -81,30 +81,34 @@ export function LandingHero({ badge, badgeIcon: BadgeIcon, title, subtitle, ctaL
         <form onSubmit={handleSubmit} className="relative mx-auto mt-10 max-w-2xl">
           <div
             className={`
-              relative flex items-center rounded-2xl bg-card shadow-xl ring-1 transition-all duration-300
+              relative flex flex-col rounded-2xl bg-card shadow-xl ring-1 transition-all duration-300 sm:flex-row sm:items-center
               ${isFocused
                 ? "ring-primary shadow-primary/20 shadow-2xl"
                 : "ring-border/50 shadow-lg"
               }
             `}
           >
-            <div className="flex items-center pl-5">
-              <MapPin className={`h-5 w-5 transition-colors ${isFocused ? "text-primary" : "text-muted-foreground"}`} />
+            {/* On a phone the address field gets the full row and the button sits under it:
+                side by side the button took most of the width and the typed address was cut off. */}
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex items-center pl-5">
+                <MapPin className={`h-5 w-5 transition-colors ${isFocused ? "text-primary" : "text-muted-foreground"}`} />
+              </div>
+
+              <AddressAutocomplete
+                value={address}
+                onChange={setAddress}
+                onSelect={(addr) => setAddress(addr)}
+                placeholder="Enter a NSW property address..."
+                className="flex-1 min-w-0 bg-transparent px-4 py-5 text-lg text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
             </div>
 
-            <AddressAutocomplete
-              value={address}
-              onChange={setAddress}
-              onSelect={(addr) => setAddress(addr)}
-              placeholder="Enter a NSW property address..."
-              className="flex-1 bg-transparent px-4 py-5 text-lg text-foreground placeholder:text-muted-foreground focus:outline-none"
-            />
-
-            <div className="pr-2">
+            <div className="p-2 sm:p-0 sm:pr-2">
               <Button
                 type="submit"
                 size="lg"
-                className="rounded-xl px-6 py-6 text-base font-semibold"
+                className="w-full rounded-xl px-6 py-6 text-base font-semibold sm:w-auto"
                 disabled={!address.trim()}
               >
                 <Search className="mr-2 h-5 w-5" />
