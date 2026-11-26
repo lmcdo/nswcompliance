@@ -1,0 +1,23 @@
+{
+ "tier": "minor",
+ "justification": "One documentation file rewritten; no code, data, hook or CI path touched. Tier floor counts 0 substantive files.",
+ "commit_hash": "ce4fa1ae",
+ "files": [
+  "docs/FEATURES_CAPABILITIES.md"
+ ],
+ "break_it": [
+  {
+   "scenario": "A number in the rewritten file goes stale or was read wrongly, and someone quotes it.",
+   "what_happens": "A wrong figure is repeated in outreach or planning.",
+   "mitigated": true,
+   "how": "Every number sits in a table with the query that produces it and the date it was measured, and the file tells readers to re-run the query rather than copy the number.",
+   "repro": "grep -n 'Measured 2026-11-26' docs/FEATURES_CAPABILITIES.md"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "No"
+ }
+}
