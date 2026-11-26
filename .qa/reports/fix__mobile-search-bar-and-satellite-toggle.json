@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "On a phone the Generate button took most of the search bar and hid the typed address; the satellite option was a small unchecked box. The search row now stacks below the sm breakpoint (address field full width, button under it) and the satellite option is a visible on/off switch used in both places on the site facts page. LandingHero is shared by 7 report pages, so the layout change reaches all of them.",
-  "commit_hash": "f58fa648",
+  "commit_hash": "79d11475",
   "files": [
     "frontend-nextjs/CLAUDE.md",
     "frontend-nextjs/COMPONENT_MAP.md",
