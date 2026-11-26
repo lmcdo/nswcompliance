@@ -10,6 +10,8 @@ v2_applicable_zones, v2_marker and v2_dcp_layer already -- no new column, no fro
 Data: data/chapter_scope/land_limits.json -- entries of (council, chapter_key, kind, zones, text fingerprints).
   kind "zones"     sets v2_applicable_zones to the listed zone codes (each must be in the council's LEP land-use table, DQ-30)
   kind "heritage"  sets v2_marker = 'heritage' (served to heritage houses only)
+  kind "key"       sets v2_dcp_layer = 'precinct' AND v2_precinct_id = <precinct_id> for a named place that has an outline in
+                   dcp_precinct_boundaries: shown only to houses inside it
   kind "precinct"  sets v2_dcp_layer = 'precinct' with no precinct key: the rule is for a named place/street/site that has no
                    outline in our data, so it is shown to no house (same end state as hide_unmapped_area_rules.py)
 A row is matched by council + chapter + never_serve.text_key(provision_text), so a re-extraction that mints new ids keeps the
@@ -26,7 +28,7 @@ import never_serve
 
 PATH = Path(__file__).resolve().parent.parent / "data" / "chapter_scope" / "land_limits.json"
 RULE_NAME = "land_limits"
-KINDS = ("zones", "heritage", "precinct")
+KINDS = ("zones", "heritage", "precinct", "key")
 
 
 @lru_cache(maxsize=1)
@@ -34,7 +36,7 @@ def entries() -> tuple[dict, ...]:
     """The reviewed entries. A missing or miscounted file RAISES: a guard that silently reads empty limits nothing."""
     out = tuple(json.loads(PATH.read_text(encoding="utf-8"))["entries"])
     for e in out:
-        if e["kind"] not in KINDS or len(e["text_sha256_16"]) != e["expect"] or (e["kind"] == "zones") != bool(e["zones"]):
+        if e["kind"] not in KINDS or len(e["text_sha256_16"]) != e["expect"] or (e["kind"] == "zones") != bool(e["zones"])                 or (e["kind"] == "key") != bool(e.get("precinct_id")):
             raise ValueError(f"land_limits.json {e['council']}/{e['chapter_key']} {e['kind']}: malformed entry")
     return out
 
@@ -81,6 +83,14 @@ def apply_land_limits(cur, council: str | None, apply: bool, only: set[str] | No
             elif (e["kind"] == "precinct" and pid is None and hca is None and marker != "heritage"
                   and layer not in ("precinct", "condition")):
                 col, before, after = "v2_dcp_layer", layer, "precinct"
+            elif e["kind"] == "key" and pid is None and hca is None and marker != "heritage" and layer != "condition":
+                # a named place that HAS an outline in dcp_precinct_boundaries: serve to houses inside it only
+                for col, before, after in (("v2_precinct_id", pid, e["precinct_id"]), ("v2_dcp_layer", layer, "precinct")):
+                    if before != after:
+                        changes.append((rid, col, before, after, RULE_NAME))
+                        if apply:
+                            cur.execute(f"UPDATE regulatory_provisions SET {col} = %s WHERE id = %s", (after, rid))
+                continue
             else:
                 continue
             changes.append((rid, col, before, after, RULE_NAME))

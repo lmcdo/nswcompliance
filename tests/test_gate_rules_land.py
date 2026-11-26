@@ -118,8 +118,8 @@ def test_the_real_file_is_consistent():
     g.entries.cache_clear()
     es = g.entries()                                   # raises on a malformed or miscounted entry
     assert len(es) > 100
-    assert {e["kind"] for e in es} == {"zones", "heritage", "precinct"}   # precinct = named place with no outline, owner ruling 2026-10-15
-    assert sum(e["expect"] for e in es) == 1031
+    assert {e["kind"] for e in es} == {"zones", "heritage", "precinct", "key"}   # precinct = named place with no outline, owner ruling 2026-10-15
+    assert sum(e["expect"] for e in es) == 1099
     assert all(set(e["zones"]) for e in es if e["kind"] == "zones")
 
 
@@ -129,3 +129,14 @@ def test_a_missing_file_raises(monkeypatch, tmp_path):
     with pytest.raises(FileNotFoundError):
         g.entries()
     g.entries.cache_clear()
+
+
+def test_key_kind_keys_an_unkeyed_row_to_the_named_precinct(use):
+    e = entry("key"); e["precinct_id"] = "5.2"
+    use(e)
+    ch = g.apply_land_limits(FakeCur([row(layer="precinct")]), None, True)
+    assert ch == [(1, "v2_precinct_id", None, "5.2", "land_limits")]              # layer already precinct: one change
+    ch = g.apply_land_limits(FakeCur([row(layer="generic")]), None, True)
+    assert [c[1] for c in ch] == ["v2_precinct_id", "v2_dcp_layer"]
+    assert g.apply_land_limits(FakeCur([row(pid="5.1")]), None, True) == []        # already keyed: left alone
+    assert g.apply_land_limits(FakeCur([row(marker="heritage")]), None, True) == []
