@@ -148,6 +148,13 @@ class _Lease:
         object.__setattr__(self, "_conn", conn)
         object.__setattr__(self, "_state", state)
         object.__setattr__(self, "_open", True)
+        object.__setattr__(self, "_cursors", [])
+
+    def cursor(self, *args: Any, **kwargs: Any) -> Any:
+        """The connection's cursor, remembered so that close() can close it: a cursor kept past close() must not be able to run on a connection the pool has lent to another stage."""
+        cur = self._live().cursor(*args, **kwargs)
+        object.__getattribute__(self, "_cursors").append(cur)
+        return cur
 
     def _live(self) -> Any:
         if not object.__getattribute__(self, "_open"):
@@ -172,6 +179,12 @@ class _Lease:
             return
         conn, state = object.__getattribute__(self, "_conn"), object.__getattribute__(self, "_state")
         object.__setattr__(self, "_open", False)   # from here on this lease cannot touch the connection, whatever happens next
+        for cur in object.__getattribute__(self, "_cursors"):   # a cursor taken from this lease is closed with it
+            try:
+                cur.close()
+            except Exception:  # noqa: BLE001 -- a cursor that will not close must not stop the connection being reset
+                pass
+        object.__getattribute__(self, "_cursors").clear()
         try:
             if getattr(conn, "autocommit", False):
                 conn.autocommit = False

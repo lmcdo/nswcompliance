@@ -997,3 +997,23 @@ def test_checkout_failure_when_not_usable_discards_the_connection(fakes):
     with pytest.raises(RuntimeError):
         state.checkout()
     assert state.pool.puts == [(conn, True)] and conn not in state.meta and conn.executed == []
+
+
+def test_a_cursor_taken_from_a_lease_is_closed_when_the_lease_closes_so_it_cannot_reach_a_connection_lent_to_another_stage(fakes):
+    first = db_reuse.connect(3, 3000)
+    cur = first.cursor()
+    assert cur.closed is False
+    first.close()
+    assert cur.closed is True
+    second = db_reuse.connect(3, 3000)
+    assert object.__getattribute__(second, "_conn") is object.__getattribute__(first, "_conn")   # the same connection, now lent to the next stage
+    assert second.cursor().closed is False
+
+
+def test_a_cursor_that_will_not_close_does_not_stop_the_connection_being_reset_and_returned(fakes, monkeypatch):
+    lease = db_reuse.connect(3, 3000)
+    cur = lease.cursor()
+    monkeypatch.setattr(cur, "close", lambda: (_ for _ in ()).throw(RuntimeError("will not close")), raising=False)
+    conn = object.__getattribute__(lease, "_conn")
+    lease.close()
+    assert conn.rollbacks >= 1 and fakes.pools[0].puts[-1][0] is conn
