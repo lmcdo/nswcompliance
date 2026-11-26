@@ -29,6 +29,16 @@
 - `docs/user-stories/` — user story documents
 
 ## Satellite Product Reports UI
+
+> **Status (owner decision 2026-11-09, private pilot): only two products are public: Council Rules
+> (`/assessment`) and Site Facts (`/reports/intelligence-brief`).** Every other `/reports/*` page below
+> (flood, bushfire, granny-flat, solar-yield, threat-radar, pre-da-history, conveyancing) is reachable by URL
+> only: not linked from the home page, menus, footer or sitemap, and sent with `X-Robots-Tag: noindex`.
+> The source of truth is `lib/pilot-focus.ts` (`PILOT_UNLISTED_PREFIXES`, `PILOT_ALLOWED_LINKS`) and
+> `lib/hidden-products.ts` (bushfire, solar, climate risk, withdrawn 2026-10-28). Do not design or test mobile
+> layouts for the unlisted pages first; the public ones are `/`, `/assessment` and `/reports/intelligence-brief`.
+> Shared components (`components/reports/landing/LandingHero.tsx`) still render on the unlisted pages, so a change
+> there reaches them too.
 The `/reports/` route group is a separate section of the app with its own layout — no compliance UI.
 Target users (solar installers, buyers agents, property investors) never see DCP/LEP/SEPP tabs.
 

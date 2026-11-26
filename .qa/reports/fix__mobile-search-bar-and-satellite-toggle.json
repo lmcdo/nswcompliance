@@ -1,0 +1,72 @@
+{
+  "tier": "standard",
+  "justification": "On a phone the Generate button took most of the search bar and hid the typed address; the satellite option was a small unchecked box. The search row now stacks below the sm breakpoint (address field full width, button under it) and the satellite option is a visible on/off switch used in both places on the site facts page. LandingHero is shared by 7 report pages, so the layout change reaches all of them.",
+  "commit_hash": "a245f2fb",
+  "files": [
+    "frontend-nextjs/components/reports/landing/LandingHero.tsx",
+    "frontend-nextjs/components/reports/AddressAutocomplete.tsx",
+    "frontend-nextjs/components/reports/SatelliteToggle.tsx",
+    "frontend-nextjs/app/reports/intelligence-brief/page.tsx",
+    "frontend-nextjs/__tests__/components/reports/mobile-search-and-satellite.test.tsx",
+    "frontend-nextjs/CLAUDE.md",
+    "frontend-nextjs/COMPONENT_MAP.md"
+  ],
+  "falsifiable_check": {
+    "command": "cd frontend-nextjs && npx jest __tests__/components/reports/mobile-search-and-satellite.test.tsx --ci",
+    "fails_when": "Either layout class is removed. MUTATION 1, drop w-full sm:w-auto from the button: 1 failed / 5 passed. MUTATION 2, drop flex-col sm:flex-row from the row: 1 failed / 5 passed. Restored: 6 passed. The 124 existing brief and reports tests also pass; react-doctor found no issues in the 3 changed files. Not tested: a real phone render of the other 6 pages that share LandingHero.",
+    "observed_red": "Ran both mutations on this branch: removing 'w-full sm:w-auto' from the button gave 1 failed / 5 passed; removing 'flex-col sm:flex-row' from the row gave 1 failed / 5 passed. Both restored: 6 passed."
+  },
+  "pre_impl": {
+    "existing_data": "Site facts hero search is components/reports/landing/LandingHero.tsx (via ProductLandingV2); the satellite option lived twice in app/reports/intelligence-brief/page.tsx (hero extras and input card). lib/pilot-focus.ts shows only /assessment and /reports/intelligence-brief are public; the other /reports/* pages using LandingHero are unlisted.",
+    "assumption_mismatch": "I first treated LandingHero as shared by 7 public report pages. The owner corrected that: they are disconnected from the home page. pilot-focus.ts and the sitemap filter confirm it. The risk to other pages is therefore small, and docs now say which pages are public.",
+    "new_vs_existing": "SatelliteToggle is new: no switch component existed (grep of components/ for 'switch' and 'toggle' found only unrelated UI primitives). It replaces two inline checkboxes rather than adding a third control."
+  },
+  "functions": [
+    {
+      "name": "SatelliteToggle",
+      "file_line": "frontend-nextjs/components/reports/SatelliteToggle.tsx:11",
+      "input": "checked (boolean) and onChange (next: boolean)",
+      "output": "a button with role=switch and aria-checked that calls onChange with the opposite value",
+      "if_none": "checked is required, so a missing value is a type error; an undefined value at runtime would render as Off and a click would turn it On"
+    }
+  ],
+  "values": [
+    {
+      "value": "includeSatellite state",
+      "read_at": "app/reports/intelligence-brief/page.tsx useState(false), sent as include_satellite in the run request",
+      "if_missing": "defaults false: the run is made without satellite sections, the same as before this change"
+    }
+  ],
+  "queries": [],
+  "break_it": [
+    {
+      "scenario": "Clicking the switch inside the hero search form submits the form with an empty address.",
+      "what_happens": "The button has type=button so it cannot submit.",
+      "mitigated": true,
+      "how": "Test 'does not submit the search form when clicked' passes.",
+      "repro": "cd frontend-nextjs && npx jest __tests__/components/reports/mobile-search-and-satellite.test.tsx -t \"does not submit\""
+    },
+    {
+      "scenario": "A long typed address pushes the button off-screen or is clipped on a 360 px phone.",
+      "what_happens": "The field has min-w-0 and its own row, so the full width is used and the button sits under it.",
+      "mitigated": true,
+      "how": "Viewed at 390 and 360 px on a local server; the placeholder is clipped at 360 px but typed text gets the full field.",
+      "repro": "Open /reports/intelligence-brief in a 360 px wide window, type a long address, confirm the button is under the field and the text is visible"
+    },
+    {
+      "scenario": "Another page using LandingHero looks wrong on a phone.",
+      "what_happens": "Layout changes there too. Those pages are unlisted and not linked, but reachable by URL.",
+      "mitigated": false,
+      "how": "Not viewed. Residual risk accepted: low traffic.",
+      "repro": "Open /reports/flood (unlisted) in a 390 px wide window and look at the search bar"
+    }
+  ],
+  "mutation_analysis": "Two layout-class mutations were run and each turned exactly one test red, so the class assertions are not decorative. The switch tests would fail if onChange stopped receiving the opposite value (return-nothing mutation not run separately; the two switch tests assert the value passed).",
+  "residual_risk": "Not tested on a real phone browser, only a 390 and 360 px frame on a local dev server. The 360 px placeholder text is clipped. The other unlisted report pages that share LandingHero were not viewed.",
+  "post_merge": {
+    "db_reset": "No. UI only.",
+    "secrets": "None written. A copy of .env.local was used for the local check and deleted before commit; it is gitignored.",
+    "other_repo": "No.",
+    "manual_verify": "Yes: open verify.plotdetect.com.au/reports/intelligence-brief on a phone, type an address, and confirm the address stays visible and the satellite switch toggles."
+  }
+}

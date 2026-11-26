@@ -311,12 +311,16 @@ never conditioned on partner presence (neutrality rule).
 
 ### `/reports/intelligence-brief` - Site Report Page
 
+**Public in the private pilot** (one of two linked products with `/assessment`). The other `/reports/*` pages are unlisted: see `lib/pilot-focus.ts`.
+
 **Page Component:** `app/reports/intelligence-brief/page.tsx`
 
 **Component Tree:**
 ```
 app/reports/intelligence-brief/page.tsx
   └─ IntelligenceBriefInner (client component)
+      ├─ ProductLandingV2 → LandingHero (hero search: address field full row on phones, button under it from below `sm`)
+      │    └─ SatelliteToggle (`components/reports/SatelliteToggle.tsx`, on/off switch; also reused in the input card below the landing)
       ├─ AddressAutocomplete (address input)
       ├─ useRealtimeStream(@trigger.dev/react-hooks) — subscribes to Trigger.dev stream
       ├─ BriefIntentBar (flag-gated: intent chips shown during the stream wait)
