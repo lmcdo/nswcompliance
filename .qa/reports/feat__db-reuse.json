@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Stage timings in the service log show a normal evidence call spends about 3 of its 5 seconds in database stages (lot outline 0.8 s, council controls 1.7 to 2.4 s, council files 0.7 s), each of which opened and closed its own connection. services/db_reuse.py keeps a small pool (up to 8) of read-only connections; the two modules' _connect() now call it, and the stages' existing close() hands the connection back instead of ending it. While checking the pool's safety I found that the stages' read-only and short-timeout settings were never in effect in production: they were passed as connection options, which the Supabase pooler silently ignores, and the service's DATABASE_URL is the postgres role. Measured 2026-11-26 with that role through the pooler: the same options gave read_only=off and statement_timeout=30min. The pool therefore sets both with SET commands after connecting and verifies them with SHOW; a connection that is not read-only is never handed out. This also applies to the direct (non-pooled) path and DB_REUSE=0. The intended limits are the modules' own: 3 s per statement for the lot, council and bush fire lookups, 8 s for the council controls.",
-  "commit_hash": "ac7b542c",
+  "commit_hash": "286beb94",
   "files": [
     "services/db_reuse.py",
     "services/lmr_area_lga.py",
@@ -12,7 +12,7 @@
     "command": "python -m pytest tests/test_db_reuse.py tests/test_lmr_area_lga.py tests/test_evidence_statement.py tests/test_lmr_area_inputs.py -q -o addopts=",
     "expected": "Tests pass; with the postgres role through the pooler a pooled and a direct connection both report read_only on and the statement timeout, and a CREATE TABLE is refused.",
     "fails_when": "A connection is handed out that is not read-only or lacks the timeout; a stage's transaction or autocommit state leaks into the next stage; a dropped connection is reused; a closed lease returns to the pool twice; an exhausted or failing pool breaks a stage instead of falling back; DB_REUSE=0 skips the read-only check.",
-    "observed_red": "Eleven hand breakages of the pool each turned a test red and were restored: read-only never verified, no rollback on return, autocommit not reset, a closed connection reused, a recent connection never trusted, an idle connection never checked, the SET not committed, the off switch ignored, a changed setting or process ignored, a pooled connection never configured, and the pool keeping nothing or only one connection (found on the real database: psycopg2 closes a returned connection unless minconn is raised, so with the first design nothing was ever reused). The last two need the real driver (tests/conftest_mocks.py stubs it by default) and run with PYTEST_REAL_DB=1, which also runs a real-database test. A reviewer-style check of the timeout comparison found an empty SHOW result would pass for a non-whole-second timeout; fixed. Measured on the real database as the postgres role through the pooler: pooled and direct connections report read_only=on, statement_timeout=3s and refuse a write (ReadOnlySqlTransaction); before this change the same role and options gave read_only=off, statement_timeout=30min."
+    "observed_red": "After review (Sol found a single global pool slot that two callers with different timeouts would replace on every call, a closed lease that could still touch a connection lent to another stage, and per-connection state keyed by a reusable id) the pool keeps one pool per setting and process, keys per-connection state by the connection object, and makes a closed lease raise; ten hand breakages of that version each turned a test red (one pool shared by every timeout, the process left out of the key, use after close allowed, the lease open while resetting, a pooled connection never configured, a discarded connection keeping its state, the pool keeping nothing, a failed checkout not discarded, an unusable connection accepted, read-only never verified). Before that, eleven breakages of the first version each turned a test red and were restored: read-only never verified, no rollback on return, autocommit not reset, a closed connection reused, a recent connection never trusted, an idle connection never checked, the SET not committed, the off switch ignored, a changed setting or process ignored, a pooled connection never configured, and the pool keeping nothing or only one connection (found on the real database: psycopg2 closes a returned connection unless minconn is raised, so with the first design nothing was ever reused). The last two need the real driver (tests/conftest_mocks.py stubs it by default) and run with PYTEST_REAL_DB=1, which also runs a real-database test. A reviewer-style check of the timeout comparison found an empty SHOW result would pass for a non-whole-second timeout; fixed. Measured on the real database as the postgres role through the pooler: pooled and direct connections report read_only=on, statement_timeout=3s and refuse a write (ReadOnlySqlTransaction); before this change the same role and options gave read_only=off, statement_timeout=30min."
   },
   "pre_impl": {
     "existing_data": "Run through /pre-impl: no table, query or schema changes. Session pooler on port 5432; max_connections 90 with 17 in use; no idle session timeouts; a new connection costs 0.12 s from a developer PC and a warm query 32 ms.",
@@ -25,21 +25,21 @@
   "functions": [
     {
       "name": "connect",
-      "file_line": "services/db_reuse.py:154",
+      "file_line": "services/db_reuse.py:186",
       "input": "a connect timeout and a statement timeout in the stage's own units",
       "output": "a read-only connection with the statement timeout, from the pool or an ordinary one",
       "if_none": "No DATABASE_URL gives none and the stage reports no answer."
     },
     {
       "name": "_configure",
-      "file_line": "services/db_reuse.py:43",
+      "file_line": "services/db_reuse.py:45",
       "input": "a connection and the statement timeout in milliseconds",
       "output": "nothing; the session is read-only with the timeout, proven by SHOW",
       "if_none": "A session that does not report both raises and is never used."
     },
     {
-      "name": "_usable",
-      "file_line": "services/db_reuse.py:94",
+      "name": "usable",
+      "file_line": "services/db_reuse.py:102",
       "input": "a connection taken from the pool",
       "output": "whether it is open and, if it sat idle, answers SELECT 1",
       "if_none": "A closed or silent connection is not usable and is replaced."
@@ -62,16 +62,16 @@
   "values": [
     {
       "value": "DATABASE_URL and DB_REUSE",
-      "read_at": "services/db_reuse.py:154",
+      "read_at": "services/db_reuse.py:186",
       "nullable": "yes",
-      "guard_at": "services/db_reuse.py:154 (none and the off switch)",
+      "guard_at": "services/db_reuse.py:186 (none and the off switch)",
       "if_missing": "No connection: the stage reports no answer."
     }
   ],
   "queries": [
     {
       "purpose": "Check a connection that sat idle; set and verify the read-only session and the timeout",
-      "file_line": "services/db_reuse.py:43",
+      "file_line": "services/db_reuse.py:45",
       "where_clause": "SELECT 1; SET default_transaction_read_only = on; SET statement_timeout = <int>; SHOW both; no table is read or written"
     }
   ],
