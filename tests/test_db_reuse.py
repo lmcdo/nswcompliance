@@ -772,6 +772,7 @@ class _RealPoolConn:
         self.rollbacks += 1
 
 
+@pytest.mark.database   # needs the real driver, which tests/conftest_mocks.py stubs by default: deselected in CI (pytest.ini), run with PYTEST_REAL_DB=1 pytest -m database -o addopts=
 def test_the_real_psycopg2_pool_keeps_returned_connections_so_the_next_stage_gets_the_same_one(monkeypatch):
     """psycopg2 closes a returned connection unless fewer than minconn are idle: with minconn 0 nothing was ever reused (found on the real database 2026-11-26)."""
     import psycopg2
