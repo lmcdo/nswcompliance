@@ -99,7 +99,7 @@ export function AddressAutocomplete({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex-1 flex flex-col gap-1">
+    <div className="flex-1 min-w-0 flex flex-col gap-1">
       <input
         ref={inputRef}
         type="text"

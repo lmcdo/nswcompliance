@@ -5,6 +5,7 @@ import { deliveredKwhFrom, deliveryBasisText } from '@/lib/solar/delivered';
 import { useState, useCallback, useEffect, useMemo, useRef, Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { SatelliteToggle } from '@/components/reports/SatelliteToggle';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ConstraintArithmeticCard, type ConstraintArithmeticResult, type EnvelopeGap, type InputLedgerRow } from '@/components/compliance/ConstraintArithmeticCard';
 import { cn } from '@/lib/utils';
@@ -3010,16 +3011,7 @@ function IntelligenceBriefInner() {
           product="intelligence-brief"
           searchExtras={
             <div className="mt-4 flex justify-center">
-              <label className="inline-flex items-center gap-2.5 rounded-xl bg-card px-4 py-2.5 text-sm font-medium text-foreground shadow-md ring-1 ring-border/50 cursor-pointer hover:ring-primary/50 transition-all">
-                <input
-                  type="checkbox"
-                  checked={includeSatellite}
-                  onChange={(e) => setIncludeSatellite(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-                Include satellite analysis
-                <span className="font-normal text-muted-foreground">climate · terrain</span>
-              </label>
+              <SatelliteToggle checked={includeSatellite} onChange={setIncludeSatellite} />
             </div>
           }
         />
@@ -3056,15 +3048,7 @@ function IntelligenceBriefInner() {
             placeholder="Enter a NSW property address..."
           />
 
-          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeSatellite}
-              onChange={(e) => setIncludeSatellite(e.target.checked)}
-              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-            />
-            Include satellite analysis (climate, terrain)
-          </label>
+          <SatelliteToggle checked={includeSatellite} onChange={setIncludeSatellite} />
 
           <button
             onClick={handleGenerate}
