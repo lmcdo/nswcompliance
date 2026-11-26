@@ -1,0 +1,79 @@
+{
+ "tier": "standard",
+ "justification": "Standard: the version check now also compares each control with the file its chapter is served from, and the page read no longer requires the ledger's chapter name to equal the control's. Not Minor: it re-writes rows in the production table dcp_quote_version_check and changes a served read. Not Critical: the table is the one added by migration 127, only checks are written, and no rule or council wording changes.",
+ "commit_hash": "060c470f",
+ "files": [
+  "scripts/dcp_quote_version_check.py",
+  "services/evidence_council.py",
+  "tests/test_dcp_quote_version_check.py"
+ ],
+ "pre_impl": {
+  "existing_data": "559 active chapters have a served file; 10 have that file filed in dcp_source_versions under another chapter name. Blacktown Part C is served from part-4-secondary-dwellings.pdf, which is the 98-page Part C; the ledger's only Part C file is the older 95-page one.",
+  "assumption_mismatch": "I first read the 6 odd Blacktown results as wrong controls. Opening both PDFs showed the controls are word for word in the served file; the older file was simply the only one the ledger listed for the chapter.",
+  "new_vs_existing": "No new table. The script adds the registry's served file to each chapter's version list and the page read joins on the file, not on the ledger's chapter name.",
+  "external_source_error": "If a served file has no ledger row it is skipped and the chapter keeps its own list; a PDF that cannot be read still gives no_source."
+ },
+ "falsifiable_check": {
+  "command": "python -m pytest tests/test_dcp_quote_version_check.py tests/test_evidence_statement.py -q ; python scripts/dcp_quote_version_check.py --council blacktown",
+  "fails_when": "The served file is left out of a chapter's list, or a file filed under another chapter name is dropped by the page read.",
+  "observed_red": "Before the change the Blacktown dry run listed only the April file for Part C and 6 non-verbatim results.",
+  "observed_green": "After the change the Blacktown dry run lists both files for each control: April file wrong_page or not_found, June served file verbatim for all 6 controls."
+ },
+ "functions": [
+  {
+   "name": "main",
+   "file_line": "scripts/dcp_quote_version_check.py",
+   "input": "the council filter and the apply flag",
+   "output": "verdicts for every control against every stored file plus the served file of its chapter",
+   "if_none": "a served file with no ledger row is skipped; no apply flag writes nothing"
+  }
+ ],
+ "values": [
+  {
+   "value": "served file of a chapter",
+   "read_at": "dcp_chapter_registry.r2_current_path joined to its dcp_source_versions row",
+   "if_missing": "the chapter keeps only its own ledger versions"
+  }
+ ],
+ "queries": [
+  {
+   "purpose": "Served file of each active chapter with its ledger label",
+   "file_line": "scripts/dcp_quote_version_check.py SERVED_SQL",
+   "where_clause": "WHERE r.is_active AND council filter; joined on r2_key with event stored; read-only unless apply"
+  },
+  {
+   "purpose": "Read stored verdicts for the controls on the page",
+   "file_line": "services/evidence_council.py _VERSION_CHECK_SQL",
+   "where_clause": "WHERE control is current and its council and chapter match the row, file is a stored file of the same council; read-only, 8 s limit"
+  }
+ ],
+ "break_it": [
+  {
+   "scenario": "A served file is filed in the ledger under a different chapter name.",
+   "what_happens": "The chapter's version list would miss the file its controls came from and show only older files.",
+   "mitigated": true,
+   "how": "The served file is added to the chapter's list from the registry path.",
+   "repro": "python scripts/dcp_quote_version_check.py --council blacktown"
+  },
+  {
+   "scenario": "The page read still demands the ledger's chapter name equal the control's.",
+   "what_happens": "The new Blacktown rows would be filtered out and the page would not show them.",
+   "mitigated": true,
+   "how": "The join is now on the file and council only; the control's own chapter is still required to match the check row.",
+   "repro": "python -m pytest tests/test_evidence_statement.py -q"
+  },
+  {
+   "scenario": "Two chapters share one PDF.",
+   "what_happens": "A file could be listed twice for a chapter.",
+   "mitigated": true,
+   "how": "The served file is added only if its key is not already in the chapter's list.",
+   "repro": "python -m pytest tests/test_dcp_quote_version_check.py -k served -q"
+  }
+ ],
+ "post_merge": {
+  "db_reset": "No",
+  "secrets": "No",
+  "other_repo": "No",
+  "manual_verify": "Reload the evidence page for a Blacktown lot and read the version column for Front setback: the June file should say Same words on the cited page."
+ }
+}
