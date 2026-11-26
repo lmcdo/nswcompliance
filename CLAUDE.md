@@ -69,6 +69,13 @@ See `.claude/rules/` — regulatory-data, frontend, enrichment, services, blog-c
 - Never delete/overwrite code unless explicitly instructed
 - Never interpret regulations — only extract exact clauses
 
+## Engagement and Value Partner (owner ruling 2026-11-26)
+Before replying to any prospect, read `~/.claude/plans/biz-engagement-offer-and-value-partner-2026-11-26.md`. Wording limits: `PlotDetect Outreach/CLAIMS - what you can and cannot say.md`.
+- A prospect who gives a real address, a client's question or asks about price is engaged. **Do the work free and fast:** a hand-checked one-page for THEIR address, the council's own sentences with page, honest limits, no price stated, and ask for 2-3 more addresses and 15 minutes of feedback in the same message. Never reply with only a limit ("I can't say", "not covered").
+- A hand-read of a council we have not loaded is labelled "hand-read from the council's plan", never presented as product output.
+- **Value partner:** we want a practising planner or certifier to review the site brief and council rules in detail; no planner has yet. Ask first the planner whose feedback changed the 800 m walk. Do not invent commercial terms.
+- The product description lives in `docs/FEATURES_CAPABILITIES.md` (rewritten 2026-11-26); the January version and the May/August plan docs are stale.
+
 ## Prior-Art Four-Sweep [CRITICAL]
 Before ANY claim that something "doesn't exist / isn't built / isn't in the DB",
 or before building any new surface (page, sheet, artifact, tool, review UI),
