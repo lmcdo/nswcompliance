@@ -96,8 +96,11 @@ class _PoolState:
         self.meta.pop(conn, None)
         try:
             self.pool.putconn(conn, close=True)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception:  # noqa: BLE001 -- the pool could not take it back: close the connection itself so it is never left open and unowned
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
 
     def usable(self, conn: Any) -> bool:
         """False for a closed connection, and for one that has sat idle long enough that the database may have dropped it and that does not answer SELECT 1."""
@@ -179,12 +182,17 @@ class _Lease:
             return
         conn, state = object.__getattribute__(self, "_conn"), object.__getattribute__(self, "_state")
         object.__setattr__(self, "_open", False)   # from here on this lease cannot touch the connection, whatever happens next
+        cursors_closed = True
         for cur in object.__getattribute__(self, "_cursors"):   # a cursor taken from this lease is closed with it
             try:
                 cur.close()
-            except Exception:  # noqa: BLE001 -- a cursor that will not close must not stop the connection being reset
-                pass
+            except Exception:  # noqa: BLE001 -- a cursor that will not close could still reach the connection once another stage has it: the connection is then closed, not reused
+                cursors_closed = False
         object.__getattribute__(self, "_cursors").clear()
+        if not cursors_closed:
+            logger.warning("db reuse: a cursor would not close, so its connection is closed instead of reused")
+            state.discard(conn)
+            return
         try:
             if getattr(conn, "autocommit", False):
                 conn.autocommit = False

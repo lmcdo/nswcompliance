@@ -1010,10 +1010,22 @@ def test_a_cursor_taken_from_a_lease_is_closed_when_the_lease_closes_so_it_canno
     assert second.cursor().closed is False
 
 
-def test_a_cursor_that_will_not_close_does_not_stop_the_connection_being_reset_and_returned(fakes, monkeypatch):
+def test_a_cursor_that_will_not_close_means_the_connection_is_closed_not_returned_to_the_pool(fakes, monkeypatch):
     lease = db_reuse.connect(3, 3000)
     cur = lease.cursor()
     monkeypatch.setattr(cur, "close", lambda: (_ for _ in ()).throw(RuntimeError("will not close")), raising=False)
     conn = object.__getattribute__(lease, "_conn")
     lease.close()
-    assert conn.rollbacks >= 1 and fakes.pools[0].puts[-1][0] is conn
+    assert fakes.pools[0].puts[-1] == (conn, True)      # discarded (closed), never returned for the next stage to use
+    assert conn not in db_reuse._states[next(iter(db_reuse._states))].meta
+
+
+def test_a_discard_the_pool_cannot_complete_closes_the_connection_itself(fakes, monkeypatch):
+    lease = db_reuse.connect(3, 3000)
+    conn = object.__getattribute__(lease, "_conn")
+    state = object.__getattribute__(lease, "_state")
+    monkeypatch.setattr(state.pool, "putconn", lambda c, close=False: (_ for _ in ()).throw(RuntimeError("pool broken")))
+    closed = []
+    monkeypatch.setattr(conn, "close", lambda: closed.append(True), raising=False)
+    state.discard(conn)
+    assert closed == [True] and conn not in state.meta

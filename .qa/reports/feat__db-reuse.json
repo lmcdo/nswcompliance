@@ -1,7 +1,7 @@
 {
   "tier": "Standard",
   "justification": "Stage timings in the service log show a normal evidence call spends about 3 of its 5 seconds in database stages (lot outline 0.8 s, council controls 1.7 to 2.4 s, council files 0.7 s), each of which opened and closed its own connection. services/db_reuse.py keeps a small pool (up to 8) of read-only connections; the two modules' _connect() now call it, and the stages' existing close() hands the connection back instead of ending it. While checking the pool's safety I found that the stages' read-only and short-timeout settings were never in effect in production: they were passed as connection options, which the Supabase pooler silently ignores, and the service's DATABASE_URL is the postgres role. Measured 2026-11-26 with that role through the pooler: the same options gave read_only=off and statement_timeout=30min. The pool therefore sets both with SET commands after connecting and verifies them with SHOW; a connection that is not read-only is never handed out. This also applies to the direct (non-pooled) path and DB_REUSE=0. The intended limits are the modules' own: 3 s per statement for the lot, council and bush fire lookups, 8 s for the council controls.",
-  "commit_hash": "2ab0efad",
+  "commit_hash": "39498e60",
   "files": [
     "services/db_reuse.py",
     "services/lmr_area_lga.py",
@@ -25,7 +25,7 @@
   "functions": [
     {
       "name": "connect",
-      "file_line": "services/db_reuse.py:199",
+      "file_line": "services/db_reuse.py:207",
       "input": "a connect timeout and a statement timeout in the stage's own units",
       "output": "a read-only connection with the statement timeout, from the pool or an ordinary one",
       "if_none": "No DATABASE_URL gives none and the stage reports no answer."
@@ -39,7 +39,7 @@
     },
     {
       "name": "usable",
-      "file_line": "services/db_reuse.py:102",
+      "file_line": "services/db_reuse.py:105",
       "input": "a connection taken from the pool",
       "output": "whether it is open and, if it sat idle, answers SELECT 1",
       "if_none": "A closed or silent connection is not usable and is replaced."
@@ -62,9 +62,9 @@
   "values": [
     {
       "value": "DATABASE_URL and DB_REUSE",
-      "read_at": "services/db_reuse.py:199",
+      "read_at": "services/db_reuse.py:207",
       "nullable": "yes",
-      "guard_at": "services/db_reuse.py:199 (none and the off switch)",
+      "guard_at": "services/db_reuse.py:207 (none and the off switch)",
       "if_missing": "No connection: the stage reports no answer."
     }
   ],
