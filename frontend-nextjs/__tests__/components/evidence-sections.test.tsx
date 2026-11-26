@@ -385,7 +385,7 @@ describe('AtAGlance', () => {
   });
   it('bottom line: uses the verdict words, and says how many checks still need a person (singular and plural)', () => {
     const one = render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' })] })} />);
-    expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain('On this measure the lot meets the walking test. One check for land where the rules don\'t apply still needs a person.');
+    expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain('On this measure the walk is within the limit. One check for land where the rules don\'t apply still needs a person.');
     one.unmount();
     const many = render(<AtAGlance data={evidence({ exclusions: [row({ para: 'a', result: 'warn' }), row({ para: 'b', result: 'excludes' })] })} />);
     expect(screen.getByText(/Bottom line\./).parentElement?.textContent).toContain("One check found land where the rules don't apply. One check for land where the rules don't apply still needs a person.");

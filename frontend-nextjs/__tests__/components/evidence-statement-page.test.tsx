@@ -29,7 +29,7 @@ describe('evidence statement page', () => {
     mockFetch(payload());
     render(<EvidenceStatement />);
     await waitFor(() => expect(screen.getByText('bush fire prone land,')).toBeTruthy());
-    expect(screen.getByText('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the lot meets the walking test.')).toBeTruthy();
+    expect(screen.getByText('The shortest walk is 479 m, which is 321 m under the 800 m limit the Low and Mid Rise housing rules use. On this measure the walk is within the limit.')).toBeTruthy();
     expect(screen.getByText('The shortest walk against the limit')).toBeTruthy();
     expect(screen.queryByText(/Possible walk/)).toBeNull();
     expect(screen.getByText('words here')).toBeTruthy();
