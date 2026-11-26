@@ -469,3 +469,35 @@ class TestWingecarribeeOnboarding:
             zone_epi="Wingecarribee Local Environmental Plan 2010",
         )
         assert result == "wingecarribee"
+
+
+class TestEpiNameMatchesOnlyItsOwnCouncil:
+    """A council whose plan name merely CONTAINS another council's key must not get that council's DCP."""
+
+    def test_north_sydney_is_not_city_of_sydney(self):
+        from generate_conveyancing_report import detect_former_council
+
+        result = detect_former_council("74 Hayberry Street, Crows Nest NSW 2065", zone_epi="North Sydney Local Environmental Plan 2013")
+        assert result != "city_of_sydney", "North Sydney lots were served City of Sydney's DCP (substring match)"
+        assert result in (None, "north_sydney")
+
+    def test_city_of_sydney_still_resolves(self):
+        from generate_conveyancing_report import detect_former_council
+
+        assert detect_former_council("1 George St, Sydney NSW 2000", zone_epi="Sydney Local Environmental Plan 2012") == "city_of_sydney"
+
+    def test_every_key_resolves_to_itself_and_not_when_prefixed_by_another_name(self):
+        from generate_conveyancing_report import detect_former_council, ZONE_EPI_TO_LGA_SLUG
+
+        for key, slug in ZONE_EPI_TO_LGA_SLUG.items():
+            if slug == "inner_west":
+                continue  # needs a suburb to resolve; covered above
+            assert detect_former_council("1 Test St", zone_epi=f"{key} 2020") == slug, key
+            assert detect_former_council("1 Test St", zone_epi=f"NORTH {key} 2020") != slug, f"NORTH {key} matched {slug}"
+
+    def test_a_generic_or_partial_plan_name_resolves_to_no_council(self):
+        from generate_conveyancing_report import detect_former_council
+
+        for epi in ("LOCAL ENVIRONMENTAL PLAN", "Local Environmental Plan 2013", "SYDNEY", ""):
+            assert detect_former_council("1 Test St", zone_epi=epi) is None, epi
+
