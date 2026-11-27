@@ -188,7 +188,19 @@ def retired_zone_codes(zones, council, truth, slug_key):
     return sorted(bad)
 
 
-def build_plan(cur, councils):
+def only_narrowing(plan):
+    """Plan rows that take zones or types away and add none. A row row-level gates had narrowed further would
+    otherwise be widened back to its config entry by a run meant to narrow (Hornsby 3.5.1, 4 rows, 2026-11-27)."""
+    kept = []
+    for row in plan:
+        _pid, zones, devs, _zs, _ds, old_z, old_d = row
+        pairs = ((set(old_z), set(zones)), (set(old_d), set(devs)))
+        if all(new == old or ("ALL" not in new and (not old or "ALL" in old or new < old)) for old, new in pairs):
+            kept.append(row)
+    return kept
+
+
+def build_plan(cur, councils, chapter=None):
     """Rows whose tag VALUES change, plus the provenance for every row in scope."""
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from enrichment.extractors.applicability_tagger import ApplicabilityTagger
@@ -198,8 +210,9 @@ def build_plan(cur, councils):
                    id, document_id, provision_text,
                    v2_applicable_zones, v2_applicable_dev_types,
                    source_council, section_header, pdf_page, v2_dcp_part
-            FROM {TABLE} WHERE source_council = ANY(%s)""",
-        (list(councils),),
+            FROM {TABLE} WHERE source_council = ANY(%s)
+              AND (%s::text IS NULL OR source_chapter_key = %s)""",
+        (list(councils), chapter, chapter),
     )
     rows = cur.fetchall()
     tagger = ApplicabilityTagger()
@@ -308,6 +321,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true",
                     help="Execute. Without this nothing is written.")
+    ap.add_argument("--narrow-only", action="store_true",
+                    help="write only rows whose zones/types shrink or stay; any row that would gain one is left as it is")
+    ap.add_argument("--chapter", default=None,
+                    help="limit the run to one source_chapter_key, so a fix to one chapter changes nothing else")
     ap.add_argument("--councils", nargs="+", default=list(DEFAULT_COUNCILS),
                     help="source_council slugs to re-tag (default: the three "
                          "Inner West councils the 2026-08-01 slug fix targeted).")
@@ -326,7 +343,13 @@ def main() -> int:
     conn, cur = _connect()
     try:
         plan, prov_only, stats, narrowings, invalid = build_plan(
-            cur, args.councils)
+            cur, args.councils, args.chapter)
+        if args.narrow_only:
+            kept = only_narrowing(plan)
+            print(f"  --narrow-only: {len(plan) - len(kept):,} row(s) that would widen are left untouched; "
+                  f"{len(kept):,} will change")
+            plan = kept
+            prov_only = []
         print(f"\n=== DQ-33 re-tag plan ===")
         print(f"  councils                 : {', '.join(args.councils)}")
         print(f"  rows in scope            : {len(plan) + len(prov_only):,}")

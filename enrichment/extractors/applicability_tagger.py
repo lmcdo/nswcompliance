@@ -664,6 +664,13 @@ class ApplicabilityTagger:
         if chapter_topics:
             for chapter_key, entry in chapter_topics.items():
                 if chapter_key in doc_lower:
+                    # A Part whose sections each open with their own scope sentence (Hornsby Part 3): the row's PDF
+                    # page names its section, whose keys replace the Part's. A page in no range keeps the Part's.
+                    for section in entry.get('page_sections') or ():
+                        if pdf_page and section['first_page'] <= pdf_page <= section['last_page']:
+                            entry = {**entry, **section,
+                                     'scope_evidence': {**(entry.get('scope_evidence') or {}), **section['scope_evidence']}}
+                            break
                     # Carry is_precinct_specific through, as the ashfield and
                     # leichhardt paths already do. Without it a config that declares
                     # a chapter precinct-scoped has that statement silently dropped

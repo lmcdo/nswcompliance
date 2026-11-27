@@ -83,6 +83,25 @@ HORNSBY_CONFIG: dict = {
                     "which recorded `config_silent` on 101 served rows (DQ-114).",
             },
             "applicable_zones": ["R2", "R3", "R4"],  # noqa: zone-codes (the LGA's residential zones, per lep_zone_coverage)
+            # Sections 3.2 to 3.4 each open by naming their zone (read from the live PDF 2026-11-27); the row's PDF
+            # page picks the section. 3.1 (says R2 only) and 3.5 stay on the Part's zones: narrowing 3.1 would hide
+            # house rules from houses in R3/R4, and 3.5 also covers seniors housing on a height-map "Area 3" whose
+            # zone is not established (the current height map shows no 20.5 m area).
+            "page_sections": (
+                {"first_page": 17, "last_page": 39, "applicable_zones": ["R3"],  # noqa: zone-codes - the council's words
+                 "scope_evidence": {"applicable_zones":
+                     "Section 3.2 (PDF p17), verbatim: 'This section provides controls for erecting and undertaking "
+                     "alterations and additions to medium density housing except for three storey residential flat "
+                     "buildings in the R3 Medium Density Residential Zone'"}},  # noqa: zone-codes - verbatim quote
+                {"first_page": 40, "last_page": 51, "applicable_zones": ["R3", "R4"],  # noqa: zone-codes - the council's words
+                 "scope_evidence": {"applicable_zones":
+                     "Section 3.3 (PDF p40), verbatim: 'a residential flat building in the R3 Medium Density "
+                     "Residential Zone and the R4 High Density Residential Zone'"}},  # noqa: zone-codes - verbatim quote
+                {"first_page": 52, "last_page": 82, "applicable_zones": ["R4"],  # noqa: zone-codes - the council's words
+                 "scope_evidence": {"applicable_zones":
+                     "Section 3.4 (PDF p52), verbatim: 'residential flat buildings in the R4 High Density "
+                     "Residential Zone'"}},  # noqa: zone-codes - verbatim quote
+            ),
             "layer": "generic",
         },
     },
