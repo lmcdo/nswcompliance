@@ -15,4 +15,10 @@ describe('queryHeritageByHca', () => {
     const body = src.slice(start, src.indexOf('\nasync function ', start + 10));
     expect(body).toMatch(/rp\.is_current = TRUE/);
   });
+
+  it('drops rules limited to other zones, with the same filter as the other layers', () => {
+    const start = src.indexOf('async function queryHeritageByHca(');
+    const body = src.slice(start, src.indexOf('\nasync function ', start + 10));
+    expect(body).toMatch(/if \(filters\.zone\) \{\s*sql \+= ` AND \(\$\{ZONE_APPLIES_SQL\(paramIndex\+\+\)\}\)`;\s*params\.push\(filters\.zone\);/);
+  });
 });

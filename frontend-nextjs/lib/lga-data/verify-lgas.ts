@@ -37,7 +37,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Randwick',
     slug: 'randwick',
-    hasDcpData: true,
+    // 2026-11-27: false while every numeric control held for this council is marked needs_review (0 served from
+    // dcp_setback_controls). Back to true when they are reviewed; data-watch flags the drift either way.
+    hasDcpData: false,
     relatedSlugs: ['bayside', 'waverley', 'woollahra'],
     faqs: [
       { q: 'What planning controls apply in Randwick?', a: 'Randwick properties are governed by the Randwick LEP 2012 and Randwick DCP 2025. Controls cover height, FSR, setbacks, parking, landscaping, and heritage. Enter your address above for the full set of applicable controls.' },
@@ -137,7 +139,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Hornsby',
     slug: 'hornsby',
-    hasDcpData: true,
+    // 2026-11-27: false while every numeric control held for this council is marked needs_review (0 served from
+    // dcp_setback_controls). Back to true when they are reviewed; data-watch flags the drift either way.
+    hasDcpData: false,
     relatedSlugs: ['ku-ring-gai', 'northern-beaches', 'the-hills-shire'],
     faqs: [
       { q: 'What planning controls apply in Hornsby?', a: 'Hornsby properties are governed by the Hornsby LEP 2013 and Hornsby DCP. Controls cover height, FSR, setbacks, landscaping, bushfire, and biodiversity. Much of the shire has environmental controls due to bushland proximity.' },
@@ -260,7 +264,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Camden',
     slug: 'camden',
-    hasDcpData: true,
+    // 2026-11-27: false while every numeric control held for this council is marked needs_review (0 served from
+    // dcp_setback_controls). Back to true when they are reviewed; data-watch flags the drift either way.
+    hasDcpData: false,
     relatedSlugs: ['campbelltown', 'liverpool', 'penrith'],
     faqs: [
       { q: 'What planning controls apply in Camden?', a: 'Camden properties are governed by the Camden LEP 2010 and Camden DCP. Controls cover height, FSR, setbacks, parking, and landscaping. New release areas in the South West Growth Area have specific precinct controls.' },
@@ -327,7 +333,9 @@ export const VERIFY_LGAS: VerifyLgaData[] = [
   {
     name: 'Wingecarribee',
     slug: 'wingecarribee',
-    hasDcpData: true,
+    // 2026-11-27: false while every numeric control held for this council is marked needs_review (0 served from
+    // dcp_setback_controls). Back to true when they are reviewed; data-watch flags the drift either way.
+    hasDcpData: false,
     relatedSlugs: ['wollongong', 'campbelltown', 'yass-valley'],
     faqs: [
       { q: 'What planning controls apply in Wingecarribee?', a: 'Wingecarribee properties are governed by the Wingecarribee LEP 2010 and Wingecarribee DCP. Controls cover height, FSR, setbacks, parking, landscaping, heritage, and bushfire. The Southern Highlands has significant heritage controls.' },
