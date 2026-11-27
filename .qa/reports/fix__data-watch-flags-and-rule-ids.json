@@ -1,0 +1,92 @@
+{
+  "tier": "standard",
+  "justification": "Changes which rules a heritage lot is served (a zone filter), the nightly alarm's stored baseline, and four public coverage flags; no database write.",
+  "commit_hash": "764291e7",
+  "files": [
+    "frontend-nextjs/app/api/provisions/for-property/route.ts",
+    "frontend-nextjs/__tests__/api/heritage-query-current-only.test.ts",
+    "frontend-nextjs/lib/lga-data/verify-lgas.ts",
+    "scripts/address_audit/rules_per_address.py",
+    "scripts/address_audit/rules_per_address_panel.json",
+    "tests/test_rules_per_address.py"
+  ],
+  "pre_impl": {
+    "existing_data": "The panel file's baselines held counts only; regulatory_provisions rows are read, never written",
+    "assumption_mismatch": "A served rule with no integer id would be invisible to the comparison, so it is counted and fails the check",
+    "new_vs_existing": "All 28 existing baselines were re-recorded with rule ids; a baseline without ids now fails"
+  },
+  "functions": [
+    {
+      "name": "shape",
+      "file_line": "scripts/address_audit/rules_per_address.py:83",
+      "input": "the route response dictionary for one panel address",
+      "output": "totals, councils, chapters and packed rule ids per chapter",
+      "if_none": "a missing data or by_layer key yields zero rules, which judge reports as served 0 rules"
+    },
+    {
+      "name": "judge",
+      "file_line": "scripts/address_audit/rules_per_address.py:140",
+      "input": "the panel entry and the shape served now",
+      "output": "a list of reasons the address is outside its baseline",
+      "if_none": "no baseline or a baseline without rule ids returns a reason, never an empty pass"
+    },
+    {
+      "name": "queryHeritageByHca",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:831",
+      "input": "database client and the property filters including zone",
+      "output": "heritage rows limited to the property zone or to no zone limit",
+      "if_none": "with no zone filter supplied the query is unchanged from before"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "heritage rules for a heritage property",
+      "file_line": "frontend-nextjs/app/api/provisions/for-property/route.ts:870",
+      "where_clause": "current actionable heritage rows, HCA tag, council, precinct, and now ZONE_APPLIES_SQL",
+      "if_zero": "the condition layer shows only the site-condition rules",
+      "if_wrong": "rules for another zone are shown to this lot"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "One rule is swapped for another and the count stays the same",
+      "what_happens": "A count-only alarm would stay green while the answer changed",
+      "mitigated": true,
+      "how": "rules_per_address.py rule_diff; test_same_count_with_different_rules_is_red_and_names_them",
+      "repro": "python -m pytest tests/test_rules_per_address.py -q -o addopts="
+    },
+    {
+      "scenario": "A heritage lot in a business zone is served residential-zone heritage rules",
+      "what_happens": "Wrong-zone rules appear under site conditions",
+      "mitigated": true,
+      "how": "route.ts zone filter in queryHeritageByHca; heritage-query test",
+      "repro": "cd frontend-nextjs && npx jest --testPathPatterns=heritage-query"
+    },
+    {
+      "scenario": "A changed baseline is accepted without anyone knowing which rules changed",
+      "what_happens": "A wrong rule could be accepted unnoticed",
+      "mitigated": true,
+      "how": "history records added and removed ids on each re-record and requires a reason",
+      "repro": "python -m pytest tests/test_rules_per_address.py -q -o addopts="
+    },
+    {
+      "scenario": "A zone-undecided rule with an empty zone array is dropped by the new filter",
+      "what_happens": "A heritage rule would disappear silently",
+      "mitigated": true,
+      "how": "ZONE_APPLIES_SQL keeps NULL, empty and ALL; production comparison shows only the nine tagged rows changed",
+      "repro": "python scripts/address_audit/rules_per_address.py"
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python scripts/address_audit/rules_per_address.py",
+    "fails_when": "any panel address is served five or more rules added or removed against its recorded ids",
+    "observed_red": "Run against production before this merge it printed FAILED for 012 with 9 rules added (204912-204913, 204975, 205057, 205061-205063, 205073, 205102), the exact residential-zone rows the filter removes; against the preview build it passed 28 of 28"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: after the Vercel deploy run both data-watch scripts and expect exit 0"
+  }
+}
