@@ -27,8 +27,14 @@ def test_unchanged_answer_is_inside_the_box():
     assert rpa.judge(_entry(), rpa.shape(_response())) == []
 
 
-def test_small_drift_is_tolerated():
-    assert rpa.judge(_entry(generic=100), rpa.shape(_response(generic=104))) == []
+def test_a_handful_of_new_rules_is_red_even_when_the_count_move_is_small():
+    found = rpa.judge(_entry(generic=100), rpa.shape(_response(generic=104)))
+    assert "4 rule(s) added, 0 removed since the baseline" in found
+
+
+def test_one_rule_swapped_for_another_is_red():
+    found = rpa.judge(_entry(generic=100), rpa.shape(_response(generic=100, first_id=2)))
+    assert "1 rule(s) added, 1 removed since the baseline" in found
 
 
 def test_widening_is_red():

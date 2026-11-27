@@ -149,7 +149,7 @@ def judge(entry: dict, now: dict) -> list[str]:
         found.append("baseline records no rule ids -- run --rebaseline with a reason")
         return found
     added, removed = rule_diff(base, now)
-    if _count(added) >= MIN_DELTA or _count(removed) >= MIN_DELTA:
+    if added or removed:  # ANY rule in or out: rules move only when someone publishes, and that is accepted by name
         found.append(f"{_count(added)} rule(s) added, {_count(removed)} removed since the baseline")
         found.extend(f"added in {chapter}: {ids}" for chapter, ids in added.items())
         found.extend(f"removed from {chapter}: {ids}" for chapter, ids in removed.items())
