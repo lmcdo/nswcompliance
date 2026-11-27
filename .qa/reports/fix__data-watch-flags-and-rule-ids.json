@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes which rules a heritage lot is served (a zone filter), the nightly alarm's stored baseline, and four public coverage flags; no database write.",
-  "commit_hash": "fff0e5a2",
+  "commit_hash": "6fed12f7",
   "files": [
     "frontend-nextjs/app/api/provisions/for-property/route.ts",
     "frontend-nextjs/__tests__/api/heritage-query-current-only.test.ts",
