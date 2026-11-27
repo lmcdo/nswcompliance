@@ -62,11 +62,33 @@ def fetch(params: dict, base: str = BASE, timeout: int = 180) -> dict:
         return json.loads(r.read())
 
 
+def pack(ids) -> str:
+    """A set of rule ids as sorted ranges ('1-4,9'): compact in the panel file and readable in a diff."""
+    out: list[list[int]] = []
+    for i in sorted(set(ids)):
+        if out and i == out[-1][1] + 1:
+            out[-1][1] = i
+        else:
+            out.append([i, i])
+    return ",".join(str(a) if a == b else f"{a}-{b}" for a, b in out)
+
+
+def unpack(text: str) -> set[int]:
+    ids: set[int] = set()
+    for part in filter(None, (text or "").split(",")):
+        a, _, b = part.partition("-")
+        ids.update(range(int(a), int(b or a) + 1))
+    return ids
+
+
 def shape(response: dict) -> dict:
-    """What one address was served: totals per layer, councils, chapters, precinct rules missing a key."""
+    """What one address was served: WHICH rules (ids per chapter), totals per layer, councils, chapters,
+    precinct rules missing a key. Counts alone cannot say which rules changed, or see one swapped for another."""
     layers = ((response.get("data") or {}).get("by_layer")) or []
     per_layer = {name: 0 for name in LAYERS}
     councils, chapters, unkeyed = set(), set(), 0
+    rules: dict[str, set[int]] = {}
+    no_id = 0
     for layer in layers:
         name = layer.get("layer") or "?"
         rows = layer.get("provisions") or []
@@ -74,10 +96,32 @@ def shape(response: dict) -> dict:
         for p in rows:
             councils.add(p.get("source_council") or "?")
             chapters.add(p.get("source_chapter_key") or "?")
+            if isinstance(p.get("id"), int):
+                rules.setdefault(p.get("source_chapter_key") or "?", set()).add(p["id"])
+            else:
+                no_id += 1
             if name == "precinct" and not (p.get("v2_precinct_id") or "").strip():
                 unkeyed += 1
     return {"total": sum(per_layer.values()), "layers": per_layer, "councils": sorted(councils),
-            "chapters": sorted(chapters), "precinct_unkeyed": unkeyed}
+            "chapters": sorted(chapters), "precinct_unkeyed": unkeyed, "no_id": no_id,
+            "rules": {chapter: pack(ids) for chapter, ids in sorted(rules.items())}}
+
+
+def rule_diff(base: dict, now: dict) -> tuple[dict[str, str], dict[str, str]]:
+    """(added, removed) rule ids per chapter between two shapes. Pure."""
+    added, removed = {}, {}
+    before, after = base.get("rules") or {}, now.get("rules") or {}
+    for chapter in sorted(set(before) | set(after)):
+        was, is_now = unpack(before.get(chapter, "")), unpack(after.get(chapter, ""))
+        if is_now - was:
+            added[chapter] = pack(is_now - was)
+        if was - is_now:
+            removed[chapter] = pack(was - is_now)
+    return added, removed
+
+
+def _count(by_chapter: dict[str, str]) -> int:
+    return sum(len(unpack(v)) for v in by_chapter.values())
 
 
 def _moved(label: str, was: int, now: int) -> str | None:
@@ -95,10 +139,20 @@ def judge(entry: dict, now: dict) -> list[str]:
         found.append("served 0 rules -- an empty answer with no stated reason")
     if now["precinct_unkeyed"]:
         found.append(f"{now['precinct_unkeyed']} precinct rule(s) with no precinct key (the route.ts:1129 leak)")
+    if now["no_id"]:
+        found.append(f"{now['no_id']} served rule(s) with no id -- they cannot be compared")
     base = entry.get("baseline")
     if not base:
         found.append("no accepted baseline -- run --rebaseline with a reason")
         return found
+    if "rules" not in base:
+        found.append("baseline records no rule ids -- run --rebaseline with a reason")
+        return found
+    added, removed = rule_diff(base, now)
+    if added or removed:  # ANY rule in or out: rules move only when someone publishes, and that is accepted by name
+        found.append(f"{_count(added)} rule(s) added, {_count(removed)} removed since the baseline")
+        found.extend(f"added in {chapter}: {ids}" for chapter, ids in added.items())
+        found.extend(f"removed from {chapter}: {ids}" for chapter, ids in removed.items())
     for msg in [_moved("total", base["total"], now["total"])] + [
             _moved(name, base["layers"].get(name, 0), now["layers"].get(name, 0)) for name in LAYERS]:
         if msg:
@@ -125,6 +179,7 @@ def main() -> int:
     panel = json.loads(PANEL.read_text(encoding="utf-8"))
     entries = panel["addresses"]
     red, unreachable = [], []
+    changes: dict[str, dict] = {}
     for e in entries:
         try:
             now = shape(fetch(e["params"], args.base_url.rstrip("/")))
@@ -134,6 +189,11 @@ def main() -> int:
             continue
         was = (e.get("baseline") or {}).get("total")
         if args.rebaseline:
+            old = e.get("baseline") or {}
+            if "rules" in old:  # the history keeps exactly which rules each re-record accepted
+                added, removed = rule_diff(old, now)
+                if added or removed:
+                    changes[e["key"]] = {"added": added, "removed": removed}
             e["baseline"] = now
         reasons = judge(e, now)
         print(f"  {'FAIL' if reasons else 'ok  '}  {e['key']} {e['address'][:40]:40} {e['lga'][:18]:18} "
@@ -147,8 +207,10 @@ def main() -> int:
         if unreachable:
             print(f"\nNOT REBASELINED: {len(unreachable)} address(es) could not be measured")
             return 2
-        panel.setdefault("history", []).append(
-            {"date": dt.date.today().isoformat(), "reason": args.reason.strip()})
+        record = {"date": dt.date.today().isoformat(), "reason": args.reason.strip()}
+        if changes:
+            record["changes"] = changes
+        panel.setdefault("history", []).append(record)
         PANEL.write_text(json.dumps(panel, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"\nBaseline written for {len(entries)} addresses.")
 

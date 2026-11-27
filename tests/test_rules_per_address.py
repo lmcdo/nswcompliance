@@ -8,14 +8,14 @@ rpa = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rpa)
 
 
-def _row(layer_council="parramatta", chapter="ch1", precinct="p1"):
-    return {"source_council": layer_council, "source_chapter_key": chapter, "v2_precinct_id": precinct}
+def _row(rule_id, layer_council="parramatta", chapter="ch1", precinct="p1"):
+    return {"id": rule_id, "source_council": layer_council, "source_chapter_key": chapter, "v2_precinct_id": precinct}
 
 
-def _response(generic=100, precinct=0, chapter="ch1", council="parramatta", precinct_key="p1"):
+def _response(generic=100, precinct=0, chapter="ch1", council="parramatta", precinct_key="p1", first_id=1):
     return {"data": {"by_layer": [
-        {"layer": "generic", "provisions": [_row(council, chapter) for _ in range(generic)]},
-        {"layer": "precinct", "provisions": [_row(council, chapter, precinct_key) for _ in range(precinct)]},
+        {"layer": "generic", "provisions": [_row(first_id + i, council, chapter) for i in range(generic)]},
+        {"layer": "precinct", "provisions": [_row(10_000 + i, council, chapter, precinct_key) for i in range(precinct)]},
     ]}}
 
 
@@ -27,8 +27,14 @@ def test_unchanged_answer_is_inside_the_box():
     assert rpa.judge(_entry(), rpa.shape(_response())) == []
 
 
-def test_small_drift_is_tolerated():
-    assert rpa.judge(_entry(generic=100), rpa.shape(_response(generic=104))) == []
+def test_a_handful_of_new_rules_is_red_even_when_the_count_move_is_small():
+    found = rpa.judge(_entry(generic=100), rpa.shape(_response(generic=104)))
+    assert "4 rule(s) added, 0 removed since the baseline" in found
+
+
+def test_one_rule_swapped_for_another_is_red():
+    found = rpa.judge(_entry(generic=100), rpa.shape(_response(generic=100, first_id=2)))
+    assert "1 rule(s) added, 1 removed since the baseline" in found
 
 
 def test_widening_is_red():
@@ -78,3 +84,40 @@ def test_committed_panel_has_a_baseline_for_every_address():
     assert len(panel["addresses"]) >= 20
     assert all(e.get("baseline") for e in panel["addresses"])
     assert panel["history"][-1]["reason"]
+
+
+def test_ids_pack_into_ranges_and_back():
+    ids = {1, 2, 3, 7, 9, 10}
+    assert rpa.pack(ids) == "1-3,7,9-10"
+    assert rpa.unpack("1-3,7,9-10") == ids and rpa.unpack("") == set()
+
+
+def test_the_baseline_records_which_rules_were_served():
+    assert rpa.shape(_response(generic=3))["rules"] == {"ch1": "1-3"}
+
+
+def test_same_count_with_different_rules_is_red_and_names_them():
+    found = rpa.judge(_entry(generic=100), rpa.shape(_response(generic=100, first_id=11)))
+    assert "10 rule(s) added, 10 removed since the baseline" in found
+    assert "added in ch1: 101-110" in found and "removed from ch1: 1-10" in found
+
+
+def test_a_baseline_without_rule_ids_is_red():
+    entry = _entry()
+    del entry["baseline"]["rules"]
+    assert any("records no rule ids" in f for f in rpa.judge(entry, rpa.shape(_response())))
+
+
+def test_a_served_rule_without_an_id_is_red():
+    response = _response()
+    del response["data"]["by_layer"][0]["provisions"][0]["id"]
+    assert any("with no id" in f for f in rpa.judge(_entry(), rpa.shape(response)))
+
+
+def test_every_committed_baseline_records_its_rule_ids():
+    import json
+    panel = json.loads(rpa.PANEL.read_text(encoding="utf-8"))
+    for e in panel["addresses"]:
+        base = e["baseline"]
+        assert sum(len(rpa.unpack(v)) for v in base["rules"].values()) == base["total"], e["key"]
+

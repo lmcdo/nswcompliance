@@ -888,6 +888,13 @@ async function queryHeritageByHca(
     params.push(councilKey(filters.former_council));
   }
 
+  // Zone applicability, as in queryLayer: this query had none, so a heritage lot zoned E1 was served
+  // residential-zone heritage rules (rules-per-address panel, 4/260 Darling Street Balmain, 2026-11-27).
+  if (filters.zone) {
+    sql += ` AND (${ZONE_APPLIES_SQL(paramIndex++)})`;
+    params.push(filters.zone);
+  }
+
   // Filter by precinct - only include general provisions or property's precinct
   // Supports comma-separated precinct IDs for suburbs spanning multiple Chapter D precincts.
   if (filters.precinct_id) {
