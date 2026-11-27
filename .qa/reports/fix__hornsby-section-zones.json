@@ -1,7 +1,7 @@
 {
   "tier": "standard",
   "justification": "Changes how future Hornsby residential rows are zoned and adds two switches to a database tool; this merge writes nothing, the write is a separate approved run.",
-  "commit_hash": "d6224065",
+  "commit_hash": "b4518bbf",
   "files": [
     "enrichment/config/hornsby_config.py",
     "enrichment/extractors/applicability_tagger.py",
