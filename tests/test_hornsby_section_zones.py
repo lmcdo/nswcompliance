@@ -51,8 +51,9 @@ def test_narrow_only_never_writes_a_row_that_gains_a_zone():
 
     plan = [row(1, ["R4"], ["R2", "R3", "R4"]), row(2, ["R2", "R3", "R4"], ["R4"]),  # noqa: zone-codes - expected values quoted from the council's section openings
             row(3, ["R3"], ["R4"]), row(4, ["R4"], ["ALL"]), row(5, ["ALL"], ["R4"]),  # noqa: zone-codes - expected values quoted from the council's section openings
-            row(6, ["R4"], ["R2", "R4"], ["ALL"], ["dwelling_house"])]  # noqa: zone-codes - expected values quoted from the council's section openings
-    assert [r[0] for r in only_narrowing(plan)] == [1, 4]
+            row(6, ["R4"], ["R2", "R4"], ["ALL"], ["dwelling_house"]),  # noqa: zone-codes - fixture
+            row(7, [], ["R4"]), row(8, [], ["ALL"]), row(9, ["R4"], [])]  # noqa: zone-codes - fixtures; an empty list means no limit  # noqa: zone-codes - expected values quoted from the council's section openings
+    assert [r[0] for r in only_narrowing(plan)] == [1, 4, 9]
 
 
 @pytest.mark.parametrize("on_hand,extracted", [("new", READ_IN), (READ_IN, "old"), ("new", "new"), (None, None)])

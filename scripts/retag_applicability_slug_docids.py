@@ -195,7 +195,7 @@ def only_narrowing(plan):
     for row in plan:
         _pid, zones, devs, _zs, _ds, old_z, old_d = row
         pairs = ((set(old_z), set(zones)), (set(old_d), set(devs)))
-        if all(new == old or ("ALL" not in new and (not old or "ALL" in old or new < old)) for old, new in pairs):
+        if all(new == old or (new and "ALL" not in new and (not old or "ALL" in old or new < old)) for old, new in pairs):  # empty = no limit
             kept.append(row)
     return kept
 
