@@ -16,6 +16,7 @@ A provision in "Part 4.1 Low Density Residential" APPLIES to low density residen
 even if the text doesn't explicitly mention "R2" or "dwelling house".
 """
 
+import logging
 import re
 from typing import List, Tuple, Optional, Set, Dict, Any
 
@@ -87,6 +88,9 @@ def strip_plan_references(text: str) -> str:
     return PLAN_REFERENCE.sub(" ", text or "")
 
 
+logger = logging.getLogger(__name__)
+
+
 class ApplicabilityTagger:
     """
     Tag provisions with applicable zones and development types.
@@ -140,8 +144,38 @@ class ApplicabilityTagger:
         'sex_services_premises': [r'\bsex\s+services', r'\badult\s+premises'],
     }
 
+    def load_section_versions(self, cur) -> None:
+        """Read which file each chapter's rows come from, so page ranges are used only on the file they were read in."""
+        cur.execute("""SELECT chapter_key, content_hash, provisions_extracted_from_hash
+                         FROM dcp_chapter_registry WHERE is_active""")
+        for row in cur.fetchall():
+            key, on_hand, extracted = (
+                (row['chapter_key'], row['content_hash'], row['provisions_extracted_from_hash'])
+                if isinstance(row, dict) else row)
+            self.chapter_versions.setdefault(key.replace('-', '_').lower(), set()).add((on_hand, extracted))
+
+    def _sections_for(self, chapter_key: str, entry: Dict[str, Any]) -> tuple:
+        """The entry's page sections, or none (the broader chapter keys stand) unless BOTH the file on hand and the
+        file the rows were extracted from are the one the page numbers were read in. Either alone is not enough: an
+        amended file reaches content_hash before extraction, and a stale extraction keeps the old other hash."""
+        sections = entry.get('page_sections') or ()
+        if not sections:
+            return ()
+        pinned = entry['page_sections_source_hash']
+        if self.chapter_versions.get(chapter_key) == {(pinned, pinned)}:
+            return sections
+        if chapter_key not in self.section_version_errors:
+            self.section_version_errors.add(chapter_key)
+            logger.error(
+                "SECTION ZONES NOT APPLIED for %s: the registry's file (%s) is not the file its page ranges were "
+                "read in (%s). Rows keep the chapter-wide zones. Re-read the section start pages in the new file.",
+                chapter_key, self.chapter_versions.get(chapter_key, "not loaded"), pinned)
+        return ()
+
     def __init__(self):
         """Initialize with compiled patterns and DCP configs."""
+        self.chapter_versions: Dict[str, set] = {}
+        self.section_version_errors: Set[str] = set()
         self.zone_patterns = {
             zone: re.compile(pattern, re.IGNORECASE)
             for zone, pattern in self.ZONE_PATTERNS.items()
@@ -664,6 +698,13 @@ class ApplicabilityTagger:
         if chapter_topics:
             for chapter_key, entry in chapter_topics.items():
                 if chapter_key in doc_lower:
+                    # A Part whose sections each open with their own scope sentence (Hornsby Part 3): the row's PDF
+                    # page names its section, whose keys replace the Part's. A page in no range keeps the Part's.
+                    for section in self._sections_for(chapter_key, entry):
+                        if pdf_page and section['first_page'] <= pdf_page <= section['last_page']:
+                            entry = {**entry, **section,
+                                     'scope_evidence': {**(entry.get('scope_evidence') or {}), **section['scope_evidence']}}
+                            break
                     # Carry is_precinct_specific through, as the ashfield and
                     # leichhardt paths already do. Without it a config that declares
                     # a chapter precinct-scoped has that statement silently dropped

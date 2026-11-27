@@ -130,6 +130,7 @@ def config_zoned_ids(cur, council: str, chapter_key: str, tagger=None) -> set:
             print(f"    [area-link] config zones not predicted ({exc})")
             return set()
         tagger = ApplicabilityTagger()
+        tagger.load_section_versions(cur)
     cur.execute("""SELECT id, document_id, provision_text, v2_dcp_part, pdf_page FROM regulatory_provisions
                     WHERE is_current AND source_council = %s AND source_chapter_key = %s
                       AND provision_text IS NOT NULL""", (council, chapter_key))

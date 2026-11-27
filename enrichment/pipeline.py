@@ -639,6 +639,7 @@ def run_applicability_tagging(
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     tagger = ApplicabilityTagger()
+    tagger.load_section_versions(cur)
 
     # Loaded ONCE per run, not per row: lep_zone_coverage changes only when an LGA is
     # re-scraped. Empty on any failure, which makes the filter a no-op rather than
@@ -840,6 +841,7 @@ def run_applicability_provenance(
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     tagger = ApplicabilityTagger()
+    tagger.load_section_versions(cur)
 
     # SCOPE, stated because the DB currency guard is right to ask. This filters
     # on v2_is_actionable and deliberately NOT on is_current: a superseded

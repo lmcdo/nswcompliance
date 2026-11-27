@@ -1,0 +1,106 @@
+{
+  "tier": "standard",
+  "justification": "Changes how future Hornsby residential rows are zoned and adds two switches to a database tool; this merge writes nothing, the write is a separate approved run.",
+  "commit_hash": "97c72834",
+  "files": [
+    "enrichment/config/hornsby_config.py",
+    "enrichment/extractors/applicability_tagger.py",
+    "enrichment/pipeline.py",
+    "scripts/dcp_area_link_guard.py",
+    "scripts/retag_applicability_slug_docids.py",
+    "tests/test_hornsby_section_zones.py"
+  ],
+  "pre_impl": {
+    "existing_data": "685 live Hornsby Part 3 rows tagged zones R2,R3,R4 from the Part introduction; 16 of them narrower already",
+    "assumption_mismatch": "A row with no pdf_page, or outside every section range, keeps the Part's zones, so nothing is narrowed by guess",
+    "new_vs_existing": "New publishes pick up section zones through the tagger; existing current rows change only when the tool is run with --apply. The tool no longer touches superseded rows for any council."
+  },
+  "functions": [
+    {
+      "name": "_get_config_driven",
+      "file_line": "enrichment/extractors/applicability_tagger.py:666",
+      "input": "the document id, row text, part and pdf page",
+      "output": "the config entry result with section keys applied when the page is in a range",
+      "if_none": "no pdf page or no page_sections leaves the chapter entry exactly as before"
+    },
+    {
+      "name": "only_narrowing",
+      "file_line": "scripts/retag_applicability_slug_docids.py:191",
+      "input": "the re-tag plan rows with old and new zones and types",
+      "output": "only rows that remove zones or types and add none",
+      "if_none": "an empty plan returns an empty list and nothing is written"
+    },
+    {
+      "name": "build_plan",
+      "file_line": "scripts/retag_applicability_slug_docids.py:203",
+      "input": "a database cursor, council list and optional chapter key",
+      "output": "the change plan limited to that chapter when one is given",
+      "if_none": "no chapter keeps the previous whole-council behaviour"
+    }
+  ],
+  "values": [],
+  "queries": [
+    {
+      "purpose": "rows to re-tag",
+      "file_line": "scripts/retag_applicability_slug_docids.py:212",
+      "where_clause": "source_council in the list and, when given, source_chapter_key equals the chapter",
+      "if_zero": "the plan is empty and nothing changes",
+      "if_wrong": "rows of another chapter would be re-tagged"
+    },
+    {
+      "purpose": "which file each chapter's rows come from",
+      "file_line": "enrichment/extractors/applicability_tagger.py:143",
+      "where_clause": "is_active chapters in dcp_chapter_registry",
+      "if_zero": "no section ranges apply and an error is logged",
+      "if_wrong": "a mismatched hash keeps the broader zones"
+    }
+  ],
+  "break_it": [
+    {
+      "scenario": "A run meant to narrow widens rows another step had narrowed",
+      "what_happens": "R2 lots start seeing apartment rules again",
+      "mitigated": true,
+      "how": "only_narrowing and its test; the dry run left the four 3.5.1 rows untouched",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "A section boundary page is off by one",
+      "what_happens": "House rules are hidden from R2 lots",
+      "mitigated": true,
+      "how": "boundary pages tested; every narrowed served row's own section number was 3.2, 3.3, 3.4 or none, never 3.1",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "The council amends the plan and pages move",
+      "what_happens": "Old page ranges would zone rules from the wrong section",
+      "mitigated": true,
+      "how": "ranges apply only when content_hash and provisions_extracted_from_hash both equal the pinned file; otherwise broader zones, an error log, and the re-tag tool refuses; 5 tests",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "A caller builds the tagger without loading file versions",
+      "what_happens": "Section zones would be skipped for that caller",
+      "mitigated": true,
+      "how": "broader zones and an error log, never a guess; pipeline, area-link guard and re-tag tool all load versions",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "The re-tag tool rewrites superseded rows",
+      "what_happens": "Retired rules silently change their zones",
+      "mitigated": true,
+      "how": "build_plan selects is_current rows only; dry run rows in scope fell from 1,272 to 480",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    }
+  ],
+  "falsifiable_check": {
+    "command": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts=",
+    "fails_when": "a page in sections 3.2 to 3.4 resolves to other zones, 3.1 or 3.5 pages are narrowed, or narrow-only keeps a widening row",
+    "observed_red": "A dry run without narrow-only planned to widen 4 served rows on pages 83-84 from R4 to R2,R3,R4; with only_narrowing those rows are left out"
+  },
+  "post_merge": {
+    "db_reset": "No",
+    "secrets": "No",
+    "other_repo": "No",
+    "manual_verify": "Yes: the re-tag write needs owner approval, then rules_per_address must show only these rows removed at 028 and 029"
+  }
+}
