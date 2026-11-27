@@ -202,6 +202,13 @@ def main() -> int:
                                       "citation_status": dbr[9]} if dbr else None,
                 "shown_page": shown, "printed_page": r.get("pdf_printed_page"),
                 "source_url": dbr[3] if dbr else None, "pdf_page_text": text})
+    import datetime, subprocess  # run record: what is needed to re-draw this sample later
+    try:
+        code_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=Path(__file__).parent).strip()
+    except Exception:  # noqa: BLE001
+        code_hash = None
+    summary.append({"run_meta": {"seed": a.seed, "per_address": a.per_address, "code_hash": code_hash,
+                                 "built_on": datetime.date.today().isoformat(), "lgas": LGAS}})
     summary.append({"unfound_redrawn": unfound})
     (out / "summary.json").write_text(json.dumps(summary, indent=1, ensure_ascii=False), encoding="utf-8")
     with open(out / "packets.jsonl", "w", encoding="utf-8") as f:
