@@ -210,12 +210,13 @@ def build_plan(cur, councils, chapter=None):
                    id, document_id, provision_text,
                    v2_applicable_zones, v2_applicable_dev_types,
                    source_council, section_header, pdf_page, v2_dcp_part
-            FROM {TABLE} WHERE source_council = ANY(%s)
+            FROM {TABLE} WHERE is_current AND source_council = ANY(%s)
               AND (%s::text IS NULL OR source_chapter_key = %s)""",
         (list(councils), chapter, chapter),
     )
     rows = cur.fetchall()
     tagger = ApplicabilityTagger()
+    tagger.load_section_versions(cur)
 
     # DQ-30's zone-validity filter, which this script BYPASSED until 2026-09-23.
     # `tag_with_provenance` drops any zone not in the LGA's own land-use table
@@ -314,6 +315,10 @@ def build_plan(cur, councils, chapter=None):
                     narrowings.append((pid, doc, "dev_types", old_d, devs, dk))
         else:
             prov_only.append(row)
+    if tagger.section_version_errors:
+        # Without the page ranges this run would write the chapter-wide zones back over the section zones.
+        raise SystemExit("REFUSED: section page ranges do not match the registry's file for "
+                         + ", ".join(sorted(tagger.section_version_errors)))
     return plan, prov_only, stats, narrowings, invalid
 
 
@@ -347,7 +352,7 @@ def main() -> int:
         if args.narrow_only:
             kept = only_narrowing(plan)
             print(f"  --narrow-only: {len(plan) - len(kept):,} row(s) that would widen are left untouched; "
-                  f"{len(kept):,} will change")
+                  f"{len(kept):,} will change. The served change counts below were taken BEFORE this filter.")
             plan = kept
             prov_only = []
         print(f"\n=== DQ-33 re-tag plan ===")

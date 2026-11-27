@@ -87,6 +87,9 @@ HORNSBY_CONFIG: dict = {
             # page picks the section. 3.1 (says R2 only) and 3.5 stay on the Part's zones: narrowing 3.1 would hide
             # house rules from houses in R3/R4, and 3.5 also covers seniors housing on a height-map "Area 3" whose
             # zone is not established (the current height map shows no 20.5 m area).
+            # The page numbers below were read in THIS file (v1.2-2026-06-29, amended 23 June 2025). The tagger uses
+            # them only while the registry's content_hash and provisions_extracted_from_hash both equal it.
+            "page_sections_source_hash": "193ac6a451b06b2adde87867088f23cf7b19969ee0df4b0a012d38068e751492",
             "page_sections": (
                 {"first_page": 17, "last_page": 39, "applicable_zones": ["R3"],  # noqa: zone-codes - the council's words
                  "scope_evidence": {"applicable_zones":

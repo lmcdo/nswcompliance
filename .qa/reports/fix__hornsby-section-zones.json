@@ -1,36 +1,38 @@
 {
   "tier": "standard",
   "justification": "Changes how future Hornsby residential rows are zoned and adds two switches to a database tool; this merge writes nothing, the write is a separate approved run.",
-  "commit_hash": "99ec7f14",
+  "commit_hash": "d6224065",
   "files": [
     "enrichment/config/hornsby_config.py",
     "enrichment/extractors/applicability_tagger.py",
+    "enrichment/pipeline.py",
+    "scripts/dcp_area_link_guard.py",
     "scripts/retag_applicability_slug_docids.py",
     "tests/test_hornsby_section_zones.py"
   ],
   "pre_impl": {
     "existing_data": "685 live Hornsby Part 3 rows tagged zones R2,R3,R4 from the Part introduction; 16 of them narrower already",
     "assumption_mismatch": "A row with no pdf_page, or outside every section range, keeps the Part's zones, so nothing is narrowed by guess",
-    "new_vs_existing": "New publishes pick up section zones through the tagger; existing rows change only when the tool is run with --apply"
+    "new_vs_existing": "New publishes pick up section zones through the tagger; existing current rows change only when the tool is run with --apply. The tool no longer touches superseded rows for any council."
   },
   "functions": [
     {
       "name": "_get_config_driven",
-      "file_line": "enrichment/extractors/applicability_tagger.py:634",
+      "file_line": "enrichment/extractors/applicability_tagger.py:666",
       "input": "the document id, row text, part and pdf page",
       "output": "the config entry result with section keys applied when the page is in a range",
       "if_none": "no pdf page or no page_sections leaves the chapter entry exactly as before"
     },
     {
       "name": "only_narrowing",
-      "file_line": "scripts/retag_applicability_slug_docids.py:189",
+      "file_line": "scripts/retag_applicability_slug_docids.py:191",
       "input": "the re-tag plan rows with old and new zones and types",
       "output": "only rows that remove zones or types and add none",
       "if_none": "an empty plan returns an empty list and nothing is written"
     },
     {
       "name": "build_plan",
-      "file_line": "scripts/retag_applicability_slug_docids.py:205",
+      "file_line": "scripts/retag_applicability_slug_docids.py:203",
       "input": "a database cursor, council list and optional chapter key",
       "output": "the change plan limited to that chapter when one is given",
       "if_none": "no chapter keeps the previous whole-council behaviour"
@@ -44,6 +46,13 @@
       "where_clause": "source_council in the list and, when given, source_chapter_key equals the chapter",
       "if_zero": "the plan is empty and nothing changes",
       "if_wrong": "rows of another chapter would be re-tagged"
+    },
+    {
+      "purpose": "which file each chapter's rows come from",
+      "file_line": "enrichment/extractors/applicability_tagger.py:143",
+      "where_clause": "is_active chapters in dcp_chapter_registry",
+      "if_zero": "no section ranges apply and an error is logged",
+      "if_wrong": "a mismatched hash keeps the broader zones"
     }
   ],
   "break_it": [
@@ -62,11 +71,25 @@
       "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
     },
     {
-      "scenario": "A re-read plan moves the pages",
-      "what_happens": "Page ranges would zone rows from the wrong section",
-      "mitigated": false,
-      "how": "residual: ranges are fixed to the 23 June 2025 amendment; a new plan version needs the ranges re-read",
-      "repro": "compare section start pages in the new PDF"
+      "scenario": "The council amends the plan and pages move",
+      "what_happens": "Old page ranges would zone rules from the wrong section",
+      "mitigated": true,
+      "how": "ranges apply only when content_hash and provisions_extracted_from_hash both equal the pinned file; otherwise broader zones, an error log, and the re-tag tool refuses; 5 tests",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "A caller builds the tagger without loading file versions",
+      "what_happens": "Section zones would be skipped for that caller",
+      "mitigated": true,
+      "how": "broader zones and an error log, never a guess; pipeline, area-link guard and re-tag tool all load versions",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
+    },
+    {
+      "scenario": "The re-tag tool rewrites superseded rows",
+      "what_happens": "Retired rules silently change their zones",
+      "mitigated": true,
+      "how": "build_plan selects is_current rows only; dry run rows in scope fell from 1,272 to 480",
+      "repro": "python -m pytest tests/test_hornsby_section_zones.py -q -o addopts="
     }
   ],
   "falsifiable_check": {
