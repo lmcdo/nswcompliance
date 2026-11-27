@@ -1,13 +1,15 @@
-# NSW Development Compliance Engine
+# NSW Planning Compliance Engine
 
-An enhanced development compliance checking system for NSW Inner West Council areas, featuring dual semantic processing with LangExtract and AutoSchemaKG for sophisticated regulatory rule understanding.
+An engineering codebase for processing NSW planning and regulatory information into structured, source-linked data and application responses.
+
+This repository contains substantial development work across regulatory document processing, deterministic controls, AI-assisted extraction, geospatial analysis, APIs, database migrations, and automated QA. It is not a legal-advice system and does not establish that a development is compliant.
 
 ## Features
 
 ### Enhanced Semantic Processing
 - **Dual Semantic Pipeline**: Combines LangExtract + AutoSchemaKG for complex rule understanding
 - **Conditional Logic Support**: Handles rules like "0.9m minimum OR 0.5 times building height, whichever is greater"
-- **Source Text Grounding**: Provides exact regulatory citations for legal defensibility
+- **Source Text Grounding**: Carries source and page context into selected extracted results
 - **Three-Tier Classification**: Mandatory, Recommended, and Informational rule enforcement levels
 
 ### API Integration
@@ -20,7 +22,7 @@ An enhanced development compliance checking system for NSW Inner West Council ar
 - **Above-the-fold Design**: Compact, professional interface
 - **Source Citation Display**: Shows regulatory text with highlighting
 - **Processing Method Indicators**: Visual badges for Semantic/Manual/Fallback
-- **Confidence Scoring**: HIGH/MEDIUM/LOW reliability indicators
+- **Confidence and review states**: Selected surfaces distinguish automated results from review-required states
 - **Responsive Design**: Works on mobile, tablet, and desktop
 
 ## Architecture
@@ -63,9 +65,9 @@ source venv_linux/bin/activate # Linux/Mac
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Set up environment variables
-cp .env.local.example .env.local
-# Edit .env.local with your API keys
+# Set up environment variables from a reviewed placeholder template
+cp .env.example .env.local
+# Add credentials only to the local file; never commit it
 
 # Start the development server
 npm run dev
@@ -128,12 +130,13 @@ curl -X POST "http://localhost:3000/api/compliance/check" \
 - **DCP Setbacks**: Semantic extraction from council documents (MEDIUM confidence)
 - **Complex Conditions**: Conditional logic like "minimum OR calculated, whichever is greater"
 
-## Performance
+## Limitations
 
-- **Semantic Processing**: ~2-3 seconds for initial extraction, <1 second for cached
-- **API Response Time**: <500ms for cached data, <2 seconds for live processing
-- **Accuracy**: 93% confidence for complex conditional rules vs 40% for regex
-- **Coverage**: Handles 15+ different setback rule patterns vs 3 for basic regex
+- Regulatory content changes and must be checked against current authoritative sources.
+- Extracted or classified content can be incomplete or wrong.
+- External planning, property, spatial, and document sources vary in availability and quality.
+- The software does not replace advice from a qualified planning, legal, building, surveying, or other relevant professional.
+- Performance, accuracy, coverage, customer, and production-deployment claims are intentionally not stated without reproducible evidence.
 
 ## Testing
 
@@ -184,6 +187,4 @@ For issues and feature requests:
 
 ---
 
-**Built with Context Engineering and Claude Code** 
-
-*Features dual semantic processing for legally defensible development compliance checking with source authority citations.*
+This repository is being prepared for public release. See [SECURITY.md](SECURITY.md) for the current publication boundary.
